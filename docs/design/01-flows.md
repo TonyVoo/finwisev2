@@ -99,7 +99,7 @@ graph TD
     Write -.->|background| Sync[Outbox drains<br/>pending clock icon clears]
 ```
 
-**Rule the diagram encodes:** signup is the *only* point in this flow that can be blocked by
+**Rule the diagram encodes:** signup is the _only_ point in this flow that can be blocked by
 being offline, because it is the only point that needs a server to mint an identity. Once a
 session exists, every subsequent step is local-first.
 
@@ -142,7 +142,7 @@ exists precisely so offline-first is usable):
    request, a timeout, or a DNS failure leaves the session intact.
 2. **A returning user never sees a loading screen.** Home renders from SQLite on the first
    frame; the token refresh and the sync happen behind it. The skeleton in this diagram appears
-   only after a *fresh* log in, when there is genuinely no local data yet.
+   only after a _fresh_ log in, when there is genuinely no local data yet.
 
 ---
 
@@ -193,7 +193,7 @@ guard an uncommon one. **The confirmation is the Undo snackbar**, and it is spec
 see [`04-expense-list.md`](./04-expense-list.md) §Behaviour rules 7-9 for the exact timing,
 dismissal, and what happens if the app is killed while the snackbar is up.
 
-Category deletion is the opposite case and *does* get a dialog, because it changes rows the user
+Category deletion is the opposite case and _does_ get a dialog, because it changes rows the user
 is not looking at. See §5.
 
 ---
@@ -233,7 +233,7 @@ Rules the diagram encodes:
    "Uncategorized", which the user may have renamed. See
    [`00-foundations.md`](./00-foundations.md) §7 note 3.
 2. **The count is exact and computed locally**, so it is correct offline. It counts expenses
-   with `deletedAt IS NULL` in *all* months, not just the month on screen.
+   with `deletedAt IS NULL` in _all_ months, not just the month on screen.
 3. **The copy states the outcome twice** — "will move to Uncategorized" and "They won't be
    deleted." The second sentence exists because "delete" in the button is the louder word, and
    losing spend history is the fear being addressed.
@@ -248,16 +248,16 @@ Rules the diagram encodes:
 
 ---
 
-## 6. The flows that are *not* in this app
+## 6. The flows that are _not_ in this app
 
 Stated so that nobody has to guess whether a screen was forgotten.
 
-| Not present | Why |
-|-------------|-----|
-| Password reset / forgot password | Needs email delivery. Out of `docs/PLAN.md` scope. The Log in screen therefore has **no** "Forgot password?" link — an inert link would be worse than none. |
-| Email verification | Same reason. Signup logs the user straight in. |
-| Onboarding carousel | The Home first-run empty state teaches the one action there is. |
-| Change password / change email | Not in scope. Settings shows the email as read-only text. |
-| Change currency after signup | The data model has one currency per user and no conversion, so changing it would silently re-denominate existing expenses. Settings shows it read-only with the helper copy in [`09-copy-deck.md`](./09-copy-deck.md). |
-| Account deletion | Not in scope; no endpoint for it in `docs/PLAN.md` §5. |
-| A manual "Sync now" button | Sync is automatic on the four triggers in `docs/PLAN.md` §Scheduling. There *is* a Retry affordance, but only in the sync-error state where it is meaningful. See [`02-offline-and-sync.md`](./02-offline-and-sync.md) §4. |
+| Not present                      | Why                                                                                                                                                                                                                        |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Password reset / forgot password | Needs email delivery. Out of `docs/PLAN.md` scope. The Log in screen therefore has **no** "Forgot password?" link — an inert link would be worse than none.                                                                |
+| Email verification               | Same reason. Signup logs the user straight in.                                                                                                                                                                             |
+| Onboarding carousel              | The Home first-run empty state teaches the one action there is.                                                                                                                                                            |
+| Change password / change email   | Not in scope. Settings shows the email as read-only text.                                                                                                                                                                  |
+| Change currency after signup     | The data model has one currency per user and no conversion, so changing it would silently re-denominate existing expenses. Settings shows it read-only with the helper copy in [`09-copy-deck.md`](./09-copy-deck.md).     |
+| Account deletion                 | Not in scope; no endpoint for it in `docs/PLAN.md` §5.                                                                                                                                                                     |
+| A manual "Sync now" button       | Sync is automatic on the four triggers in `docs/PLAN.md` §Scheduling. There _is_ a Retry affordance, but only in the sync-error state where it is meaningful. See [`02-offline-and-sync.md`](./02-offline-and-sync.md) §4. |

@@ -53,22 +53,22 @@ never dismisses. The rows between the amount and the keypad scroll if they do no
 
 ## Elements
 
-| # | Element | Style | Copy | Tap target | Accessibility |
-|---|---------|-------|------|------------|---------------|
-| 1 | Close | `x` 24, `text.primary` | — | 44x44 | `role="button"`, label `Close without saving` |
-| 2 | Title | `type.headline` / `text.primary`, centred | `Add expense` / `Edit expense` | none | `role="header"` |
-| 3 | Save | `type.bodyStrong` / `primary.default`, trailing, `space.4` from edge | `Save` | 44x44 min | `role="button"`; disabled state per rule 6 |
-| 4 | Amount display | `type.amountHero` / `text.primary`, centred, `tabular-nums`, `space.6` vertical | formatted live value, e.g. `$12.50` | **the display itself is not tappable** | `role="header"`, label `Amount, $12.50`, `accessibilityLiveRegion="polite"` |
-| 5 | Amount error | `type.footnote` / `danger.default`, centred, replaces nothing (reserves its line) | per rule 8 | none | announced |
-| 6 | Category row | `Row` 56; leading `tag` 20 `text.tertiary`; label `type.body`; value = 16x16 swatch + name in `type.body` / `text.secondary`; trailing `chevron-right` 20 | label `Category` | full row | `role="button"`, label `Category, Groceries`, hint `Double tap to change category.` |
-| 7 | Date row | `Row` 56; leading `calendar` 20; trailing `chevron-right` 20 | label `Date`, value `Today` / `Yesterday` / `EEE d MMM yyyy` | full row | `role="button"`, label `Date, Today, 6 October 2026` |
-| 8 | Note row | `Row`, min 56, grows; leading `file-text` 20 | label `Note`; value = the note, or placeholder `Add a note (optional)` in `text.tertiary` | full row | `role="button"`, label `Note, Milk and eggs` or `Note, empty` |
-| 9 | Delete | `Button` `ghost` with `danger.default` label, full width, `space.6` above | `Delete expense` | full button, 44 | `role="button"`, label `Delete expense` |
-| 10 | Keypad backdrop | `bg.sunken`, full-bleed, respects bottom safe inset | — | — | `accessibilityElementsHidden` on the backdrop itself |
-| 11 | Digit key | 4 rows x 3 cols; each cell flexes, min 56 tall, `radius.md`, `bg.surface`, `type.title2` / `text.primary`; `space.2` gap | `0`-`9` | full cell, ≥56x56 | `role="button"`, label the digit |
-| 12 | Decimal key | as 11 | the locale decimal separator, `.` or `,` | full cell | `role="button"`, label `Decimal point`; see rule 3 |
-| 13 | Backspace key | as 11, glyph `delete` 24 `text.primary` | — | full cell | `role="button"`, label `Delete last digit` |
-| 14 | Conflict notice | per [`02-offline-and-sync.md`](./02-offline-and-sync.md) §5.4 | per that spec | 44 on its action | announced |
+| #   | Element         | Style                                                                                                                                                     | Copy                                                                                      | Tap target                             | Accessibility                                                                       |
+| --- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------- |
+| 1   | Close           | `x` 24, `text.primary`                                                                                                                                    | —                                                                                         | 44x44                                  | `role="button"`, label `Close without saving`                                       |
+| 2   | Title           | `type.headline` / `text.primary`, centred                                                                                                                 | `Add expense` / `Edit expense`                                                            | none                                   | `role="header"`                                                                     |
+| 3   | Save            | `type.bodyStrong` / `primary.default`, trailing, `space.4` from edge                                                                                      | `Save`                                                                                    | 44x44 min                              | `role="button"`; disabled state per rule 6                                          |
+| 4   | Amount display  | `type.amountHero` / `text.primary`, centred, `tabular-nums`, `space.6` vertical                                                                           | formatted live value, e.g. `$12.50`                                                       | **the display itself is not tappable** | `role="header"`, label `Amount, $12.50`, `accessibilityLiveRegion="polite"`         |
+| 5   | Amount error    | `type.footnote` / `danger.default`, centred, replaces nothing (reserves its line)                                                                         | per rule 8                                                                                | none                                   | announced                                                                           |
+| 6   | Category row    | `Row` 56; leading `tag` 20 `text.tertiary`; label `type.body`; value = 16x16 swatch + name in `type.body` / `text.secondary`; trailing `chevron-right` 20 | label `Category`                                                                          | full row                               | `role="button"`, label `Category, Groceries`, hint `Double tap to change category.` |
+| 7   | Date row        | `Row` 56; leading `calendar` 20; trailing `chevron-right` 20                                                                                              | label `Date`, value `Today` / `Yesterday` / `EEE d MMM yyyy`                              | full row                               | `role="button"`, label `Date, Today, 6 October 2026`                                |
+| 8   | Note row        | `Row`, min 56, grows; leading `file-text` 20                                                                                                              | label `Note`; value = the note, or placeholder `Add a note (optional)` in `text.tertiary` | full row                               | `role="button"`, label `Note, Milk and eggs` or `Note, empty`                       |
+| 9   | Delete          | `Button` `ghost` with `danger.default` label, full width, `space.6` above                                                                                 | `Delete expense`                                                                          | full button, 44                        | `role="button"`, label `Delete expense`                                             |
+| 10  | Keypad backdrop | `bg.sunken`, full-bleed, respects bottom safe inset                                                                                                       | —                                                                                         | —                                      | `accessibilityElementsHidden` on the backdrop itself                                |
+| 11  | Digit key       | 4 rows x 3 cols; each cell flexes, min 56 tall, `radius.md`, `bg.surface`, `type.title2` / `text.primary`; `space.2` gap                                  | `0`-`9`                                                                                   | full cell, ≥56x56                      | `role="button"`, label the digit                                                    |
+| 12  | Decimal key     | as 11                                                                                                                                                     | the locale decimal separator, `.` or `,`                                                  | full cell                              | `role="button"`, label `Decimal point`; see rule 3                                  |
+| 13  | Backspace key   | as 11, glyph `delete` 24 `text.primary`                                                                                                                   | —                                                                                         | full cell                              | `role="button"`, label `Delete last digit`                                          |
+| 14  | Conflict notice | per [`02-offline-and-sync.md`](./02-offline-and-sync.md) §5.4                                                                                             | per that spec                                                                             | 44 on its action                       | announced                                                                           |
 
 Element 5 **reserves its line height even when empty**, so showing an error never shifts the
 keypad or the rows.
@@ -77,15 +77,15 @@ keypad or the rows.
 
 ## States
 
-| State | What the user sees |
-|-------|--------------------|
-| `default` — add | Amount `$0.00` in `text.tertiary` (the zero reads as a placeholder, not a value); Category prefilled with the last-used category, or the `isDefault` category on the very first expense; Date `Today`; Note empty; no Delete button; Save **disabled** with helper text. Keypad visible and ready — **no field needs to be tapped first.** |
-| `default` — edit | Every field prefilled from SQLite. Amount in `text.primary`. Delete button present. Save disabled until something actually changes (rule 6). |
-| `empty` | Not applicable to a form. The nearest case is "no categories exist", covered in rule 4. |
-| `loading:first-paint` | **Add mode: none** — there is nothing to load; the screen renders complete on the first frame. **Edit mode:** a single-frame skeleton (a 120x34 `bg.sunken` block in place of the amount, three skeleton rows) while the row is read by id from SQLite. If the id is not found, see `error`. |
-| `loading` — on save | **None.** Save writes to SQLite and pops immediately. There is no spinner, no disabled-while-saving state, and no waiting on the network. This is the core offline promise: a save is as fast offline as online. |
-| `error` | Two reachable cases. **(a) Invalid amount** — inline at element 5, per rule 8; Save stays disabled. **(b) Edit mode with an id that is absent or tombstoned** (a deep link, or the row was deleted on another device): the form is replaced by a centred message, `alert-circle` 48 in `text.tertiary`, headline `Expense not found` in `type.title2`, body `It may have been deleted on another device.` in `type.callout` / `text.secondary`, and a `secondary` button `Back to expenses`. No network error is possible here. |
-| `offline-pending` | Identical to `default` in every respect. **No banner, no sync pill on this screen, no disabled controls, no warning that the save will not reach the server yet.** The save will be queued, which is the normal path, and saying so would imply something is wrong. In edit mode on an already-`pending` row, the form shows no special treatment — the edit coalesces into the outbox ([`02-offline-and-sync.md`](./02-offline-and-sync.md) §2 rule 2). |
+| State                 | What the user sees                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `default` — add       | Amount `$0.00` in `text.tertiary` (the zero reads as a placeholder, not a value); Category prefilled with the last-used category, or the `isDefault` category on the very first expense; Date `Today`; Note empty; no Delete button; Save **disabled** with helper text. Keypad visible and ready — **no field needs to be tapped first.**                                                                                                                                                                                      |
+| `default` — edit      | Every field prefilled from SQLite. Amount in `text.primary`. Delete button present. Save disabled until something actually changes (rule 6).                                                                                                                                                                                                                                                                                                                                                                                    |
+| `empty`               | Not applicable to a form. The nearest case is "no categories exist", covered in rule 4.                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `loading:first-paint` | **Add mode: none** — there is nothing to load; the screen renders complete on the first frame. **Edit mode:** a single-frame skeleton (a 120x34 `bg.sunken` block in place of the amount, three skeleton rows) while the row is read by id from SQLite. If the id is not found, see `error`.                                                                                                                                                                                                                                    |
+| `loading` — on save   | **None.** Save writes to SQLite and pops immediately. There is no spinner, no disabled-while-saving state, and no waiting on the network. This is the core offline promise: a save is as fast offline as online.                                                                                                                                                                                                                                                                                                                |
+| `error`               | Two reachable cases. **(a) Invalid amount** — inline at element 5, per rule 8; Save stays disabled. **(b) Edit mode with an id that is absent or tombstoned** (a deep link, or the row was deleted on another device): the form is replaced by a centred message, `alert-circle` 48 in `text.tertiary`, headline `Expense not found` in `type.title2`, body `It may have been deleted on another device.` in `type.callout` / `text.secondary`, and a `secondary` button `Back to expenses`. No network error is possible here. |
+| `offline-pending`     | Identical to `default` in every respect. **No banner, no sync pill on this screen, no disabled controls, no warning that the save will not reach the server yet.** The save will be queued, which is the normal path, and saying so would imply something is wrong. In edit mode on an already-`pending` row, the form shows no special treatment — the edit coalesces into the outbox ([`02-offline-and-sync.md`](./02-offline-and-sync.md) §2 rule 2).                                                                        |
 
 ---
 
@@ -93,17 +93,17 @@ keypad or the rows.
 
 ### 1. Add vs edit
 
-| | Add | Edit |
-|---|-----|------|
-| Title | `Add expense` | `Edit expense` |
-| Amount | `0` minor units, rendered `text.tertiary` | the row's `amountMinor` |
-| Category | last-used, else the `isDefault` category | the row's `categoryId` |
-| Date | today | the row's `date` |
-| Note | empty | the row's `note` |
-| Delete button | absent | present |
-| Save enabled when | `amountMinor > 0` | `amountMinor > 0` **and** at least one field differs from the loaded row |
-| On save | `INSERT` + outbox row, one transaction | `UPDATE` + `updatedAt = now` + outbox row, one transaction |
-| Snackbar | `Expense saved.` | `Changes saved.` |
+|                   | Add                                       | Edit                                                                     |
+| ----------------- | ----------------------------------------- | ------------------------------------------------------------------------ |
+| Title             | `Add expense`                             | `Edit expense`                                                           |
+| Amount            | `0` minor units, rendered `text.tertiary` | the row's `amountMinor`                                                  |
+| Category          | last-used, else the `isDefault` category  | the row's `categoryId`                                                   |
+| Date              | today                                     | the row's `date`                                                         |
+| Note              | empty                                     | the row's `note`                                                         |
+| Delete button     | absent                                    | present                                                                  |
+| Save enabled when | `amountMinor > 0`                         | `amountMinor > 0` **and** at least one field differs from the loaded row |
+| On save           | `INSERT` + outbox row, one transaction    | `UPDATE` + `updatedAt = now` + outbox row, one transaction               |
+| Snackbar          | `Expense saved.`                          | `Changes saved.`                                                         |
 
 "Last-used category" is the `categoryId` of the most recently created expense, read from SQLite,
 **not** a separate persisted preference — so it is correct after a sync and needs no migration.
@@ -127,14 +127,14 @@ Both are integer operations on minor units, so the digits shift in from the righ
 cash register or a card terminal:
 
 | Keys pressed | `amountMinor` | Displayed (USD) |
-|--------------|---------------|-----------------|
-| *(start)* | `0` | `$0.00` |
-| `1` | `1` | `$0.01` |
-| `2` | `12` | `$0.12` |
-| `5` | `125` | `$1.25` |
-| `0` | `1250` | `$12.50` |
-| backspace | `125` | `$1.25` |
-| backspace x3 | `0` | `$0.00` |
+| ------------ | ------------- | --------------- |
+| _(start)_    | `0`           | `$0.00`         |
+| `1`          | `1`           | `$0.01`         |
+| `2`          | `12`          | `$0.12`         |
+| `5`          | `125`         | `$1.25`         |
+| `0`          | `1250`        | `$12.50`        |
+| backspace    | `125`         | `$1.25`         |
+| backspace x3 | `0`           | `$0.00`         |
 
 The consequences, which the implementation must not "improve" on:
 
@@ -199,11 +199,11 @@ Save is disabled when `amountMinor === 0`, and in edit mode also when nothing ha
 `00-foundations.md` §6, a disabled button must state its reason, so the app bar's Save is
 accompanied by helper text at element 5:
 
-| Condition | Helper text at element 5 |
-|-----------|--------------------------|
-| `amountMinor === 0` | `Enter an amount above zero.` |
-| edit mode, nothing changed | `Make a change to save.` |
-| no categories exist | `Add a category first.` |
+| Condition                  | Helper text at element 5      |
+| -------------------------- | ----------------------------- |
+| `amountMinor === 0`        | `Enter an amount above zero.` |
+| edit mode, nothing changed | `Make a change to save.`      |
+| no categories exist        | `Add a category first.`       |
 
 The helper is `type.footnote` / `text.tertiary` (not `danger.default` — this is guidance, not an
 error) and it occupies the same reserved line as the amount error.
@@ -230,18 +230,18 @@ server stays permissive, which is the correct asymmetry.
 Because of rule 2, the classic invalid-amount cases are structurally unreachable. The table is
 explicit about this so that no one implements validation for inputs that cannot occur:
 
-| Case | Reachable? | Behaviour |
-|------|-----------|-----------|
-| Non-numeric characters | **No** — the display is a `Text`, not an input | nothing to handle |
-| Multiple decimal points | **No** — rule 3 | nothing to handle |
-| Negative value | **No** — no minus key exists; expenses are always positive | nothing to handle |
-| Empty value | **No** — the value is an integer, minimum `0` | nothing to handle |
-| More decimals than the currency allows | **No** — rule 3 caps them | nothing to handle |
-| Zero | **Yes** — the initial state | Save disabled, helper `Enter an amount above zero.` (rule 6) |
-| Above the maximum | **Yes** | digits ignored + snackbar (rule 5) |
-| A stored row with an out-of-range amount arriving by sync | **Yes** (a hostile or buggy peer) | render the value as-is, do not crash, do not auto-correct. Element 5 shows `This amount is out of range.` in `danger.default` and Save is disabled until the user changes the amount. |
+| Case                                                      | Reachable?                                                 | Behaviour                                                                                                                                                                             |
+| --------------------------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Non-numeric characters                                    | **No** — the display is a `Text`, not an input             | nothing to handle                                                                                                                                                                     |
+| Multiple decimal points                                   | **No** — rule 3                                            | nothing to handle                                                                                                                                                                     |
+| Negative value                                            | **No** — no minus key exists; expenses are always positive | nothing to handle                                                                                                                                                                     |
+| Empty value                                               | **No** — the value is an integer, minimum `0`              | nothing to handle                                                                                                                                                                     |
+| More decimals than the currency allows                    | **No** — rule 3 caps them                                  | nothing to handle                                                                                                                                                                     |
+| Zero                                                      | **Yes** — the initial state                                | Save disabled, helper `Enter an amount above zero.` (rule 6)                                                                                                                          |
+| Above the maximum                                         | **Yes**                                                    | digits ignored + snackbar (rule 5)                                                                                                                                                    |
+| A stored row with an out-of-range amount arriving by sync | **Yes** (a hostile or buggy peer)                          | render the value as-is, do not crash, do not auto-correct. Element 5 shows `This amount is out of range.` in `danger.default` and Save is disabled until the user changes the amount. |
 
-The last row is the only genuine amount *error* state, and it originates from data, not from
+The last row is the only genuine amount _error_ state, and it originates from data, not from
 typing.
 
 ### 9. Date bounds

@@ -44,32 +44,32 @@ Flow: [`01-flows.md`](./01-flows.md) §5.
 
 ### Elements
 
-| # | Element | Style | Copy | Tap target | Accessibility |
-|---|---------|-------|------|------------|---------------|
-| 1 | Back | `chevron-left` 24, `text.primary` | — | 44x44 | `role="button"`, label `Back` |
-| 2 | Title | `type.headline` / `text.primary` | `Categories` | none | `role="header"` |
-| 3 | Category row | `Row` 56 min | see 4-7 | full row | one composed element — see §5 |
-| 4 | Swatch | 24x24, `radius.sm`, the category's colour | — | none | `accessibilityElementsHidden` |
-| 5 | Name | `type.body` / `text.primary`, `numberOfLines={1}` | the name | none | part of 3 |
-| 6 | Count | `type.callout` / `text.tertiary`, `tabular-nums`, trailing before 7 | the live expense count, e.g. `23` | none | read as `23 expenses` / `1 expense` / `No expenses` |
-| 7 | Chevron | `chevron-right` 20, `text.tertiary` | — | none | decorative |
-| 8 | Swipe delete | behind the row, `danger.default`, `trash-2` 20 + `Delete` in `text.inverse` | `Delete` | ≥64 wide | via `accessibilityAction`, see §5 rule 3 |
-| 9 | FAB | 56x56, `radius.pill`, `primary.default`, `elevation.2`, `plus` 24 | — | 56x56 | `role="button"`, label `Add category` |
+| #   | Element      | Style                                                                       | Copy                              | Tap target | Accessibility                                       |
+| --- | ------------ | --------------------------------------------------------------------------- | --------------------------------- | ---------- | --------------------------------------------------- |
+| 1   | Back         | `chevron-left` 24, `text.primary`                                           | —                                 | 44x44      | `role="button"`, label `Back`                       |
+| 2   | Title        | `type.headline` / `text.primary`                                            | `Categories`                      | none       | `role="header"`                                     |
+| 3   | Category row | `Row` 56 min                                                                | see 4-7                           | full row   | one composed element — see §5                       |
+| 4   | Swatch       | 24x24, `radius.sm`, the category's colour                                   | —                                 | none       | `accessibilityElementsHidden`                       |
+| 5   | Name         | `type.body` / `text.primary`, `numberOfLines={1}`                           | the name                          | none       | part of 3                                           |
+| 6   | Count        | `type.callout` / `text.tertiary`, `tabular-nums`, trailing before 7         | the live expense count, e.g. `23` | none       | read as `23 expenses` / `1 expense` / `No expenses` |
+| 7   | Chevron      | `chevron-right` 20, `text.tertiary`                                         | —                                 | none       | decorative                                          |
+| 8   | Swipe delete | behind the row, `danger.default`, `trash-2` 20 + `Delete` in `text.inverse` | `Delete`                          | ≥64 wide   | via `accessibilityAction`, see §5 rule 3            |
+| 9   | FAB          | 56x56, `radius.pill`, `primary.default`, `elevation.2`, `plus` 24           | —                                 | 56x56      | `role="button"`, label `Add category`               |
 
 ### States
 
-| State | What the user sees |
-|-------|--------------------|
-| `default` | As drawn. Alphabetical by name, case-insensitive, with the `isDefault` category pinned last regardless of its name (`00-foundations.md` §7 note 5). |
-| `empty` | **Structurally unreachable** — the `isDefault` category cannot be deleted, so the list always holds at least one row. Specified anyway as a defensive state, because a sync from a peer that violated the invariant could produce it: show the §4 rule 9 repair path, not an empty-state illustration. |
-| `loading:first-paint` | A single-frame skeleton of four rows (24x24 block + 120x16 block + trailing 24x16 block, all `bg.sunken`). The count query is a local `GROUP BY` and resolves with the list; counts never render as a spinner or as `—`. |
-| `error` | **No reachable error state.** The screen reads local SQLite. A failed *push* of a category change surfaces in the sync pill on Home, never here. A rejected rename (`category_name_taken` from a peer's concurrent create) is handled per §4 rule 8. |
-| `offline-pending` | Identical layout. A category with an undrained outbox row shows the `clock` 14 `warning.default` glyph between its name and count. **Create, rename, recolour and delete all work normally while offline** — every one is a local write. No banner, no disabled rows. |
+| State                 | What the user sees                                                                                                                                                                                                                                                                                     |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `default`             | As drawn. Alphabetical by name, case-insensitive, with the `isDefault` category pinned last regardless of its name (`00-foundations.md` §7 note 5).                                                                                                                                                    |
+| `empty`               | **Structurally unreachable** — the `isDefault` category cannot be deleted, so the list always holds at least one row. Specified anyway as a defensive state, because a sync from a peer that violated the invariant could produce it: show the §4 rule 9 repair path, not an empty-state illustration. |
+| `loading:first-paint` | A single-frame skeleton of four rows (24x24 block + 120x16 block + trailing 24x16 block, all `bg.sunken`). The count query is a local `GROUP BY` and resolves with the list; counts never render as a spinner or as `—`.                                                                               |
+| `error`               | **No reachable error state.** The screen reads local SQLite. A failed _push_ of a category change surfaces in the sync pill on Home, never here. A rejected rename (`category_name_taken` from a peer's concurrent create) is handled per §4 rule 8.                                                   |
+| `offline-pending`     | Identical layout. A category with an undrained outbox row shows the `clock` 14 `warning.default` glyph between its name and count. **Create, rename, recolour and delete all work normally while offline** — every one is a local write. No banner, no disabled rows.                                  |
 
 ### Behaviour
 
 1. **Counts are live, local and all-time.** `SELECT categoryId, COUNT(*) FROM expenses WHERE
-   deletedAt IS NULL GROUP BY categoryId`. They count every month, not the month selected on
+deletedAt IS NULL GROUP BY categoryId`. They count every month, not the month selected on
    Home — this screen is not month-scoped, and a count that silently meant "this month" would
    make the delete dialog's promise wrong.
 2. A count of zero renders as `0`, not as blank, so the column stays scannable.
@@ -107,25 +107,25 @@ A `Sheet`.
 +--------------------------------+
 ```
 
-| # | Element | Style | Copy | Tap target | Accessibility |
-|---|---------|-------|------|------------|---------------|
-| 1 | Title | `type.title2` | `New category` | none | `role="header"` |
-| 2 | Close | `x` 24 | — | 44x44 | `role="button"`, label `Close` |
-| 3 | Name label | `type.subhead` / `text.secondary` | `Name` | none | bound to 4 |
-| 4 | Name field | `TextField`, autofocused | placeholder `e.g. Coffee` | 48 tall | `autoCapitalize="sentences"`, `maxLength={64}`, `returnKeyType="done"` |
-| 5 | Name helper/error | `type.footnote` | per rule 3 | none | in the field's label when in error |
-| 6 | Colour label | `type.subhead` / `text.secondary` | `Colour` | none | `role="header"` |
-| 7 | Colour swatch | 40x40, `radius.md`, filled; selected gets a 2px `text.primary` ring with a 2px `bg.surface` inset gap **and** a `check` 20 in `text.inverse` | — | 44x44 `hitSlop` | `role="button"`, label the colour name (`Green`, `Orange`, …), `accessibilityState={{ selected }}` |
-| 8 | Create | `Button` `primary`, full width | `Create` | full, 48 | `role="button"`; disabled per rule 2 |
+| #   | Element           | Style                                                                                                                                        | Copy                      | Tap target      | Accessibility                                                                                      |
+| --- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- | --------------- | -------------------------------------------------------------------------------------------------- |
+| 1   | Title             | `type.title2`                                                                                                                                | `New category`            | none            | `role="header"`                                                                                    |
+| 2   | Close             | `x` 24                                                                                                                                       | —                         | 44x44           | `role="button"`, label `Close`                                                                     |
+| 3   | Name label        | `type.subhead` / `text.secondary`                                                                                                            | `Name`                    | none            | bound to 4                                                                                         |
+| 4   | Name field        | `TextField`, autofocused                                                                                                                     | placeholder `e.g. Coffee` | 48 tall         | `autoCapitalize="sentences"`, `maxLength={64}`, `returnKeyType="done"`                             |
+| 5   | Name helper/error | `type.footnote`                                                                                                                              | per rule 3                | none            | in the field's label when in error                                                                 |
+| 6   | Colour label      | `type.subhead` / `text.secondary`                                                                                                            | `Colour`                  | none            | `role="header"`                                                                                    |
+| 7   | Colour swatch     | 40x40, `radius.md`, filled; selected gets a 2px `text.primary` ring with a 2px `bg.surface` inset gap **and** a `check` 20 in `text.inverse` | —                         | 44x44 `hitSlop` | `role="button"`, label the colour name (`Green`, `Orange`, …), `accessibilityState={{ selected }}` |
+| 8   | Create            | `Button` `primary`, full width                                                                                                               | `Create`                  | full, 48        | `role="button"`; disabled per rule 2                                                               |
 
 ### States
 
-| State | What the user sees |
-|-------|--------------------|
-| `default` | Name empty and focused; the first unused colour preselected (`00-foundations.md` §1.3); Create disabled with helper `Enter a name.` |
-| `empty` / `loading` | Neither applies — the sheet has no data to load and renders complete. The colour palette is a static token list. |
-| `error` | Inline on the Name field only: per rule 3. No network error is reachable; the create is a local write. |
-| `offline-pending` | Identical. The category is created locally and queued. **No indication that it is unsynced is shown in the sheet** — the row in the list behind it carries the `clock` glyph, which is the right place for it. |
+| State               | What the user sees                                                                                                                                                                                             |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `default`           | Name empty and focused; the first unused colour preselected (`00-foundations.md` §1.3); Create disabled with helper `Enter a name.`                                                                            |
+| `empty` / `loading` | Neither applies — the sheet has no data to load and renders complete. The colour palette is a static token list.                                                                                               |
+| `error`             | Inline on the Name field only: per rule 3. No network error is reachable; the create is a local write.                                                                                                         |
+| `offline-pending`   | Identical. The category is created locally and queued. **No indication that it is unsynced is shown in the sheet** — the row in the list behind it carries the `clock` glyph, which is the right place for it. |
 
 ### Behaviour
 
@@ -159,19 +159,19 @@ A `Sheet`.
 
 The same `Sheet` as §2 with four differences:
 
-| | Create | Edit |
-|---|--------|------|
-| Title | `New category` | `Edit category` |
-| Name field | empty, placeholder | prefilled with the current name, text selected on focus |
-| Primary button | `Create` | `Save`, disabled until name or colour differs, helper `Make a change to save.` |
-| Extra element | — | a `Delete category` `ghost` button with a `danger.default` label, full width, `space.6` below Save |
+|                | Create             | Edit                                                                                               |
+| -------------- | ------------------ | -------------------------------------------------------------------------------------------------- |
+| Title          | `New category`     | `Edit category`                                                                                    |
+| Name field     | empty, placeholder | prefilled with the current name, text selected on focus                                            |
+| Primary button | `Create`           | `Save`, disabled until name or colour differs, helper `Make a change to save.`                     |
+| Extra element  | —                  | a `Delete category` `ghost` button with a `danger.default` label, full width, `space.6` below Save |
 
 Behaviour differences:
 
 1. **Uniqueness excludes the row being edited**, so saving a category without changing its name
    is not a conflict with itself.
 2. **The `isDefault` category can be renamed**, and the sheet offers it normally. The contract
-   permits it (`CategoryUpdateRequest` accepts `name` on any category; only *delete* is guarded
+   permits it (`CategoryUpdateRequest` accepts `name` on any category; only _delete_ is guarded
    by `category_not_deletable`), and nothing depends on its literal name because it is
    identified by its flag (`00-foundations.md` §7 note 3). Its colour picker, however, is
    **read-only**: `category.slate` is reserved so the fallback category stays visually
@@ -225,14 +225,14 @@ A `Dialog` (`00-foundations.md` §6). Two variants by count.
 +------------------------------+
 ```
 
-| Element | Style | Copy |
-|---------|-------|------|
-| Title | `type.title2` / `text.primary` | `Delete {name}?` |
-| Body, `count > 1` | `type.callout` / `text.secondary` | `Its {count} expenses will move to {fallbackName}. They won't be deleted.` |
-| Body, `count === 1` | same | `Its 1 expense will move to {fallbackName}. It won't be deleted.` |
-| Body, `count === 0` | same | `It has no expenses.` |
-| Confirm | `Button` `destructive`, full width | `Delete category` |
-| Cancel | `Button` `secondary`, full width | `Cancel` |
+| Element             | Style                              | Copy                                                                       |
+| ------------------- | ---------------------------------- | -------------------------------------------------------------------------- |
+| Title               | `type.title2` / `text.primary`     | `Delete {name}?`                                                           |
+| Body, `count > 1`   | `type.callout` / `text.secondary`  | `Its {count} expenses will move to {fallbackName}. They won't be deleted.` |
+| Body, `count === 1` | same                               | `Its 1 expense will move to {fallbackName}. It won't be deleted.`          |
+| Body, `count === 0` | same                               | `It has no expenses.`                                                      |
+| Confirm             | `Button` `destructive`, full width | `Delete category`                                                          |
+| Cancel              | `Button` `secondary`, full width   | `Cancel`                                                                   |
 
 ### Behaviour
 
@@ -254,7 +254,7 @@ A `Dialog` (`00-foundations.md` §6). Two variants by count.
    plus every reassigned expense. If these were separate transactions, a crash between them
    would leave expenses pointing at a deleted category.
 7. **Push order is categories then expenses** (`SYNC_APPLY_ORDER`), which the outbox drain
-   already guarantees. Note the reassignment pushes the *expenses'* new `categoryId`, so a peer
+   already guarantees. Note the reassignment pushes the _expenses'_ new `categoryId`, so a peer
    converges on the same state without needing to re-derive the reassignment.
 8. **A rejected push does not roll back the local delete.** If the server returns `invalid` for
    the category row, the local state stands and the affected records enter `needs-attention`

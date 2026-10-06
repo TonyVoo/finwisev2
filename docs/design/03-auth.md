@@ -49,27 +49,27 @@ Give a first-time user the two doors in and nothing else.
 
 ### Elements
 
-| # | Element | Style | Copy | Tap target | Accessibility |
-|---|---------|-------|------|------------|---------------|
-| 1 | Logo mark | 64x64, `primary.default` | — | none | `accessibilityElementsHidden`, decorative |
-| 2 | App name | `type.title1` / `text.primary`, centred | `Expense Tracker` | none | `role="header"` |
-| 3 | Tagline | `type.body` / `text.secondary`, centred | `Know where your money goes, online or not.` | none | read after 2 |
-| 4 | Primary CTA | `Button` `primary`, full width, 48 | `Create account` | full button, ≥48 | `role="button"`, label `Create account` |
-| 5 | Secondary CTA | `Button` `secondary`, full width, 48 | `I already have an account` | full button, ≥48 | `role="button"`, label as written |
-| 6 | Session notice | see States | — | — | announced on mount |
+| #   | Element        | Style                                   | Copy                                         | Tap target       | Accessibility                             |
+| --- | -------------- | --------------------------------------- | -------------------------------------------- | ---------------- | ----------------------------------------- |
+| 1   | Logo mark      | 64x64, `primary.default`                | —                                            | none             | `accessibilityElementsHidden`, decorative |
+| 2   | App name       | `type.title1` / `text.primary`, centred | `Expense Tracker`                            | none             | `role="header"`                           |
+| 3   | Tagline        | `type.body` / `text.secondary`, centred | `Know where your money goes, online or not.` | none             | read after 2                              |
+| 4   | Primary CTA    | `Button` `primary`, full width, 48      | `Create account`                             | full button, ≥48 | `role="button"`, label `Create account`   |
+| 5   | Secondary CTA  | `Button` `secondary`, full width, 48    | `I already have an account`                  | full button, ≥48 | `role="button"`, label as written         |
+| 6   | Session notice | see States                              | —                                            | —                | announced on mount                        |
 
 Screen gutter `space.4`. Buttons sit above `space.4` + bottom safe inset.
 
 ### States
 
-| State | What the user sees |
-|-------|--------------------|
-| `default` | As drawn above. |
-| `empty` | Not applicable — this screen renders no data. Stated so it is not read as an omission. |
-| `loading` | None. Nothing is fetched. The session check is a synchronous `expo-secure-store` read done behind the splash screen, so Welcome never renders a spinner. |
-| `error` | **No reachable error state.** Nothing on this screen performs I/O. |
-| `offline-pending` | Identical to `default`. **No offline banner and no sync pill** — a user with no account has nothing to sync, and warning them about connectivity before they have tried anything is noise. Offline is surfaced on the Sign up / Log in attempt, where it is actionable. |
-| *Session-expired variant* | An `info.subtle` banner above element 2, `radius.md`, `space.3` padding, `type.footnote` / `info.default`: `Your session expired. Please log in again.` Shown only when arriving here from a `token_invalid` refresh failure ([`01-flows.md`](./01-flows.md) §3). Dismissed when the user taps either CTA. Announced on mount. |
+| State                     | What the user sees                                                                                                                                                                                                                                                                                                             |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `default`                 | As drawn above.                                                                                                                                                                                                                                                                                                                |
+| `empty`                   | Not applicable — this screen renders no data. Stated so it is not read as an omission.                                                                                                                                                                                                                                         |
+| `loading`                 | None. Nothing is fetched. The session check is a synchronous `expo-secure-store` read done behind the splash screen, so Welcome never renders a spinner.                                                                                                                                                                       |
+| `error`                   | **No reachable error state.** Nothing on this screen performs I/O.                                                                                                                                                                                                                                                             |
+| `offline-pending`         | Identical to `default`. **No offline banner and no sync pill** — a user with no account has nothing to sync, and warning them about connectivity before they have tried anything is noise. Offline is surfaced on the Sign up / Log in attempt, where it is actionable.                                                        |
+| _Session-expired variant_ | An `info.subtle` banner above element 2, `radius.md`, `space.3` padding, `type.footnote` / `info.default`: `Your session expired. Please log in again.` Shown only when arriving here from a `token_invalid` refresh failure ([`01-flows.md`](./01-flows.md) §3). Dismissed when the user taps either CTA. Announced on mount. |
 
 ### Behaviour
 
@@ -134,42 +134,42 @@ Create an account and a session. The one screen that genuinely requires connecti
 
 ### Elements
 
-| # | Element | Style | Copy | Tap target | Accessibility |
-|---|---------|-------|------|------------|---------------|
-| 1 | Back | `chevron-left` 24, `text.primary` | — | 44x44 `hitSlop` | `role="button"`, label `Back` |
-| 2 | Title | `type.title1` / `text.primary` | `Create your account` | none | `role="header"` |
-| 3 | Email label | `type.subhead` / `text.secondary` | `Email` | none | bound to 4 |
-| 4 | Email field | `TextField` | placeholder `you@example.com` | 48 tall, full width | `keyboardType="email-address"`, `autoCapitalize="none"`, `autoComplete="email"`, `textContentType="emailAddress"`, `autoCorrect={false}` |
-| 5 | Email helper/error | `type.footnote` | empty by default; errors in §Behaviour | none | error text is in the field's `accessibilityLabel` |
-| 6 | Password label | `type.subhead` / `text.secondary` | `Password` | none | bound to 7 |
-| 7 | Password field | `TextField`, `secureTextEntry` | placeholder empty | 48 tall | `autoComplete="new-password"`, `textContentType="newPassword"` |
-| 8 | Reveal toggle | `eye` / `eye-off` 20, `text.tertiary`, trailing inside 7 | — | 44x44 `hitSlop` | `role="button"`, label `Show password` / `Hide password` |
-| 9 | Password helper | `type.footnote` / `text.tertiary` | `At least 8 characters` | none | read as the field's hint |
-| 10 | Currency label | `type.subhead` / `text.secondary` | `Currency` | none | bound to 11 |
-| 11 | Currency select | 48-tall row, `radius.md`, 1px `border.input`, trailing `chevron-down` 20 | `{code} - {name}`, default `USD - US Dollar` | full row, 48 | `role="button"`, label `Currency, USD US Dollar. Double tap to change.` |
-| 12 | Currency helper | `type.footnote` / `text.tertiary` | `You cannot change this later.` | none | read as 11's hint |
-| 13 | Submit | `Button` `primary`, full width | `Create account` | full button, 48 | `role="button"`; Busy label `Create account, in progress` |
-| 14 | Form error banner | see States | — | — | announced |
+| #   | Element            | Style                                                                    | Copy                                         | Tap target          | Accessibility                                                                                                                            |
+| --- | ------------------ | ------------------------------------------------------------------------ | -------------------------------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Back               | `chevron-left` 24, `text.primary`                                        | —                                            | 44x44 `hitSlop`     | `role="button"`, label `Back`                                                                                                            |
+| 2   | Title              | `type.title1` / `text.primary`                                           | `Create your account`                        | none                | `role="header"`                                                                                                                          |
+| 3   | Email label        | `type.subhead` / `text.secondary`                                        | `Email`                                      | none                | bound to 4                                                                                                                               |
+| 4   | Email field        | `TextField`                                                              | placeholder `you@example.com`                | 48 tall, full width | `keyboardType="email-address"`, `autoCapitalize="none"`, `autoComplete="email"`, `textContentType="emailAddress"`, `autoCorrect={false}` |
+| 5   | Email helper/error | `type.footnote`                                                          | empty by default; errors in §Behaviour       | none                | error text is in the field's `accessibilityLabel`                                                                                        |
+| 6   | Password label     | `type.subhead` / `text.secondary`                                        | `Password`                                   | none                | bound to 7                                                                                                                               |
+| 7   | Password field     | `TextField`, `secureTextEntry`                                           | placeholder empty                            | 48 tall             | `autoComplete="new-password"`, `textContentType="newPassword"`                                                                           |
+| 8   | Reveal toggle      | `eye` / `eye-off` 20, `text.tertiary`, trailing inside 7                 | —                                            | 44x44 `hitSlop`     | `role="button"`, label `Show password` / `Hide password`                                                                                 |
+| 9   | Password helper    | `type.footnote` / `text.tertiary`                                        | `At least 8 characters`                      | none                | read as the field's hint                                                                                                                 |
+| 10  | Currency label     | `type.subhead` / `text.secondary`                                        | `Currency`                                   | none                | bound to 11                                                                                                                              |
+| 11  | Currency select    | 48-tall row, `radius.md`, 1px `border.input`, trailing `chevron-down` 20 | `{code} - {name}`, default `USD - US Dollar` | full row, 48        | `role="button"`, label `Currency, USD US Dollar. Double tap to change.`                                                                  |
+| 12  | Currency helper    | `type.footnote` / `text.tertiary`                                        | `You cannot change this later.`              | none                | read as 11's hint                                                                                                                        |
+| 13  | Submit             | `Button` `primary`, full width                                           | `Create account`                             | full button, 48     | `role="button"`; Busy label `Create account, in progress`                                                                                |
+| 14  | Form error banner  | see States                                                               | —                                            | —                   | announced                                                                                                                                |
 
 ### States
 
-| State | What the user sees |
-|-------|--------------------|
-| `default` | Email and Password empty, Currency prefilled `USD - US Dollar`, Submit **enabled**. See Behaviour rule 1 for why it is not disabled. |
-| `empty` | Not applicable — the screen renders no list data. |
-| `loading` | Only the Submit button's **Busy** state while `POST /v1/auth/signup` is in flight: label replaced by a 20px `ActivityIndicator`, width held, taps ignored, fields become `editable={false}` but keep their normal colours. No full-screen spinner, no scrim. |
-| `error` | Three distinct shapes, by cause — see Behaviour rules 4-6. Field-level errors (invalid email, short password) render in each field's helper slot. `email_already_exists` renders on the Email field plus a `Log in instead` link. Transport failure renders the offline banner. |
+| State             | What the user sees                                                                                                                                                                                                                                                                                                                                                                              |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `default`         | Email and Password empty, Currency prefilled `USD - US Dollar`, Submit **enabled**. See Behaviour rule 1 for why it is not disabled.                                                                                                                                                                                                                                                            |
+| `empty`           | Not applicable — the screen renders no list data.                                                                                                                                                                                                                                                                                                                                               |
+| `loading`         | Only the Submit button's **Busy** state while `POST /v1/auth/signup` is in flight: label replaced by a 20px `ActivityIndicator`, width held, taps ignored, fields become `editable={false}` but keep their normal colours. No full-screen spinner, no scrim.                                                                                                                                    |
+| `error`           | Three distinct shapes, by cause — see Behaviour rules 4-6. Field-level errors (invalid email, short password) render in each field's helper slot. `email_already_exists` renders on the Email field plus a `Log in instead` link. Transport failure renders the offline banner.                                                                                                                 |
 | `offline-pending` | **This screen is the exception in the app: offline genuinely blocks it.** On submit with no connectivity, a `danger.subtle` banner, `radius.md`, `space.3` padding, `type.footnote` / `danger.default`, with an `alert-circle` 16 leading: `You need to be online to create an account.` Submit returns to enabled. Fields keep their values — nothing is cleared. No sync pill on this screen. |
 
 ### Behaviour
 
 1. **Submit is enabled from the first frame**, before anything is typed. Tapping it with empty
    fields runs validation and reveals the errors. A button disabled until a form is valid
-   leaves the user with no way to find out *what* is wrong — they tap a dead control and get
+   leaves the user with no way to find out _what_ is wrong — they tap a dead control and get
    nothing. (This is the one justified exception to `00-foundations.md` §6's
    "disabled needs a stated reason" rule: the button is simply never disabled here.)
 2. **Validation timing.** A field is validated on blur, and re-validated on every keystroke
-   *only after* it has first shown an error — so an error clears as the user fixes it but never
+   _only after_ it has first shown an error — so an error clears as the user fixes it but never
    appears while they are still typing the value for the first time. Submit validates all
    fields regardless of whether they were touched.
 3. **Client validation rules**, from `shared/src/user.ts`:
@@ -259,24 +259,24 @@ Restore a session for a returning user.
 
 Identical to §1.2 elements 1, 3-8 and 13-14, with these differences:
 
-| # | Element | Style | Copy | Notes |
-|---|---------|-------|------|-------|
-| 2 | Title | `type.title1` / `text.primary` | `Welcome back` | `role="header"` |
-| 7 | Password field | `TextField`, `secureTextEntry` | — | `autoComplete="current-password"`, `textContentType="password"` |
-| 13 | Submit | `Button` `primary`, full width | `Log in` | Busy label `Log in, in progress` |
+| #   | Element        | Style                          | Copy           | Notes                                                           |
+| --- | -------------- | ------------------------------ | -------------- | --------------------------------------------------------------- |
+| 2   | Title          | `type.title1` / `text.primary` | `Welcome back` | `role="header"`                                                 |
+| 7   | Password field | `TextField`, `secureTextEntry` | —              | `autoComplete="current-password"`, `textContentType="password"` |
+| 13  | Submit         | `Button` `primary`, full width | `Log in`       | Busy label `Log in, in progress`                                |
 
 There is **no** Currency field (it is fixed at signup) and **no** "Forgot password?" link
 ([`01-flows.md`](./01-flows.md) §6).
 
 ### States
 
-| State | What the user sees |
-|-------|--------------------|
-| `default` | Both fields empty — or Email prefilled when arriving from the `Log in instead` link in §1.2 rule 4, in which case focus starts on Password. Submit enabled. |
-| `empty` | Not applicable. |
-| `loading` | Submit in **Busy** state only, exactly as §1.2. After a `200`, the Busy state persists through `router.replace('/(app)')`; Home then owns the `loading:hydrating` state while the first full pull runs ([`04-expense-list.md`](./04-expense-list.md) §States). |
-| `error` | `401 invalid_credentials` → **form-level** banner, not a field error: `danger.subtle`, `alert-circle` 16, `type.footnote` / `danger.default`, copy `That email or password is incorrect.` Neither field enters its error border state. |
-| `offline-pending` | Offline genuinely blocks this screen too. Banner copy: `You need to be online to log in.` Fields keep their values; Submit returns to enabled. |
+| State             | What the user sees                                                                                                                                                                                                                                             |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `default`         | Both fields empty — or Email prefilled when arriving from the `Log in instead` link in §1.2 rule 4, in which case focus starts on Password. Submit enabled.                                                                                                    |
+| `empty`           | Not applicable.                                                                                                                                                                                                                                                |
+| `loading`         | Submit in **Busy** state only, exactly as §1.2. After a `200`, the Busy state persists through `router.replace('/(app)')`; Home then owns the `loading:hydrating` state while the first full pull runs ([`04-expense-list.md`](./04-expense-list.md) §States). |
+| `error`           | `401 invalid_credentials` → **form-level** banner, not a field error: `danger.subtle`, `alert-circle` 16, `type.footnote` / `danger.default`, copy `That email or password is incorrect.` Neither field enters its error border state.                         |
+| `offline-pending` | Offline genuinely blocks this screen too. Banner copy: `You need to be online to log in.` Fields keep their values; Submit returns to enabled.                                                                                                                 |
 
 ### Behaviour
 

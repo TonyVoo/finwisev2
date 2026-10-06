@@ -13,58 +13,58 @@ ratio in this doc was computed, not estimated; the numbers are reproducible from
 
 Reference these by name. Do not use a raw hex value in a component.
 
-| Token | Hex | Use |
-|-------|-----|-----|
-| `bg.canvas` | `#F7F8FA` | Screen background behind cards |
-| `bg.surface` | `#FFFFFF` | Cards, rows, sheets, the app bar |
-| `bg.sunken` | `#EFF1F4` | Inset wells: keypad backdrop, skeletons, disabled fills |
-| `bg.scrim` | `rgba(17,24,39,0.45)` | Behind modals and sheets |
-| `text.primary` | `#111827` | Body copy, amounts, titles |
-| `text.secondary` | `#4B5563` | Supporting copy, row subtitles |
-| `text.tertiary` | `#6B7280` | Metadata, section headers, placeholders |
-| `text.inverse` | `#FFFFFF` | Text on `primary` / `danger` fills |
-| `text.disabled` | `#8C939E` | Disabled control labels |
-| `primary.default` | `#0D7A64` | Primary actions, selected state, focus ring |
-| `primary.pressed` | `#0A5F4E` | Pressed state of a primary fill |
-| `primary.subtle` | `#E6F4F1` | Selected-row tint, primary-tinted chips |
-| `danger.default` | `#B3261E` | Destructive actions, error text and icons |
-| `danger.subtle` | `#FDECEA` | Error banner / inline error background |
-| `warning.default` | `#8A5300` | Pending-sync and "waiting" messaging |
-| `warning.subtle` | `#FFF4E0` | Background of the same |
-| `success.default` | `#1B6B3A` | "Synced", confirmation |
-| `success.subtle` | `#E7F5EC` | Background of the same |
-| `info.default` | `#1A4FA0` | Neutral informational notices |
-| `info.subtle` | `#E8F0FD` | Background of the same |
-| `border.hairline` | `#E2E5EA` | 1px row separators, card edges (decorative) |
-| `border.strong` | `#C8CDD6` | Dividers that need to read as structural |
-| `border.input` | `#8C939E` | **The resting border of a text input or stepper.** 3.10:1 on `bg.surface` |
-| `border.focus` | `#0D7A64` | 2px focus ring, inset 0 |
+| Token             | Hex                   | Use                                                                       |
+| ----------------- | --------------------- | ------------------------------------------------------------------------- |
+| `bg.canvas`       | `#F7F8FA`             | Screen background behind cards                                            |
+| `bg.surface`      | `#FFFFFF`             | Cards, rows, sheets, the app bar                                          |
+| `bg.sunken`       | `#EFF1F4`             | Inset wells: keypad backdrop, skeletons, disabled fills                   |
+| `bg.scrim`        | `rgba(17,24,39,0.45)` | Behind modals and sheets                                                  |
+| `text.primary`    | `#111827`             | Body copy, amounts, titles                                                |
+| `text.secondary`  | `#4B5563`             | Supporting copy, row subtitles                                            |
+| `text.tertiary`   | `#6B7280`             | Metadata, section headers, placeholders                                   |
+| `text.inverse`    | `#FFFFFF`             | Text on `primary` / `danger` fills                                        |
+| `text.disabled`   | `#8C939E`             | Disabled control labels                                                   |
+| `primary.default` | `#0D7A64`             | Primary actions, selected state, focus ring                               |
+| `primary.pressed` | `#0A5F4E`             | Pressed state of a primary fill                                           |
+| `primary.subtle`  | `#E6F4F1`             | Selected-row tint, primary-tinted chips                                   |
+| `danger.default`  | `#B3261E`             | Destructive actions, error text and icons                                 |
+| `danger.subtle`   | `#FDECEA`             | Error banner / inline error background                                    |
+| `warning.default` | `#8A5300`             | Pending-sync and "waiting" messaging                                      |
+| `warning.subtle`  | `#FFF4E0`             | Background of the same                                                    |
+| `success.default` | `#1B6B3A`             | "Synced", confirmation                                                    |
+| `success.subtle`  | `#E7F5EC`             | Background of the same                                                    |
+| `info.default`    | `#1A4FA0`             | Neutral informational notices                                             |
+| `info.subtle`     | `#E8F0FD`             | Background of the same                                                    |
+| `border.hairline` | `#E2E5EA`             | 1px row separators, card edges (decorative)                               |
+| `border.strong`   | `#C8CDD6`             | Dividers that need to read as structural                                  |
+| `border.input`    | `#8C939E`             | **The resting border of a text input or stepper.** 3.10:1 on `bg.surface` |
+| `border.focus`    | `#0D7A64`             | 2px focus ring, inset 0                                                   |
 
 ### 1.2 Verified contrast
 
 Measured with the WCAG 2.1 relative-luminance formula. Body text needs ≥4.5:1; large text
 (≥24px, or ≥19px bold) and UI component boundaries need ≥3:1.
 
-| Pair | Ratio | Bar | Pass |
-|------|-------|-----|------|
-| `text.primary` on `bg.surface` | 17.74 | 4.5 | yes |
-| `text.primary` on `bg.canvas` | 16.69 | 4.5 | yes |
-| `text.secondary` on `bg.surface` | 7.56 | 4.5 | yes |
-| `text.secondary` on `bg.canvas` | 7.11 | 4.5 | yes |
-| `text.tertiary` on `bg.surface` | 4.83 | 4.5 | yes |
-| `text.tertiary` on `bg.canvas` | 4.55 | 4.5 | yes |
-| `text.inverse` on `primary.default` | 5.27 | 4.5 | yes |
-| `text.inverse` on `primary.pressed` | 7.61 | 4.5 | yes |
-| `primary.default` on `bg.surface` | 5.27 | 4.5 | yes |
-| `primary.default` on `primary.subtle` | 4.66 | 4.5 | yes |
-| `danger.default` on `bg.surface` | 6.54 | 4.5 | yes |
-| `text.inverse` on `danger.default` | 6.54 | 4.5 | yes |
-| `danger.default` on `danger.subtle` | 5.72 | 4.5 | yes |
-| `warning.default` on `warning.subtle` | 5.81 | 4.5 | yes |
-| `success.default` on `success.subtle` | 5.81 | 4.5 | yes |
-| `info.default` on `info.subtle` | 6.86 | 4.5 | yes |
-| `border.input` on `bg.surface` | 3.10 | 3.0 | yes |
-| `border.focus` on `bg.surface` | 5.27 | 3.0 | yes |
+| Pair                                  | Ratio | Bar | Pass |
+| ------------------------------------- | ----- | --- | ---- |
+| `text.primary` on `bg.surface`        | 17.74 | 4.5 | yes  |
+| `text.primary` on `bg.canvas`         | 16.69 | 4.5 | yes  |
+| `text.secondary` on `bg.surface`      | 7.56  | 4.5 | yes  |
+| `text.secondary` on `bg.canvas`       | 7.11  | 4.5 | yes  |
+| `text.tertiary` on `bg.surface`       | 4.83  | 4.5 | yes  |
+| `text.tertiary` on `bg.canvas`        | 4.55  | 4.5 | yes  |
+| `text.inverse` on `primary.default`   | 5.27  | 4.5 | yes  |
+| `text.inverse` on `primary.pressed`   | 7.61  | 4.5 | yes  |
+| `primary.default` on `bg.surface`     | 5.27  | 4.5 | yes  |
+| `primary.default` on `primary.subtle` | 4.66  | 4.5 | yes  |
+| `danger.default` on `bg.surface`      | 6.54  | 4.5 | yes  |
+| `text.inverse` on `danger.default`    | 6.54  | 4.5 | yes  |
+| `danger.default` on `danger.subtle`   | 5.72  | 4.5 | yes  |
+| `warning.default` on `warning.subtle` | 5.81  | 4.5 | yes  |
+| `success.default` on `success.subtle` | 5.81  | 4.5 | yes  |
+| `info.default` on `info.subtle`       | 6.86  | 4.5 | yes  |
+| `border.input` on `bg.surface`        | 3.10  | 3.0 | yes  |
+| `border.focus` on `bg.surface`        | 5.27  | 3.0 | yes  |
 
 `border.hairline` (1.26:1) and `border.strong` (1.60:1) are **decorative only**. They may
 separate rows; they may never be the only thing that identifies an interactive control. An
@@ -81,18 +81,18 @@ Ten colours. A new category is assigned the first colour not already in use by o
 user's live categories, wrapping to the start if all ten are taken (duplicates are allowed —
 the name disambiguates).
 
-| # | Token | Hex | On white | Seeded for |
-|---|-------|-----|----------|-----------|
-| 1 | `category.green` | `#2F8044` | 4.89 | Groceries |
-| 2 | `category.orange` | `#A85C12` | 4.99 | Eating out |
-| 3 | `category.blue` | `#2F6FD0` | 4.88 | Transport |
-| 4 | `category.purple` | `#8E4EC6` | 5.18 | Bills |
-| 5 | `category.red` | `#C73B3B` | 5.10 | Health |
-| 6 | `category.slate` | `#6B7280` | 4.83 | **Uncategorized** (reserved) |
-| 7 | `category.indigo` | `#5B57C7` | 5.78 | *(picker only)* |
-| 8 | `category.teal` | `#277573` | 5.41 | *(picker only)* |
-| 9 | `category.pink` | `#BC4186` | 4.95 | *(picker only)* |
-| 10 | `category.ochre` | `#8A7012` | 4.77 | *(picker only)* |
+| #   | Token             | Hex       | On white | Seeded for                   |
+| --- | ----------------- | --------- | -------- | ---------------------------- |
+| 1   | `category.green`  | `#2F8044` | 4.89     | Groceries                    |
+| 2   | `category.orange` | `#A85C12` | 4.99     | Eating out                   |
+| 3   | `category.blue`   | `#2F6FD0` | 4.88     | Transport                    |
+| 4   | `category.purple` | `#8E4EC6` | 5.18     | Bills                        |
+| 5   | `category.red`    | `#C73B3B` | 5.10     | Health                       |
+| 6   | `category.slate`  | `#6B7280` | 4.83     | **Uncategorized** (reserved) |
+| 7   | `category.indigo` | `#5B57C7` | 5.78     | _(picker only)_              |
+| 8   | `category.teal`   | `#277573` | 5.41     | _(picker only)_              |
+| 9   | `category.pink`   | `#BC4186` | 4.95     | _(picker only)_              |
+| 10  | `category.ochre`  | `#8A7012` | 4.77     | _(picker only)_              |
 
 All ten clear 4.5:1 on `bg.surface`, so a category colour is safe as a swatch, an icon tint, a
 chart slice, or text.
@@ -132,19 +132,19 @@ Enforced in [`08-monthly-summary.md`](./08-monthly-summary.md) §Behaviour rules
 System font: San Francisco on iOS, Roboto on Android. In React Native that is the platform
 default — **do not bundle a custom font for the MVP.**
 
-| Token | Size / Line | Weight | Tracking | Use |
-|-------|-------------|--------|----------|-----|
-| `type.amountHero` | 34 / 40 | 700 | -0.6 | The keypad's live amount display |
-| `type.display` | 32 / 40 | 700 | -0.5 | Month total on Home and Summary |
-| `type.title1` | 24 / 32 | 700 | -0.3 | Screen titles on large-title screens |
-| `type.title2` | 20 / 28 | 600 | -0.2 | Sheet titles, dialog titles, empty-state headlines |
-| `type.headline` | 17 / 24 | 600 | 0 | App-bar title, row primary text when emphasised |
-| `type.body` | 16 / 24 | 400 | 0 | Body copy, input text, row primary text |
-| `type.bodyStrong` | 16 / 24 | 600 | 0 | Row amounts, button labels |
-| `type.callout` | 15 / 20 | 400 | 0 | Secondary row text, dialog body |
-| `type.subhead` | 14 / 20 | 500 | 0 | Field labels, tab labels |
-| `type.footnote` | 13 / 18 | 400 | 0 | Helper text, inline errors, timestamps |
-| `type.caption` | 12 / 16 | 500 | 0.2 | Section headers (sentence case, not uppercase), badges |
+| Token             | Size / Line | Weight | Tracking | Use                                                    |
+| ----------------- | ----------- | ------ | -------- | ------------------------------------------------------ |
+| `type.amountHero` | 34 / 40     | 700    | -0.6     | The keypad's live amount display                       |
+| `type.display`    | 32 / 40     | 700    | -0.5     | Month total on Home and Summary                        |
+| `type.title1`     | 24 / 32     | 700    | -0.3     | Screen titles on large-title screens                   |
+| `type.title2`     | 20 / 28     | 600    | -0.2     | Sheet titles, dialog titles, empty-state headlines     |
+| `type.headline`   | 17 / 24     | 600    | 0        | App-bar title, row primary text when emphasised        |
+| `type.body`       | 16 / 24     | 400    | 0        | Body copy, input text, row primary text                |
+| `type.bodyStrong` | 16 / 24     | 600    | 0        | Row amounts, button labels                             |
+| `type.callout`    | 15 / 20     | 400    | 0        | Secondary row text, dialog body                        |
+| `type.subhead`    | 14 / 20     | 500    | 0        | Field labels, tab labels                               |
+| `type.footnote`   | 13 / 18     | 400    | 0        | Helper text, inline errors, timestamps                 |
+| `type.caption`    | 12 / 16     | 500    | 0.2      | Section headers (sentence case, not uppercase), badges |
 
 **Money is always tabular.** Every element that renders an amount sets
 `fontVariant: ['tabular-nums']`, so a column of amounts aligns on the decimal and digits do
@@ -168,50 +168,50 @@ handle:
 
 4pt base. Reference by token; never write a raw number.
 
-| Token | px | Typical use |
-|-------|----|-------------|
-| `space.0` | 0 | — |
-| `space.1` | 4 | Icon-to-label, chip inner padding |
-| `space.2` | 8 | Tight stacks, badge padding |
-| `space.3` | 12 | Row inner vertical padding, input inner padding |
-| `space.4` | 16 | **Default.** Screen horizontal gutter, card padding, stack gap |
-| `space.5` | 20 | Gap between unrelated rows |
-| `space.6` | 24 | Section gap, space above a primary button |
-| `space.8` | 32 | Large section gap, empty-state inner spacing |
-| `space.10` | 40 | Empty-state top offset |
-| `space.12` | 48 | Hero spacing on Welcome |
-| `space.16` | 64 | Welcome logo offset |
+| Token      | px  | Typical use                                                    |
+| ---------- | --- | -------------------------------------------------------------- |
+| `space.0`  | 0   | —                                                              |
+| `space.1`  | 4   | Icon-to-label, chip inner padding                              |
+| `space.2`  | 8   | Tight stacks, badge padding                                    |
+| `space.3`  | 12  | Row inner vertical padding, input inner padding                |
+| `space.4`  | 16  | **Default.** Screen horizontal gutter, card padding, stack gap |
+| `space.5`  | 20  | Gap between unrelated rows                                     |
+| `space.6`  | 24  | Section gap, space above a primary button                      |
+| `space.8`  | 32  | Large section gap, empty-state inner spacing                   |
+| `space.10` | 40  | Empty-state top offset                                         |
+| `space.12` | 48  | Hero spacing on Welcome                                        |
+| `space.16` | 64  | Welcome logo offset                                            |
 
 **Screen gutter is `space.4` (16) on both edges, always.** Full-bleed is reserved for row
 separators and the chart.
 
 **Safe areas.** Every screen wraps in `SafeAreaView` (or uses `useSafeAreaInsets`). The bottom
 inset is additive to the specified padding, never a substitute for it — a screen with a bottom
-button has `space.4` of padding *plus* the inset.
+button has `space.4` of padding _plus_ the inset.
 
 ---
 
 ## 4. Radii, elevation, motion
 
-| Token | Value | Use |
-|-------|-------|-----|
-| `radius.none` | 0 | Full-bleed separators |
-| `radius.sm` | 6 | Badges, swatches, chips |
-| `radius.md` | 10 | Inputs, buttons, keypad keys |
-| `radius.lg` | 14 | Cards, sheets (top corners only), dialogs |
-| `radius.pill` | 999 | Sync pill, month chip, filter chip |
+| Token         | Value | Use                                       |
+| ------------- | ----- | ----------------------------------------- |
+| `radius.none` | 0     | Full-bleed separators                     |
+| `radius.sm`   | 6     | Badges, swatches, chips                   |
+| `radius.md`   | 10    | Inputs, buttons, keypad keys              |
+| `radius.lg`   | 14    | Cards, sheets (top corners only), dialogs |
+| `radius.pill` | 999   | Sync pill, month chip, filter chip        |
 
-| Token | Spec | Use |
-|-------|------|-----|
-| `elevation.0` | none | Rows inside a card |
-| `elevation.1` | `shadowColor #111827`, opacity 0.06, radius 8, offset (0,2); Android `elevation: 2` | Cards, the app bar once scrolled |
+| Token         | Spec                                                                                 | Use                                 |
+| ------------- | ------------------------------------------------------------------------------------ | ----------------------------------- |
+| `elevation.0` | none                                                                                 | Rows inside a card                  |
+| `elevation.1` | `shadowColor #111827`, opacity 0.06, radius 8, offset (0,2); Android `elevation: 2`  | Cards, the app bar once scrolled    |
 | `elevation.2` | `shadowColor #111827`, opacity 0.12, radius 16, offset (0,6); Android `elevation: 6` | FAB, snackbar, bottom sheet, dialog |
 
-| Token | Value | Use |
-|-------|-------|-----|
-| `motion.fast` | 120ms, ease-out | Press feedback, checkbox, swatch select |
-| `motion.base` | 200ms, ease-out | Sheet/dialog enter, snackbar in |
-| `motion.slow` | 280ms, ease-in-out | Month transition, screen push |
+| Token         | Value              | Use                                     |
+| ------------- | ------------------ | --------------------------------------- |
+| `motion.fast` | 120ms, ease-out    | Press feedback, checkbox, swatch select |
+| `motion.base` | 200ms, ease-out    | Sheet/dialog enter, snackbar in         |
+| `motion.slow` | 280ms, ease-in-out | Month transition, screen push           |
 
 **Reduce Motion.** When `AccessibilityInfo.isReduceMotionEnabled()` is true, all three
 durations collapse to 0ms and transitions become cross-fades. The month transition in
@@ -225,29 +225,29 @@ app is load-bearing for meaning.
 `@expo/vector-icons` → **Feather**, one set, no mixing. Default size 20, stroke 2, colour
 inherited from the adjacent text token.
 
-| Purpose | Icon | Default size |
-|---------|------|--------------|
-| Add | `plus` | 24 (in FAB) |
-| Back | `chevron-left` | 24 |
-| Previous / next month | `chevron-left` / `chevron-right` | 20 |
-| Close / dismiss | `x` | 24 |
-| Delete | `trash-2` | 20 |
-| Edit | `edit-2` | 20 |
-| Category | `tag` | 20 |
-| Date | `calendar` | 20 |
-| Note | `file-text` | 20 |
-| Settings | `settings` | 24 |
-| Summary tab | `pie-chart` | 24 |
-| List tab | `list` | 24 |
-| Pending sync | `clock` | 14 |
-| Syncing | `refresh-cw` | 14 (rotates; static under Reduce Motion) |
-| Offline | `cloud-off` | 14 |
-| Sync error | `alert-circle` | 14 |
-| Backspace (keypad) | `delete` | 24 |
-| Check / selected | `check` | 20 |
+| Purpose               | Icon                             | Default size                             |
+| --------------------- | -------------------------------- | ---------------------------------------- |
+| Add                   | `plus`                           | 24 (in FAB)                              |
+| Back                  | `chevron-left`                   | 24                                       |
+| Previous / next month | `chevron-left` / `chevron-right` | 20                                       |
+| Close / dismiss       | `x`                              | 24                                       |
+| Delete                | `trash-2`                        | 20                                       |
+| Edit                  | `edit-2`                         | 20                                       |
+| Category              | `tag`                            | 20                                       |
+| Date                  | `calendar`                       | 20                                       |
+| Note                  | `file-text`                      | 20                                       |
+| Settings              | `settings`                       | 24                                       |
+| Summary tab           | `pie-chart`                      | 24                                       |
+| List tab              | `list`                           | 24                                       |
+| Pending sync          | `clock`                          | 14                                       |
+| Syncing               | `refresh-cw`                     | 14 (rotates; static under Reduce Motion) |
+| Offline               | `cloud-off`                      | 14                                       |
+| Sync error            | `alert-circle`                   | 14                                       |
+| Backspace (keypad)    | `delete`                         | 24                                       |
+| Check / selected      | `check`                          | 20                                       |
 
 **No icon is ever the sole label of an action** unless it also carries an
-`accessibilityLabel` *and* is one of the four universally-understood glyphs (`plus`, `x`,
+`accessibilityLabel` _and_ is one of the four universally-understood glyphs (`plus`, `x`,
 `chevron-left`, `chevron-right`). Everything else pairs with visible text.
 
 ---
@@ -259,12 +259,12 @@ redescribing them.
 
 ### `Button`
 
-| Variant | Fill | Label | Border | Height |
-|---------|------|-------|--------|--------|
-| `primary` | `primary.default` | `text.inverse`, `type.bodyStrong` | none | 48 |
-| `secondary` | `bg.surface` | `primary.default`, `type.bodyStrong` | 1px `border.input` | 48 |
-| `ghost` | transparent | `primary.default`, `type.bodyStrong` | none | 44 |
-| `destructive` | `danger.default` | `text.inverse`, `type.bodyStrong` | none | 48 |
+| Variant       | Fill              | Label                                | Border             | Height |
+| ------------- | ----------------- | ------------------------------------ | ------------------ | ------ |
+| `primary`     | `primary.default` | `text.inverse`, `type.bodyStrong`    | none               | 48     |
+| `secondary`   | `bg.surface`      | `primary.default`, `type.bodyStrong` | 1px `border.input` | 48     |
+| `ghost`       | transparent       | `primary.default`, `type.bodyStrong` | none               | 44     |
+| `destructive` | `danger.default`  | `text.inverse`, `type.bodyStrong`    | none               | 48     |
 
 - `radius.md`. Horizontal padding `space.5`. Full-width when it is a screen's main action.
 - **Pressed**: `primary` takes `primary.pressed`; `destructive` darkens equivalently;
@@ -291,7 +291,7 @@ Helper or error text                     <- type.footnote, space.1 above
 - **Focused**: border becomes 2px `border.focus`, drawn inset so the field does not shift.
 - **Error**: border 1px `danger.default`, helper slot shows the error in `danger.default`, and
   the field gets `accessibilityLabel="<Label>, invalid: <error text>"`. The error text
-  *replaces* the helper text; the two never stack.
+  _replaces_ the helper text; the two never stack.
 - Validation timing is specified per screen. The global rule: **never show an error for a field
   the user has not yet left.** See [`03-auth.md`](./03-auth.md) §Behaviour.
 
@@ -337,14 +337,14 @@ This list is **`DEFAULT_CATEGORIES` in `shared/src/category.ts`** — the contra
 table mirrors it. Six categories, in the contract's order, with the accessible colour tokens
 from §1.3 substituted for the contract's hex values (see the note there).
 
-| Order | Name | Colour token | Hex | `isDefault` | Deletable | Renameable |
-|-------|------|--------------|-----|-------------|-----------|------------|
-| 1 | **Uncategorized** | `category.slate` | `#6B7280` | **`true`** | **no** | yes |
-| 2 | Groceries | `category.green` | `#2F8044` | `false` | yes | yes |
-| 3 | Transport | `category.blue` | `#2F6FD0` | `false` | yes | yes |
-| 4 | Eating out | `category.orange` | `#A85C12` | `false` | yes | yes |
-| 5 | Bills | `category.purple` | `#8E4EC6` | `false` | yes | yes |
-| 6 | Health | `category.red` | `#C73B3B` | `false` | yes | yes |
+| Order | Name              | Colour token      | Hex       | `isDefault` | Deletable | Renameable |
+| ----- | ----------------- | ----------------- | --------- | ----------- | --------- | ---------- |
+| 1     | **Uncategorized** | `category.slate`  | `#6B7280` | **`true`**  | **no**    | yes        |
+| 2     | Groceries         | `category.green`  | `#2F8044` | `false`     | yes       | yes        |
+| 3     | Transport         | `category.blue`   | `#2F6FD0` | `false`     | yes       | yes        |
+| 4     | Eating out        | `category.orange` | `#A85C12` | `false`     | yes       | yes        |
+| 5     | Bills             | `category.purple` | `#8E4EC6` | `false`     | yes       | yes        |
+| 6     | Health            | `category.red`    | `#C73B3B` | `false`     | yes       | yes        |
 
 Notes the implementation must honour:
 
@@ -356,7 +356,7 @@ Notes the implementation must honour:
    (`docs/PLAN.md` §Deletes), so it must always exist. The server enforces this: deleting it
    returns `category_not_deletable`.
 3. **Identify it by `isDefault`, never by name.** The flag is the contract's marker; the name
-   is user-visible data. This matters because rename is *not* blocked — `CategoryUpdateRequest`
+   is user-visible data. This matters because rename is _not_ blocked — `CategoryUpdateRequest`
    accepts `name` on any category and `category_not_deletable` only guards delete. A user may
    rename Uncategorized to "Misc" and everything keeps working, because the reassignment target
    is resolved by flag.

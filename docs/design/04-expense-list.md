@@ -53,24 +53,24 @@ user into Add in one tap.
 
 ## Elements
 
-| # | Element | Style | Copy | Tap target | Accessibility |
-|---|---------|-------|------|------------|---------------|
-| 1 | App bar | `bg.surface`, 56 tall, `elevation.1` once the list is scrolled past 0 | — | — | — |
-| 2 | Screen title | `type.headline` / `text.primary`, leading, `space.4` from edge | `Expenses` | none | `role="header"` |
-| 3 | Sync pill | [`02-offline-and-sync.md`](./02-offline-and-sync.md) §3 | per state | 44x44 `hitSlop` | per that spec |
-| 4 | Settings button | `settings` 24, `text.secondary`, trailing | — | 44x44 | `role="button"`, label `Settings` |
-| 5 | Month switcher | [`05-month-switcher.md`](./05-month-switcher.md) | per that spec | per that spec | per that spec |
-| 6 | Total label | `type.caption` / `text.tertiary` | `Total this month` for the current month; `Total` for any other month | none | grouped with 7 |
-| 7 | Total amount | `type.display` / `text.primary`, `tabular-nums` | formatted money, e.g. `$1,284.50` | none | one element with 6: `Total this month, 1,284 dollars 50 cents` |
-| 8 | Section header | `type.caption` / `text.tertiary`, `bg.canvas`, `space.2` vertical, `space.4` leading | `Today` / `Yesterday` / `EEE d MMM` | none | `role="header"` |
-| 9 | Expense row | `Row`, 56 min | see 10-14 | full row | one composed element — see §Accessibility |
-| 10 | Category swatch | 24x24, `radius.sm`, category colour | — | none | `accessibilityElementsHidden` (the name carries it) |
-| 11 | Category name | `type.body` / `text.primary`, `numberOfLines={1}` | category name | none | part of 9 |
-| 12 | Note | `type.callout` / `text.secondary`, `numberOfLines={1}` | the note | none | part of 9; row omits this line when the note is null or empty |
-| 13 | Pending glyph | `clock` 14, `warning.default`, `space.1` before 14 | — | none | contributes `, not synced yet` to 9's label |
-| 14 | Amount | `type.bodyStrong` / `text.primary`, `tabular-nums`, trailing | formatted money | none | part of 9, read as money |
-| 15 | FAB | 56x56, `radius.pill`, `primary.default`, `elevation.2`, `plus` 24 in `text.inverse` | — | 56x56 | `role="button"`, label `Add expense` |
-| 16 | Swipe delete action | revealed behind the row, `danger.default` fill, `trash-2` 20 + `Delete` in `text.inverse` | `Delete` | ≥64 wide | not exposed to screen readers — see §Accessibility |
+| #   | Element             | Style                                                                                     | Copy                                                                  | Tap target      | Accessibility                                                  |
+| --- | ------------------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | --------------- | -------------------------------------------------------------- |
+| 1   | App bar             | `bg.surface`, 56 tall, `elevation.1` once the list is scrolled past 0                     | —                                                                     | —               | —                                                              |
+| 2   | Screen title        | `type.headline` / `text.primary`, leading, `space.4` from edge                            | `Expenses`                                                            | none            | `role="header"`                                                |
+| 3   | Sync pill           | [`02-offline-and-sync.md`](./02-offline-and-sync.md) §3                                   | per state                                                             | 44x44 `hitSlop` | per that spec                                                  |
+| 4   | Settings button     | `settings` 24, `text.secondary`, trailing                                                 | —                                                                     | 44x44           | `role="button"`, label `Settings`                              |
+| 5   | Month switcher      | [`05-month-switcher.md`](./05-month-switcher.md)                                          | per that spec                                                         | per that spec   | per that spec                                                  |
+| 6   | Total label         | `type.caption` / `text.tertiary`                                                          | `Total this month` for the current month; `Total` for any other month | none            | grouped with 7                                                 |
+| 7   | Total amount        | `type.display` / `text.primary`, `tabular-nums`                                           | formatted money, e.g. `$1,284.50`                                     | none            | one element with 6: `Total this month, 1,284 dollars 50 cents` |
+| 8   | Section header      | `type.caption` / `text.tertiary`, `bg.canvas`, `space.2` vertical, `space.4` leading      | `Today` / `Yesterday` / `EEE d MMM`                                   | none            | `role="header"`                                                |
+| 9   | Expense row         | `Row`, 56 min                                                                             | see 10-14                                                             | full row        | one composed element — see §Accessibility                      |
+| 10  | Category swatch     | 24x24, `radius.sm`, category colour                                                       | —                                                                     | none            | `accessibilityElementsHidden` (the name carries it)            |
+| 11  | Category name       | `type.body` / `text.primary`, `numberOfLines={1}`                                         | category name                                                         | none            | part of 9                                                      |
+| 12  | Note                | `type.callout` / `text.secondary`, `numberOfLines={1}`                                    | the note                                                              | none            | part of 9; row omits this line when the note is null or empty  |
+| 13  | Pending glyph       | `clock` 14, `warning.default`, `space.1` before 14                                        | —                                                                     | none            | contributes `, not synced yet` to 9's label                    |
+| 14  | Amount              | `type.bodyStrong` / `text.primary`, `tabular-nums`, trailing                              | formatted money                                                       | none            | part of 9, read as money                                       |
+| 15  | FAB                 | 56x56, `radius.pill`, `primary.default`, `elevation.2`, `plus` 24 in `text.inverse`       | —                                                                     | 56x56           | `role="button"`, label `Add expense`                           |
+| 16  | Swipe delete action | revealed behind the row, `danger.default` fill, `trash-2` 20 + `Delete` in `text.inverse` | `Delete`                                                              | ≥64 wide        | not exposed to screen readers — see §Accessibility             |
 
 FAB position: trailing, `space.4` from the edge, `space.4` above the tab bar. The list gets
 `contentContainerStyle.paddingBottom` of 56 + `space.4` + `space.4` so the last row can always
@@ -80,15 +80,15 @@ be scrolled clear of the FAB.
 
 ## States
 
-| State | What the user sees |
-|-------|--------------------|
-| `default` | As drawn. Rows grouped by `date` descending, newest day first; within a day, `createdAt` descending so a just-added expense appears at the top of its group. |
-| `empty` — **first run** | No expenses *at all* in the database. Centred in the list area, `space.10` from the header: `pie-chart` 48 in `text.tertiary`; `space.6`; headline `No expenses yet` in `type.title2`; `space.2`; body `Add your first expense and it will show up here, with your monthly total.` in `type.callout` / `text.secondary`, centred, max 280 wide; `space.6`; `Button` `primary` `Add your first expense`. **The month total still renders, showing the formatted zero (`$0.00`)** — hiding it would make the number appear to pop into existence later. |
-| `empty` — **this month only** | Expenses exist in other months but none in the selected month. Different copy, no illustration, no primary button: headline `Nothing in {Month}` in `type.title2`, body `You have no expenses recorded for this month.` in `type.callout` / `text.secondary`, and a `ghost` button `Go to {CurrentMonth}` which is omitted when the selected month *is* the current month. Rationale: a user who has used the app does not need to be taught what the app is for, and the useful action is navigation, not creation. |
-| `loading:first-paint` | Skeleton: the total area shows a 160x32 `bg.sunken` `radius.sm` block; three skeleton rows, each a 24x24 swatch block + a 120x16 block + a trailing 64x16 block, `bg.sunken`. No shimmer animation (it would violate Reduce Motion for no gain). **Replaced by `empty` after 300ms** if the query returned no rows, per [`02-offline-and-sync.md`](./02-offline-and-sync.md) §1. |
-| `loading:hydrating` | Only reachable in the frames after a fresh log in on a new install. Same skeleton as above, plus a `type.footnote` / `text.tertiary` line centred under the skeleton rows: `Getting your expenses…` This is the one read in the app that genuinely waits on the network. |
-| `error` | **No reachable error state for the list itself.** It reads local SQLite, which cannot fail on the network. Two sub-cases that are *not* list errors: (a) a row with `needs-attention`, which is rendered on that row per [`02-offline-and-sync.md`](./02-offline-and-sync.md) §5.1 while every other row stays normal; (b) a sync transport failure, which is rendered in the sync pill and never as a list error. A genuine SQLite failure (corrupt database) is an unrecoverable crash, not a screen state, and is out of scope. |
-| `offline-pending` | Identical layout. Rows with undrained outbox entries show glyph 13; the sync pill shows state 4 or 5. **Nothing is disabled, nothing is greyed, no banner covers the list.** The month total includes pending rows. A deleted-but-unsynced expense is absent from the list, exactly as a synced delete would be. |
+| State                         | What the user sees                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `default`                     | As drawn. Rows grouped by `date` descending, newest day first; within a day, `createdAt` descending so a just-added expense appears at the top of its group.                                                                                                                                                                                                                                                                                                                                                                                          |
+| `empty` — **first run**       | No expenses _at all_ in the database. Centred in the list area, `space.10` from the header: `pie-chart` 48 in `text.tertiary`; `space.6`; headline `No expenses yet` in `type.title2`; `space.2`; body `Add your first expense and it will show up here, with your monthly total.` in `type.callout` / `text.secondary`, centred, max 280 wide; `space.6`; `Button` `primary` `Add your first expense`. **The month total still renders, showing the formatted zero (`$0.00`)** — hiding it would make the number appear to pop into existence later. |
+| `empty` — **this month only** | Expenses exist in other months but none in the selected month. Different copy, no illustration, no primary button: headline `Nothing in {Month}` in `type.title2`, body `You have no expenses recorded for this month.` in `type.callout` / `text.secondary`, and a `ghost` button `Go to {CurrentMonth}` which is omitted when the selected month _is_ the current month. Rationale: a user who has used the app does not need to be taught what the app is for, and the useful action is navigation, not creation.                                  |
+| `loading:first-paint`         | Skeleton: the total area shows a 160x32 `bg.sunken` `radius.sm` block; three skeleton rows, each a 24x24 swatch block + a 120x16 block + a trailing 64x16 block, `bg.sunken`. No shimmer animation (it would violate Reduce Motion for no gain). **Replaced by `empty` after 300ms** if the query returned no rows, per [`02-offline-and-sync.md`](./02-offline-and-sync.md) §1.                                                                                                                                                                      |
+| `loading:hydrating`           | Only reachable in the frames after a fresh log in on a new install. Same skeleton as above, plus a `type.footnote` / `text.tertiary` line centred under the skeleton rows: `Getting your expenses…` This is the one read in the app that genuinely waits on the network.                                                                                                                                                                                                                                                                              |
+| `error`                       | **No reachable error state for the list itself.** It reads local SQLite, which cannot fail on the network. Two sub-cases that are _not_ list errors: (a) a row with `needs-attention`, which is rendered on that row per [`02-offline-and-sync.md`](./02-offline-and-sync.md) §5.1 while every other row stays normal; (b) a sync transport failure, which is rendered in the sync pill and never as a list error. A genuine SQLite failure (corrupt database) is an unrecoverable crash, not a screen state, and is out of scope.                    |
+| `offline-pending`             | Identical layout. Rows with undrained outbox entries show glyph 13; the sync pill shows state 4 or 5. **Nothing is disabled, nothing is greyed, no banner covers the list.** The month total includes pending rows. A deleted-but-unsynced expense is absent from the list, exactly as a synced delete would be.                                                                                                                                                                                                                                      |
 
 ---
 
@@ -168,6 +168,7 @@ be scrolled clear of the FAB.
 
    The date is included because section headers are easy to miss when swiping element to
    element, and a row read without its date is ambiguous.
+
 2. **`accessibilityHint`** on a row: `Double tap to edit this expense.`
 3. **The swipe-to-delete gesture is not screen-reader accessible**, and must not be the only
    path to delete. Delete is therefore also available as a `destructive` button inside Edit
@@ -176,7 +177,7 @@ be scrolled clear of the FAB.
    the label `Delete expense`, so VoiceOver's Actions rotor and TalkBack's local context menu
    can reach it directly.
 4. **Dynamic type.** Above `fontScale > 1.3` the row switches from `[swatch | name / note |
-   amount]` to a stacked layout: swatch and name on the first line, note on the second, amount
+amount]` to a stacked layout: swatch and name on the first line, note on the second, amount
    on its own third line, leading-aligned, still one accessibility element. The amount must
    never truncate or ellipsise — a clipped amount is worse than a taller row.
 5. **The month total is one element**, labelled as money (`00-foundations.md` §8 rule 3), and is

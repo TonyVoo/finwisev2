@@ -58,33 +58,33 @@ Not a screen. A component pinned directly below the app bar on both tab screens,
 
 ### Bar
 
-| # | Element | Style | Copy | Tap target | Accessibility |
-|---|---------|-------|------|------------|---------------|
-| 1 | Previous month | `chevron-left` 20, `text.primary` | — | 44x44 | `role="button"`, label `Previous month, {MonthName} {Year}` |
-| 2 | Month label | `type.headline` / `text.primary`, centred | `MMMM yyyy`, e.g. `October 2026` | ≥44 tall, flexes to fill between the arrows | `role="button"`, label `{MonthName} {Year}`, hint `Double tap to jump to another month.` |
-| 3 | Next month | `chevron-right` 20, `text.primary` | — | 44x44 | `role="button"`, label `Next month, {MonthName} {Year}` |
+| #   | Element        | Style                                     | Copy                             | Tap target                                  | Accessibility                                                                            |
+| --- | -------------- | ----------------------------------------- | -------------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| 1   | Previous month | `chevron-left` 20, `text.primary`         | —                                | 44x44                                       | `role="button"`, label `Previous month, {MonthName} {Year}`                              |
+| 2   | Month label    | `type.headline` / `text.primary`, centred | `MMMM yyyy`, e.g. `October 2026` | ≥44 tall, flexes to fill between the arrows | `role="button"`, label `{MonthName} {Year}`, hint `Double tap to jump to another month.` |
+| 3   | Next month     | `chevron-right` 20, `text.primary`        | —                                | 44x44                                       | `role="button"`, label `Next month, {MonthName} {Year}`                                  |
 
 ### Sheet
 
-| # | Element | Style | Copy | Tap target | Accessibility |
-|---|---------|-------|------|------------|---------------|
-| 4 | Sheet title | `type.title2` / `text.primary` | `Jump to month` | none | `role="header"` |
-| 5 | Close | `x` 24, `text.secondary` | — | 44x44 | `role="button"`, label `Close` |
-| 6 | Previous year | `chevron-left` 20 | — | 44x44 | `role="button"`, label `Previous year, {Year - 1}` |
-| 7 | Year label | `type.headline` / `text.primary`, centred, `tabular-nums` | `yyyy` | none | `role="header"`, label `{Year}` |
-| 8 | Next year | `chevron-right` 20 | — | 44x44 | `role="button"`, label `Next year, {Year + 1}` |
-| 9 | Month cell | 48 tall, `radius.md`, `type.subhead`; see cell states below | `MMM`, e.g. `Oct` | full cell, ≥48 | `role="button"`, label `{MonthName} {Year}`, `accessibilityState={{ selected }}` |
-| 10 | This month | `Button` `ghost`, full width | `This month` | full button, 44 | `role="button"`, label `Go to this month, {MonthName} {Year}` |
+| #   | Element       | Style                                                       | Copy              | Tap target      | Accessibility                                                                    |
+| --- | ------------- | ----------------------------------------------------------- | ----------------- | --------------- | -------------------------------------------------------------------------------- |
+| 4   | Sheet title   | `type.title2` / `text.primary`                              | `Jump to month`   | none            | `role="header"`                                                                  |
+| 5   | Close         | `x` 24, `text.secondary`                                    | —                 | 44x44           | `role="button"`, label `Close`                                                   |
+| 6   | Previous year | `chevron-left` 20                                           | —                 | 44x44           | `role="button"`, label `Previous year, {Year - 1}`                               |
+| 7   | Year label    | `type.headline` / `text.primary`, centred, `tabular-nums`   | `yyyy`            | none            | `role="header"`, label `{Year}`                                                  |
+| 8   | Next year     | `chevron-right` 20                                          | —                 | 44x44           | `role="button"`, label `Next year, {Year + 1}`                                   |
+| 9   | Month cell    | 48 tall, `radius.md`, `type.subhead`; see cell states below | `MMM`, e.g. `Oct` | full cell, ≥48  | `role="button"`, label `{MonthName} {Year}`, `accessibilityState={{ selected }}` |
+| 10  | This month    | `Button` `ghost`, full width                                | `This month`      | full button, 44 | `role="button"`, label `Go to this month, {MonthName} {Year}`                    |
 
 ### Month cell states
 
-| Cell state | Fill | Label | Border | Also marked by |
-|------------|------|-------|--------|----------------|
-| Default | `bg.surface` | `text.primary` | 1px `border.hairline` | — |
-| Has expenses | `bg.surface` | `text.primary` | 1px `border.hairline` | a 4x4 `radius.pill` `primary.default` dot, `space.1` below the label |
-| Selected | `primary.default` | `text.inverse`, weight 600 | none | `accessibilityState={{ selected: true }}` |
-| Current month (not selected) | `primary.subtle` | `primary.default`, weight 600 | 1px `primary.default` | — |
-| Future (beyond current month) | `bg.sunken` | `text.disabled` | none | `accessibilityState={{ disabled: true }}` |
+| Cell state                    | Fill              | Label                         | Border                | Also marked by                                                       |
+| ----------------------------- | ----------------- | ----------------------------- | --------------------- | -------------------------------------------------------------------- |
+| Default                       | `bg.surface`      | `text.primary`                | 1px `border.hairline` | —                                                                    |
+| Has expenses                  | `bg.surface`      | `text.primary`                | 1px `border.hairline` | a 4x4 `radius.pill` `primary.default` dot, `space.1` below the label |
+| Selected                      | `primary.default` | `text.inverse`, weight 600    | none                  | `accessibilityState={{ selected: true }}`                            |
+| Current month (not selected)  | `primary.subtle`  | `primary.default`, weight 600 | 1px `primary.default` | —                                                                    |
+| Future (beyond current month) | `bg.sunken`       | `text.disabled`               | none                  | `accessibilityState={{ disabled: true }}`                            |
 
 The "has expenses" dot is **not** the only differentiator from an empty month — see Behaviour
 rule 8 for why it is additive rather than load-bearing.
@@ -93,13 +93,13 @@ rule 8 for why it is additive rather than load-bearing.
 
 ## States
 
-| State | What the user sees |
-|-------|--------------------|
-| `default` | Current month selected on first launch. Both arrows enabled unless rule 2 disables Next. |
-| `empty` | The switcher itself has no data, so no empty state. Selecting a month with no expenses is handled by the host screen's `empty` state, not here — the switcher keeps working and keeps showing the month. |
-| `loading` | **None.** The month label is derived from local state, and month boundaries are computed, not fetched. The switcher renders on the first frame and never shows a placeholder. The "has expenses" dots in the sheet come from one local `GROUP BY` query; until it returns, cells render in their Default state and dots fade in under `motion.fast`. A missing dot never blocks selection. |
-| `error` | **No reachable error state.** Nothing here performs I/O. |
-| `offline-pending` | Identical to `default`. The switcher has no sync-dependent behaviour — month boundaries and dot counts are local. The sync pill above it carries connectivity; the switcher never duplicates it. |
+| State             | What the user sees                                                                                                                                                                                                                                                                                                                                                                         |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `default`         | Current month selected on first launch. Both arrows enabled unless rule 2 disables Next.                                                                                                                                                                                                                                                                                                   |
+| `empty`           | The switcher itself has no data, so no empty state. Selecting a month with no expenses is handled by the host screen's `empty` state, not here — the switcher keeps working and keeps showing the month.                                                                                                                                                                                   |
+| `loading`         | **None.** The month label is derived from local state, and month boundaries are computed, not fetched. The switcher renders on the first frame and never shows a placeholder. The "has expenses" dots in the sheet come from one local `GROUP BY` query; until it returns, cells render in their Default state and dots fade in under `motion.fast`. A missing dot never blocks selection. |
+| `error`           | **No reachable error state.** Nothing here performs I/O.                                                                                                                                                                                                                                                                                                                                   |
+| `offline-pending` | Identical to `default`. The switcher has no sync-dependent behaviour — month boundaries and dot counts are local. The sync pill above it carries connectivity; the switcher never duplicates it.                                                                                                                                                                                           |
 
 ---
 
@@ -120,7 +120,7 @@ rule 8 for why it is additive rather than load-bearing.
    would move as data arrives and would make the control feel inconsistent.
 4. **The centre label opens the picker sheet.** This is the only path to a non-adjacent month.
 5. **Selecting a month cell applies it and dismisses the sheet immediately.** No confirm button
-   — the selection *is* the confirmation, and a one-tap action should not cost two.
+   — the selection _is_ the confirmation, and a one-tap action should not cost two.
 6. **Future cells are not selectable**, matching rule 2. They are visibly disabled rather than
    hidden, so the grid keeps a stable 3x4 shape in every year.
 7. **The month is shared app state, not per-screen state.** It lives above both tabs (a context
@@ -154,7 +154,7 @@ rule 8 for why it is additive rather than load-bearing.
 1. Focus order on the bar: 1 → 2 → 3. In the sheet: 4 → 5 → 6 → 7 → 8 → cells in reading order
    → 10.
 2. **Arrow labels name their destination**, not their direction: `Previous month, September
-   2026` tells a screen-reader user where they are going. `Previous` alone does not.
+2026` tells a screen-reader user where they are going. `Previous` alone does not.
 3. **A month change is announced** via `announceForAccessibility` with the host screen's new
    headline figure — `October 2026, total $1,284.50` — so the consequence of the tap is audible
    without hunting for the total. This is why the switcher needs to know its host screen's

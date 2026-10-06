@@ -28,13 +28,13 @@ thing that cannot be done locally.
 This has a consequence worth stating plainly, because it is the most common way an
 offline-first app gets built wrong:
 
-| Wrong | Right |
-|-------|-------|
-| Spinner on Home while expenses load | Home renders rows from SQLite immediately |
-| "Failed to load expenses. Retry" | Impossible — a local read cannot fail on the network |
-| Disable Save while offline | Save always works; it writes locally |
-| Toast "You are offline" on every screen | A persistent, quiet sync pill; no interruption |
-| Block the UI until a write is confirmed | The write is confirmed by SQLite, not the server |
+| Wrong                                   | Right                                                |
+| --------------------------------------- | ---------------------------------------------------- |
+| Spinner on Home while expenses load     | Home renders rows from SQLite immediately            |
+| "Failed to load expenses. Retry"        | Impossible — a local read cannot fail on the network |
+| Disable Save while offline              | Save always works; it writes locally                 |
+| Toast "You are offline" on every screen | A persistent, quiet sync pill; no interruption       |
+| Block the UI until a write is confirmed | The write is confirmed by SQLite, not the server     |
 
 A **loading** state in a screen spec therefore means one of exactly two things, and each spec
 says which:
@@ -53,10 +53,10 @@ says which:
 Every syncable row carries a local-only flag the server never sees. The outbox is its source of
 truth: **a row is `pending` if an undrained outbox row references its id.**
 
-| Local state | Meaning | Where it shows |
-|-------------|---------|----------------|
-| `synced` | No outbox row. The server has it. | Nothing. This is the default and is visually silent. |
-| `pending` | Outbox row queued or in flight. | A `clock` glyph, 14px, `warning.default`, leading the row's amount |
+| Local state       | Meaning                                | Where it shows                                                                  |
+| ----------------- | -------------------------------------- | ------------------------------------------------------------------------------- |
+| `synced`          | No outbox row. The server has it.      | Nothing. This is the default and is visually silent.                            |
+| `pending`         | Outbox row queued or in flight.        | A `clock` glyph, 14px, `warning.default`, leading the row's amount              |
 | `needs-attention` | A push returned `invalid` for this row | An `alert-circle` glyph, 14px, `danger.default`, plus a tappable row affordance |
 
 ### The three rules for `pending`
@@ -96,14 +96,14 @@ connectivity.
 icon 14px, label `type.caption`. **Tap target is 44x44** via `hitSlop`, even though the pill is
 24 tall.
 
-| # | State | Condition | Glyph | Label | Fill / text | Tappable |
-|---|-------|-----------|-------|-------|-------------|----------|
-| 1 | Idle | online, outbox empty | — | — | **renders nothing at all** | no |
-| 2 | Syncing | a push or pull is in flight | `refresh-cw` (rotating) | `Syncing…` | `info.subtle` / `info.default` | no |
-| 3 | Pending | outbox non-empty, online, not in flight | `clock` | `{n} pending` | `warning.subtle` / `warning.default` | yes |
-| 4 | Offline | netinfo reports unreachable | `cloud-off` | `Offline` | `bg.sunken` / `text.secondary` | yes |
-| 5 | Offline + pending | unreachable, outbox non-empty | `cloud-off` | `Offline · {n} pending` | `warning.subtle` / `warning.default` | yes |
-| 6 | Error | last sync attempt failed while online | `alert-circle` | `Sync failed` | `danger.subtle` / `danger.default` | yes |
+| #   | State             | Condition                               | Glyph                   | Label                   | Fill / text                          | Tappable |
+| --- | ----------------- | --------------------------------------- | ----------------------- | ----------------------- | ------------------------------------ | -------- |
+| 1   | Idle              | online, outbox empty                    | —                       | —                       | **renders nothing at all**           | no       |
+| 2   | Syncing           | a push or pull is in flight             | `refresh-cw` (rotating) | `Syncing…`              | `info.subtle` / `info.default`       | no       |
+| 3   | Pending           | outbox non-empty, online, not in flight | `clock`                 | `{n} pending`           | `warning.subtle` / `warning.default` | yes      |
+| 4   | Offline           | netinfo reports unreachable             | `cloud-off`             | `Offline`               | `bg.sunken` / `text.secondary`       | yes      |
+| 5   | Offline + pending | unreachable, outbox non-empty           | `cloud-off`             | `Offline · {n} pending` | `warning.subtle` / `warning.default` | yes      |
+| 6   | Error             | last sync attempt failed while online   | `alert-circle`          | `Sync failed`           | `danger.subtle` / `danger.default`   | yes      |
 
 ### Rules
 
@@ -156,16 +156,16 @@ place a manual retry exists.
 +--------------------------------+
 ```
 
-| Element | Style | Copy | Notes |
-|---------|-------|------|-------|
-| Title | `type.title2` / `text.primary` | `Sync` | `accessibilityRole="header"` |
-| Status icon | 20px, state colour | — | `accessibilityElementsHidden` |
-| Status headline | `type.bodyStrong` | state label, `09-copy-deck.md` §4 | |
-| Status body | `type.callout` / `text.secondary` | state explanation, `09-copy-deck.md` §4 | |
-| Pending section header | `type.caption` / `text.tertiary` | `{n} changes waiting` / `1 change waiting` | omitted when `n === 0` |
-| Pending item | `type.callout`; amount `tabular-nums` | `{category}` · `{amount}` · `Added`/`Edited`/`Deleted` | max 5 shown, then `and {n} more` |
-| Last synced | `type.footnote` / `text.tertiary` | `Last synced {relative}` / `Not synced yet` | relative format in `09-copy-deck.md` §5 |
-| `Try again` | `Button` `secondary`, full width | `Try again` | **present only in the Error state** |
+| Element                | Style                                 | Copy                                                   | Notes                                   |
+| ---------------------- | ------------------------------------- | ------------------------------------------------------ | --------------------------------------- |
+| Title                  | `type.title2` / `text.primary`        | `Sync`                                                 | `accessibilityRole="header"`            |
+| Status icon            | 20px, state colour                    | —                                                      | `accessibilityElementsHidden`           |
+| Status headline        | `type.bodyStrong`                     | state label, `09-copy-deck.md` §4                      |                                         |
+| Status body            | `type.callout` / `text.secondary`     | state explanation, `09-copy-deck.md` §4                |                                         |
+| Pending section header | `type.caption` / `text.tertiary`      | `{n} changes waiting` / `1 change waiting`             | omitted when `n === 0`                  |
+| Pending item           | `type.callout`; amount `tabular-nums` | `{category}` · `{amount}` · `Added`/`Edited`/`Deleted` | max 5 shown, then `and {n} more`        |
+| Last synced            | `type.footnote` / `text.tertiary`     | `Last synced {relative}` / `Not synced yet`            | relative format in `09-copy-deck.md` §5 |
+| `Try again`            | `Button` `secondary`, full width      | `Try again`                                            | **present only in the Error state**     |
 
 ### Rules
 
@@ -212,7 +212,7 @@ with the authoritative server row from the response (`docs/PLAN.md` §Push).
 **The user is not notified.** This is a deliberate and slightly uncomfortable choice, so the
 reasoning is recorded rather than left implicit:
 
-- LWW *is* the product decision (`docs/PLAN.md` §4). A notification cannot offer a remedy —
+- LWW _is_ the product decision (`docs/PLAN.md` §4). A notification cannot offer a remedy —
   there is no merge UI in the MVP and no way to recover the dropped value, because it was
   overwritten by design.
 - A toast reading "your change was overwritten", with no action attached, is pure anxiety.
@@ -275,7 +275,7 @@ A pull or a conflict overwrites the row the user is currently editing.
   save writes the user's values with a fresh `updatedAt`, which LWW then resolves in their
   favour. The user finished their edit last, so their edit should win.
 - If the row was **deleted** elsewhere, the notice reads `This expense was deleted on another
-  device.` and the trailing action becomes `Close`. Save becomes disabled with the helper text
+device.` and the trailing action becomes `Close`. Save becomes disabled with the helper text
   `This expense no longer exists.` — saving would undelete a row the user never asked to
   restore.
 
@@ -286,13 +286,13 @@ A pull or a conflict overwrites the row the user is currently editing.
 The §States table of each screen spec has exactly these rows. This list is the checklist; a
 spec with a missing row is incomplete.
 
-| Row | Question it answers |
-|-----|--------------------|
-| `default` | Data present, nothing unusual |
-| `empty` | No data — and whether this is first-run empty or filtered-empty, because they differ |
-| `loading` | Which of `first-paint` / `hydrating`, and what is shown |
-| `error` | What can actually fail *on this screen* — often "nothing can", which is a valid answer that must be stated and justified |
-| `offline-pending` | What the user sees with local unsynced changes, per §2 and §3 |
+| Row               | Question it answers                                                                                                      |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `default`         | Data present, nothing unusual                                                                                            |
+| `empty`           | No data — and whether this is first-run empty or filtered-empty, because they differ                                     |
+| `loading`         | Which of `first-paint` / `hydrating`, and what is shown                                                                  |
+| `error`           | What can actually fail _on this screen_ — often "nothing can", which is a valid answer that must be stated and justified |
+| `offline-pending` | What the user sees with local unsynced changes, per §2 and §3                                                            |
 
 The `error` row deserves emphasis. For most screens in this app the honest answer is **"no
 reachable error state: this screen reads local SQLite and cannot fail on the network."** That is
