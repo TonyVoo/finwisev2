@@ -1,0 +1,15 @@
+# Redocly config for `pnpm lint:api`.
+#
+# Starts from the `recommended` ruleset and relaxes exactly one rule, with the reason
+# recorded. Everything else must pass clean: a warning here is a contract defect.
+apis:
+  expense-tracker@v1:
+    root: docs/api/openapi.yaml
+
+extends:
+  - recommended
+
+rules:
+  # The MVP has a localhost dev server and a not-yet-provisioned production placeholder.
+  # Re-enable this once a real host exists and replace the placeholder URL.
+  no-server-example.com: off
