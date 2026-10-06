@@ -1,0 +1,26 @@
+node_modules/
+dist/
+build/
+coverage/
+.turbo/
+*.tsbuildinfo
+
+.env
+.env.*
+!.env.example
+
+.expo/
+.expo-shared/
+
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Local agent/editor overrides
+.claude/settings.local.json

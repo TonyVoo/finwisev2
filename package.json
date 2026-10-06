@@ -1,0 +1,27 @@
+{
+  "name": "expense-tracker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Offline-first personal expense tracker: Expo mobile app + Node/Postgres API",
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "lint": "pnpm run lint:code && pnpm run lint:api",
+    "lint:code": "eslint .",
+    "lint:api": "redocly lint docs/api/openapi.yaml",
+    "typecheck": "pnpm -r --if-present run typecheck",
+    "test": "pnpm -r --if-present run test",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,yaml,yml,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,json,yaml,yml,md}\""
+  },
+  "devDependencies": {
+    "@redocly/cli": "2.58.1",
+    "@types/node": "26.6.4",
+    "eslint": "10.12.0",
+    "prettier": "3.9.9",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.1"
+  }
+}
