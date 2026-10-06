@@ -1,0 +1,106 @@
+import { z } from 'zod';
+import {
+  AmountMinor,
+  CalendarDate,
+  CurrencyCode,
+  LIMITS,
+  OpaqueCursor,
+  Uuid,
+} from './primitives.js';
+import { SYNCABLE_SHAPE } from './syncable.js';
+
+/**
+ * An expense. Money is `amountMinor` + `currency`; the day it happened is the
+ * zone-less calendar `date`. Monthly totals bucket on `date`, never on `createdAt`.
+ */
+
+export const ExpenseNote = z
+  .string()
+  .trim()
+  .max(LIMITS.EXPENSE_NOTE_MAX)
+  .describe('Free-text note, up to 500 characters after trimming.');
+
+/** An expense row as the server reports it. */
+export const Expense = z.strictObject({
+  ...SYNCABLE_SHAPE,
+  categoryId: Uuid.describe(
+    'Owning category. Always a live category of the same user; reassigned to the `Uncategorized` default if its category is deleted.',
+  ),
+  amountMinor: AmountMinor,
+  currency: CurrencyCode,
+  date: CalendarDate,
+  note: ExpenseNote.nullable(),
+});
+
+export const ExpenseCreateRequest = z.strictObject({
+  id: Uuid.optional().describe(
+    'Optional client-minted UUIDv7. Supply it so a row created offline keeps its identity; omit it and the server mints one.',
+  ),
+  categoryId: Uuid,
+  amountMinor: AmountMinor,
+  currency: CurrencyCode.optional().describe(
+    "Defaults to the user's currency when omitted. In the MVP it must equal it; anything else is a validation_error.",
+  ),
+  date: CalendarDate,
+  note: ExpenseNote.nullable().optional(),
+});
+
+export const ExpenseUpdateRequest = z
+  .strictObject({
+    categoryId: Uuid.optional(),
+    amountMinor: AmountMinor.optional(),
+    currency: CurrencyCode.optional(),
+    date: CalendarDate.optional(),
+    note: ExpenseNote.nullable().optional(),
+  })
+  .refine((v) => Object.keys(v).length > 0, { error: 'at least one field must be present' });
+
+/**
+ * Query for `GET /v1/expenses`. Keyset-paginated on `(date DESC, id DESC)`.
+ *
+ * Values arrive as strings on the query string, so numeric and boolean parameters are
+ * coerced here — this is the one place in the contract where coercion is correct.
+ */
+export const ExpenseListQuery = z.strictObject({
+  from: CalendarDate.optional().describe('Inclusive lower bound on `date` (YYYY-MM-DD).'),
+  to: CalendarDate.optional().describe('Inclusive upper bound on `date` (YYYY-MM-DD).'),
+  categoryId: Uuid.optional().describe('Restrict to one category.'),
+  limit: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(LIMITS.EXPENSE_LIST_MAX_LIMIT)
+    .optional()
+    .describe('Page size, 1-200. Defaults to 50.'),
+  cursor: OpaqueCursor.optional().describe(
+    "Opaque cursor from the previous page's `nextCursor`. An undecodable value is `invalid_cursor`.",
+  ),
+  includeDeleted: z
+    .stringbool()
+    .optional()
+    .describe('Include tombstoned expenses. Defaults to false. Mainly for debugging and tests.'),
+});
+
+export const ExpenseListResponse = z.strictObject({
+  data: z
+    .array(Expense)
+    .describe('Page of expenses, newest `date` first, ties broken by `id` descending.'),
+  nextCursor: OpaqueCursor.nullable().describe(
+    'Cursor for the next page, or null on the last page.',
+  ),
+  hasMore: z
+    .boolean()
+    .describe('True when another page exists. Equivalent to `nextCursor !== null`.'),
+});
+
+export const ExpenseResponse = z.strictObject({
+  data: Expense,
+});
+
+export type ExpenseNote = z.infer<typeof ExpenseNote>;
+export type Expense = z.infer<typeof Expense>;
+export type ExpenseCreateRequest = z.infer<typeof ExpenseCreateRequest>;
+export type ExpenseUpdateRequest = z.infer<typeof ExpenseUpdateRequest>;
+export type ExpenseListQuery = z.infer<typeof ExpenseListQuery>;
+export type ExpenseListResponse = z.infer<typeof ExpenseListResponse>;
+export type ExpenseResponse = z.infer<typeof ExpenseResponse>;
