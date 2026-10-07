@@ -189,10 +189,14 @@ Create an account and a session. The one screen that genuinely requires connecti
    Submit stays enabled. The app does not implement a countdown from `Retry-After` in the MVP;
    the copy is deliberately vague rather than displaying a timer the user must watch.
 7. **On `201`, in this order, in one SQLite transaction:** persist `accessToken` +
-   `refreshToken` to `expo-secure-store`, write the `user` row, seed the default categories
-   from [`00-foundations.md`](./00-foundations.md) §7 with client-minted UUIDv7 ids, and enqueue
-   them in the outbox. Then `router.replace('/(app)')`. **No success toast** — arriving at Home
-   is the confirmation.
+   `refreshToken` to `expo-secure-store` and write the `user` row. Then `router.replace('/(app)')`
+   and fetch `GET /v1/categories` in the background, writing the rows the server seeded at signup
+   into SQLite. **The client does not mint the seeded categories** — the server already created
+   them ([`00-foundations.md`](./00-foundations.md) §7), so seeding locally and pushing would
+   produce a duplicate set. Navigation does not wait on the fetch; if it fails, Home renders with
+   an empty category list and the next sync fills it
+   ([`01-flows.md`](./01-flows.md) §2). **No success toast** — arriving at Home is the
+   confirmation.
 8. **Currency.** The select opens a `Sheet` listing `USD`, `EUR`, `GBP`, `JPY`, `CAD`, `AUD`,
    `CHF`, `INR`, `BRL`, `MXN` as `{code} - {name}` rows with a trailing `check` on the current
    one. It is sent as `SignupRequest.currency`, which the contract accepts and defaults to

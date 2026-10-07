@@ -78,7 +78,7 @@ graph TD
     Validate -- yes --> Post[POST /v1/auth/signup<br/>button enters Busy]
 
     Post --> Result{Response}
-    Result -- 201 --> Seed[Seed 6 default categories<br/>into SQLite + outbox]
+    Result -- 201 --> Seed[GET /v1/categories<br/>write the 6 seeded rows to SQLite]
     Result -- 409 email_already_exists --> Taken(Inline error on Email:<br/>That email is already registered.<br/>plus Log in instead link)
     Result -- network unreachable --> Offline(Banner: You need to be online<br/>to create an account.<br/>Try again button)
     Taken --> SignUp
@@ -102,6 +102,18 @@ graph TD
 **Rule the diagram encodes:** signup is the _only_ point in this flow that can be blocked by
 being offline, because it is the only point that needs a server to mint an identity. Once a
 session exists, every subsequent step is local-first.
+
+**The categories are the server's, not the client's.** `docs/api/openapi.yaml` §`signup` seeds
+`DEFAULT_CATEGORIES` as part of creating the user, so the client **reads** them and does not
+mint them — a client that seeded its own six rows and pushed them would land a second set
+beside the server's. The fetch is safe to require here because signup has already proven
+connectivity; it is the same `GET /v1/categories` the normal sync uses, not a special path.
+
+If that fetch fails (connectivity dropped in the seconds after the 201), the user still reaches
+Home — they are signed in, and the list is empty either way. The category list is then empty
+until the next sync fills it, which is the `No categories yet` state in
+[`06-expense-form.md`](./06-expense-form.md) §4. That is the one route to it in normal use, and
+it self-repairs.
 
 ---
 

@@ -178,10 +178,12 @@ currency }).resolvedOptions().minimumFractionDigits`. It is **not** hardcoded to
   them.
 - **A category is always set.** There is no "none" option; the `isDefault` category is the
   "I will sort this out later" choice, which is exactly what it exists for.
-- **If no categories exist at all** (a state only reachable if the user deletes every deletable
-  one, since the `isDefault` category cannot be deleted — so in practice unreachable), the sheet
-  shows `No categories yet` with a `primary` `Create a category` button, and Save is disabled
-  with the helper `Add a category first.`
+- **If no categories exist at all**, the sheet shows `No categories yet` with a `primary`
+  `Create a category` button, and Save is disabled with the helper `Add a category first.` Two
+  routes reach it: the post-signup category fetch failed and no sync has succeeded since
+  ([`01-flows.md`](./01-flows.md) §2), or the user deleted every deletable one — and the second
+  still leaves the undeletable `isDefault` row, so in practice the first is the only one. Both
+  self-repair on the next successful sync.
 
 ### 5. Amount bounds
 

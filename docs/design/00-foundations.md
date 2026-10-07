@@ -100,14 +100,15 @@ chart slice, or text.
 **`category.slate` is reserved.** It is the Uncategorized colour and is not offered in the
 colour picker for user-created categories.
 
-> **These hex values differ from `DEFAULT_CATEGORIES` in `shared/src/category.ts`,
-> deliberately.** The six colours currently in the contract are Tailwind 500-weights and none
-> of them reaches 4.5:1 on white — measured: `#9ca3af` 2.54, `#22c55e` 2.28, `#f97316` 2.80,
-> `#3b82f6` 3.68, `#ef4444` 3.76, `#a855f7` 3.96. A category colour is used here as a chart
-> legend label and as a swatch beside small text, so it needs to clear 4.5:1. The tokens above
-> are same-hue replacements that do. `CategoryColor` is any `#RRGGBB`, so this is a change of
-> six constants, not a change of wire shape. Raised with Chief — see
-> [`README.md`](./README.md) §Open contract items item 1.
+> **`DEFAULT_CATEGORIES` in `shared/src/category.ts` carries these same six hexes** as of the
+> board's approval on 2026-10-06. It previously held Tailwind 500-weights, none of which
+> reached 4.5:1 on white — measured: `#9ca3af` 2.54, `#22c55e` 2.28, `#f97316` 2.80, `#3b82f6`
+> 3.68, `#ef4444` 3.76, `#a855f7` 3.96, three of them below even 3:1. A category colour is used
+> as a chart legend label and as a swatch beside small text, so it has to clear 4.5:1; the
+> tokens above are the same-hue replacements that do. `CategoryColor` is any `#RRGGBB`, so this
+> changed six constants and no wire shape. `shared/tests/tokens.test.ts` now asserts the
+> contract and this table agree hex for hex and measures both against the floor — see
+> [`README.md`](./README.md) §Settled contract items item 1.
 
 #### The rule that follows from these numbers
 
@@ -329,13 +330,15 @@ area. Dismiss by grabber drag, scrim tap, `x`, or Android back.
 
 ## 7. Default categories seeded on signup
 
-Created client-side immediately on successful signup, with client-minted UUIDv7 ids, and pushed
-through the normal outbox. They are ordinary rows with `isDefault: true` — **not** a server-side
-fixture the client waits for. A user who signs up on a plane gets a working category list.
+**Seeded by the server as part of `POST /v1/auth/signup`** (`docs/api/openapi.yaml` §`signup`).
+The client reads them with the `GET /v1/categories` that follows the 201 and writes them to
+SQLite; it does not mint them. Signup is one of the only two actions in the app that require
+connectivity ([`03-auth.md`](./03-auth.md)), so there is no offline-signup case for the client
+to cover, and no second set of locally-minted rows to reconcile against the server's.
 
 This list is **`DEFAULT_CATEGORIES` in `shared/src/category.ts`** — the contract owns it, this
-table mirrors it. Six categories, in the contract's order, with the accessible colour tokens
-from §1.3 substituted for the contract's hex values (see the note there).
+table mirrors it. Six categories, in the contract's order, with the §1.3 colour tokens the
+contract now carries hex for hex. Read the hexes from either side; a test asserts they agree.
 
 | Order | Name              | Colour token      | Hex       | `isDefault` | Deletable | Renameable |
 | ----- | ----------------- | ----------------- | --------- | ----------- | --------- | ---------- |
@@ -369,13 +372,17 @@ Notes the implementation must honour:
    and matches the contract array so a diff against it is readable.
 6. Names are sentence-case as written ("Eating out", not "Eating Out"), and are not localised
    in the MVP (English only).
-7. **Who writes these rows is a contract question, not a design one.** `DEFAULT_CATEGORIES`
-   living in `shared/` reads as a server-side signup fixture, while `docs/PLAN.md` §Mobile
-   requires a user who signs up on a plane to get a working category list. Both can be true
-   only if the client seeds them locally and the push converges by id. Raised with Chief — see
-   [`README.md`](./README.md) §Open contract items item 2. **The screen specs do not depend on
-   the answer**: Home and the category picker read whatever rows SQLite holds, and the
-   first-run empty state is specified for a zero-category list regardless.
+7. **The server writes these rows; the client never seeds.** An earlier draft of this spec had
+   the client mint the six rows locally and push them, on the reasoning that `docs/PLAN.md`
+   §Mobile wants a user who signs up on a plane to get a working category list. That reasoning
+   does not survive the contract: `openapi.yaml` §`signup` already seeds them, so a client that
+   also seeded would push a second set beside the server's and the user would see twelve
+   categories. And there is no plane case to serve — signup needs the network regardless, so a
+   client that cannot reach the server has no account to seed against. The client reads the
+   seeded rows and treats them as ordinary synced data from then on. See
+   [`01-flows.md`](./01-flows.md) §2 for the fetch and for what the user sees if it fails.
+   **No screen spec depends on this**: Home and the category picker render whatever rows SQLite
+   holds, and the zero-category state is specified either way.
 
 ---
 

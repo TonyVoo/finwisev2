@@ -76,18 +76,23 @@ Two earlier open items are now **closed** by the landed contract:
 - `ERROR_CODES` in `shared/src/errors.ts` is an exhaustive, documented list, and
   [`09-copy-deck.md`](./09-copy-deck.md) §2.1 maps **every** entry to copy.
 
-## Open contract items
+## Settled contract items
 
-Two items the design cannot settle on its own. Raised with Chief on TVO-3; **neither is assumed
-to be agreed**, and no screen spec depends on the outcome.
+Both items the design could not settle on its own were resolved on 2026-10-06. No screen spec
+changed as a result — neither one was ever load-bearing for a layout.
 
-| #   | Item                                                         | Why the design needs it                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| --- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | The six colours in `DEFAULT_CATEGORIES` do not meet contrast | Measured on `bg.surface`: `#9ca3af` 2.54:1, `#22c55e` 2.28:1, `#f97316` 2.80:1, `#3b82f6` 3.68:1, `#ef4444` 3.76:1, `#a855f7` 3.96:1. All six are below the 4.5:1 needed for a chart legend label and a swatch beside small text; three are below even 3:1. [`00-foundations.md`](./00-foundations.md) §1.3 proposes same-hue replacements at 4.83-5.18:1. `CategoryColor` accepts any `#RRGGBB`, so this is a six-constant change with **no wire-shape change**. |
-| 2   | Who writes the seeded categories                             | `DEFAULT_CATEGORIES` living in `shared/` reads as a server-side signup fixture, but `docs/PLAN.md` §Mobile requires a user who signs up offline to get a working category list. Both hold only if the client seeds locally with client-minted UUIDv7 ids and the push converges by id. [`00-foundations.md`](./00-foundations.md) §7 note 7 states the assumption the specs were written under.                                                                   |
+| #   | Item                                   | Resolution                                                                                                                                                                                                                                                                                                                                    |
+| --- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Category colours did not meet contrast | **Fixed in the contract**, approved by the board. `DEFAULT_CATEGORIES` now carries the six accessible hexes from [`00-foundations.md`](./00-foundations.md) §1.3 (4.83-5.18:1 on `bg.surface`) in place of the Tailwind 500-weights it held (2.28-3.96:1, three below even 3:1). Six constants, no wire-shape change, no consumers to update. |
+| 2   | Who writes the seeded categories       | **The server does**, per `openapi.yaml` §`signup`. The client reads them and never mints them — see [`00-foundations.md`](./00-foundations.md) §7 note 7. The design previously assumed the opposite; that assumption was wrong and the specs are corrected.                                                                                  |
 
-If item 1 is accepted, the fix is to `DEFAULT_CATEGORIES` and
-[`tokens.json`](./tokens.json) stays as it is; the test in `shared/tests/tokens.test.ts` asserts
-the two agree on names, order and `isDefault`, and will fail loudly if only one side is
-changed. The same test measures every palette colour against the 4.5:1 floor, so a colour
-that stops being accessible fails the build rather than shipping.
+Item 2 corrected three places that had described client-side seeding: the §2 flow diagram in
+[`01-flows.md`](./01-flows.md) (now a `GET /v1/categories` after the 201, not a local seed plus
+push), §7 of the foundations, and the "no categories exist" rule in
+[`06-expense-form.md`](./06-expense-form.md) §4, which had called that state unreachable and is
+now reachable by exactly one route — a failed post-signup fetch, which the next sync repairs.
+
+`shared/tests/tokens.test.ts` holds item 1 in place: it asserts `DEFAULT_CATEGORIES` and
+[`tokens.json`](./tokens.json) agree on name, order, **colour** and `isDefault`, and it measures
+both sides against the 4.5:1 floor. A colour that stops being accessible, on either side, fails
+the build rather than shipping.
