@@ -76,12 +76,20 @@ export type CategoryResponse = z.infer<typeof CategoryResponse>;
 /** Name of the undeletable default category every user is seeded with. */
 export const UNCATEGORIZED_NAME = 'Uncategorized';
 
-/** Categories seeded on signup. The first is the undeletable default. */
+/**
+ * Categories seeded on signup. The first is the undeletable default.
+ *
+ * The colours are the accessible set from `docs/design/00-foundations.md` §1.3 — every one
+ * clears 4.5:1 on white, because a category colour is used as a chart legend label and as a
+ * swatch beside small text. They replaced the original Tailwind 500-weights (2.28:1-3.96:1,
+ * three of them below even 3:1) on board approval, 2026-10-06. `shared/tests/tokens.test.ts`
+ * measures them, so a colour that stops being accessible fails the build.
+ */
 export const DEFAULT_CATEGORIES = [
-  { name: UNCATEGORIZED_NAME, color: '#9ca3af', isDefault: true },
-  { name: 'Groceries', color: '#22c55e', isDefault: false },
-  { name: 'Transport', color: '#3b82f6', isDefault: false },
-  { name: 'Eating out', color: '#f97316', isDefault: false },
-  { name: 'Bills', color: '#a855f7', isDefault: false },
-  { name: 'Health', color: '#ef4444', isDefault: false },
+  { name: UNCATEGORIZED_NAME, color: '#6B7280', isDefault: true },
+  { name: 'Groceries', color: '#2F8044', isDefault: false },
+  { name: 'Transport', color: '#2F6FD0', isDefault: false },
+  { name: 'Eating out', color: '#A85C12', isDefault: false },
+  { name: 'Bills', color: '#8E4EC6', isDefault: false },
+  { name: 'Health', color: '#C73B3B', isDefault: false },
 ] as const satisfies ReadonlyArray<{ name: string; color: string; isDefault: boolean }>;

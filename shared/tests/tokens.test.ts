@@ -163,10 +163,28 @@ describe('category palette', () => {
 describe('seeded categories', () => {
   const items = TOKENS.defaultCategories.items;
 
-  it('mirrors DEFAULT_CATEGORIES in name, order and isDefault', () => {
-    expect(items.map((c) => [c.name, c.isDefault])).toEqual(
-      DEFAULT_CATEGORIES.map((c) => [c.name, c.isDefault]),
-    );
+  it('mirrors DEFAULT_CATEGORIES in name, order, colour and isDefault', () => {
+    // Colour is asserted here as of the board's 2026-10-06 approval of the accessible
+    // palette: the contract and the token file now hold the same six hexes, so a drift in
+    // either direction is a build failure. Compared case-insensitively — `CategoryColor`
+    // accepts either case and the two files have no reason to disagree about it.
+    const shape = (c: { name: string; color: string; isDefault: boolean }) => [
+      c.name,
+      c.color.toLowerCase(),
+      c.isDefault,
+    ];
+    expect(items.map(shape)).toEqual(DEFAULT_CATEGORIES.map(shape));
+  });
+
+  it('seeds only colours that clear the body-text contrast floor', () => {
+    // The palette test above measures tokens.json. This measures the contract directly, so
+    // the accessibility guarantee holds even if someone edits DEFAULT_CATEGORIES alone.
+    for (const { name, color } of DEFAULT_CATEGORIES) {
+      expect(
+        contrast(color, TOKENS.color.light.bg.surface!),
+        `${name} (${color}) on bg.surface`,
+      ).toBeGreaterThanOrEqual(TOKENS.a11y.contrastBodyMin);
+    }
   });
 
   it('has exactly one protected category, and it is first in seed order', () => {
