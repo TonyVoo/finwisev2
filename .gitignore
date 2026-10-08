@@ -5,6 +5,10 @@ coverage/
 .turbo/
 *.tsbuildinfo
 
+# Generated Prisma client. A build artifact, not source: `pnpm typecheck` and
+# `pnpm test` both run `prisma generate` first, so a fresh clone regenerates it.
+backend/src/db/generated/
+
 .env
 .env.*
 !.env.example

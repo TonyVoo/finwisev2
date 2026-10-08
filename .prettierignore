@@ -2,3 +2,6 @@ node_modules/
 dist/
 coverage/
 pnpm-lock.yaml
+
+# Generated code: not ours to format.
+backend/src/db/generated/

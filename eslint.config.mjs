@@ -3,7 +3,15 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['**/node_modules/**', '**/dist/**', '**/coverage/**', '**/.expo/**', '**/*.d.ts'],
+    ignores: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/coverage/**',
+      '**/.expo/**',
+      '**/*.d.ts',
+      // Generated Prisma client: a build artifact, and not ours to style.
+      'backend/src/db/generated/**',
+    ],
   },
   ...tseslint.configs.recommended,
   {
