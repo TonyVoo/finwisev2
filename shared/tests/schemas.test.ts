@@ -8,6 +8,7 @@ import {
   CategoryUpdateRequest,
   CurrencyCode,
   DEFAULT_CATEGORIES,
+  Email,
   ERROR_CODES,
   ERROR_CODE_STATUS,
   Expense,
@@ -108,6 +109,38 @@ describe('ids', () => {
     for (const bad of ['', 'abc', '0192f3a0-7c3a-7f1e-9b2d']) {
       expect(Uuid.safeParse(bad).success, bad).toBe(false);
     }
+  });
+});
+
+describe('email', () => {
+  it('strips surrounding whitespace rather than rejecting it', () => {
+    // An address autocompleted with a trailing space is a real thing mobile keyboards
+    // do. The format check has to run on the trimmed value, or a valid login 400s.
+    expect(Email.parse('  user@example.com  ')).toBe('user@example.com');
+    expect(Email.parse('\tuser@example.com\n')).toBe('user@example.com');
+  });
+
+  it('still rejects a malformed address', () => {
+    for (const bad of ['', '   ', 'nope', 'a@', '@x.com', 'a b@x.com']) {
+      expect(Email.safeParse(bad).success, JSON.stringify(bad)).toBe(false);
+    }
+  });
+
+  it('bounds the address by its trimmed length', () => {
+    const local = 'a'.repeat(LIMITS.EMAIL_MAX - '@example.com'.length);
+    const atLimit = `${local}@example.com`;
+    expect(atLimit).toHaveLength(LIMITS.EMAIL_MAX);
+
+    expect(Email.safeParse(atLimit).success).toBe(true);
+    // Padding is not part of the address, so it must not consume the budget.
+    expect(Email.safeParse(`  ${atLimit}  `).success).toBe(true);
+    expect(Email.safeParse(`a${atLimit}`).success).toBe(false);
+  });
+
+  it('does not change case, which is the service layer’s job', () => {
+    // Lowercasing lives in `normaliseEmail` on the backend so that the comparison and
+    // the stored value cannot disagree. The schema only has to not get in its way.
+    expect(Email.parse('  User@Example.com  ')).toBe('User@Example.com');
   });
 });
 

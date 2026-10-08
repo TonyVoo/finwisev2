@@ -1,10 +1,21 @@
 import { z } from 'zod';
 import { CurrencyCode, LIMITS, Timestamp, Uuid } from './primitives.js';
 
-/** Email address. The server lowercases and trims before storing and comparing. */
+/**
+ * Email address. The server lowercases and trims before storing and comparing.
+ *
+ * The trim is a `.pipe()` ahead of the format check rather than a check on `z.email()`,
+ * because zod runs string-format validation first: `z.email().trim()` would reject
+ * `" a@x.com "` as malformed before ever trimming it. A mobile keyboard that
+ * autocompletes an address with a trailing space would then get a 400 on a perfectly
+ * good login, so the order here is load-bearing. `max` sits after the trim so the limit
+ * measures the address, not the padding.
+ */
 export const Email = z
-  .email()
+  .string()
+  .trim()
   .max(LIMITS.EMAIL_MAX)
+  .pipe(z.email())
   .describe(
     'Email address. Normalised server-side (trimmed and lowercased) before storage and comparison, so "A@x.com" and "a@x.com" are the same account.',
   );
