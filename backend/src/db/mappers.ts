@@ -1,5 +1,14 @@
-import type { Category as WireCategory, User as WireUser } from '@expense-tracker/shared';
-import type { Category as CategoryRow, User as UserRow } from './generated/client.ts';
+import type {
+  CalendarDate,
+  Category as WireCategory,
+  Expense as WireExpense,
+  User as WireUser,
+} from '@expense-tracker/shared';
+import type {
+  Category as CategoryRow,
+  Expense as ExpenseRow,
+  User as UserRow,
+} from './generated/client.ts';
 
 /**
  * Row → wire mappers.
@@ -25,6 +34,41 @@ export function toWireCategory(row: CategoryRow): WireCategory {
     name: row.name,
     color: row.color,
     isDefault: row.isDefault,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    deletedAt: row.deletedAt?.toISOString() ?? null,
+    revision: row.revision,
+  };
+}
+
+/**
+ * Format a Postgres `DATE` as the contract's zone-less `YYYY-MM-DD`.
+ *
+ * The driver hands a `DATE` back as a JS `Date` pinned to UTC midnight, so the
+ * calendar fields must be read in UTC. `toLocaleDateString()`, or anything that goes
+ * through the local zone, shifts `2026-10-06` to `2026-10-05` for every server west of
+ * Greenwich — which is the exact timezone bug the column type was chosen to prevent.
+ */
+export function toCalendarDate(date: Date): CalendarDate {
+  return date.toISOString().slice(0, 10);
+}
+
+/** Parse the contract's `YYYY-MM-DD` into the UTC-midnight instant a `DATE` stores. */
+export function fromCalendarDate(date: CalendarDate): Date {
+  return new Date(`${date}T00:00:00.000Z`);
+}
+
+export function toWireExpense(row: ExpenseRow): WireExpense {
+  return {
+    id: row.id,
+    categoryId: row.categoryId,
+    // `amount_minor` is `bigint` in Postgres because the contract's maximum overflows
+    // `int4`. It is still exact as a JS number (well under 2^53), and the wire type is
+    // an integer, so the narrowing happens here, once, at the boundary.
+    amountMinor: Number(row.amountMinor),
+    currency: row.currency,
+    date: toCalendarDate(row.date),
+    note: row.note,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     deletedAt: row.deletedAt?.toISOString() ?? null,

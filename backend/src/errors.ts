@@ -58,6 +58,27 @@ export const problems = {
   notFound: (message = 'Not found.') => new ApiProblem('not_found', message),
   emailAlreadyExists: () =>
     new ApiProblem('email_already_exists', 'An account with that email already exists.'),
+  invalidCursor: (message = 'The pagination cursor could not be decoded.') =>
+    new ApiProblem('invalid_cursor', message),
+  categoryNameTaken: (name: string) =>
+    new ApiProblem('category_name_taken', `A category named "${name}" already exists.`),
+  categoryNotDeletable: () =>
+    new ApiProblem('category_not_deletable', 'The default category cannot be deleted.'),
+  /**
+   * `categoryId` does not name a *live* category of this user.
+   *
+   * One function for all three ways that happens — no such id, another user's category,
+   * a tombstoned one — because the three must be indistinguishable. Reporting the second
+   * as `403` would turn the field into a probe for which ids exist.
+   */
+  unknownCategory: () =>
+    new ApiProblem(
+      'unknown_category',
+      'categoryId does not name a live category of this account.',
+      {
+        issues: [{ path: 'categoryId', message: 'no such live category' }],
+      },
+    ),
   batchTooLarge: (message = 'Request body is too large.') =>
     new ApiProblem('batch_too_large', message),
   internal: (message = 'Something went wrong.') => new ApiProblem('internal_error', message),
