@@ -1,0 +1,44 @@
+{
+  "name": "@expense-tracker/backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Expense Tracker REST API: Node 22 + Express 5 + Postgres (Prisma)",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "typecheck": "prisma generate && tsc --noEmit",
+    "test": "prisma generate && vitest run",
+    "test:watch": "vitest",
+    "generate": "prisma generate",
+    "migrate:dev": "prisma migrate dev",
+    "migrate:deploy": "prisma migrate deploy",
+    "migrate:reset": "prisma migrate reset --force",
+    "migrate:status": "prisma migrate status",
+    "db:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@expense-tracker/shared": "workspace:*",
+    "@node-rs/argon2": "2.2.2",
+    "@prisma/adapter-pg": "7.10.0",
+    "@prisma/client": "7.10.0",
+    "dotenv": "18.0.5",
+    "express": "5.2.1",
+    "jose": "6.2.12",
+    "uuid": "14.0.2",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/express": "5.0.6",
+    "@types/node": "26.6.4",
+    "@types/supertest": "7.2.1",
+    "prisma": "7.10.0",
+    "supertest": "7.3.1",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "vitest": "5.0.3"
+  }
+}

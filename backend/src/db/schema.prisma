@@ -1,0 +1,161 @@
+// Expense Tracker — Postgres schema.
+//
+// See `docs/PLAN.md` §3 for the decisions this encodes. The ones worth restating
+// here, because the schema is where they are enforced:
+//
+//   * Money is `amountMinor` (an integer in the currency's minor unit) plus a
+//     3-letter ISO 4217 code. Never a float, never a decimal string, at rest.
+//   * `expenses.date` is a calendar DATE, not a timestamp. It is the day the user
+//     assigned to the expense and must not shift across timezones. `createdAt` /
+//     `updatedAt` / `deletedAt` are `timestamptz`.
+//   * Deletes are soft (`deletedAt`). A sync protocol cannot propagate a hard
+//     delete: an absent row is indistinguishable from one the client never saw.
+//   * `revision` is a per-user monotonic sequence assigned by the server on every
+//     write. It is the sync cursor's watermark — not a timestamp, not a global
+//     counter. The counter lives in `revision_counters` and is handed out by the
+//     `next_revision(uuid)` SQL function; see the first migration.
+//   * Ids are client-minted UUIDv7 and the server accepts them as-is, so a row's
+//     identity never changes and foreign keys written offline stay valid. There is
+//     deliberately no `@default` on any `id`: the caller always supplies one.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "./generated"
+  runtime      = "nodejs"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// An account. Not syncable: there is exactly one user per token and the mobile
+/// app reads it from `GET /v1/me`, so it carries no `revision` or tombstone.
+model User {
+  id String @id @db.Uuid
+
+  /// Stored trimmed and lowercased, and unique. `A@x.com` and `a@x.com` are the
+  /// same account. A CHECK constraint in the migration enforces the lowercasing at
+  /// the storage layer so a code path that forgets to normalise fails loudly.
+  email String @unique @db.VarChar(254)
+
+  /// argon2id. Never logged, never returned on the wire.
+  passwordHash String @map("password_hash") @db.Text
+
+  /// The account's single currency, captured once at signup. No conversion in the MVP.
+  currency String @db.Char(3)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  revisionCounter RevisionCounter?
+  categories      Category[]
+  expenses        Expense[]
+  refreshTokens   RefreshToken[]
+
+  @@map("users")
+}
+
+/// The per-user revision sequence. One row per user, created with the user.
+///
+/// A Postgres `SEQUENCE` would be wrong here twice over: sequences are global, and
+/// they leave gaps when a transaction rolls back. The sync cursor needs a watermark
+/// that is per-user, gap-free and monotonic, so it is a counter column bumped by
+/// `next_revision()` inside the writing transaction — a rollback takes the
+/// increment with it.
+model RevisionCounter {
+  userId       String @id @map("user_id") @db.Uuid
+  lastRevision Int    @default(0) @map("last_revision")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("revision_counters")
+}
+
+/// A user-owned expense category. Syncable.
+///
+/// Deleting one *reassigns* its expenses to the user's `Uncategorized` default
+/// rather than cascading — losing spend history to a category cleanup would be a
+/// data-loss bug. Hence `onDelete: Restrict` on the expense side.
+model Category {
+  id     String @id @db.Uuid
+  userId String @map("user_id") @db.Uuid
+
+  name String @db.VarChar(64)
+
+  /// `#RRGGBB`. The server assigns one when the client omits it.
+  color String @db.Char(7)
+
+  /// True for the seeded `Uncategorized`, which always exists and cannot be deleted.
+  isDefault Boolean @default(false) @map("is_default")
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime  @map("updated_at") @db.Timestamptz(3)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)
+  revision  Int
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expenses Expense[]
+
+  /// The sync pull walks `revision` ascending within a user, so this index is the
+  /// one that makes `GET /v1/sync?since=` a range scan. Unique because a revision
+  /// is handed out once per user.
+  @@unique([userId, revision])
+  /// Only one default category per user, and it is the one deletes reassign to.
+  @@index([userId, isDefault])
+  @@map("categories")
+}
+
+/// An expense. Syncable.
+model Expense {
+  id         String @id @db.Uuid
+  userId     String @map("user_id") @db.Uuid
+  categoryId String @map("category_id") @db.Uuid
+
+  /// Integer minor units (1234 = 12.34 USD). `bigint` because the contract allows
+  /// up to 999_999_999_999, which overflows `int4`. Still exact as a JS number
+  /// (well under 2^53); the row mapper narrows it at the wire boundary.
+  amountMinor BigInt @map("amount_minor")
+
+  /// ISO 4217, denormalised from the user so an expense row is self-describing.
+  currency String @db.Char(3)
+
+  /// Calendar DATE. The day the user assigned to this expense; monthly totals
+  /// bucket on it. Deliberately not a timestamp — it must not shift by timezone.
+  date DateTime @db.Date
+
+  note String? @db.VarChar(500)
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime  @map("updated_at") @db.Timestamptz(3)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)
+  revision  Int
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, revision])
+  /// `GET /v1/expenses?from&to` filters by date within a user, newest first.
+  @@index([userId, date(sort: Desc)])
+  @@index([userId, categoryId])
+  @@map("expenses")
+}
+
+/// A refresh token, stored only as a SHA-256 hash so a database dump cannot be
+/// replayed as a session, and so a token can be revoked.
+///
+/// Tokens are single-use: refreshing stamps `revokedAt` on the presented token and
+/// issues a new one. Replaying an already-rotated token is therefore rejected.
+model RefreshToken {
+  id        String    @id @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash") @db.Char(64)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(3)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Revoke-all-sessions and expired-token pruning both scan by user.
+  @@index([userId])
+  @@map("refresh_tokens")
+}

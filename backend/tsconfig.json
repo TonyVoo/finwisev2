@@ -1,0 +1,12 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"],
+    // The generated Prisma client is TypeScript source and imports with explicit `.ts`
+    // extensions; both it and our own code are run through `tsx`, never `tsc`.
+    "allowImportingTsExtensions": true
+  },
+  "include": ["src/**/*.ts", "tests/**/*.ts", "*.ts"],
+  "exclude": ["src/db/generated/**"]
+}
