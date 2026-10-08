@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "Expense Tracker",
+    "slug": "expense-tracker",
+    "version": "0.1.0",
+    "scheme": "expensetracker",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.expensetracker.app"
+    },
+    "android": {
+      "package": "com.expensetracker.app",
+      "edgeToEdgeEnabled": true
+    },
+    "plugins": ["expo-router", "expo-background-task"],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "apiBaseUrl": null
+    }
+  }
+}
