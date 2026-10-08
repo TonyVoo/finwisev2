@@ -1,0 +1,222 @@
+import { API_ROUTES, routeKey } from '@expense-tracker/shared';
+import { createApiClient, resolvePath } from '@/api/client';
+import { ENDPOINTS } from '@/api/endpoints';
+import { ApiRequestError, ResponseShapeError, UNKNOWN_ERROR_CODE } from '@/api/errors';
+import type { Transport, TransportRequest, TransportResponse } from '@/api/transport';
+
+function clientReturning(response: TransportResponse) {
+  const seen: TransportRequest[] = [];
+  const transport: Transport = async (request) => {
+    seen.push(request);
+    return response;
+  };
+  return { client: createApiClient({ transport }), seen };
+}
+
+const CATEGORY = {
+  id: '0192f5a0-0000-7000-8000-000000000001',
+  name: 'Groceries',
+  color: '#2F8044',
+  isDefault: false,
+  createdAt: '2026-10-08T10:00:00.000Z',
+  updatedAt: '2026-10-08T10:00:00.000Z',
+  deletedAt: null,
+  revision: 7,
+};
+
+describe('the endpoint table', () => {
+  // The contract is the source of truth for the HTTP surface. A route added there and
+  // forgotten here would surface as a 404 from a route that exists.
+  it('covers every route in the contract, and no others', () => {
+    const declared = Object.values(ENDPOINTS).map((endpoint) => routeKey(endpoint.route));
+    const contract = API_ROUTES.map(routeKey);
+    expect([...declared].sort()).toEqual([...contract].sort());
+  });
+
+  it('keys each endpoint by the operation it implements', () => {
+    for (const [name, endpoint] of Object.entries(ENDPOINTS)) {
+      expect(endpoint.route.operationId).toBe(name);
+    }
+  });
+
+  it('takes the auth requirement from the contract rather than restating it', () => {
+    expect(ENDPOINTS.getHealth.route.auth).toBe(false);
+    expect(ENDPOINTS.login.route.auth).toBe(false);
+    // Refresh is unauthenticated by design: the access token it replaces has expired.
+    expect(ENDPOINTS.refresh.route.auth).toBe(false);
+    expect(ENDPOINTS.pullSync.route.auth).toBe(true);
+    expect(ENDPOINTS.pushSync.route.auth).toBe(true);
+  });
+
+  it('expects no body only where the contract answers 204', () => {
+    for (const endpoint of Object.values(ENDPOINTS)) {
+      expect(endpoint.responseSchema === null).toBe(endpoint.route.successStatus === 204);
+    }
+  });
+});
+
+describe('resolvePath', () => {
+  it('substitutes path parameters', () => {
+    expect(resolvePath('/v1/categories/{id}', { id: 'abc' })).toBe('/v1/categories/abc');
+  });
+
+  it('percent-encodes them', () => {
+    expect(resolvePath('/v1/expenses/{id}', { id: 'a/b' })).toBe('/v1/expenses/a%2Fb');
+  });
+
+  // Sending the literal `{id}` would read as a 404 from a route that exists.
+  it('throws rather than sending an unsubstituted placeholder', () => {
+    expect(() => resolvePath('/v1/categories/{id}')).toThrow(/Missing path parameter id/);
+  });
+});
+
+describe('createApiClient', () => {
+  it('sends the method, path and auth flag the contract declares', async () => {
+    const { client, seen } = clientReturning({
+      status: 200,
+      body: { data: [CATEGORY] },
+      requestId: null,
+    });
+
+    await client.listCategories();
+
+    expect(seen[0]).toMatchObject({ method: 'get', path: '/v1/categories', requiresAuth: true });
+  });
+
+  it('substitutes the id into a parameterised route', async () => {
+    const { client, seen } = clientReturning({
+      status: 200,
+      body: { data: CATEGORY },
+      requestId: null,
+    });
+
+    await client.updateCategory(CATEGORY.id, { name: 'Food' });
+
+    expect(seen[0]).toMatchObject({
+      method: 'patch',
+      path: `/v1/categories/${CATEGORY.id}`,
+      body: { name: 'Food' },
+    });
+  });
+
+  it('passes a query through to the transport', async () => {
+    const { client, seen } = clientReturning({
+      status: 200,
+      body: {
+        changes: [],
+        nextCursor: 12,
+        hasMore: false,
+        resyncRequired: false,
+        serverTime: '2026-10-08T10:00:00.000Z',
+      },
+      requestId: null,
+    });
+
+    await client.pullSync({ since: 12, limit: 200 });
+
+    expect(seen[0]!.query).toEqual({ since: 12, limit: 200 });
+  });
+
+  it('returns the parsed body on success', async () => {
+    const { client } = clientReturning({
+      status: 200,
+      body: { data: [CATEGORY] },
+      requestId: null,
+    });
+
+    await expect(client.listCategories()).resolves.toEqual({ data: [CATEGORY] });
+  });
+
+  it('resolves to nothing for a 204 route', async () => {
+    const { client } = clientReturning({ status: 204, body: undefined, requestId: null });
+    await expect(client.logout({ refreshToken: 'r' })).resolves.toBeUndefined();
+  });
+
+  describe('errors', () => {
+    it('turns the error envelope into an ApiRequestError', async () => {
+      const { client } = clientReturning({
+        status: 409,
+        body: {
+          error: {
+            code: 'category_name_taken',
+            message: 'Another category already uses that name',
+          },
+        },
+        requestId: 'req-9',
+      });
+
+      const error = await client.createCategory({ name: 'Groceries' }).catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(ApiRequestError);
+      expect(error).toMatchObject({
+        status: 409,
+        // The stable machine-readable half of the contract - this is what callers branch
+        // on, never `message`.
+        code: 'category_name_taken',
+        requestId: 'req-9',
+      });
+    });
+
+    it('keeps validation details so a form can mark its fields', async () => {
+      const { client } = clientReturning({
+        status: 400,
+        body: {
+          error: {
+            code: 'validation_error',
+            message: 'Request failed validation',
+            details: { issues: [{ path: 'amountMinor', message: 'must be an integer' }] },
+          },
+        },
+        requestId: null,
+      });
+
+      const error = (await client
+        .createExpense({
+          categoryId: CATEGORY.id,
+          amountMinor: 1,
+          date: '2026-10-08',
+        })
+        .catch((e: unknown) => e)) as ApiRequestError;
+
+      expect(error.details?.issues).toEqual([
+        { path: 'amountMinor', message: 'must be an integer' },
+      ]);
+    });
+
+    // A proxy's HTML 502 is still a real status worth reporting, so it degrades rather
+    // than throwing a second error that hides the first.
+    it('degrades to an unknown code when the body is not the envelope', async () => {
+      const { client } = clientReturning({ status: 502, body: undefined, requestId: null });
+
+      const error = (await client.getMe().catch((e: unknown) => e)) as ApiRequestError;
+
+      expect(error).toBeInstanceOf(ApiRequestError);
+      expect(error.code).toBe(UNKNOWN_ERROR_CODE);
+      expect(error.status).toBe(502);
+    });
+
+    it('rejects a success body the contract does not describe', async () => {
+      const { client } = clientReturning({
+        status: 200,
+        // `revision` missing: a shape the shared schema does not allow.
+        body: { data: [{ ...CATEGORY, revision: undefined }] },
+        requestId: null,
+      });
+
+      // Loud, rather than letting `undefined` spread through the sync engine as a
+      // cursor. Both sides ship from the same `shared/`, so this is a bug, not an
+      // older server.
+      await expect(client.listCategories()).rejects.toThrow(ResponseShapeError);
+    });
+
+    it('names the offending field in the shape error', async () => {
+      const { client } = clientReturning({
+        status: 200,
+        body: { data: { ...CATEGORY, color: 'rebeccapurple' } },
+        requestId: null,
+      });
+
+      await expect(client.deleteCategory(CATEGORY.id)).rejects.toThrow(/color/);
+    });
+  });
+});
