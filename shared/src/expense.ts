@@ -61,25 +61,39 @@ export const ExpenseUpdateRequest = z
  * Values arrive as strings on the query string, so numeric and boolean parameters are
  * coerced here — this is the one place in the contract where coercion is correct.
  */
-export const ExpenseListQuery = z.strictObject({
-  from: CalendarDate.optional().describe('Inclusive lower bound on `date` (YYYY-MM-DD).'),
-  to: CalendarDate.optional().describe('Inclusive upper bound on `date` (YYYY-MM-DD).'),
-  categoryId: Uuid.optional().describe('Restrict to one category.'),
-  limit: z.coerce
-    .number()
-    .int()
-    .min(1)
-    .max(LIMITS.EXPENSE_LIST_MAX_LIMIT)
-    .optional()
-    .describe('Page size, 1-200. Defaults to 50.'),
-  cursor: OpaqueCursor.optional().describe(
-    "Opaque cursor from the previous page's `nextCursor`. An undecodable value is `invalid_cursor`.",
-  ),
-  includeDeleted: z
-    .stringbool()
-    .optional()
-    .describe('Include tombstoned expenses. Defaults to false. Mainly for debugging and tests.'),
-});
+export const ExpenseListQuery = z
+  .strictObject({
+    from: CalendarDate.optional().describe('Inclusive lower bound on `date` (YYYY-MM-DD).'),
+    to: CalendarDate.optional().describe('Inclusive upper bound on `date` (YYYY-MM-DD).'),
+    categoryId: Uuid.optional().describe('Restrict to one category.'),
+    limit: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(LIMITS.EXPENSE_LIST_MAX_LIMIT)
+      .optional()
+      .describe('Page size, 1-200. Defaults to 50.'),
+    cursor: OpaqueCursor.optional().describe(
+      "Opaque cursor from the previous page's `nextCursor`. An undecodable value is `invalid_cursor`.",
+    ),
+    includeDeleted: z
+      .stringbool()
+      .optional()
+      .describe('Include tombstoned expenses. Defaults to false. Mainly for debugging and tests.'),
+  })
+  /**
+   * `to` must not be earlier than `from`.
+   *
+   * Both are `YYYY-MM-DD` and zero-padded, so a string comparison is a date comparison —
+   * no parsing, and no timezone to get wrong. Declared here rather than in the handler so
+   * the rule is part of the contract the client reads, instead of a server behaviour the
+   * client discovers. A reversed range would otherwise return an empty page, which reads
+   * as "no expenses that month" rather than "you swapped the bounds".
+   */
+  .refine((v) => v.from === undefined || v.to === undefined || v.from <= v.to, {
+    error: '`to` must not be earlier than `from`',
+    path: ['to'],
+  });
 
 export const ExpenseListResponse = z.strictObject({
   data: z
