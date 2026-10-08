@@ -471,7 +471,17 @@ paths:
         compared case-insensitively. `color` is assigned by the server when omitted.
 
         Creating with an `id` that already exists for this user is **not** an upsert here —
-        use `POST /v1/sync` for upsert semantics.
+        use `POST /v1/sync` for upsert semantics. It is, however, **idempotent**: the
+        re-post returns `201` with the stored row exactly as it is, the fields in the
+        retried body are ignored rather than applied, and no new `revision` is assigned.
+        A client whose response was dropped can therefore retry safely; a client that
+        wants to change a field uses `PATCH`. (Resolves the `[CONFIRM]` on `EXP-02` in
+        `docs/qa/TEST_PLAN.md`, which read "not an upsert" as "it fails" — nothing in the
+        enumerated error codes could have expressed that failure.)
+
+        An `id` already in use by **another** account is `400 validation_error`: the id is
+        the global primary key, so the server cannot honour the create, and it must not
+        answer with a row the caller does not own. The response names no owner.
       x-errorCodes:
         - validation_error
         - malformed_request
@@ -548,7 +558,10 @@ paths:
         default `Uncategorized` category can be renamed and recoloured — it just cannot be
         deleted.
 
-        A category belonging to another user, or one that does not exist, is `404`.
+        A category belonging to another user, one that does not exist, and one that has
+        been tombstoned are all `404`. There is no un-delete on this path — `deletedAt` is
+        absent from every update schema — so a `200` here would tell the client a deleted
+        row was live again. `POST /v1/sync` is the only way a row comes back.
       x-errorCodes:
         - validation_error
         - malformed_request
@@ -791,8 +804,16 @@ paths:
 
         Supply `id` (a client-minted UUIDv7) so a row created offline keeps its identity;
         omit it and the server mints one. `categoryId` must name a live category of this
-        user, otherwise `422 unknown_category`. `currency` defaults to the user's
-        currency; in the MVP it must equal it, since there is no conversion.
+        user, otherwise `422 unknown_category`. "Live category of this user" excludes a
+        tombstoned one and another user's, and all three failures report the same
+        `unknown_category` so the field cannot be used to probe for ids. `currency`
+        defaults to the user's currency; in the MVP it must equal it, since there is no
+        conversion — any other code is `400 validation_error`.
+
+        Re-posting the same `id` is **idempotent**, with the same rules as
+        `POST /v1/categories`: `201` with the stored row, the retried body's fields
+        ignored, no new `revision`, and an id owned by another account rejected as
+        `400 validation_error`.
       x-errorCodes:
         - validation_error
         - malformed_request
@@ -848,7 +869,9 @@ paths:
         Partial update: send only the fields you are changing, at least one of them.
         `note` may be set to `null` to clear it.
 
-        An expense belonging to another user, or one that does not exist, is `404`.
+        An expense belonging to another user, one that does not exist, and one that has
+        been tombstoned are all `404`, for the same reason as `PATCH /v1/categories/{id}`:
+        this path has no un-delete, so it must not report a deleted row as live.
       x-errorCodes:
         - validation_error
         - malformed_request

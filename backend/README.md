@@ -131,5 +131,19 @@ A few decisions that are easy to undo by accident:
   absent row is indistinguishable from one the client never saw.
 - **Money is `amountMinor` (integer) + a 3-letter `currency`.** Never a float, ever.
 - **`expenses.date` is a calendar DATE**, not a timestamp — it must not shift by timezone.
+  `db/mappers.ts` reads and writes it through UTC, because anything that touches the local
+  zone turns `2026-10-06` into `2026-10-05` on every server west of Greenwich.
+- **Deleting a category reassigns its expenses to the `isDefault` one**, in the same
+  transaction, and never cascade-deletes them. The fallback is resolved by the flag, never
+  by matching the name `Uncategorized`, which a rename would break. The delete locks the
+  category `FOR UPDATE` and an expense write locks its category `FOR KEY SHARE`, which is
+  what stops a create racing the delete and landing on a dead category.
+- **`GET /v1/expenses` is keyset-paginated** on `(date DESC, id DESC)`, not offset. Offset
+  pages skip or repeat rows whenever a write lands between two requests, and with a client
+  syncing in the background that is the normal case. An undecodable cursor is a loud
+  `400 invalid_cursor`, never a silently empty page — an empty page reads as "no more
+  data" and the client stops paginating with rows still unread.
+- **`POST` is idempotent on a re-posted id, but is not an upsert.** The stored row comes
+  back unchanged with no new `revision`; `PATCH` is how a field changes.
 - **Every non-2xx is the contract's error envelope**, `{ error: { code, message, details? } }`,
   produced centrally by `middleware/errorHandler.ts`.
