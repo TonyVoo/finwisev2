@@ -2,10 +2,10 @@
 
 Two files, one contract:
 
-| File | Is the source of truth for |
-| --- | --- |
-| [`openapi.yaml`](./openapi.yaml) | The **HTTP surface** — paths, methods, status codes, headers, and the error `code` each operation can return. |
-| [`../../shared/src/`](../../shared/src) | The **bodies** — one zod schema per request/response body, with the TypeScript types inferred from them. |
+| File                                    | Is the source of truth for                                                                                    |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| [`openapi.yaml`](./openapi.yaml)        | The **HTTP surface** — paths, methods, status codes, headers, and the error `code` each operation can return. |
+| [`../../shared/src/`](../../shared/src) | The **bodies** — one zod schema per request/response body, with the TypeScript types inferred from them.      |
 
 They are checked against each other by `shared/tests/contract.test.ts`, which fails the
 build if they disagree. Neither one is "the docs for" the other.
@@ -18,7 +18,7 @@ types from it. There are no hand-written interfaces sitting alongside, so changi
 without changing `shared/` breaks the build rather than breaking a device in the field.
 
 `openapi.yaml` carries what a zod schema cannot: which status a given failure comes back
-as, which headers are set, and the prose explaining *why* the protocol is shaped this way.
+as, which headers are set, and the prose explaining _why_ the protocol is shaped this way.
 Each operation also lists its possible error codes under `x-errorCodes`.
 
 ## Using it
