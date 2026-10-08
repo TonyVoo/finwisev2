@@ -4,6 +4,8 @@ import { jsonBodyErrors, parseJsonBody, requireJsonContentType } from './middlew
 import { requestId } from './middleware/requestId.ts';
 import { requireAuth } from './middleware/requireAuth.ts';
 import { authRouter } from './routes/auth.ts';
+import { categoriesRouter } from './routes/categories.ts';
+import { expensesRouter } from './routes/expenses.ts';
 import { healthRouter } from './routes/health.ts';
 import { meRouter } from './routes/me.ts';
 
@@ -58,6 +60,8 @@ export function createApp(): Express {
   const authed = Router();
   authed.use(requireAuth);
   authed.use(meRouter);
+  authed.use(categoriesRouter);
+  authed.use(expensesRouter);
   app.use('/v1', authed);
 
   app.use(notFoundHandler);
