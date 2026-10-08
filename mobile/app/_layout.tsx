@@ -4,8 +4,8 @@ import { Slot } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { AppProviders } from '@/app/AppProviders';
-import { type AppContainer, createAppContainer } from '@/app/container';
+import { AppProviders } from '@/bootstrap/AppProviders';
+import { type AppContainer, createAppContainer } from '@/bootstrap/container';
 
 /**
  * The root route: build the app container, then render the tree.

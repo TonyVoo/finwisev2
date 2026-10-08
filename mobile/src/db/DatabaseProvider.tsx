@@ -5,7 +5,7 @@ import type { SqliteDatabase } from './sqlite';
  * Makes the open database available to hooks.
  *
  * The handle is passed in rather than opened here: opening it is async and has to finish
- * before the first screen renders (see `src/app/bootstrap.ts`), and taking it as a prop
+ * before the first screen renders (see `src/bootstrap/container.ts`), and taking it as a prop
  * is also what lets tests mount the real hooks over a `node:sqlite` database.
  */
 const DatabaseContext = createContext<SqliteDatabase | null>(null);

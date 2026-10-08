@@ -6,16 +6,14 @@
     "scheme": "expensetracker",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.expensetracker.app"
     },
     "android": {
-      "package": "com.expensetracker.app",
-      "edgeToEdgeEnabled": true
+      "package": "com.expensetracker.app"
     },
-    "plugins": ["expo-router", "expo-background-task"],
+    "plugins": ["expo-router", "expo-background-task", "expo-sqlite"],
     "experiments": {
       "typedRoutes": true
     },
