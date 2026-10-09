@@ -51,6 +51,7 @@ model User {
   categories      Category[]
   expenses        Expense[]
   refreshTokens   RefreshToken[]
+  syncMutations   SyncMutation[]
 
   @@map("users")
 }
@@ -65,6 +66,15 @@ model User {
 model RevisionCounter {
   userId       String @id @map("user_id") @db.Uuid
   lastRevision Int    @default(0) @map("last_revision")
+
+  /// The highest `revision` ever carried by a tombstone that has since been pruned.
+  ///
+  /// This is the 90-day horizon, expressed in the only currency a sync cursor
+  /// understands. A client holding `since < pruned_through_revision` is missing a
+  /// delete it can no longer be told about, so `GET /v1/sync` answers
+  /// `resyncRequired: true` rather than an incrementally wrong change set that
+  /// resurrects the row. Only ever moves forward; 0 means nothing has been pruned.
+  prunedThroughRevision Int @default(0) @map("pruned_through_revision")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -138,6 +148,51 @@ model Expense {
   @@index([userId, date(sort: Desc)])
   @@index([userId, categoryId])
   @@map("expenses")
+}
+
+/// The idempotency ledger for `POST /v1/sync`: one row per `clientMutationId`.
+///
+/// A push retried after a dropped response must be a no-op that replays the original
+/// outcome. Without that, a flaky-network retry double-applies — the single most
+/// common offline-sync bug. The guarantee has to live in the database rather than in
+/// the resolver, because two retries can arrive concurrently on two connections: the
+/// composite primary key is what makes the second one lose, and the loser replays the
+/// winner's result instead of applying anything.
+///
+/// Deliberately stores the *outcome*, not a response snapshot. `status` and `error`
+/// are replayed verbatim, while `record` is re-read from the live row at replay time,
+/// so a replay still carries the authoritative row rather than a stale copy of one.
+model SyncMutation {
+  userId           String @map("user_id") @db.Uuid
+  clientMutationId String @map("client_mutation_id") @db.Uuid
+
+  /// `category` | `expense`. Not a Prisma enum: the wire values are owned by
+  /// `SYNC_ENTITIES` in `shared/`, and a second enum here could disagree with it.
+  entity String @db.VarChar(16)
+
+  /// The row the mutation addressed, so a replay can re-read it.
+  recordId String @map("record_id") @db.Uuid
+
+  /// `applied` | `conflict_server_wins` | `invalid`, per `SYNC_PUSH_STATUSES`.
+  status String @db.VarChar(24)
+
+  /// SHA-256 over the canonicalised request item. A retry is byte-identical, so a
+  /// *differing* hash under the same id means the client lost track of its outbox —
+  /// reported as `mutation_id_reused` rather than silently accepted, which would hide
+  /// the bug and apply a mutation under someone else's idempotency key.
+  payloadHash String @map("payload_hash") @db.Char(64)
+
+  /// The per-record error envelope for an `invalid` outcome; null otherwise.
+  error Json? @db.JsonB
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Unique per user, which is the whole point. Keyed user-first so the lookup on
+  /// every pushed item is a primary-key probe.
+  @@id([userId, clientMutationId])
+  @@map("sync_mutations")
 }
 
 /// A refresh token, stored only as a SHA-256 hash so a database dump cannot be
