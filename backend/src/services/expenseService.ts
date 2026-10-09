@@ -39,7 +39,7 @@ import type { Expense as ExpenseRow, Prisma } from '../db/generated/client.ts';
  * account on every write: the alternative is a `GET /v1/me` the client is trusted to
  * have read correctly.
  */
-async function accountCurrency(db: Db, userId: string): Promise<string> {
+export async function accountCurrency(db: Db, userId: string): Promise<string> {
   const user = await db.user.findUnique({ where: { id: userId }, select: { currency: true } });
   if (!user) {
     // The token verified, so the account existed when it was minted. `/v1/me` reports the
@@ -55,7 +55,7 @@ async function accountCurrency(db: Db, userId: string): Promise<string> {
  * A mismatch is `400 validation_error`, not `422`: there is no conversion in the MVP, so
  * `EUR` on a `USD` account is a malformed request rather than a referential failure.
  */
-function requireAccountCurrency(supplied: string | undefined, accounts: string): string {
+export function requireAccountCurrency(supplied: string | undefined, accounts: string): string {
   if (supplied === undefined) return accounts;
   if (supplied !== accounts) {
     throw problems.validation(

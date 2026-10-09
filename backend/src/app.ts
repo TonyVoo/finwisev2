@@ -8,6 +8,7 @@ import { categoriesRouter } from './routes/categories.ts';
 import { expensesRouter } from './routes/expenses.ts';
 import { healthRouter } from './routes/health.ts';
 import { meRouter } from './routes/me.ts';
+import { syncRouter } from './routes/sync.ts';
 
 /**
  * Build the Express app.
@@ -62,6 +63,7 @@ export function createApp(): Express {
   authed.use(meRouter);
   authed.use(categoriesRouter);
   authed.use(expensesRouter);
+  authed.use(syncRouter);
   app.use('/v1', authed);
 
   app.use(notFoundHandler);

@@ -50,6 +50,17 @@ function assignColor(existingCount: number): string {
 }
 
 /**
+ * The colour to give a category this user is creating without one.
+ *
+ * Shared with the sync push path so a category created offline gets a swatch from the
+ * same cycle as one created online — two code paths picking colours by different rules
+ * would show the user a different palette depending on whether they had signal.
+ */
+export async function assignCategoryColor(db: Db, userId: string): Promise<string> {
+  return assignColor(await db.category.count({ where: { userId, deletedAt: null } }));
+}
+
+/**
  * Sort as the contract promises: by `name`, case-insensitively, ties broken by `id`.
  *
  * Done here rather than in `ORDER BY` because Postgres orders text by the database's
@@ -224,14 +235,42 @@ export async function requireLiveCategoryForWrite(
   userId: string,
   categoryId: string,
 ): Promise<void> {
-  const rows = await db.$queryRaw<{ id: string }[]>`
-    SELECT "id"
-      FROM "categories"
-     WHERE "id" = ${categoryId}::uuid
-       AND "user_id" = ${userId}::uuid
-       AND "deleted_at" IS NULL
-       FOR KEY SHARE
-  `;
+  return requireOwnCategoryForWrite(db, userId, categoryId, { requireLive: true });
+}
+
+/**
+ * The general form of {@link requireLiveCategoryForWrite}, for the one caller that must
+ * not require a *live* category: a `POST /v1/sync` item that tombstones an expense.
+ *
+ * Deleting an expense whose category the user already cleaned up has to succeed. The
+ * row's `category_id` still points at the tombstoned category — a category delete
+ * reassigns only *live* expenses — so insisting on a live category would refuse the
+ * delete and leave the client retrying it forever. `requireLive: false` still demands
+ * that the category exist and belong to the caller, which is what the foreign key needs
+ * and what keeps another user's category id from being usable here.
+ */
+export async function requireOwnCategoryForWrite(
+  db: Db,
+  userId: string,
+  categoryId: string,
+  options: { readonly requireLive: boolean },
+): Promise<void> {
+  const rows = options.requireLive
+    ? await db.$queryRaw<{ id: string }[]>`
+        SELECT "id"
+          FROM "categories"
+         WHERE "id" = ${categoryId}::uuid
+           AND "user_id" = ${userId}::uuid
+           AND "deleted_at" IS NULL
+           FOR KEY SHARE
+      `
+    : await db.$queryRaw<{ id: string }[]>`
+        SELECT "id"
+          FROM "categories"
+         WHERE "id" = ${categoryId}::uuid
+           AND "user_id" = ${userId}::uuid
+           FOR KEY SHARE
+      `;
   if (rows.length === 0) throw problems.unknownCategory();
 }
 
