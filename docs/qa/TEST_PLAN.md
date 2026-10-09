@@ -14,6 +14,12 @@ first assumed — `API-02`, `API-03` and `API-04`, where a bad row in a push bat
 is the hazard a plan written early carries and the reason it is re-read against the code before
 being executed rather than after.
 
+Since then, two gaps that were filed as questions for Chief have been closed by reading the landed
+code instead of waiting for an answer, and both turned out to be defects rather than decisions:
+**GAP 4** (two defects in `mobile/`, carried by `AUTH-18` / `AUTH-19`) and **GAP 3** (the
+idempotency ledger is never pruned, carried by `SYNC-39` / `SYNC-40`). No open gap is now a
+blocking decision for Chief; see the register at the top of §11.
+
 Inputs this plan was derived from, and the authority order when they disagree:
 
 1. [`docs/api/openapi.yaml`](../api/openapi.yaml) — the HTTP surface (statuses, headers, codes).
@@ -1159,12 +1165,56 @@ common offline-sync bug", so these cases get the proxy harness from §2 rather t
   ledger exists (`sync_mutations`, with a `created_at`), but **nothing prunes it**:
   `pruneTombstones` deletes only from `expenses` and `categories`, and no other code path deletes
   a `sync_mutations` row. So today the answer is "forever", which is correct for de-duplication
-  and wrong for a table that takes one row per mutation per user with no ceiling.
+  and wrong for a table that takes one row per mutation per user with no ceiling. `SYNC-39` and
+  `SYNC-40` now pin that defect as two failing automated cases, so the *absence* of a window is
+  covered even while this case — which needs a window to exist before it can assert its boundary —
+  stays parked.
 - **What to assert once it closes** The boundary in both directions: a push one tick inside the
   window replays the recorded outcome, one tick outside is processed as new. Until a window is
   stated, `SYNC-09`–`SYNC-12` cover the part that matters for correctness (a retry inside any
   plausible window never double-applies) and this case covers only the part that needs a number.
   Not executed until GAP 3 closes.
+
+### SYNC-39 — The ledger is never pruned, so `sync_mutations` grows without a ceiling
+
+- **Layer** API (automated: `backend/tests/sync.idempotency.test.ts`)
+- **Pre** `F-FRESH`
+- **Steps**
+  1. Push one category with `clientMutationId: M`
+  2. Backdate that ledger row's `created_at` to 91 days ago — one day past the tombstone horizon
+  3. Run `pruneTombstones(db, userId)`
+- **Expect** **Expected to FAIL, and the failure is the point.** The ledger row survives. The
+  pruner issues two `DELETE`s, against `expenses` and `categories`, and none against
+  `sync_mutations`; `created_at` is written by the schema default and read by nothing. The table
+  therefore takes one row per mutation per user and never gives one back.
+- **Why it is filed for operations and not for correctness** Remembering every id forever
+  de-duplicates everything, so no retry is ever double-applied — the property `SYNC-09`–`SYNC-12`
+  defend is safe today. What is not safe is the growth, and the fact that the window `SYNC-13`
+  wants to assert does not exist to be asserted.
+- **Guard** A sibling case (deliberately not expected-fail) pushes a row aged 89 days and asserts
+  it *survives* the prune. It is vacuous while nothing prunes the ledger and is kept on purpose:
+  when the fix lands it is the only thing standing between it and over-pruning, which would break
+  de-duplication inside the retry window. Leaking rows costs disk; pruning too early costs the
+  user their data.
+
+### SYNC-40 — The pruner job cannot find a user whose only stale rows are in the ledger
+
+- **Layer** API (automated: `backend/tests/sync.idempotency.test.ts`)
+- **Pre** `F-FRESH`, with **no tombstone anywhere on the account** — one pushed mutation and
+  nothing deleted
+- **Steps**
+  1. Backdate the ledger row's `created_at` to 91 days ago
+  2. Run `pruneAllTombstones()`
+  3. Read the returned `users` count
+- **Expect** **Expected to FAIL.** `users` is `0`. `pruneAllTombstones` selects the accounts to
+  sweep with a `UNION ALL` over tombstoned `categories` and `expenses` only, so an account that
+  has made mutations but deleted nothing is never passed to `pruneTombstones` at all.
+- **Why it is separate from `SYNC-39`** Because the obvious fix — a third `DELETE` inside
+  `pruneTombstones` — closes `SYNC-39` and leaves this one open, and the user it leaves behind is
+  the ordinary one: somebody who adds expenses and never deletes a category. Kept as its own case,
+  asserting only the discovery count, so the two halves go green independently and neither can
+  mask the other. Verified by applying both halves of the candidate fix locally, watching exactly
+  these two cases turn red, then reverting it.
 
 ### 8.4 Deletes must not come back
 
@@ -1933,20 +1983,31 @@ no new `revision`, and another account's id rejected as `400 validation_error`.
 
 ### Still open
 
-| #   | Gap                                                               | Severity | Blocks               |
-| --- | ----------------------------------------------------------------- | -------- | -------------------- |
-| 3   | `clientMutationId` retention window — and the ledger never prunes | High     | `SYNC-13`            |
-| 5   | A future-dated row arriving by sync is unreachable in every view  | Medium   | `EDGE-04`            |
-| 7b  | `immutable_field` is unreachable on the **REST** path             | Low      | `API-04` (half)      |
-| 9   | No E2E driver is named in `docs/PLAN.md` §7                       | Low      | 7 cases run manual   |
-| 10  | Rate limits are not quantified                                    | Low      | `API-09`             |
+| #   | Gap                                                              | Severity | Blocks             |
+| --- | ---------------------------------------------------------------- | -------- | ------------------ |
+| 3   | The ledger never prunes — retention is "forever" (filed, backend) | Medium   | `SYNC-13`          |
+| 5   | A future-dated row arriving by sync is unreachable in every view | Medium   | `EDGE-04`          |
+| 7b  | `immutable_field` is unreachable on the **REST** path            | Low      | `API-04` (half)    |
+| 9   | No E2E driver is named in `docs/PLAN.md` §7                      | Low      | 7 cases run manual |
+| 10  | Rate limits are not quantified                                   | Low      | `API-09`           |
 
-**GAP 3 is now the only open gap that needs a decision from Chief.** GAP 4 left this table this
-run: reading the landed client answered it, and what it turned up is two defects in `mobile/`
-rather than a question — the local database is never wiped on a session clear (safe, and contrary
-to the design) and is never partitioned by user (a cross-account data leak). Both are for Mobile
-Dev and are carried by `AUTH-18` / `AUTH-19`. See GAP 4 below for the detail; `AUTH-12` is
-unparked and executable.
+**No open gap is now a blocking decision for Chief.** Two left that state in consecutive runs, both
+by being read against the landed code rather than waited on:
+
+- **GAP 4** stopped being a question when the client answered it, and became two defects in
+  `mobile/`: the local database is never wiped on a session clear (safe, and contrary to the
+  design) and is never partitioned by user (a cross-account data leak). Both are Mobile Dev's,
+  carried by `AUTH-18` / `AUTH-19`; `AUTH-12` is unparked and executable.
+- **GAP 3** stopped being a question this run for the same reason. "How long does the server
+  remember a mutation id" has an answer in the code — forever, because nothing prunes the ledger —
+  so it is a defect against `backend/` with `SYNC-39` / `SYNC-40` behind it, not a retention policy
+  someone must choose before QA can proceed. Severity drops High → Medium with it: the unbounded
+  table is real, the correctness property it guards is not at risk.
+
+What is left needs its owner's input rather than a ruling, and none of it blocks executing §8:
+GAP 5 is the Designer's, GAP 9 wants Mobile Dev's agreement on a driver before 7 cases stop being
+manual, GAP 10 wants numbers from whoever sets the limits, and GAP 7b is a contract-hygiene choice
+between two one-line fixes.
 
 ### GAP 1 — Who seeds the default categories, and the duplicate-six risk — **CLOSED**
 
@@ -2026,47 +2087,47 @@ a tombstoned category. `SYNC-23`'s second and third bullets cover both halves of
 outbox survives and drains, and that a peer editing one of those expenses gets a per-record
 `invalid` with `unknown_category` and recovers through `02-offline-and-sync.md` §5.1.
 
-### GAP 3 — `clientMutationId` retention window is unspecified
+### GAP 3 — `clientMutationId` retention: the answer is "forever" — **CONFIRMED DEFECT, NOT A DECISION**
 
 `docs/PLAN.md` §Idempotency and the push description both require a replayed `clientMutationId` to
 be a no-op, and the contract calls a double-apply "the most common offline-sync bug". Neither says
-**how long** the server remembers a processed id.
+**how long** the server remembers a processed id. I raised that as a question for Chief across
+three runs. It was never a question: the pruner answers it, so this is now a defect against
+`backend/` with two failing cases behind it.
 
-It cannot be forever in practice — the table grows without bound — so there is a window, and its
-length is the difference between "a retry after a long weekend offline is de-duplicated" and "it
-is not". With a 60-day refresh token and an app designed around being offline for a week, the
-window has to be stated to be relied on.
+**The ledger is never pruned.** `pruneTombstones` issues two `DELETE`s, against `expenses` and
+`categories`. Nothing in `backend/src` deletes a `sync_mutations` row, and `created_at` is written
+by the schema default and read by nothing. The retention window is therefore unbounded, and one row
+accrues per mutation per user forever. Pinned by `SYNC-39`.
 
-**Since filing, this has gone from unspecified to concrete: the answer today is "forever".** The
-ledger landed as `sync_mutations` (one row per `clientMutationId` per user, with a `created_at`
-that nothing reads), and **no code path deletes from it**. `pruneTombstones` deletes from
-`expenses` and `categories` only; `pruneAllTombstones` calls it per user and touches nothing else.
-Grepping the backend for a delete against `sync_mutations` returns nothing outside generated Prisma
-code.
+**And a second finding, which the obvious fix would miss.** `pruneAllTombstones` chooses which
+accounts to sweep with a `UNION ALL` over tombstoned `categories` and `expenses`. So a third
+`DELETE` inside `pruneTombstones` — the cheap fix, and the one I recommended myself — would never
+run for an account that has made mutations but deleted nothing, which is the ordinary user. The job
+needs a third branch in its discovery query too, or the ledger sweep needs to live outside the
+per-user loop. Pinned separately by `SYNC-40`, so neither half can mask the other.
 
-That is the correct answer for de-duplication and the wrong one for a table with no ceiling: it
-grows with every mutation every user ever makes, is never read for rows older than a retry window,
-and is the one table in the schema with no bound on it. `created_at` is already there, which
-suggests pruning was intended and simply has not been written yet.
+**Verified rather than argued.** I applied both halves of the candidate fix to
+`tombstoneService.ts` locally: `SYNC-39` and `SYNC-40` turned red, the 89-day guard stayed green
+(so the candidate does not over-prune), and the other 17 cases in that file were unaffected. Then I
+reverted it — the fix is Backend Dev's to make, not QA's to smuggle in under a test commit. It is
+about six lines.
 
-For most payloads an expired id degrades gracefully: re-applying the identical row with the
-identical `updatedAt` comes back `conflict_server_wins` (ties go to the server), which is
-harmless. It does **not** degrade gracefully for a delete-then-recreate sequence on the same id,
-or for an `invalid` result the client is replaying to re-read.
+**Severity: correctness is safe, operations are not.** Remembering forever de-duplicates
+everything, so no retry double-applies and `SYNC-09`–`SYNC-12` hold today. What is broken is the
+unbounded table, plus the fact that `SYNC-13` cannot assert a boundary that does not exist. Still
+worth doing before `SYNC-09`–`SYNC-13` execute rather than after, because the fix changes what they
+observe.
 
-**What QA needs:** the retention period written down, and a pruner that enforces it, so `SYNC-13`
-can assert a boundary from both sides. "The same 90 days as the tombstone horizon, pruned by the
-same job" is a fine answer and the cheapest one — `pruneTombstones` already runs per user in a
-transaction and already has `now` injected, so the ledger sweep is a third statement in a function
-that exists. It would also keep the two horizons from drifting apart, which matters because a
+**Recommended answer, for whoever takes it:** the same 90 days as the tombstone horizon, swept by
+the same job. `pruneTombstones` already runs per user, in a transaction, with `now` injected and
+`tombstoneHorizon(now)` already computed, so the horizons cannot drift — which matters, because a
 client resyncing at the tombstone horizon is exactly the client most likely to be replaying old
-mutation ids.
-
-Note this is a lower-urgency gap than its High severity suggests on first read: the **correctness**
-property is currently safe, because remembering forever de-duplicates everything. The risk is
-operational (unbounded growth) plus the untested boundary. It is filed High because the fix changes
-behaviour `SYNC-09`–`SYNC-13` assert, so it is much cheaper before those cases are executed than
-after.
+mutation ids. Note this is a *behaviour* change and not only a cleanup: once ids expire, a
+delete-then-recreate on the same id past the window stops being de-duplicated, and an `invalid`
+result a client is replaying in order to re-read stops being replayable. Both are acceptable at 90
+days; neither is at 90 minutes. That is the one judgement call left in it, and it is Backend Dev's
+to make with the number written down.
 
 ### GAP 4 — Does a forced session clear wipe undrained local writes? — **ANSWERED BY THE CODE, AND IT FOUND TWO DEFECTS**
 
@@ -2204,7 +2265,9 @@ question.** `ExpenseUpdateRequest` and `CategoryUpdateRequest` are untouched, so
 rule still fires first and `422 immutable_field` is still unreachable through any REST shape —
 while `openapi.yaml` still advertises `immutable_field` under `x-errorCodes` on four REST
 operations (`POST /v1/categories`, `PATCH /v1/categories/{id}`, `POST /v1/expenses`,
-`PATCH /v1/expenses/{id}`; lines 493, 574, 825, 884).
+`PATCH /v1/expenses/{id}`; lines 493, 574, 825, 884). Re-verified 9 Oct: those four line numbers
+are unchanged, and `immutable_field` has exactly one producer anywhere in `backend/src` —
+`sync/batch.ts` — so no REST handler can emit it.
 
 **What QA needs:** pick one. Drop the code from those four operations, or give the REST validator
 the same mapping `batch.ts` already has — the second is a few lines and makes the two paths agree,

@@ -1,6 +1,7 @@
 import { v7 as uuidv7 } from 'uuid';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { getPrisma } from '../src/db/client.ts';
+import { pruneAllTombstones, pruneTombstones } from '../src/services/tombstoneService.ts';
 import { api } from './support/api.ts';
 import { createExpense, createUser, revisionWatermark, type TestUser } from './support/fixtures.ts';
 import { pull, push, pushOk } from './support/sync.ts';
@@ -464,5 +465,79 @@ describe('an unauthenticated replay', () => {
       });
     expect(response.status).toBe(401);
     expect(await getPrisma().syncMutation.count()).toBe(0);
+  });
+});
+
+/**
+ * The ledger's retention window — QA GAP 3, filed against `pruneTombstones`.
+ *
+ * `sync_mutations` is the one table in the schema with no ceiling. It gains a row per
+ * mutation per user forever: nothing deletes from it, `created_at` is written and never
+ * read, and `pruneTombstones` sweeps `expenses` and `categories` only. Remembering every
+ * id forever is the *safe* answer for de-duplication, which is why this is not a
+ * correctness bug today — it is unbounded growth plus a boundary no test can reach.
+ *
+ * The two `it.fails` cases below are tripwires, not pending work: each passes while the
+ * defect is present and turns red the moment it is fixed, which is the signal to delete
+ * the `.fails` and keep the assertion. They are deliberately orthogonal — one covers
+ * *what* is deleted, the other *which users the job visits* — because a sweep added
+ * inside `pruneTombstones` alone would fix the first and leave the second broken, and a
+ * single combined case would hide that.
+ */
+describe('the idempotency ledger has no retention bound', () => {
+  /** Push one category, then backdate its ledger row's `created_at` by `days`. */
+  async function pushAndAgeLedgerRow(days: number): Promise<void> {
+    const clientMutationId = uuidv7();
+    await pushOk(user, [
+      {
+        entity: 'category',
+        id: uuidv7(),
+        updatedAt: ISO(Date.now() - 60_000),
+        clientMutationId,
+        fields: { name: 'Coffee' },
+      },
+    ]);
+    await getPrisma().syncMutation.update({
+      where: { userId_clientMutationId: { userId: user.user.id, clientMutationId } },
+      data: { createdAt: new Date(Date.now() - days * 24 * 60 * 60 * 1000) },
+    });
+  }
+
+  const ledgerRows = async (): Promise<number> =>
+    getPrisma().syncMutation.count({ where: { userId: user.user.id } });
+
+  it.fails('prunes a ledger entry older than the tombstone horizon', async () => {
+    await pushAndAgeLedgerRow(91);
+
+    await pruneTombstones(getPrisma(), user.user.id);
+
+    // Fails today: the row survives, because no statement in the pruner addresses it.
+    expect(await ledgerRows()).toBe(0);
+  });
+
+  it('leaves a ledger entry inside the horizon alone', async () => {
+    await pushAndAgeLedgerRow(89);
+
+    await pruneTombstones(getPrisma(), user.user.id);
+
+    // Vacuous while nothing prunes the ledger, and deliberately kept: it is the only
+    // guard against the fix over-pruning and breaking de-duplication for a client that
+    // retries inside the window — which is the failure that loses the user's data,
+    // where leaking rows only costs disk.
+    expect(await ledgerRows()).toBe(1);
+  });
+
+  it.fails('visits a user whose only stale rows are in the ledger', async () => {
+    // No tombstone anywhere for this user — just an aged ledger row.
+    await pushAndAgeLedgerRow(91);
+
+    const result = await pruneAllTombstones();
+
+    // Fails today at 0. `pruneAllTombstones` discovers users with a UNION over
+    // tombstoned `categories` and `expenses` only, so this account is never passed to
+    // `pruneTombstones` at all. If this case is still failing once the sweep above is
+    // green, the sweep landed inside `pruneTombstones` and the job that calls it still
+    // cannot find the users who need it.
+    expect(result.users).toBe(1);
   });
 });
