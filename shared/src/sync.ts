@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ApiErrorBody } from './errors.js';
+import { ApiErrorBody, type ErrorCode } from './errors.js';
 import {
   AmountMinor,
   CalendarDate,
@@ -167,6 +167,40 @@ export const SyncPushRequest = z.strictObject({
 
 export const SYNC_PUSH_STATUSES = ['applied', 'conflict_server_wins', 'invalid'] as const;
 
+/**
+ * The `error.code` values an `invalid` push result may carry.
+ *
+ * Declared here so the set is a contract fact rather than whatever the server happened
+ * to throw. A client switches on these to decide what to do with the local row, and the
+ * five answers are genuinely different recoveries:
+ *
+ * - `validation_error` — the row is malformed or incomplete for a create. Not fixable by
+ *   retrying; drop the mutation or repair the local row.
+ * - `unknown_category` — `categoryId` does not name a live category of this account.
+ *   Repoint the expense (the `Uncategorized` default is always there) and push again.
+ * - `immutable_field` — the push tried to set a server-owned field. A client bug.
+ * - `mutation_id_reused` — a `clientMutationId` came back with a different payload, so
+ *   the outbox has lost track of itself. Re-mint the id; do not retry as-is.
+ * - `category_name_taken` — another live category of this user already has that name,
+ *   which is the ordinary outcome when two devices invent the same category offline.
+ *   Merge locally onto the server's row, or rename and push again.
+ * - `category_not_deletable` — the row is the undeletable `Uncategorized` default.
+ *
+ * Anything outside this list is a server fault and surfaces as a `500` for the whole
+ * batch, not as a per-record result: an unrecognised failure is not something a client
+ * can be asked to resolve row by row.
+ */
+export const SYNC_RECORD_ERROR_CODES = [
+  'validation_error',
+  'unknown_category',
+  'immutable_field',
+  'mutation_id_reused',
+  'category_name_taken',
+  'category_not_deletable',
+] as const satisfies ReadonlyArray<ErrorCode>;
+
+export type SyncRecordErrorCode = (typeof SYNC_RECORD_ERROR_CODES)[number];
+
 export const SyncPushStatus = z
   .enum(SYNC_PUSH_STATUSES)
   .describe(
@@ -174,7 +208,7 @@ export const SyncPushStatus = z
       'Per-record outcome, so one bad row cannot fail the batch.',
       '`applied`: the incoming `updatedAt` was strictly newer than stored, and the write landed.',
       '`conflict_server_wins`: the stored `updatedAt` was newer or equal, so the write was dropped.',
-      '`invalid`: validation or referential failure (e.g. unknown `categoryId`, or an incomplete create).',
+      '`invalid`: validation or referential failure (e.g. unknown `categoryId`, or an incomplete create); `error.code` is one of `SYNC_RECORD_ERROR_CODES`.',
     ].join(' '),
   );
 

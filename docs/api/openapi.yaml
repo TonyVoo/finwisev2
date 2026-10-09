@@ -1149,11 +1149,21 @@ paths:
           incoming one, so the write was dropped. Ties go to the server, which keeps the
           outcome deterministic.
         - `invalid` — validation or referential failure (an unknown `categoryId`, an
-          incomplete create, a reused `clientMutationId`). `error` explains which.
+          incomplete create, a reused `clientMutationId`, a category name already taken).
+          `error.code` is one of `x-recordErrorCodes` and says which; branch on it, because
+          the recoveries differ. `unknown_category` is fixable by repointing the expense,
+          `category_name_taken` by merging or renaming locally, and `validation_error` or
+          `immutable_field` not at all — drop or repair the local row.
 
         One bad row cannot fail the batch. The batch is applied in a single transaction,
         but an `invalid` item is skipped rather than rolling the rest back — otherwise a
         single permanently-unacceptable row would wedge the client's outbox forever.
+
+        **Each item is validated on its own**, not as part of the body, for the same
+        reason: a malformed item is a per-record `invalid`, not a `400` that takes the
+        whole batch with it. The exception is an item missing `entity`, `id` or
+        `clientMutationId` — there is no way to address a result at it — which is a `400`
+        naming the offending index.
 
         **Every result carries the authoritative server row in `record`, including on
         conflict.** The client overwrites its local copy with it. Converging on server
@@ -1171,6 +1181,12 @@ paths:
         `categoryId`, `amountMinor` and `date` for an expense) or the result is `invalid`.
 
         Delete by setting `fields.deletedAt`; undelete by setting it back to `null`.
+
+        An expense that ends up **live** must point at a live category of the account, so
+        undeleting one whose category was deleted in the meantime is `invalid` with
+        `unknown_category` — repoint it at `Uncategorized` and push again. Tombstoning an
+        expense is always allowed, whatever state its category is in: a delete must never
+        be blocked by a category the user already cleaned up.
 
         ## Last-write-wins, with the clock clamped
 
@@ -1222,6 +1238,8 @@ paths:
         - unknown_category
         - immutable_field
         - mutation_id_reused
+        - category_name_taken
+        - category_not_deletable
       requestBody:
         required: true
         content:

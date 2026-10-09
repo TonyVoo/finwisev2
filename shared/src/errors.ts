@@ -34,9 +34,9 @@ export const ERROR_CODES = [
   'not_found',
   /** 409 — signup with an email that already has an account. */
   'email_already_exists',
-  /** 409 — another live category of this user already has that name (names are unique per user, case-insensitive). */
+  /** 409 (REST) / per-record `invalid` (sync) — another live category of this user already has that name (names are unique per user, case-insensitive). */
   'category_name_taken',
-  /** 409 — attempt to delete the user's default `Uncategorized` category, which must always exist. */
+  /** 409 (REST) / per-record `invalid` (sync) — attempt to delete the user's default `Uncategorized` category, which must always exist. */
   'category_not_deletable',
   /** 422 (REST) / per-record `invalid` (sync) — `categoryId` does not name a live category of this user. */
   'unknown_category',

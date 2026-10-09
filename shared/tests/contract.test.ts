@@ -9,6 +9,7 @@ import {
   LIMITS,
   SYNC_ENTITIES,
   SYNC_PUSH_STATUSES,
+  SYNC_RECORD_ERROR_CODES,
   routeKey,
   type HttpMethod,
 } from '../src/index.js';
@@ -437,6 +438,14 @@ describe('sync contract parity', () => {
       // Ties must go to the server, or the outcome is not deterministic.
       expect((schemas.SyncPushStatus as Json).description as string).toMatch(
         /newer than or equal/i,
+      );
+    });
+
+    it('publishes exactly the per-record error codes the server may return', () => {
+      // The server asserts this set too, so a code it can emit but the spec does not
+      // list is a build failure rather than an unhandled branch on a device.
+      expect(((push['x-recordErrorCodes'] as string[]) ?? []).slice().sort()).toEqual(
+        [...SYNC_RECORD_ERROR_CODES].sort(),
       );
     });
 
