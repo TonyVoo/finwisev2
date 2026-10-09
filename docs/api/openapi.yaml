@@ -1209,6 +1209,15 @@ paths:
         `mutation_id_reused` — it means the client lost track of its outbox, and silently
         accepting it would hide the bug.
 
+        **The server remembers each `clientMutationId` for 90 days** — the same window as
+        the tombstone horizon below, swept by the same job. A retry inside that window is
+        always de-duplicated, which is every retry a real client makes. Past it the id is
+        forgotten: the same mutation sent again is applied afresh rather than replayed, so
+        it comes back with `idempotentReplay: false`, a delete-then-recreate under that id
+        would apply a second time, and an `invalid` result a client had kept in order to
+        re-read it is no longer available. Nothing a client should rely on, and nothing an
+        outbox that drains within a quarter can reach.
+
         ## Ordering within a batch
 
         The server applies all `category` items before all `expense` items, so an expense

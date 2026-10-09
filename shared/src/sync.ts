@@ -24,6 +24,7 @@ import { Expense, ExpenseNote } from './expense.js';
  * - Every push result carries the **authoritative server row**, including on conflict,
  *   so clients converge on server state instead of drifting.
  * - `clientMutationId` makes a retried push a no-op that replays the original result.
+ *   Remembered for 90 days — the tombstone horizon, so the two cannot drift.
  * - A batch is applied in one transaction in dependency order: **categories, then
  *   expenses**, so an expense created offline against an offline-created category syncs
  *   in a single round trip.

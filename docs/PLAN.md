@@ -177,6 +177,21 @@ session therefore syncs in a single round trip. The client also pushes in that o
 no-op and returns the original result. Without this, a flaky-network retry
 double-applies — the single most common offline-sync bug.
 
+**Retention: 90 days, the same number as the tombstone horizon below, swept by the same
+job.** The ledger that remembers those ids (`sync_mutations`) is otherwise the one table
+with no ceiling, so it is bounded — but expiry is a behaviour change rather than a
+cleanup, which is why the number is written down here and not only in the pruner. Past
+the window, two guarantees lapse for that id: a delete-then-recreate under the same
+`clientMutationId` is no longer de-duplicated and would apply a second time, and an
+`invalid` result a client was replaying in order to re-read its error stops being
+replayable (the push is simply applied afresh). Both are acceptable at 90 days — no
+client retries a mutation for a quarter — and neither would be at, say, 90 minutes.
+
+Keeping the two windows as one number is deliberate: a client resyncing right at the
+tombstone horizon is exactly the client most likely to be replaying mutation ids from
+before it, so letting the ledger expire first would mean forgetting a replay while the
+deletes it raced against are still on file.
+
 ### Clock skew
 
 LWW orders on the client's `updatedAt` (the client is the only one who knows when the

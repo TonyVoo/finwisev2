@@ -92,6 +92,12 @@ is a read, and making it write would put a counter update on every poll from eve
 Run it daily; it is safe to run more often and safe to miss, since nothing but disk use
 depends on its timeliness.
 
+The same job sweeps the sync idempotency ledger (`sync_mutations`) on the same 90-day
+window, which is the only thing bounding that table. Unlike the tombstone sweep, that part
+*is* a behaviour change at the boundary — past 90 days a `clientMutationId` is forgotten
+and a replay of it is applied afresh rather than de-duplicated — so if you ever shorten the
+horizon, read `docs/PLAN.md` §4 first. The number belongs to both windows deliberately.
+
 It is not merely cleanup. Each run records how far it got in
 `revision_counters.pruned_through_revision`, and `GET /v1/sync` answers
 `resyncRequired: true` to any `since` below that watermark. Without the watermark, a client
