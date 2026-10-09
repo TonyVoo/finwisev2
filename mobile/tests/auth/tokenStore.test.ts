@@ -3,6 +3,7 @@ import type { TokenPair } from '@expense-tracker/shared';
 import { createSecureTokenStore, sessionFromTokenPair } from '@/auth/tokenStore';
 
 const ISSUED_AT = new Date('2026-10-08T10:00:00.000Z');
+const USER_ID = '0192f5a0-0000-7000-8000-00000000a001';
 
 const PAIR: TokenPair = {
   accessToken: 'access-1',
@@ -18,7 +19,8 @@ describe('sessionFromTokenPair', () => {
   it('resolves the relative access-token expiry to an absolute one', () => {
     // Stored absolute, because the next process to read this has no idea when the pair
     // was issued.
-    expect(sessionFromTokenPair(PAIR, ISSUED_AT)).toEqual({
+    expect(sessionFromTokenPair(PAIR, USER_ID, ISSUED_AT)).toEqual({
+      userId: USER_ID,
       accessToken: 'access-1',
       accessTokenExpiresAt: ISSUED_AT.getTime() + 3_600_000,
       refreshToken: 'refresh-1',
@@ -36,7 +38,7 @@ describe('createSecureTokenStore', () => {
   });
 
   it('round-trips a session', async () => {
-    const session = sessionFromTokenPair(PAIR, ISSUED_AT);
+    const session = sessionFromTokenPair(PAIR, USER_ID, ISSUED_AT);
     await store.write(session);
     await expect(store.read()).resolves.toEqual(session);
   });
@@ -45,8 +47,8 @@ describe('createSecureTokenStore', () => {
     await expect(store.read()).resolves.toBeNull();
   });
 
-  it('removes both tokens on clear', async () => {
-    await store.write(sessionFromTokenPair(PAIR, ISSUED_AT));
+  it('removes every stored value on clear', async () => {
+    await store.write(sessionFromTokenPair(PAIR, USER_ID, ISSUED_AT));
     await store.clear();
 
     await expect(store.read()).resolves.toBeNull();
@@ -59,26 +61,27 @@ describe('createSecureTokenStore', () => {
    * silently does nothing, which is indistinguishable from background sync not working.
    */
   it('stores tokens so a locked device can still read them', async () => {
-    await store.write(sessionFromTokenPair(PAIR, ISSUED_AT));
+    await store.write(sessionFromTokenPair(PAIR, USER_ID, ISSUED_AT));
 
     for (const call of jest.mocked(SecureStore.setItemAsync).mock.calls) {
       expect(call[2]).toMatchObject({ keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK });
     }
   });
 
-  // Android's secure store degrades above roughly 2 KB per value, so the two tokens are
-  // stored under separate keys rather than as one JSON blob.
-  it('uses one key per token', async () => {
-    await store.write(sessionFromTokenPair(PAIR, ISSUED_AT));
+  // Android's secure store degrades above roughly 2 KB per value, so each value is
+  // stored under its own key rather than as one JSON blob.
+  it('uses one key per value', async () => {
+    await store.write(sessionFromTokenPair(PAIR, USER_ID, ISSUED_AT));
     expect([...mocked.__store.keys()].sort()).toEqual([
       'expenseTracker.accessToken',
       'expenseTracker.refreshToken',
+      'expenseTracker.userId',
     ]);
   });
 
   describe('recovering from unusable stored values', () => {
     it('reads as no session when the refresh token is corrupt', async () => {
-      await store.write(sessionFromTokenPair(PAIR, ISSUED_AT));
+      await store.write(sessionFromTokenPair(PAIR, USER_ID, ISSUED_AT));
       mocked.__store.set('expenseTracker.refreshToken', 'not json');
 
       // Without a refresh token there is at most an hour of session left and no way to
@@ -87,7 +90,7 @@ describe('createSecureTokenStore', () => {
     });
 
     it('keeps the session when only the access token is corrupt', async () => {
-      await store.write(sessionFromTokenPair(PAIR, ISSUED_AT));
+      await store.write(sessionFromTokenPair(PAIR, USER_ID, ISSUED_AT));
       mocked.__store.set('expenseTracker.accessToken', '{"nope":true}');
 
       // Recoverable: the first request 401s and the refresh flow mints a new one.
@@ -98,7 +101,29 @@ describe('createSecureTokenStore', () => {
       });
     });
 
+    /**
+     * The strict branch, on purpose. A session whose owner is missing cannot be matched
+     * against the local database, so there is no safe way to decide whether the rows on
+     * disk belong to it - and guessing wrong shows one account another account's
+     * expenses (`TVO-16`). One login costs the user nothing: the rows stay, and
+     * `localStore.adopt` keeps them when the same user comes back.
+     */
+    it('reads as no session when the user id is missing', async () => {
+      await store.write(sessionFromTokenPair(PAIR, USER_ID, ISSUED_AT));
+      mocked.__store.delete('expenseTracker.userId');
+
+      await expect(store.read()).resolves.toBeNull();
+    });
+
+    it('reads as no session when the user id is empty', async () => {
+      await store.write(sessionFromTokenPair(PAIR, USER_ID, ISSUED_AT));
+      mocked.__store.set('expenseTracker.userId', '');
+
+      await expect(store.read()).resolves.toBeNull();
+    });
+
     it('reads as no session when the stored expiry is not a number', async () => {
+      mocked.__store.set('expenseTracker.userId', USER_ID);
       mocked.__store.set(
         'expenseTracker.refreshToken',
         JSON.stringify({ token: 'r', expiresAt: 'soon' }),

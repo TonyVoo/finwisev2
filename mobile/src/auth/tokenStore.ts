@@ -14,13 +14,23 @@ import type { TokenPair } from '@expense-tracker/shared';
  *   can be woken while the phone is locked in a pocket, and with `WHEN_UNLOCKED` the
  *   read fails and the sync silently does nothing. `AFTER_FIRST_UNLOCK` still means the
  *   data is unreadable until the user has unlocked the device at least once since boot.
- * - **Two keys, not one blob.** Android's secure store warns and degrades above roughly
- *   2 KB per value; a JWT plus a refresh token plus metadata gets close enough to that
- *   to be worth not finding out in the field.
+ * - **One key per value, not one blob.** Android's secure store warns and degrades above
+ *   roughly 2 KB per value; a JWT plus a refresh token plus metadata gets close enough to
+ *   that to be worth not finding out in the field.
  */
 
 const ACCESS_KEY = 'expenseTracker.accessToken';
 const REFRESH_KEY = 'expenseTracker.refreshToken';
+/**
+ * The id of the user the stored tokens belong to.
+ *
+ * Not a secret, and kept here anyway: it has to be written, read and cleared in lockstep
+ * with the tokens, and a second storage mechanism with its own failure modes is how the
+ * two end up disagreeing about who is logged in. It lives here because the client had no
+ * record of *whose* session it held at all, which is what made the local-store leak in
+ * `TVO-16` undetectable rather than merely unhandled.
+ */
+const USER_KEY = 'expenseTracker.userId';
 
 const SECURE_STORE_OPTIONS: SecureStore.SecureStoreOptions = {
   keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK,
@@ -28,6 +38,12 @@ const SECURE_STORE_OPTIONS: SecureStore.SecureStoreOptions = {
 
 /** The persisted session. Expiries are absolute, so a cold start can reason about them. */
 export interface StoredSession {
+  /**
+   * Who this session belongs to. Load-bearing: it is what lets a cold start decide
+   * whether the local database it is about to read belongs to this user
+   * (`src/db/localStore.ts`).
+   */
+  readonly userId: string;
   readonly accessToken: string;
   /** Epoch milliseconds. Derived once from `accessTokenExpiresIn` at issue time. */
   readonly accessTokenExpiresAt: number;
@@ -42,9 +58,20 @@ export interface TokenStore {
   clear(): Promise<void>;
 }
 
-/** Turn a freshly issued pair into the stored shape, resolving the relative expiry. */
-export function sessionFromTokenPair(pair: TokenPair, issuedAt: Date): StoredSession {
+/**
+ * Turn a freshly issued pair into the stored shape, resolving the relative expiry.
+ *
+ * `userId` is passed separately because the two sources of a pair differ: signup and
+ * login return it beside the tokens in `AuthResponse`, while a refresh returns a bare
+ * rotated pair and the owner carries over from the session being refreshed.
+ */
+export function sessionFromTokenPair(
+  pair: TokenPair,
+  userId: string,
+  issuedAt: Date,
+): StoredSession {
   return {
+    userId,
     accessToken: pair.accessToken,
     accessTokenExpiresAt: issuedAt.getTime() + pair.accessTokenExpiresIn * 1000,
     refreshToken: pair.refreshToken,
@@ -78,9 +105,10 @@ function parseStoredToken(raw: string | null): StoredToken | null {
 export function createSecureTokenStore(): TokenStore {
   return {
     async read(): Promise<StoredSession | null> {
-      const [access, refresh] = await Promise.all([
+      const [access, refresh, userId] = await Promise.all([
         SecureStore.getItemAsync(ACCESS_KEY, SECURE_STORE_OPTIONS),
         SecureStore.getItemAsync(REFRESH_KEY, SECURE_STORE_OPTIONS),
+        SecureStore.getItemAsync(USER_KEY, SECURE_STORE_OPTIONS),
       ]);
 
       const refreshToken = parseStoredToken(refresh);
@@ -89,8 +117,17 @@ export function createSecureTokenStore(): TokenStore {
       // let the user log in once rather than an hour from now at a worse moment.
       if (refreshToken === null) return null;
 
+      // A session whose owner cannot be read is treated the same way, which is the
+      // conservative branch rather than the convenient one: without an owner there is no
+      // way to decide whether the local database belongs to this session, and the cost of
+      // guessing wrong is showing one account another account's expenses. The cost of
+      // being strict is one login, and it loses nothing - the rows stay on disk, and
+      // `localStore.adopt` keeps them if the same user comes back.
+      if (userId === null || userId.length === 0) return null;
+
       const accessToken = parseStoredToken(access);
       return {
+        userId,
         // An absent or corrupt access token is recoverable: the first request 401s and
         // the refresh flow replaces it. An empty string is never a usable bearer value,
         // and `accessTokenExpiresAt: 0` marks it already expired.
@@ -103,6 +140,7 @@ export function createSecureTokenStore(): TokenStore {
 
     async write(session: StoredSession): Promise<void> {
       await Promise.all([
+        SecureStore.setItemAsync(USER_KEY, session.userId, SECURE_STORE_OPTIONS),
         SecureStore.setItemAsync(
           ACCESS_KEY,
           JSON.stringify({
@@ -126,6 +164,7 @@ export function createSecureTokenStore(): TokenStore {
       await Promise.all([
         SecureStore.deleteItemAsync(ACCESS_KEY, SECURE_STORE_OPTIONS),
         SecureStore.deleteItemAsync(REFRESH_KEY, SECURE_STORE_OPTIONS),
+        SecureStore.deleteItemAsync(USER_KEY, SECURE_STORE_OPTIONS),
       ]);
     },
   };

@@ -1,5 +1,6 @@
-import type { ErrorCode, TokenPair } from '@expense-tracker/shared';
+import type { AuthResponse, ErrorCode, TokenPair } from '@expense-tracker/shared';
 import { ApiRequestError } from '../api/errors';
+import type { LocalStore } from '../db/localStore';
 import { type Clock, systemClock } from '../lib/clock';
 import { type StoredSession, type TokenStore, sessionFromTokenPair } from './tokenStore';
 
@@ -38,8 +39,21 @@ export interface SessionController {
    * all concurrent callers. Returns null when the session is gone.
    */
   ensureFreshAccessToken(staleAccessToken: string | null): Promise<string | null>;
-  /** Adopt a pair from signup or login. */
-  signIn(pair: TokenPair): Promise<void>;
+  /**
+   * Adopt the session signup or login returned.
+   *
+   * Takes the whole {@link AuthResponse} rather than its token pair because the user it
+   * names is half the session: it is what the local store is stamped with, and dropping
+   * it here is what let one account read another's data (`TVO-16`).
+   */
+  signIn(auth: AuthResponse): Promise<void>;
+  /**
+   * End the session the user asked to end: tokens revoked locally **and the local
+   * database wiped**, per `docs/design/04-expense-list.md` §Behaviour rule 14.
+   *
+   * This is deliberately not the same as the forced clear on an unrecoverable refresh -
+   * see {@link UNRECOVERABLE_CODES} and the note on `discard`.
+   */
   signOut(): Promise<void>;
 }
 
@@ -61,6 +75,15 @@ const UNRECOVERABLE_CODES: readonly ErrorCode[] = [
 export interface SessionControllerOptions {
   readonly tokenStore: TokenStore;
   /**
+   * The local database, as far as session changes are concerned.
+   *
+   * Required, not optional. An optional guard against a cross-account data leak is one
+   * forgotten argument away from no guard at all, and the failure is silent: the app
+   * works perfectly until the second account logs in. Tests and the web preview target
+   * pass `createMemoryLocalStore()`.
+   */
+  readonly localStore: LocalStore;
+  /**
    * Exchanges a refresh token for a rotated pair. Injected rather than imported so this
    * module does not depend on the API client that depends on it - and so it is wired to
    * the *unauthenticated* transport, which is what keeps a refresh from recursing into
@@ -71,7 +94,7 @@ export interface SessionControllerOptions {
 }
 
 export function createSessionController(options: SessionControllerOptions): SessionController {
-  const { tokenStore, refreshTokens, clock = systemClock } = options;
+  const { tokenStore, localStore, refreshTokens, clock = systemClock } = options;
 
   let session: StoredSession | null = null;
   let snapshot: SessionSnapshot = { status: 'loading', expired: false };
@@ -100,6 +123,18 @@ export function createSessionController(options: SessionControllerOptions): Sess
     publish({ status: 'authenticated', expired: false });
   }
 
+  /**
+   * Drop the session, leaving the local database alone.
+   *
+   * The second half is the point and is not an oversight. This runs on the forced clear
+   * after an unrecoverable refresh, and the user it runs for - offline past the 60-day
+   * refresh window - is the one most likely to be holding writes the server has never
+   * seen. Wiping here would destroy them with no dialog and no way back, which is exactly
+   * what `docs/design/02-offline-and-sync.md` §5.3 rules out on the analogous resync path:
+   * a stale-but-intact local database beats a clean one missing the user's work. Those
+   * rows stay, they push after a re-login as the same user, and `localStore.adopt` is what
+   * stops them reaching a different one. Pinned by `AUTH-12`.
+   */
   async function discard(expired: boolean): Promise<void> {
     await tokenStore.clear();
     session = null;
@@ -112,7 +147,10 @@ export function createSessionController(options: SessionControllerOptions): Sess
 
     try {
       const pair = await refreshTokens(current.refreshToken);
-      await persist(sessionFromTokenPair(pair, clock()));
+      // A rotated pair carries no user; the owner is the one being refreshed. It cannot
+      // have changed - a different user means a different sign-in, which goes through
+      // `signIn`.
+      await persist(sessionFromTokenPair(pair, current.userId, clock()));
       return pair.accessToken;
     } catch (error) {
       if (
@@ -138,6 +176,11 @@ export function createSessionController(options: SessionControllerOptions): Sess
 
     async initialize() {
       session = await tokenStore.read();
+      // Belt and braces, before the first screen can read: the store is normally stamped
+      // at sign-in, so this is a no-op whose job is the cases where it is not - a database
+      // restored from a backup beside somebody else's tokens, or one written before the
+      // owner was recorded at all.
+      if (session !== null) await localStore.adopt(session.userId);
       publish({
         status: session === null ? 'anonymous' : 'authenticated',
         expired: false,
@@ -173,12 +216,25 @@ export function createSessionController(options: SessionControllerOptions): Sess
       return inFlightRefresh;
     },
 
-    async signIn(pair) {
-      await persist(sessionFromTokenPair(pair, clock()));
+    async signIn(auth) {
+      // Before `persist`, never after. `persist` publishes `authenticated`, the route
+      // guards then let the tab bar mount, and its screens read SQLite on their first
+      // frame - so a store adopted afterwards is a store the new user has already been
+      // shown the previous user's expenses out of. Adopting first also means a failure
+      // here leaves the user anonymous with their predecessor's data untouched, rather
+      // than signed in over it.
+      await localStore.adopt(auth.user.id);
+      await persist(sessionFromTokenPair(auth, auth.user.id, clock()));
     },
 
     async signOut() {
+      // Tokens first, then the rows - the order `04-expense-list.md` rule 14 states, and
+      // the one that degrades best: the user's contract with the Log out button is "I am
+      // out", and a failed `DELETE` must not be what keeps them signed in. If the wipe
+      // does fail, the leftover rows are now unowned, and the next `adopt` deletes them
+      // before anyone can read them.
       await discard(false);
+      await localStore.clear();
     },
   };
 }

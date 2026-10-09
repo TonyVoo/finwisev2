@@ -4,8 +4,10 @@ import { ApiRequestError, NetworkUnavailableError } from '@/api/errors';
 import type { Transport, TransportRequest, TransportResponse } from '@/api/transport';
 import { createSessionController } from '@/auth/session';
 import { createMemoryTokenStore, sessionFromTokenPair } from '@/auth/tokenStore';
+import { createMemoryLocalStore } from '@/db/localStore';
 
 const ISSUED_AT = new Date('2026-10-08T10:00:00.000Z');
+const USER_ID = '0192f5a0-0000-7000-8000-00000000a001';
 
 function tokenPair(suffix: string): TokenPair {
   return {
@@ -66,8 +68,10 @@ async function harness(options: HarnessOptions): Promise<Harness> {
   const initial = options.initial === undefined ? tokenPair('1') : options.initial;
   const session = createSessionController({
     tokenStore: createMemoryTokenStore(
-      initial === null ? null : sessionFromTokenPair(initial, ISSUED_AT),
+      initial === null ? null : sessionFromTokenPair(initial, USER_ID, ISSUED_AT),
     ),
+    // Nothing here touches local rows; the interceptor only ever rotates tokens.
+    localStore: createMemoryLocalStore({ owner: initial === null ? null : USER_ID }),
     refreshTokens: async (refreshToken) => {
       refreshCalls += 1;
       return (options.refresh ?? (async () => tokenPair('2')))(refreshToken);

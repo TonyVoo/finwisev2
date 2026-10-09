@@ -1,9 +1,12 @@
-import type { TokenPair } from '@expense-tracker/shared';
+import type { AuthResponse, TokenPair } from '@expense-tracker/shared';
 import { ApiRequestError, NetworkUnavailableError } from '@/api/errors';
 import { createSessionController } from '@/auth/session';
 import { createMemoryTokenStore, sessionFromTokenPair } from '@/auth/tokenStore';
+import { createMemoryLocalStore } from '@/db/localStore';
 
 const ISSUED_AT = new Date('2026-10-08T10:00:00.000Z');
+
+const USER_ID = '0192f5a0-0000-7000-8000-00000000a001';
 
 function tokenPair(suffix: string): TokenPair {
   return {
@@ -14,15 +17,34 @@ function tokenPair(suffix: string): TokenPair {
   };
 }
 
+/** What signup and login return: a pair plus the user it belongs to. */
+function authResponse(suffix: string, userId: string = USER_ID): AuthResponse {
+  return {
+    user: {
+      id: userId,
+      email: `${suffix}@example.com`,
+      currency: 'USD',
+      createdAt: '2026-10-01T10:00:00.000Z',
+    },
+    ...tokenPair(suffix),
+  };
+}
+
+/**
+ * The local store is the in-memory fake here. What the session does to the *rows* is
+ * `sessionTeardown.test.ts`, over a real SQLite database; this file is about the tokens
+ * and the published snapshot, and a database would only slow it down.
+ */
 function controllerWith(
   stored: TokenPair | null,
   refreshTokens: (refreshToken: string) => Promise<TokenPair> = async () => tokenPair('2'),
 ) {
   const tokenStore = createMemoryTokenStore(
-    stored === null ? null : sessionFromTokenPair(stored, ISSUED_AT),
+    stored === null ? null : sessionFromTokenPair(stored, USER_ID, ISSUED_AT),
   );
   const controller = createSessionController({
     tokenStore,
+    localStore: createMemoryLocalStore({ owner: stored === null ? null : USER_ID }),
     refreshTokens,
     clock: () => ISSUED_AT,
   });
@@ -63,7 +85,7 @@ describe('createSessionController', () => {
 
     // Already authenticated; re-publishing the same snapshot would re-render the whole
     // tree for nothing.
-    await controller.signIn(tokenPair('1'));
+    await controller.signIn(authResponse('1'));
     expect(listener).toHaveBeenCalledTimes(1);
   });
 
@@ -81,10 +103,13 @@ describe('createSessionController', () => {
       const { controller, tokenStore } = controllerWith(null);
       await controller.initialize();
 
-      await controller.signIn(tokenPair('1'));
+      await controller.signIn(authResponse('1'));
 
       expect(controller.getSnapshot().status).toBe('authenticated');
       await expect(tokenStore.read()).resolves.toMatchObject({
+        // Persisted beside the tokens, because it is what tells a cold start whether the
+        // local database belongs to this session (`src/db/localStore.ts`).
+        userId: USER_ID,
         accessToken: 'access-1',
         refreshToken: 'refresh-1',
         // Derived once from the relative `accessTokenExpiresIn`, so a cold start can
@@ -112,7 +137,13 @@ describe('createSessionController', () => {
       await controller.initialize();
 
       await expect(controller.ensureFreshAccessToken('access-1')).resolves.toBe('access-2');
-      await expect(tokenStore.read()).resolves.toMatchObject({ refreshToken: 'refresh-2' });
+      // The rotated pair carries no user, so the owner has to survive the rotation - a
+      // refresh that dropped it would read as a session with no owner on the next launch,
+      // which the token store treats as no session at all.
+      await expect(tokenStore.read()).resolves.toMatchObject({
+        refreshToken: 'refresh-2',
+        userId: USER_ID,
+      });
     });
 
     it('sends the stored refresh token, not the access token', async () => {
@@ -200,7 +231,7 @@ describe('createSessionController', () => {
         await controller.ensureFreshAccessToken('access-1');
         expect(controller.getSnapshot().expired).toBe(true);
 
-        await controller.signIn(tokenPair('3'));
+        await controller.signIn(authResponse('3'));
         expect(controller.getSnapshot()).toEqual({ status: 'authenticated', expired: false });
       });
     });

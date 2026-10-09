@@ -5,6 +5,7 @@ import { createAuthorizedTransport } from '../api/authorize';
 import { type Transport, createTransport } from '../api/transport';
 import { type SessionController, createSessionController } from '../auth/session';
 import { type TokenStore, createSecureTokenStore } from '../auth/tokenStore';
+import { createSqliteLocalStore } from '../db/localStore';
 import { openLocalDatabase } from '../db/open';
 import type { SqliteDatabase } from '../db/sqlite';
 import { createQueryClient } from '../query/client';
@@ -19,6 +20,11 @@ import { createQueryClient } from '../query/client';
  * refresh. Instead the raw transport is built first, an unauthenticated client on top of
  * it supplies `refreshTokens`, and only then is the authorized client built. Written out
  * here, in order, rather than hidden in module-level singletons.
+ *
+ * The order has a second constraint now, and it is the one `TVO-16` was about: the
+ * session controller also needs the open database, because settling a session means
+ * deciding whether the local store it is about to read belongs to that user. So the
+ * database is opened first and `session.initialize()` runs last.
  */
 
 export interface AppContainer {
@@ -44,19 +50,22 @@ export async function createAppContainer(options: AppContainerOptions = {}): Pro
   // it is there to serve.
   const publicApi = createApiClient({ transport });
 
+  // The database is opened *before* the session rather than alongside it. These two used
+  // to overlap, on the reasoning that they are independent - and that was the bug: the
+  // store a session is about to read may belong to a different user, and deciding that
+  // needs both halves (`src/db/localStore.ts`). Both are local and fast, so the cost of
+  // serialising them is a few milliseconds of splash screen.
+  const database = options.database ?? (await openLocalDatabase());
+
   const session = createSessionController({
     tokenStore: options.tokenStore ?? createSecureTokenStore(),
+    localStore: createSqliteLocalStore(database),
     refreshTokens: (refreshToken) => publicApi.refresh({ refreshToken }),
   });
 
   const api = createApiClient({ transport: createAuthorizedTransport(transport, session) });
 
-  // Opening the database and reading the session are independent, and both gate the
-  // first frame, so they overlap.
-  const [database] = await Promise.all([
-    options.database ?? openLocalDatabase(),
-    session.initialize(),
-  ]);
+  await session.initialize();
 
   return {
     database,
