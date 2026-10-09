@@ -285,11 +285,19 @@ turns every case that uses it into a false green, which is worse than a fixture 
 - **Steps**
   1. Relaunch the app
   2. Log back in as the same user
-- **Expect** `[BLOCKED-BY-GAP 4]` — the designs do not say whether a forced session clear wipes
-  the local database and the outbox. Explicit logout does wipe, and warns first
-  (`04-expense-list.md` §Behaviour rule 14); the forced path has only a banner. The two
-  candidate outcomes are "three expenses silently destroyed" and "three expenses survive and
-  push after re-login", and the difference is user data. Not executed until GAP 4 closes.
+- **Expect** The three expenses **survive**. The forced clear calls `discard()`
+  (`mobile/src/auth/session.ts`), which clears `expo-secure-store` and publishes `anonymous`;
+  it never touches SQLite. So Welcome shows the expired banner, the `categories` / `expenses` /
+  `outbox` tables are identical before and after, and the three rows still report `pending: true`
+  via `countPendingRecords`. After re-login **as the same user** the outbox drains and all three
+  reach the server with their original `clientMutationId`s.
+- **Why this is the right outcome** It is the branch `02-offline-and-sync.md` §5.3 argues for on
+  the analogous resync path: "a stale-but-intact local database is strictly better than a clean
+  one missing the user's work." The forced path is reached by a user who has been offline past the
+  60-day window — the one most likely to be holding unsynced writes — so a wipe here would
+  destroy data with no dialog. It does not wipe. **This case was previously parked on GAP 4;**
+  the landed client settles the data-loss half of that gap in the safe direction. What is *not*
+  settled is re-login as a **different** user — see `AUTH-19`, which is where the real defect is.
 
 ### AUTH-13 — Welcome shows no session banner on a genuine cold first launch
 
@@ -352,6 +360,56 @@ turns every case that uses it into a false green, which is worse than a fixture 
   ordinary synced data. The sync create path hard-codes `isDefault: false`
   (`backend/src/services/syncPushService.ts`), so a client cannot mint a second default even by
   accident — which is the invariant this case is really guarding.
+
+### AUTH-18 — Logout does not wipe the local database, though the design says it does
+
+- **Layer** Unit + E2E
+- **Pre** `F-MONTH`, logged in. **Two local expenses are in the outbox and have never reached the
+  server**, so the confirm dialog's lossy-path copy is the one that applies
+- **Steps**
+  1. Settings → Log out, and read the dialog body before confirming
+  2. Confirm
+  3. After landing on Welcome, inspect the SQLite file directly (`expense-tracker.db`)
+- **Steps (unit)** Call `signOut()` on a controller built over a seeded database, then assert on
+  the table contents
+- **Expect** **This case is expected to FAIL against the client as it stands, and the failure is
+  the point.** `04-expense-list.md` §Behaviour rule 14 (line 150) specifies that logout "revokes
+  the token, clears secure store, **wipes the local database**", and the copy deck gates it behind
+  a dialog reading `Changes that have not synced yet will be lost.` The landed `signOut()` routes
+  through the same `discard()` as the forced clear and **clears only the token store** —
+  `categories`, `expenses` and `outbox` are left fully populated. So step 1 shows the user a
+  warning that their unsynced changes will be lost, and step 3 proves nothing was.
+- **Why it matters even though it fails safe** On its own this is a harmless divergence in the
+  user's favour plus a dialog that lies. It stops being harmless the moment a *second* account
+  logs in on the device, because the rows this failed to clear are what `AUTH-19` then leaks.
+  Fixing `AUTH-19` and fixing this are the same fix, which is why they are filed together.
+
+### AUTH-19 — A second user on the same device inherits the first user's data
+
+- **Layer** E2E
+- **Pre** Two accounts: `a@x.com` with at least three expenses and a renamed category, and
+  `b@x.com` **freshly signed up, holding only its six seeded categories**. One device
+- **Steps**
+  1. Log in as `a@x.com`, let the outbox drain fully, and note the month total
+  2. Log out
+  3. Log in as `b@x.com` on the same device, without reinstalling
+  4. Read Home and Settings → Categories
+- **Expect** **Expected to FAIL.** `b@x.com` should see an empty month and exactly six seeded
+  categories. Against the client as it stands they see **`a@x.com`'s expenses, `a@x.com`'s month
+  total and `a@x.com`'s renamed category**, because the local schema has no `userId` column on any
+  table (`mobile/src/db/migrations.ts` v1), `openLocalDatabase()` opens one fixed file
+  `expense-tracker.db` regardless of who is signed in (`mobile/src/db/open.ts`), and nothing
+  clears it on a session change. The local store is single-tenant by construction and is never
+  partitioned or reset.
+- **The worse half, once the drain lands** Repeat with step 1 ending **offline**, so `a@x.com`
+  leaves undrained outbox entries. Those entries carry no user id either, so the first sync pass
+  after `b@x.com` logs in pushes `a@x.com`'s expenses to the server **under `b@x.com`'s bearer
+  token**. The server is not at fault — it scopes every row to the authenticated user, so it will
+  faithfully file one account's spending into another's. There is no mobile sync engine yet (no
+  `mobile/src/sync/`), so this half is **latent, not live**: it activates the day the drain ships.
+  The on-screen half in steps 1–4 is reachable today with no further code.
+- **Why it is here and not only in a bug report** It is the case that has to stay red until the
+  fix lands and go green after, and it is the regression the fix is most likely to reintroduce.
 
 ---
 
@@ -1631,10 +1689,12 @@ Covered by `AUTH-10` (transparent refresh and single retry). Additionally:
 
 ### EDGE-08 — An expired refresh token
 
-Covered by `AUTH-11` (empty outbox — the specified path), `AUTH-12` (undrained outbox —
-`[BLOCKED-BY-GAP 4]`) and `AUTH-06` (single-use rotation). The gap is the case that matters: a
-user offline past the 60-day refresh window has unsynced work, and no input says whether the
-forced session clear destroys it.
+Covered by `AUTH-11` (empty outbox — the specified path), `AUTH-12` (undrained outbox) and
+`AUTH-06` (single-use rotation). All three are executable: the case that matters — a user offline
+past the 60-day refresh window who has unsynced work — is answered by the landed client, which
+clears the token store and leaves SQLite intact, so that work survives and pushes after re-login.
+`AUTH-12` carries the assertion. What the forced clear *does* leave behind is the subject of
+`AUTH-18` and `AUTH-19`, both of which are expected to fail.
 
 ### EDGE-09 — A note at and past its limit, and whitespace-only
 
@@ -1876,15 +1936,17 @@ no new `revision`, and another account's id rejected as `400 validation_error`.
 | #   | Gap                                                               | Severity | Blocks               |
 | --- | ----------------------------------------------------------------- | -------- | -------------------- |
 | 3   | `clientMutationId` retention window — and the ledger never prunes | High     | `SYNC-13`            |
-| 4   | Does a forced session clear wipe undrained local writes?          | High     | `AUTH-12`, `EDGE-08` |
 | 5   | A future-dated row arriving by sync is unreachable in every view  | Medium   | `EDGE-04`            |
 | 7b  | `immutable_field` is unreachable on the **REST** path             | Low      | `API-04` (half)      |
 | 9   | No E2E driver is named in `docs/PLAN.md` §7                       | Low      | 7 cases run manual   |
 | 10  | Rate limits are not quantified                                    | Low      | `API-09`             |
 
-**GAP 4 is the one to settle first.** It is the only open gap whose failure mode is silent,
-unrecoverable loss of the user's own data, and the user it hits is the one this app is built
-for — someone who has been offline for a while.
+**GAP 3 is now the only open gap that needs a decision from Chief.** GAP 4 left this table this
+run: reading the landed client answered it, and what it turned up is two defects in `mobile/`
+rather than a question — the local database is never wiped on a session clear (safe, and contrary
+to the design) and is never partitioned by user (a cross-account data leak). Both are for Mobile
+Dev and are carried by `AUTH-18` / `AUTH-19`. See GAP 4 below for the detail; `AUTH-12` is
+unparked and executable.
 
 ### GAP 1 — Who seeds the default categories, and the duplicate-six risk — **CLOSED**
 
@@ -2006,32 +2068,51 @@ operational (unbounded growth) plus the untested boundary. It is filed High beca
 behaviour `SYNC-09`–`SYNC-13` assert, so it is much cheaper before those cases are executed than
 after.
 
-### GAP 4 — Does a forced session clear wipe undrained local writes?
+### GAP 4 — Does a forced session clear wipe undrained local writes? — **ANSWERED BY THE CODE, AND IT FOUND TWO DEFECTS**
 
-Two paths end a session, and only one is specified:
+I filed this as a question for Chief. Reading the landed client instead of waiting answered it, so
+it is no longer a decision anyone owes QA — it is two bugs against `mobile/`. `AUTH-12` is
+unparked; `AUTH-18` and `AUTH-19` are the new cases, both expected to fail.
 
-- **Explicit logout** (`04-expense-list.md` §Behaviour rule 14) revokes the token, clears secure
-  store, **wipes the local database**, and is gated by a dialog whose body reads
-  `Changes that have not synced yet will be lost.` when the outbox is non-empty. Fully specified,
-  and it warns.
-- **A forced clear** on `401 token_invalid` (`01-flows.md` §3, `09-copy-deck.md` §127) clears the
-  session and shows `Your session expired. Please log in again.` **Whether it wipes the local
-  database is stated nowhere.**
+**The data-loss half resolved to the safe branch.** Both paths that end a session — explicit
+`signOut()` and the forced clear on `401 token_invalid` — go through one `discard()` in
+`mobile/src/auth/session.ts`, which calls `tokenStore.clear()` and publishes `anonymous`. It never
+touches SQLite. So a user who falls past the 60-day refresh window keeps their undrained writes
+and pushes them after re-login, which is exactly what §5.3 of `02-offline-and-sync.md` argues for
+on the analogous resync path. The outcome I was most worried about — unsynced work destroyed with
+no dialog — **is not what the client does.** Asserted by `AUTH-12`.
 
-The second path is the one a user reaches by being offline past the 60-day refresh window — which
-is exactly the user most likely to be holding unsynced writes. If it wipes, their work is
-destroyed with no dialog and no warning, and the copy they get instead talks about logging in. If
-it does not wipe, the client needs a defined rule for what happens to that outbox after
-re-login — including re-login as a **different** user, where replaying the previous user's outbox
-would be a cross-account data leak.
+**Defect 1: logout does not do what the design says, and the dialog it shows is false.**
+`04-expense-list.md` §Behaviour rule 14 specifies that logout **wipes the local database**, and
+when the outbox is non-empty the confirm dialog says `Changes that have not synced yet will be
+lost.` Neither is true of `signOut()`. Low severity read alone — it errs toward keeping the user's
+data, and only the copy is wrong. Covered by `AUTH-18`.
 
-This is the highest-consequence gap of the four, because the failure is silent and the data is
-unrecoverable. Note that §5.3 of `02-offline-and-sync.md` already establishes the right principle
-for the analogous resync case ("push first, then wipe; if the push cannot complete, do not wipe"),
-so there is a precedent to follow here.
+**Defect 2 — the real one: the local store has no user partition, so a second account on the
+device inherits the first's data.** No local table carries a `userId`
+(`mobile/src/db/migrations.ts` v1 — `categories`, `expenses` and `outbox` are all unscoped),
+`openLocalDatabase()` opens one fixed file `expense-tracker.db` for whoever is signed in
+(`mobile/src/db/open.ts`), `createAppContainer` opens it before and independently of
+`session.initialize()` (`mobile/src/bootstrap/container.ts`), and no code path clears it on a
+session change. Two consequences, and they differ in urgency:
 
-**What QA needs:** the rule for the forced path, including the different-user re-login case.
-`AUTH-12` and `EDGE-08` are written and waiting on it.
+- **Live today.** Log out, log in as a different account, and Home renders the previous user's
+  expenses and month total while Categories renders their renamed categories. No sync engine is
+  needed for this; the read queries have no user filter to begin with. Covered by `AUTH-19`
+  steps 1–4.
+- **Latent until the drain ships.** Undrained outbox entries carry no user id either, so the first
+  push after a different user logs in sends the previous user's expenses **under the new user's
+  bearer token**, and the server correctly files them into the new user's account. There is no
+  `mobile/src/sync/` yet, so this is not reachable this minute — it arrives with the drain.
+  Covered by `AUTH-19`'s second half.
+
+Defect 1 is why defect 2 is reachable, so they are one fix. **This is for Mobile Dev, not Chief**,
+and it is worth fixing *before* the sync drain lands rather than after — the same reasoning as
+GAP 3. The one thing still genuinely undecided is a small design question rather than a blocker:
+whether the fix partitions the database per user (a separate file, or a `userId` column) or wipes
+it when a session starts under a different user id than the one stored. Either closes both cases;
+partitioning additionally preserves a shared-device user's data across a re-login, wiping does
+not.
 
 ### GAP 5 — A future-dated row arriving by sync is unreachable in every view
 
@@ -2219,6 +2300,11 @@ bugs, and this is what proves none of them came back. Target: under 30 minutes p
 - [ ] Force-stop and relaunch → Home renders on the first frame, no spinner, still logged in
 - [ ] Aeroplane mode + relaunch → still logged in, pill grey and reading `Offline`
 - [ ] Log out → Welcome; back gesture exits the app rather than returning to a dead Home
+- [ ] Log out, then log in as a **different** account → an empty month and six seeded categories,
+      **not** the previous user's expenses (`AUTH-19`). With undrained writes left behind, the
+      first push after the switch must not file them into the new account
+- [ ] Log out with a non-empty outbox → whatever the dialog promises is what actually happens to
+      the local database (`AUTH-18`)
 
 **Expenses**
 
