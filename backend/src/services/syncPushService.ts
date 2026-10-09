@@ -19,7 +19,7 @@ import { nextRevision } from '../db/revision.ts';
 import { ApiProblem, isApiProblem, problems } from '../errors.ts';
 import { logger } from '../logger.ts';
 import type { ParsedPushItem } from '../sync/batch.ts';
-import { clampClientUpdatedAt, decideLww, inApplyOrder } from '../sync/resolver.ts';
+import { clampClientUpdatedAt, decideLww, inApplyOrder, wasClamped } from '../sync/resolver.ts';
 import { assignCategoryColor, requireOwnCategoryForWrite } from './categoryService.ts';
 import { accountCurrency, requireAccountCurrency } from './expenseService.ts';
 import type {
@@ -107,7 +107,11 @@ async function applyCategoryItem(
   const existing: CategoryRow | null = await tx.category.findUnique({ where: { id: item.id } });
   if (existing && existing.userId !== userId) throw idAlreadyInUse();
 
-  const incomingUpdatedAt = clampClientUpdatedAt(new Date(item.updatedAt), now);
+  const incomingUpdatedAt = clampPushedUpdatedAt(item.updatedAt, now, {
+    userId,
+    entity: 'category',
+    id: item.id,
+  });
 
   if (!existing) {
     if (fields.name === undefined) throw requiredToCreate('category', ['name']);
@@ -171,7 +175,11 @@ async function applyExpenseItem(
   const existing: ExpenseRow | null = await tx.expense.findUnique({ where: { id: item.id } });
   if (existing && existing.userId !== userId) throw idAlreadyInUse();
 
-  const incomingUpdatedAt = clampClientUpdatedAt(new Date(item.updatedAt), now);
+  const incomingUpdatedAt = clampPushedUpdatedAt(item.updatedAt, now, {
+    userId,
+    entity: 'expense',
+    id: item.id,
+  });
 
   if (!existing) {
     const { categoryId, amountMinor, date } = fields;
@@ -250,6 +258,30 @@ async function applyExpenseItem(
 
 function toDate(value: string | null): Date | null {
   return value === null ? null : new Date(value);
+}
+
+/**
+ * Clamp a pushed `updatedAt`, and say so in the log when the clamp bit.
+ *
+ * Worth a line each time rather than silently: a clamp firing means a real device has a
+ * badly-set clock, which the user will experience as edits that mysteriously lose
+ * conflicts. The clamp keeps it from being permanent, but it does not make it *right*,
+ * and without a log there is nothing to correlate a support report against.
+ */
+function clampPushedUpdatedAt(
+  raw: string,
+  now: Date,
+  context: { userId: string; entity: SyncEntity; id: string },
+): Date {
+  const incoming = new Date(raw);
+  if (wasClamped(incoming, now)) {
+    logger.warn('clamped a skewed client updatedAt', {
+      ...context,
+      pushed: raw,
+      skewMs: incoming.getTime() - now.getTime(),
+    });
+  }
+  return clampClientUpdatedAt(incoming, now);
 }
 
 function applied(record: WireCategory | WireExpense): Outcome {

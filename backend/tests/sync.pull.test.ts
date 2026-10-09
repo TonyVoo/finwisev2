@@ -148,6 +148,40 @@ describe('paging', () => {
     expect(walk.changes.map((c) => c.record.id)).toContain(expense.id);
   });
 
+  it('serves a full-size page, and the whole backlog across pages', async () => {
+    // A client that has been offline for a day comes back with a real backlog, so the
+    // published maximum has to actually work rather than just validate. Written through
+    // `POST /v1/sync` because that is the only way to create this many rows quickly.
+    const total = LIMITS.SYNC_PULL_MAX_LIMIT;
+    const ids = Array.from({ length: total }, () => uuidv7());
+    const now = new Date().toISOString();
+    await pushOk(
+      user,
+      ids.map((id, i) => ({
+        entity: 'expense',
+        id,
+        updatedAt: now,
+        clientMutationId: uuidv7(),
+        fields: {
+          categoryId: user.defaultCategory.id,
+          amountMinor: 100 + i,
+          date: '2026-10-09',
+        },
+      })),
+    );
+
+    const firstPage = await pull(user, { since: 0, limit: LIMITS.SYNC_PULL_MAX_LIMIT });
+    expect(firstPage.changes).toHaveLength(LIMITS.SYNC_PULL_MAX_LIMIT);
+    // Six seeded categories were pushed onto the front, so there is a tail.
+    expect(firstPage.hasMore).toBe(true);
+
+    const walk = await pullAll(user, { limit: LIMITS.SYNC_PULL_MAX_LIMIT });
+    const delivered = walk.changes.map((c) => c.record.id);
+    expect(new Set(delivered).size).toBe(delivered.length);
+    expect(delivered).toHaveLength(total + 6);
+    for (const id of ids) expect(delivered).toContain(id);
+  });
+
   it('rejects a limit outside the published bounds', async () => {
     for (const limit of [0, LIMITS.SYNC_PULL_MAX_LIMIT + 1, -1]) {
       const response = await api().get(`/v1/sync?limit=${limit}`).set('Authorization', user.auth);
