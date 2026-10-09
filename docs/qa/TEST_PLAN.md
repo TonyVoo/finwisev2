@@ -1,10 +1,18 @@
 # MVP Test Plan
 
-Owner: QA Tester · Status: ready to execute · Last updated: 2026-10-06
+Owner: QA Tester · Status: ready to execute · Last updated: 2026-10-09
 
 Written in Wave 1 against the contract and the designs, **before** the features land, so that it
 is ready the moment they do — and so that the gaps in §11 were found by writing it rather than by
 hitting them in Wave 3.
+
+**Revised 9 Oct** against the auth, CRUD and sync work that landed on 8–9 Oct. Five of the ten
+gaps in §11 have closed, four of them by that work; the cases they blocked now carry real expected
+results. Three cases were re-pointed because the settled contract contradicted what this plan
+first assumed — `API-02`, `API-03` and `API-04`, where a bad row in a push batch is a per-record
+`invalid` rather than a `400` for the whole batch. Those would have produced wrong verdicts, which
+is the hazard a plan written early carries and the reason it is re-read against the code before
+being executed rather than after.
 
 Inputs this plan was derived from, and the authority order when they disagree:
 
@@ -96,9 +104,10 @@ Two clocks matter, and they are tested separately:
 
 - **Device clock** (`SYNC-11`, `SYNC-12`, `EDGE-07`): set on the device with automatic time
   disabled. At the unit layer, inject it rather than setting the system clock.
-- **Server clock** (`SYNC-16`, `SYNC-17`): injected. The server must read `now` from an injectable
-  source, or the 5-minute clamp and the 90-day horizon cannot be tested without waiting 90 days.
-  See [GAP 8].
+- **Server clock** (`SYNC-16`, `SYNC-17`): injected, and now actually injectable — closed GAP 8.
+  The resolver is pure functions taking `now` as an argument (`clampClientUpdatedAt`, `wasClamped`,
+  `tombstoneHorizon`), and `pruneTombstones(db, userId, now)` takes it too, so the 5-minute clamp
+  and the 90-day horizon are both reachable in a unit test without waiting 90 days.
 
 ### Timezones
 
@@ -335,11 +344,14 @@ turns every case that uses it into a false green, which is worse than a fixture 
   2. Let the outbox drain
   3. `GET /v1/categories`
   4. Open Settings → Categories in the app
-- **Expect** `[BLOCKED-BY-GAP 1]` — the contract says the **server** seeds the defaults
-  (`POST /v1/auth/signup`: "seeds the default categories") while `00-foundations.md` §7 says the
-  **client** does, locally, with its own UUIDv7 ids. If both do, the observable result is
-  **twelve** categories after the first pull, five of them duplicated by name. The expected count
-  cannot be written until GAP 1 is resolved. Not executed until then.
+- **Expect** Exactly **six** categories, never twelve. `GET /v1/categories` returns six rows, all
+  with server-assigned ids, exactly one with `isDefault: true` and named `Uncategorized`. The app
+  lists the same six, the default pinned last. No two share a name.
+- **Why six and not twelve** `00-foundations.md` §7 rule 7 settles ownership: "The server writes
+  these rows; the client never seeds." The client reads them on its first pull and treats them as
+  ordinary synced data. The sync create path hard-codes `isDefault: false`
+  (`backend/src/services/syncPushService.ts`), so a client cannot mint a second default even by
+  accident — which is the invariant this case is really guarding.
 
 ---
 
@@ -362,9 +374,15 @@ turns every case that uses it into a false green, which is worse than a fixture 
   1. `POST /v1/expenses` with an explicit UUIDv7 `id` of the client's choosing
   2. `POST /v1/expenses` with the **same** `id` again
 - **Expect** Step 1 is `201` and `data.id` is byte-identical to the id sent — no remapping. Step 2
-  is **not** an upsert: it fails rather than overwriting, because REST create is not upsert
-  ("use `POST /v1/sync` for upsert semantics"). `[CONFIRM]` the contract does not name the code
-  for step 2; see [GAP 7].
+  is **also** `201`, carrying the row exactly as step 1 stored it: the retried body's fields are
+  ignored rather than applied, and `revision` is unchanged from step 1. It is idempotent, not an
+  upsert — a client whose response was dropped may retry safely, and a client that wants to change
+  a field uses `PATCH`.
+- **Also** Repeat step 2 with a **different** `amountMinor`. Still `201`, still the original
+  amount and the original `revision`: the re-post is ignored, not merged.
+- **Also** As a second user, `POST /v1/expenses` with the first user's `id`. `400
+validation_error`, and the body names no owner — the id is the global primary key, so the server
+  can neither honour the create nor admit whose row it is.
 
 ### EXP-03 — `currency` defaults to the user's currency and may not differ from it
 
@@ -415,6 +433,12 @@ turns every case that uses it into a false green, which is worse than a fixture 
 - **Expect** Step 1 is `200` **with a body** (not `204`); `data.deletedAt` is non-null. Step 2 is
   `200` and returns the **same** `updatedAt` and `revision` as step 1 — an idempotent re-delete
   does not advance either. Step 3 omits `E1`. Step 4 includes it with `deletedAt` set.
+- **Also, a tombstone is `404` to every other REST verb** `GET /v1/expenses/E1` and
+  `PATCH /v1/expenses/E1` are both `404 not_found` once `E1` is tombstoned — the same answer as a
+  row that never existed and as another user's row (`API-01`). The reason is specific: no update
+  schema declares `deletedAt`, so this path has no un-delete, and a `200` here would tell the
+  client a deleted row was live again. Do the same against a tombstoned **category** with
+  `PATCH /v1/categories/{id}`. `POST /v1/sync` is the only way a row comes back (`SYNC-31`).
 
 ### EXP-07 — The expense list is keyset-paginated and stable under a concurrent write
 
@@ -1073,10 +1097,16 @@ common offline-sync bug", so these cases get the proxy harness from §2 rather t
 - **Layer** API
 - **Pre** `F-FRESH`
 - **Steps** Push with `clientMutationId: M`; advance the injected server clock; push `M` again
-- **Expect** `[BLOCKED-BY-GAP 3]` — neither the contract nor `shared/src/sync.ts` states a
-  retention window for processed `clientMutationId`s. Without one, QA cannot say whether a retry
-  from a device that was offline for a long weekend is still de-duplicated. Not executed until
-  GAP 3 closes.
+- **Expect** `[BLOCKED-BY-GAP 3]` — still open, and now concrete rather than theoretical. The
+  ledger exists (`sync_mutations`, with a `created_at`), but **nothing prunes it**:
+  `pruneTombstones` deletes only from `expenses` and `categories`, and no other code path deletes
+  a `sync_mutations` row. So today the answer is "forever", which is correct for de-duplication
+  and wrong for a table that takes one row per mutation per user with no ceiling.
+- **What to assert once it closes** The boundary in both directions: a push one tick inside the
+  window replays the recorded outcome, one tick outside is processed as new. Until a window is
+  stated, `SYNC-09`–`SYNC-12` cover the part that matters for correctness (a retry inside any
+  plausible window never double-applies) and this case covers only the part that needs a number.
+  Not executed until GAP 3 closes.
 
 ### 8.4 Deletes must not come back
 
@@ -1177,11 +1207,17 @@ Defends: the server's `now + 5 minutes` clamp.
 - **Pre** `F-MONTH`
 - **Steps** Push `E1` with `updatedAt` set 48 hours in the past, against a server row written
   today
-- **Expect** `[CONFIRM]` `status: "conflict_server_wins"`, and the client overwrites its local
-  row from the response — which means a user on a badly-behind device loses their edit with no
-  notice. The clamp is one-sided (`now + 5 min` only, no lower bound), which is defensible but is
-  not written down anywhere as a decision. Raised as [GAP 6]; the case runs with the stated
-  expectation and will be re-pointed if the answer changes.
+- **Expect** `status: "conflict_server_wins"`, and the client overwrites its local row from the
+  response — so a user on a badly-behind device loses that edit with no notice, because
+  `02-offline-and-sync.md` §5.2 deliberately does not notify on `conflict_server_wins`.
+- **Why this is a test and not a bug** The asymmetry is now recorded as a decision on
+  `clampClientUpdatedAt` (`backend/src/sync/resolver.ts`): "Only the future is clamped. A clock
+  that is _behind_ loses conflicts it should have won, which costs the user an edit — annoying,
+  recoverable, and not something the server can distinguish from a genuinely older edit anyway."
+  A lower clamp would break legitimate offline editing, where an `updatedAt` from last Tuesday is
+  exactly correct. Settled; closed GAP 6.
+- **Also** Confirm the stored row's `updatedAt` is untouched by the losing push, and that no
+  `revision` was consumed — a conflict must not cost a sync page.
 
 ### 8.6 Dependency ordering
 
@@ -1224,11 +1260,29 @@ Defends: "categories, then expenses", one round trip.
   category with bumped `updatedAt`, the category is tombstoned, and **8 outbox rows** are
   appended. The push sends the category item first, then the 7 expense items. Step 3 shows the
   category tombstoned and all 7 expenses live with the `isDefault` `categoryId`, so a peer
-  converges on the same state without re-deriving the reassignment. **Note:** whether the server
-  _also_ reassigns on a sync-path category delete is [GAP 2]; if it does, the client's 7 expense
-  items may come back `conflict_server_wins` and any other offline edit to those expenses is
-  silently lost. This case asserts the end state; GAP 2 must close before the intermediate
-  statuses can be asserted.
+  converges on the same state without re-deriving the reassignment.
+- **Also** All 8 push results are `applied` — none `conflict_server_wins`. The sync path does
+  **not** reassign server-side (`applyCategoryItem` tombstones the category and touches no
+  expense), so the client's 7 reassignment items are the only thing that moves those rows, and
+  they carry a newer `updatedAt` than the stored ones. This is what closed GAP 2, and it is the
+  branch that preserves a concurrent offline edit: had the server reassigned with its own `now`,
+  every client expense item would have lost the comparison and any amount the user also corrected
+  offline would have been dropped silently.
+- **Also, the cost of that branch** Repeat step 1, but kill the app after the **category** item
+  is acknowledged and before the expense items are sent (the client dies mid-drain). The server
+  now holds 7 live expenses pointing at a tombstoned category — the state `01-flows.md` §5 rule 5
+  says one transaction exists to prevent, and the sync path cannot prevent it because the
+  reassignment lives in a second push. Relaunch and confirm the outbox still holds the 7 items
+  and drains them. Then, separately, edit one of those 7 expenses on a **second** device that has
+  pulled the tombstone but not the reassignment: the push is per-record `invalid` with
+  `unknown_category`, because `requireOwnCategoryForWrite(requireLive: true)` re-checks the
+  category even when `categoryId` is unchanged. Recovery is `02-offline-and-sync.md` §5.1 and
+  `SYNC-30` asserts it: the row is flagged `needs-attention` and the **user** picks the new
+  category. Note the wording tension — `openapi.yaml` says to "repoint it at `Uncategorized` and
+  push again", while §5.1 says the row is "never silently discarded or auto-reassigned". They
+  reconcile (the contract says what the server will accept, the design says who chooses), but a
+  client written from the contract alone would auto-reassign and lose the user's intent. Flagged
+  to Chief as a wording fix, not a blocker.
 
 ### SYNC-24 — Batch size limit
 
@@ -1344,7 +1398,16 @@ app.
 - **Pre** `F-MONTH`. `E1` is tombstoned server-side
 - **Steps** Push `E1` with `fields: { deletedAt: null }` and a newer `updatedAt`
 - **Expect** `applied`, and the returned `record` has `deletedAt: null`. The row is live again and
-  appears on the next `GET /v1/expenses`. This is what makes `EXP-14` safe.
+  appears on the next `GET /v1/expenses`. This is what makes `EXP-14` safe. `POST /v1/sync` is the
+  **only** path that can do this — the REST `PATCH` declares no `deletedAt`, so a tombstone is
+  `404` there (see `EXP-06`).
+- **Also, undelete is blocked by a dead category** Tombstone `E1`'s category too, then push the
+  same undelete. Per-record `invalid` with `unknown_category`: a row that ends up **live** must
+  point at a live category, and the server re-checks even though `categoryId` is unchanged.
+  Repoint at `Uncategorized` in the same push and it is `applied`.
+- **Also, tombstoning is never blocked** With the category still dead, push `E1` with
+  `deletedAt` set to a timestamp. `applied` — deleting must never be blocked by a category the
+  user already cleaned up, which is the asymmetry `requireLive: deletedAt === null` encodes.
 
 ### 8.9 The sync pill and the detail sheet
 
@@ -1649,9 +1712,15 @@ and they are where a security or correctness regression shows up first.
 - **Pre** `F-FRESH` and `F-OTHER`
 - **Steps** Send `userId: <user B's id>` as an extra key in a signup body, an expense create, a
   category patch, a sync push item and a sync push `fields` object
-- **Expect** Every one is `400 validation_error` with the offending path in
-  `error.details.issues`. Tenancy comes only from the access token, so there is no request shape
-  anywhere in this API that can be pointed at another user's data.
+- **Expect** Every one is rejected, and none of them writes to user B. The REST bodies are
+  `400 validation_error` with the offending path in `error.details.issues`. The two sync shapes
+  are **per-record** `invalid` with `error.code: "immutable_field"` and an HTTP `200` for the
+  batch — `userId` is in `SERVER_OWNED_FIELDS`, and the push validates each item on its own so one
+  bad row cannot fail the batch (see `API-04`). Do not expect a `400` there.
+- **Why it still proves the point** Tenancy comes only from the access token, so there is no
+  request shape anywhere in this API that can be pointed at another user's data. Confirm the
+  negative directly as well: after all five attempts, `GET /v1/expenses` and `GET /v1/categories`
+  as user B return exactly what `F-OTHER` seeded, byte for byte.
 
 ### API-03 — Unknown fields are rejected everywhere
 
@@ -1661,21 +1730,37 @@ and they are where a security or correctness regression shows up first.
   `CategoryCreateRequest`, `CategoryUpdateRequest`, `ExpenseCreateRequest`,
   `ExpenseUpdateRequest`, `SyncPushRequest`, a push item, and a push `fields` object. Also send
   `?nope=1` to `GET /v1/expenses` and `GET /v1/sync`
-- **Expect** All are `400 validation_error` with `details.issues[].path` naming the unexpected
-  key. Every request body and query is validated closed.
+- **Expect** Every shape is validated closed, but the sync path reports at a different level:
+  - The seven REST bodies and the two query strings are `400 validation_error` with
+    `details.issues[].path` naming the unexpected key.
+  - `SyncPushRequest` itself (a stray key beside `items`) is `400 validation_error` — that is the
+    batch envelope, not a row.
+  - A stray key on a **push item** or on its `fields` is per-record `invalid` with
+    `error.code: "validation_error"`, inside an HTTP `200`. `nope` is not server-owned, so this is
+    the plain code, not `immutable_field`.
+- **The one sync case that is a `400`** An item missing `entity`, `id` or `clientMutationId`.
+  There is no way to address a per-record result at it, so the batch fails with `400` naming the
+  offending index. Send a batch of three where only the middle item lacks `clientMutationId` and
+  confirm the index in the message is `1`, and that neither sibling was applied.
 
 ### API-04 — Server-owned fields cannot be set by the client
 
 - **Layer** API
 - **Pre** `F-MONTH`
-- **Steps** Attempt to set `revision`, `createdAt` and `id` via `PATCH /v1/expenses/{id}`, and via
-  a sync push `fields` object
-- **Expect** `[BLOCKED-BY-GAP 7]` — every one of these is rejected, but as
-  `400 validation_error` (an unknown key on a closed schema), **never** as
-  `422 immutable_field`. `immutable_field` is listed on five operations and in
-  `x-recordErrorCodes`, yet no documented request schema admits the input that would produce it,
-  so QA has no way to make a `422 immutable_field` happen. The case asserts
-  `400 validation_error` today; the code is either dead or the schemas need to admit these keys.
+- **Steps** Attempt to set each of `revision`, `createdAt`, `id` and `userId` (the four in
+  `SERVER_OWNED_FIELDS`) two ways: via `PATCH /v1/expenses/{id}`, and via a sync push `fields`
+  object
+- **Expect, sync path** Per-record `invalid` with `error.code: "immutable_field"`, and the message
+  naming the offending field. This now works: `backend/src/sync/batch.ts` inspects the zod failure
+  and, when the unrecognised key is one of `SERVER_OWNED_FIELDS`, reports `immutable_field` rather
+  than `validation_error` — telling "you tried to set something you don't own" apart from a typo.
+  Note the status is **not** `422` here: a per-record error carries a `code`, not an HTTP status.
+- **Expect, REST path** `400 validation_error` naming the key — **not** `422 immutable_field`.
+  `[BLOCKED-BY-GAP 7]` for this half only: `ExpenseUpdateRequest` and `CategoryUpdateRequest` are
+  closed schemas that declare none of these keys, so the unknown-key rule fires first and the
+  `422` is unreachable, while `openapi.yaml` still advertises `immutable_field` on four REST
+  operations (lines 493, 574, 825, 884). Assert `400 validation_error` today; the fix is to drop
+  the code from those four or give the REST validator the mapping `batch.ts` already has.
 
 ### API-05 — The error envelope is the only non-2xx shape
 
@@ -1761,53 +1846,77 @@ and they are where a security or correctness regression shows up first.
 
 ## 11. Contract and design gaps found while writing this plan
 
-Finding these now is the point of writing the plan in Wave 1. **Each one is being raised as a
-comment on TVO-5 and flagged to Chief**; contract changes go through Chief per
-`docs/PLAN.md` §7. None of them is assumed resolved, and the cases that depend on them are marked
-`[BLOCKED-BY-GAP n]` above rather than guessed at.
+Finding these now is the point of writing the plan in Wave 1. **Each one is raised as a comment on
+TVO-5 and flagged to Chief**; contract changes go through Chief per `docs/PLAN.md` §7. None of
+them is assumed resolved, and the cases that depend on one are marked `[BLOCKED-BY-GAP n]` above
+rather than guessed at.
 
-Ordered by how much damage the ambiguity can do.
+Ten gaps were filed when this plan was first written. **Five have since closed**, four of them in
+the contract and backend work of 8–9 Oct — which is the plan paying for itself before a single
+case was executed. The numbering is kept stable so the TVO-5 thread still reads correctly, and the
+closed entries are kept rather than deleted so the decision is recorded where the test that
+depends on it can find it.
 
-| #   | Gap                                                                 | Severity | Blocks               |
-| --- | ------------------------------------------------------------------- | -------- | -------------------- |
-| 1   | Who seeds the default categories — the duplicate-six risk           | High     | `AUTH-17`            |
-| 2   | Does a sync-path category delete reassign expenses server-side?     | High     | `SYNC-23` (partly)   |
-| 3   | `clientMutationId` retention window is unspecified                  | High     | `SYNC-13`            |
-| 4   | Does a forced session clear wipe undrained local writes?            | High     | `AUTH-12`, `EDGE-08` |
-| 5   | A future-dated row arriving by sync is unreachable in every view    | Medium   | `EDGE-04`            |
-| 6   | The clock clamp is one-sided; a slow clock silently always loses    | Medium   | `SYNC-20`            |
-| 7   | `immutable_field` (422) is unreachable through any documented shape | Medium   | `API-04`, `EXP-02`   |
-| 8   | The server clock must be injectable or the clamp is untestable      | Medium   | `SYNC-16`–`SYNC-19`  |
-| 9   | No E2E driver is named in `docs/PLAN.md` §7                         | Low      | 7 cases run manual   |
-| 10  | Rate limits are not quantified                                      | Low      | `API-09`             |
+### Closed
 
-### GAP 1 — Who seeds the default categories, and the duplicate-six risk
+| #   | Gap                                                              | Closed by                                                                                                        |
+| --- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| 1   | Who seeds the default categories — the duplicate-six risk        | `00-foundations.md` §7 rule 7: "The server writes these rows; the client never seeds." `AUTH-17` asserts six     |
+| 2   | Does a sync-path category delete reassign expenses server-side?  | Implementation: it does **not**. `SYNC-23` now asserts the per-record statuses, and the cost of that branch      |
+| 6   | The clock clamp is one-sided; a slow clock silently always loses | Recorded as intended on `clampClientUpdatedAt`. `SYNC-20` is a test rather than an open question                 |
+| 8   | The server clock must be injectable                              | Resolver is pure functions over `now`; `pruneTombstones(db, userId, now)` takes it too. §2 updated               |
+| 7a  | `immutable_field` unreachable on the **sync** path               | `sync/batch.ts` maps a server-owned unknown key to `immutable_field`. `API-04` asserts it; the REST half is open |
 
-`POST /v1/auth/signup` in the contract says it "**seeds the default categories**".
-`00-foundations.md` §7 says they are "created **client-side** immediately on successful signup,
-with client-minted UUIDv7 ids, and pushed through the normal outbox — **not** a server-side
-fixture the client waits for", and `03-auth.md` §1.2 rule 7 writes them in the post-signup
-transaction.
+Also settled in passing, though never filed as a numbered gap: `EXP-02`'s `[CONFIRM]` on a
+re-posted REST create, which `openapi.yaml` now answers — idempotent `201`, retried body ignored,
+no new `revision`, and another account's id rejected as `400 validation_error`.
 
-If both sides do it, the user has **twelve** categories after the first pull: six seeded by the
-server with server ids, and six seeded by the client with client ids, five of them duplicated by
-name. Nothing de-duplicates them, because they differ by `id` and the protocol converges on `id`.
+### Still open
 
-This sharpens the Designer's open item 2 (`docs/design/README.md`) from "who owns this" into a
-concrete, user-visible defect, and it is reachable on the **very first screen after signup**.
+| #   | Gap                                                               | Severity | Blocks               |
+| --- | ----------------------------------------------------------------- | -------- | -------------------- |
+| 3   | `clientMutationId` retention window — and the ledger never prunes | High     | `SYNC-13`            |
+| 4   | Does a forced session clear wipe undrained local writes?          | High     | `AUTH-12`, `EDGE-08` |
+| 5   | A future-dated row arriving by sync is unreachable in every view  | Medium   | `EDGE-04`            |
+| 7b  | `immutable_field` is unreachable on the **REST** path             | Low      | `API-04` (half)      |
+| 9   | No E2E driver is named in `docs/PLAN.md` §7                       | Low      | 7 cases run manual   |
+| 10  | Rate limits are not quantified                                    | Low      | `API-09`             |
 
-There is a second half to it. The client must seed with `isDefault: true` on `Uncategorized`, but
-**`isDefault` is not settable through any write path**: it is absent from `CategorySyncFields`,
-from `CategoryCreateRequest` and from `CategoryUpdateRequest`. So a client-seeded category set
-cannot tell the server which row is the protected default. The same hole makes
-`07-categories.md` §4 rule 9 — the specified repair path, where a client that finds no live
-`isDefault` row "recreates it locally … and pushes it" — **inexpressible in the contract**.
+**GAP 4 is the one to settle first.** It is the only open gap whose failure mode is silent,
+unrecoverable loss of the user's own data, and the user it hits is the one this app is built
+for — someone who has been offline for a while.
 
-**What QA needs:** a decision on who seeds, and, if it is the client, a way to carry `isDefault`
-on a push. If it is the server, `00-foundations.md` §7 and `03-auth.md` §1.2 rule 7 need
-amending, and the offline-signup promise needs re-examining.
+### GAP 1 — Who seeds the default categories, and the duplicate-six risk — **CLOSED**
 
-### GAP 2 — Does a sync-path category delete reassign expenses server-side?
+The contract's `POST /v1/auth/signup` says it "**seeds the default categories**", while an earlier
+draft of `00-foundations.md` §7 had them created **client-side** with client-minted UUIDv7 ids and
+pushed through the outbox. If both sides did it the user would hold **twelve** categories after
+the first pull — six with server ids, six with client ids, five duplicated by name, and nothing to
+de-duplicate them, because they differ by `id` and the protocol converges on `id`. Reachable on
+the very first screen after signup.
+
+**Resolved: the server seeds, the client never does.** `00-foundations.md` §7 rule 7 now states it
+outright and records the reasoning — a client that also seeded "would push a second set beside the
+server's and the user would see twelve", and offline signup is impossible anyway, so "a client
+that cannot reach the server has no account to seed against". The client reads the seeded rows and
+treats them as ordinary synced data from then on.
+
+The second half closed with it. `isDefault` is settable through **no** write path — it is absent
+from `CategorySyncFields`, `CategoryCreateRequest` and `CategoryUpdateRequest` — and
+`applyCategoryItem` hard-codes `isDefault: false` on every sync create. Under client-side seeding
+that was a hole, because a client-seeded set could not tell the server which row was the protected
+default. Under server-side seeding it is the invariant that makes a second default impossible, so
+the same code reads as a bug fix rather than a hole. `AUTH-17` asserts six categories and exactly
+one default; `CAT-08` covers renaming the default without breaking the fallback.
+
+One leftover to confirm rather than assume: `07-categories.md` §4 rule 9 specified a client repair
+path where a client finding no live `isDefault` row "recreates it locally … and pushes it". That is
+still inexpressible in the contract, and with server-side seeding it should now be unreachable —
+the default cannot be deleted (`CAT-07`, `CAT-12`) and cannot be un-defaulted. The grep for that
+rule in the current spec comes back empty, so it appears to have been removed along with the
+client-seeding draft. Worth one confirmation from the Designer that it is gone deliberately.
+
+### GAP 2 — Does a sync-path category delete reassign expenses server-side? — **CLOSED in code, open in prose**
 
 `DELETE /v1/categories/{id}` explicitly reassigns the category's expenses to the `isDefault`
 category. `POST /v1/sync` with `fields: { deletedAt }` on a category says **nothing** about
@@ -1830,8 +1939,30 @@ Both candidate answers have a cost:
   dropped. For an expense the user only reassigned that is harmless. For an expense they **also**
   edited offline in the same session (a corrected amount, say), **that edit is silently lost**.
 
-**What QA needs:** one sentence in the `POST /v1/sync` description either way. `SYNC-23` can
-assert the end state now but cannot assert the per-record statuses until this is settled.
+**Answered by the implementation: the server does not reassign.** `applyCategoryItem`
+(`backend/src/services/syncPushService.ts`) tombstones the category and touches no expense row. So
+the client's reassignment items are the only thing that moves those expenses, they carry a newer
+client `updatedAt` than the stored rows, and they come back `applied`. `SYNC-23` now asserts all
+eight statuses.
+
+This is the better of the two branches, and worth saying why: it is the one that **preserves a
+concurrent offline edit**. Had the server reassigned with its own `now`, every client expense item
+would have lost the comparison and an amount the user also corrected offline would have been
+dropped silently — the second bullet above.
+
+**Still open, and the reason this entry is not simply deleted:** the contract's prose. The
+`POST /v1/sync` description still says nothing about reassignment, while the contract's
+introduction promises "Both paths produce identical rows" — and on this point the two paths
+demonstrably do not. The behaviour is now settled and tested; the document a future client author
+reads is not. Two sentences on the push description would close it: that a category tombstone
+applied through the sync path reassigns nothing, and that the client owns pushing each expense's
+new `categoryId`.
+
+The cost of the chosen branch is also now a real, reachable state rather than a hypothetical: a
+client that dies between the category push and the expense pushes leaves live expenses pointing at
+a tombstoned category. `SYNC-23`'s second and third bullets cover both halves of it — that the
+outbox survives and drains, and that a peer editing one of those expenses gets a per-record
+`invalid` with `unknown_category` and recovers through `02-offline-and-sync.md` §5.1.
 
 ### GAP 3 — `clientMutationId` retention window is unspecified
 
@@ -1844,14 +1975,36 @@ length is the difference between "a retry after a long weekend offline is de-dup
 is not". With a 60-day refresh token and an app designed around being offline for a week, the
 window has to be stated to be relied on.
 
+**Since filing, this has gone from unspecified to concrete: the answer today is "forever".** The
+ledger landed as `sync_mutations` (one row per `clientMutationId` per user, with a `created_at`
+that nothing reads), and **no code path deletes from it**. `pruneTombstones` deletes from
+`expenses` and `categories` only; `pruneAllTombstones` calls it per user and touches nothing else.
+Grepping the backend for a delete against `sync_mutations` returns nothing outside generated Prisma
+code.
+
+That is the correct answer for de-duplication and the wrong one for a table with no ceiling: it
+grows with every mutation every user ever makes, is never read for rows older than a retry window,
+and is the one table in the schema with no bound on it. `created_at` is already there, which
+suggests pruning was intended and simply has not been written yet.
+
 For most payloads an expired id degrades gracefully: re-applying the identical row with the
 identical `updatedAt` comes back `conflict_server_wins` (ties go to the server), which is
 harmless. It does **not** degrade gracefully for a delete-then-recreate sequence on the same id,
 or for an `invalid` result the client is replaying to re-read.
 
-**What QA needs:** the retention period, and ideally the pruning rule, so `SYNC-13` can assert a
-boundary. If the answer is "the same 90 days as the tombstone horizon", that is a fine answer and
-just needs writing down.
+**What QA needs:** the retention period written down, and a pruner that enforces it, so `SYNC-13`
+can assert a boundary from both sides. "The same 90 days as the tombstone horizon, pruned by the
+same job" is a fine answer and the cheapest one — `pruneTombstones` already runs per user in a
+transaction and already has `now` injected, so the ledger sweep is a third statement in a function
+that exists. It would also keep the two horizons from drifting apart, which matters because a
+client resyncing at the tombstone horizon is exactly the client most likely to be replaying old
+mutation ids.
+
+Note this is a lower-urgency gap than its High severity suggests on first read: the **correctness**
+property is currently safe, because remembering forever de-duplicates everything. The risk is
+operational (unbounded growth) plus the untested boundary. It is filed High because the fix changes
+behaviour `SYNC-09`–`SYNC-13` assert, so it is much cheaper before those cases are executed than
+after.
 
 ### GAP 4 — Does a forced session clear wipe undrained local writes?
 
@@ -1909,7 +2062,7 @@ exists.
 rationale intact), or a server-side upper bound on `date`. `EDGE-04` is written both ways and
 waiting.
 
-### GAP 6 — The clock clamp is one-sided
+### GAP 6 — The clock clamp is one-sided — **CLOSED**
 
 The server clamps a client `updatedAt` to `now + 5 minutes`, which correctly stops a
 fast-clock device winning every future conflict. There is **no lower clamp**.
@@ -1924,10 +2077,17 @@ This may well be the right trade: a lower clamp would break legitimate offline e
 asymmetry is not recorded as a decision anywhere, while the upper clamp has three paragraphs of
 rationale across `docs/PLAN.md`, `shared/src/primitives.ts` and the contract.
 
-**What QA needs:** a line confirming the behaviour is intended, so `SYNC-20` is a test rather
-than an open question. QA's view is that it is intended and should simply be written down.
+**Resolved, as QA guessed: intended, and now written down.** The doc comment on
+`clampClientUpdatedAt` (`backend/src/sync/resolver.ts`) records both the decision and the
+reasoning: "Only the future is clamped. A clock that is _behind_ loses conflicts it should have
+won, which costs the user an edit — annoying, recoverable, and not something the server can
+distinguish from a genuinely older edit anyway." That last clause is the part that makes it
+unarguable — the server has no way to tell a slow clock from an honest edit made last Tuesday, so
+a lower clamp would have to break the second to fix the first.
 
-### GAP 7 — `immutable_field` (422) is unreachable
+`SYNC-20` is now a test with a stated expectation rather than a `[CONFIRM]`.
+
+### GAP 7 — `immutable_field` is unreachable — **sync half CLOSED, REST half open**
 
 `immutable_field` is in `ERROR_CODES`, mapped to `422` in `ERROR_CODE_STATUS`, listed in
 `x-errorCodes` on five operations, listed in `x-recordErrorCodes` for the push, and described in
@@ -1949,12 +2109,30 @@ Neither is a bug a user would hit. Both matter because an untestable error code 
 can claim to implement without anyone being able to check, and `API-05` asserts that every code's
 status matches `ERROR_CODE_STATUS`.
 
-**What QA needs:** either drop `immutable_field` from the operations that cannot return it (and
-note that `mutation_id_reused` is record-level only), or make the update/sync schemas admit those
-keys so they can be rejected with the specific code. Either is fine; the current state is just not
-checkable.
+**The sync half is closed, by the second of those two options — sort of.** `sync/batch.ts` keeps
+`fields` a `strictObject` but inspects the resulting zod error: when the unrecognised key is one of
+`SERVER_OWNED_FIELDS` (`id`, `userId`, `createdAt`, `revision`), the per-record error becomes
+`immutable_field` instead of `validation_error`. The doc comment gives exactly the reason QA
+wanted the distinction for: the two are "different client bugs: one is 'you tried to set something
+you don't own', which the client must stop doing, and the other is a misspelling." So on the push
+path the code is now reachable and `API-04` asserts it. Note it arrives as a per-record
+`error.code` inside a `200` — not as a `422`, because a per-record result carries no HTTP status.
 
-### GAP 8 — The server clock must be injectable
+**The REST half is still open, and is now a documentation inconsistency rather than a design
+question.** `ExpenseUpdateRequest` and `CategoryUpdateRequest` are untouched, so the unknown-key
+rule still fires first and `422 immutable_field` is still unreachable through any REST shape —
+while `openapi.yaml` still advertises `immutable_field` under `x-errorCodes` on four REST
+operations (`POST /v1/categories`, `PATCH /v1/categories/{id}`, `POST /v1/expenses`,
+`PATCH /v1/expenses/{id}`; lines 493, 574, 825, 884).
+
+**What QA needs:** pick one. Drop the code from those four operations, or give the REST validator
+the same mapping `batch.ts` already has — the second is a few lines and makes the two paths agree,
+which is the contract's own stated goal. Either way, also note in `ERROR_CODES` that
+`mutation_id_reused` is record-level only, so its `409` mapping is not a reachable HTTP status.
+Severity dropped from Medium to Low: the half that could have hidden a real server bug is the sync
+half, and that one now works.
+
+### GAP 8 — The server clock must be injectable — **CLOSED**
 
 Four cases (`SYNC-16`, `SYNC-17`, `SYNC-18`, `SYNC-19`) and the `F-STALE` fixture need the server
 to believe it is a different time: a 90-day-old tombstone horizon, and a 5-minute clamp boundary
@@ -1963,9 +2141,20 @@ none of this can be automated, and the protocol's two most subtle rules ship unt
 `docs/PLAN.md` §7 specifically requires the resolver to have a unit test per branch, including
 "clamped clock" and "tombstone horizon".
 
-**What QA needs:** `now` behind an injectable clock in the sync service and the pruner, plus a
-test-only way to backdate a tombstone. This is a request to Backend Dev rather than a contract
-change, and it is cheap if done while the resolver is being written rather than after.
+**Resolved, and done the better way.** Rather than an injected clock object, the resolver is a
+file of pure functions that each take `now` as an argument — `clampClientUpdatedAt(incoming, now)`,
+`wasClamped(incoming, now)`, `tombstoneHorizon(now)`, and `needsResync({ since, serverRevision,
+prunedThroughRevision })` with no clock at all. `pruneTombstones(db, userId, now = new Date())`
+takes it too, defaulted so production callers do not have to care. The file's own comment states
+the intent: a rule expressed as a pure function "can be tested exhaustively at the boundary —
+equal timestamps, a clock five minutes and one millisecond fast, a cursor exactly on the horizon —
+without a fixture per case."
+
+That is strictly better than what QA asked for: the clamp boundary and the 90-day horizon are
+reachable in unit tests with no fixture, no database and no clock mocking. Backend Dev has already
+used it — `backend/tests/sync.resolver.test.ts` covers the branches `docs/PLAN.md` §7 requires. The
+`F-STALE` fixture still needs a backdated tombstone at the API layer, which `pruneTombstones`'
+`now` argument provides.
 
 ### GAP 9 — No E2E driver is named
 
