@@ -38,7 +38,7 @@ import type {
  *    together and a client that created both offline syncs in a single round trip.
  *  * **One bad row must not fail the batch**, which is the opposite of what a
  *    transaction does when a statement raises. Resolved with a savepoint per item — see
- *    {@link applyOne}.
+ *    {@link inSavepoint}.
  *  * **A retry must not apply twice**, enforced by the database rather than by a check,
  *    because two retries can arrive concurrently on two connections. See
  *    {@link recordInLedger}.
@@ -392,8 +392,9 @@ async function currentRecord(
  * Savepoint names, derived from the item's position rather than from client input.
  *
  * `SAVEPOINT` takes an identifier, not a bind parameter, so the name is interpolated
- * into SQL. It is `sync_item_<n>` for an integer `n` this module computed, which is the
- * only reason that is safe — never let a client-supplied string reach here.
+ * into SQL. Both parts are ours: `index` is an integer this module computed, and
+ * `attempt` is one of a handful of literals in this file. That is the only reason the
+ * interpolation is safe — never let a client-supplied string reach here.
  */
 function savepointName(index: number, attempt: string): string {
   return `sync_item_${index}_${attempt}`;
