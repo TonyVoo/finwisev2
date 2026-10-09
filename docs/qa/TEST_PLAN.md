@@ -28,6 +28,14 @@ four expected-fail cases among them are ordinary cases. Re-testing the first one
 runs *before* the write that can fail, and the owner is stored as a separate value from the tokens
 it describes. `AUTH-20` and `AUTH-21` carry those and are the only expected-fail cases left.
 
+**The API-layer steps of `EDGE-01`, `EDGE-02` and `EDGE-04` are now executed** rather than merely
+written (`backend/tests/expenses.edgecases.test.ts`), and all three pass. They were picked because
+the suite already covered the *reject* side of the money and date boundaries and nothing covered
+the *accept* side — the side where an off-by-one in a limit, or an `int4` column under a
+twelve-digit contract, would have left every existing test green. `EDGE-04`'s result also narrows
+GAP 5: the future-dated row is on the wire, in the list response and ordered first, so nothing
+server-side filters it and the fix has to be a client decision.
+
 Inputs this plan was derived from, and the authority order when they disagree:
 
 1. [`docs/api/openapi.yaml`](../api/openapi.yaml) — the HTTP surface (statuses, headers, codes).
@@ -87,6 +95,20 @@ IDs are stable and are quoted in bug reports and in commit messages.
 | API    | `vitest` + `supertest` against the Express app on a throwaway Postgres        | Every status, code and body in the contract. All of §10 and most of §8                                                        |
 | E2E    | The app driven on a simulator/emulator, plus at least one physical device     | The flows a user performs, and every case whose precondition is "aeroplane mode"                                              |
 | Manual | Scripted, against the §12 matrix                                              | Accessibility, dynamic type, Reduce Motion, and anything needing a real radio                                                 |
+
+### The API layer shares one database, and it truncates between tests
+
+`backend/vitest.config.ts` runs test files one at a time, because every file shares the single
+Postgres test database and truncates it between tests. The consequence for a tester is that two
+**concurrent** `vitest` invocations are not safe either — one wipes the other's rows mid-assertion
+— and that cannot be worked around from the shell: `loadBackendEnv()` loads `backend/.env` with
+`override: true`, so an exported `TEST_DATABASE_URL` is ignored. That override is deliberate and
+argued in `src/loadEnv.ts`; the point here is only that the lever is the `.env` file, not the
+environment. Verified 2026-10-09: an exported `TEST_DATABASE_URL` naming a different `_test`
+database was discarded and the run still went to `expense_tracker_test`.
+
+So: one API-layer pass per machine at a time. If two people — or two agents in one workspace —
+need to run the suite simultaneously, one of them edits `backend/.env` first.
 
 ### The E2E driver is not yet chosen — [GAP 9]
 
@@ -1721,7 +1743,7 @@ thing being tested.
 
 ### EDGE-01 — An amount of 0
 
-- **Layer** E2E + API
+- **Layer** E2E + API (steps 2 and 3 automated: `backend/tests/expenses.edgecases.test.ts`)
 - **Pre** `F-FRESH`
 - **Steps**
   1. In Add expense, leave the amount at `0` and inspect Save
@@ -1734,10 +1756,19 @@ thing being tested.
   (`06-expense-form.md` §Behaviour rule 6): a zero expense carries no information and is far more
   likely an accidental save, so the client requires `> 0` while the server stays permissive. A
   server that rejects `0`, or a client that accepts it, are both fails.
+- **Result (API steps, 2026-10-09)** Pass. The server accepts `0` on every write path — REST
+  create, REST `PATCH` down to `0` from a non-zero amount, sync create, and a sync **merge** whose
+  only field is `amountMinor: 0` — and reports it as the number `0` on the create response and in
+  the list page. The automated case asserts `toBe(0)` rather than a falsy check, because `0` is
+  falsy and `null`/`undefined` would both satisfy the looser one: a write path spelled
+  `if (patch.amountMinor)` would drop the correction and leave the old amount standing. Confirmed
+  the case can fail by making exactly that change locally — it was the only one of the ten to go
+  red. Step 1 (the disabled Save) still needs the app.
 
 ### EDGE-02 — Very large amounts
 
-- **Layer** E2E + API
+- **Layer** E2E + API (steps 2–5 automated: `backend/tests/expenses.edgecases.test.ts` and
+  `backend/tests/expenses.test.ts`)
 - **Pre** `F-FRESH`
 - **Steps**
   1. In Add expense, press `9` repeatedly past 12 digits
@@ -1752,6 +1783,18 @@ thing being tested.
   number they cannot see. Step 2 is `201`. Steps 3, 4 and 5 are each `400 validation_error`:
   above the max, not an integer, and not a number. The amount renders without truncation or
   ellipsis on Home at every font scale — a clipped amount is worse than a taller row.
+- **Result (API steps, 2026-10-09)** Pass. `999999999999` round-trips exactly through the REST
+  create, the list page, a `PATCH` up to the maximum, the sync push result and a sync pull — five
+  separately-built response bodies — as a JSON **number**, never a string. That matters because
+  `amount_minor` is `bigint` in Postgres and the narrowing to a JS number lives in one mapper; with
+  it removed, all ten cases in the file go red, so the narrowing is load-bearing rather than
+  incidental. Steps 3–5 (the reject side) were already covered in `expenses.test.ts`; what had no
+  coverage anywhere was the **accept** side of the boundary, which is where an
+  `AMOUNT_MINOR_MAX - 1` or an `int4` column would have hidden.
+- **Also now covered** An oversized amount arriving by **sync** is a per-record `invalid` inside an
+  HTTP `200`, not a batch-level `400`, and the valid row behind it is still `applied`. That
+  distinction was only unit-tested on `parsePushBatch` before; it is the same one three cases in
+  this plan originally got backwards, so it is worth an assertion at the HTTP layer.
 
 ### EDGE-03 — Decimal and rounding behaviour
 
@@ -1776,7 +1819,8 @@ thing being tested.
 
 ### EDGE-04 — An expense dated in the future
 
-- **Layer** E2E + API
+- **Layer** E2E + API (step 2 and the server half of step 3 automated:
+  `backend/tests/expenses.edgecases.test.ts`)
 - **Pre** `F-FRESH`. Today is `2026-10-06`
 - **Steps**
   1. In Add expense open the date sheet and `Choose a date…`
@@ -1792,6 +1836,16 @@ thing being tested.
   `06-expense-form.md` §8 specifies exactly this situation for an out-of-range **amount** ("render
   the value as-is, do not crash, do not auto-correct") but there is no equivalent for an
   out-of-range **date**. Not executed until GAP 5 closes.
+- **Result (API steps, 2026-10-09)** Pass, and it sharpens GAP 5 rather than closing it. The
+  server accepts `2027-01-01` on the REST path and keeps the exact day; a peer's future-dated push
+  is `applied` and comes back on a pull unchanged; and `GET /v1/expenses` with no date bounds
+  returns the future row **first**, ordered ahead of today's. So the row is on the wire, in the
+  list response and reachable by the client — nothing server-side filters it. Whatever GAP 5 is
+  fixed with has to be a client decision; there is no accidental server-side filter standing in
+  for one today, and a test now says so.
+- **Also covered** `9999-12-31`, the last date `YYYY-MM-DD` can express, round-trips exactly. The
+  mapper formats a Postgres `DATE` by slicing `toISOString()`, which a five-digit year would
+  silently break, so the edge of the range is pinned rather than a date merely "far away".
 
 ### EDGE-05 — A month with no expenses
 
@@ -2554,6 +2608,8 @@ bugs, and this is what proves none of them came back. Target: under 30 minutes p
 - [ ] Another user's id is `404`, never `403`, on every `/{id}` route
 - [ ] Every non-2xx body is the `ApiError` envelope with a code from `ERROR_CODES`
 - [ ] `GET /v1/health` returns `503` when Postgres is down
+- [ ] Both ends of the money range — `0` and `999999999999` — save and read back as exactly that
+      JSON **number**, on the REST and the sync paths (`EDGE-01`, `EDGE-02`)
 - [ ] `pnpm lint && pnpm typecheck && pnpm test` is green
 
 **Accessibility**
