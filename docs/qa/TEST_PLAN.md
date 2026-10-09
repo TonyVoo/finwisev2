@@ -20,6 +20,14 @@ code instead of waiting for an answer, and both turned out to be defects rather 
 idempotency ledger is never pruned, carried by `SYNC-39` / `SYNC-40`). No open gap is now a
 blocking decision for Chief; see the register at the top of §11.
 
+**Both of those fixes have since landed and been re-tested** — `1d68717` / `b1f7d7f` for the
+account-switch leak and `9f2edc8` / `ccde610` for the ledger — so `AUTH-12`, `AUTH-18`, `AUTH-19`,
+`SYNC-13`, `SYNC-39` and `SYNC-40` now assert the fixed behaviour rather than the defect, and the
+four expected-fail cases among them are ordinary cases. Re-testing the first one turned up **GAP
+11**, two narrower defects in the same area that the fix did not cover: the account-switch wipe
+runs *before* the write that can fail, and the owner is stored as a separate value from the tokens
+it describes. `AUTH-20` and `AUTH-21` carry those and are the only expected-fail cases left.
+
 Inputs this plan was derived from, and the authority order when they disagree:
 
 1. [`docs/api/openapi.yaml`](../api/openapi.yaml) — the HTTP surface (statuses, headers, codes).
@@ -367,7 +375,7 @@ turns every case that uses it into a false green, which is worse than a fixture 
   (`backend/src/services/syncPushService.ts`), so a client cannot mint a second default even by
   accident — which is the invariant this case is really guarding.
 
-### AUTH-18 — Logout does not wipe the local database, though the design says it does
+### AUTH-18 — Logout wipes the local database, as the design says it does
 
 - **Layer** Unit + E2E
 - **Pre** `F-MONTH`, logged in. **Two local expenses are in the outbox and have never reached the
@@ -378,17 +386,22 @@ turns every case that uses it into a false green, which is worse than a fixture 
   3. After landing on Welcome, inspect the SQLite file directly (`expense-tracker.db`)
 - **Steps (unit)** Call `signOut()` on a controller built over a seeded database, then assert on
   the table contents
-- **Expect** **This case is expected to FAIL against the client as it stands, and the failure is
-  the point.** `04-expense-list.md` §Behaviour rule 14 (line 150) specifies that logout "revokes
-  the token, clears secure store, **wipes the local database**", and the copy deck gates it behind
-  a dialog reading `Changes that have not synced yet will be lost.` The landed `signOut()` routes
-  through the same `discard()` as the forced clear and **clears only the token store** —
-  `categories`, `expenses` and `outbox` are left fully populated. So step 1 shows the user a
-  warning that their unsynced changes will be lost, and step 3 proves nothing was.
-- **Why it matters even though it fails safe** On its own this is a harmless divergence in the
-  user's favour plus a dialog that lies. It stops being harmless the moment a *second* account
-  logs in on the device, because the rows this failed to clear are what `AUTH-19` then leaks.
-  Fixing `AUTH-19` and fixing this are the same fix, which is why they are filed together.
+- **Expect** The dialog body reads `Changes that have not synced yet will be lost.`, and after
+  confirming, `categories`, `expenses` and `outbox` are all empty and the `meta` row recording the
+  store's owner is gone — unowned, not reassigned, because nobody is signed in. That is
+  `04-expense-list.md` §Behaviour rule 14 (line 150): logout "revokes the token, clears secure
+  store, **wipes the local database**".
+- **History, because the expectation here inverted** Until `b1f7d7f` this case was expected to
+  FAIL: `signOut()` routed through the same `discard()` as the forced clear and cleared only the
+  token store, so step 1 warned the user their unsynced changes would be lost and step 3 proved
+  nothing was. Harmless in isolation and in the user's favour — but the rows it failed to clear
+  were what `AUTH-19` then handed to the next account, so the two were one fix. Closed by making
+  logout match the design rather than by softening the dialog copy. **Re-tested and verified**
+  against `mobile/tests/auth/sessionTeardown.test.ts`.
+- **The ordering it must keep** Tokens are cleared first, rows second. The user's contract with
+  Log out is "I am out", so a failed `DELETE` must not be what keeps them signed in; and leftover
+  rows from a failed wipe are then unowned, which `AUTH-19`'s adopt step deletes before anything
+  can read them.
 
 ### AUTH-19 — A second user on the same device inherits the first user's data
 
@@ -400,22 +413,93 @@ turns every case that uses it into a false green, which is worse than a fixture 
   2. Log out
   3. Log in as `b@x.com` on the same device, without reinstalling
   4. Read Home and Settings → Categories
-- **Expect** **Expected to FAIL.** `b@x.com` should see an empty month and exactly six seeded
-  categories. Against the client as it stands they see **`a@x.com`'s expenses, `a@x.com`'s month
-  total and `a@x.com`'s renamed category**, because the local schema has no `userId` column on any
-  table (`mobile/src/db/migrations.ts` v1), `openLocalDatabase()` opens one fixed file
-  `expense-tracker.db` regardless of who is signed in (`mobile/src/db/open.ts`), and nothing
-  clears it on a session change. The local store is single-tenant by construction and is never
-  partitioned or reset.
+- **Expect** `b@x.com` sees an empty month and exactly six seeded categories. Nothing of
+  `a@x.com`'s is reachable from any screen.
+- **History, because this is the defect `TVO-16` was filed for** Until `b1f7d7f`, `b@x.com` saw
+  **`a@x.com`'s expenses, `a@x.com`'s month total and `a@x.com`'s renamed category**: the local
+  schema had no `userId` column on any table (`migrations.ts` v1), `openLocalDatabase()` opened one
+  fixed file regardless of who was signed in, and nothing cleared it on a session change. The root
+  cause was one level up — the client never persisted *whose* data it held, so a user change was
+  not detectable even if something had wanted to react to it.
+- **How it was fixed, which decides what to re-test** Not by partitioning the store per user but by
+  stamping it with an owner (`meta.ownerUserId`, schema v2) and wiping it when a session starts
+  under a different one. So the thing to re-test is not a `WHERE userId = ?` on each query — there
+  deliberately isn't one — but that the wipe runs, and runs *before* the authenticated session is
+  published. A store adopted any later has already let the tab bar read another account's rows on
+  its first frame. **Re-tested and verified**; `sessionAtomicity.test.ts` asserts the read path the
+  screens actually use, so a later change back to partitioning cannot pass silently.
 - **The worse half, once the drain lands** Repeat with step 1 ending **offline**, so `a@x.com`
-  leaves undrained outbox entries. Those entries carry no user id either, so the first sync pass
-  after `b@x.com` logs in pushes `a@x.com`'s expenses to the server **under `b@x.com`'s bearer
-  token**. The server is not at fault — it scopes every row to the authenticated user, so it will
-  faithfully file one account's spending into another's. There is no mobile sync engine yet (no
-  `mobile/src/sync/`), so this half is **latent, not live**: it activates the day the drain ships.
-  The on-screen half in steps 1–4 is reachable today with no further code.
-- **Why it is here and not only in a bug report** It is the case that has to stay red until the
-  fix lands and go green after, and it is the regression the fix is most likely to reintroduce.
+  leaves undrained outbox entries. Before the fix those entries carried no user id either, so the
+  first sync pass after `b@x.com` logged in would have pushed `a@x.com`'s expenses **under
+  `b@x.com`'s bearer token** — the server is not at fault, it scopes every row to the authenticated
+  user and would have faithfully filed one account's spending into another's. There is still no
+  mobile sync engine (no `mobile/src/sync/`), so this half was **latent, not live**, and the fix
+  landed before the drain did. Re-run it as written the day the drain ships.
+- **Why it is here and not only in a bug report** It was the case that had to stay red until the
+  fix landed and go green after, and it is the regression the fix is most likely to reintroduce —
+  by any later change that reaches the database before the session is settled. `AUTH-20` and
+  `AUTH-21` cover the two ways the landed fix can still be defeated.
+
+### AUTH-20 — A sign-in that cannot store its tokens has already wiped the previous user's work
+
+- **Layer** Unit (`mobile/tests/auth/sessionAtomicity.test.ts`)
+- **Pre** A seeded store owned by `USER_A` holding one category and one expense, both still in the
+  outbox and never seen by the server. A session controller whose token store **fails to write**
+  — the device's keystore is unavailable
+- **Steps**
+  1. `signIn()` as `USER_B`
+  2. Assert the call rejects, and that the snapshot is `anonymous`
+  3. Read the category list, the pending count and the store's owner
+- **Expect** `USER_A`'s category and both outbox entries are **still on disk**, and the store is
+  still owned by `USER_A`. `USER_B` never got a session, so nothing should have been destroyed on
+  their behalf.
+- **Actual — expected to FAIL** `signIn()` calls `localStore.adopt()` before it writes the tokens,
+  so by the time the write fails `USER_A`'s rows are already deleted and the store is already
+  stamped `USER_B`. A login that *failed* silently destroyed a different user's only copy of their
+  unsynced work, and left the store claiming an owner who has no session.
+- **Why this is worth a case and not a shrug** `session.ts` claims the opposite in a comment on
+  this exact ordering — "a failure here leaves the user anonymous with their predecessor's data
+  untouched". A stated safety property the code does not have is worse than an unstated one,
+  because the next reader stops checking. And the outcome is the one `AUTH-12` and
+  `02-offline-and-sync.md` §5.3 rank above every other failure in this area: silent, unrecoverable
+  loss of the user's own writes. `expo-secure-store` writes do fail in the field — a locked
+  keystore, a full disk, Android keystore corruption after an OS upgrade — so this needs no process
+  kill to reach.
+- **Candidate fix, verified** Write the tokens, then adopt, then publish `authenticated`, clearing
+  the tokens again if the adopt fails. The property `AUTH-19` depends on is preserved — nothing is
+  published before the store is safe to read — and the destructive step leaves the failure path.
+  Applied locally: this case and `AUTH-21` turned red, the other 39 auth cases stayed green, then
+  reverted.
+
+### AUTH-21 — A half-written session reads back as one user holding another user's tokens
+
+- **Layer** Unit (`mobile/tests/auth/sessionAtomicity.test.ts`)
+- **Pre** Secure store holding a complete session for `USER_A`
+- **Steps**
+  1. Write a session for `USER_B` with the **refresh-token write failing** (which of the three
+     values fails is incidental; that they are three separate writes is the point)
+  2. Read the session back
+- **Expect** One of three states, none of which can mislead anyone: the write landed whole, it did
+  not land at all, or the half-written session is rejected on read as no session.
+- **Actual — expected to FAIL** It reads back as `userId: USER_B` holding **`USER_A`'s refresh
+  token** — a session that is `USER_B` on the device and `USER_A` at the server. `write()` fires
+  three independent `setItemAsync` calls in parallel and `read()` reassembles whatever survived.
+- **Why it re-opens `TVO-16` from the other side** On the next launch `initialize()` adopts
+  `USER_B`, finds the store already theirs, keeps it, and publishes an authenticated session. The
+  first refresh rotates `USER_A`'s refresh token into a valid `USER_A` pair, and the pull writes
+  `USER_A`'s expenses into a store stamped `USER_B`. The wipe cannot help: it already ran, for the
+  right user, against the wrong tokens.
+- **Candidate fix, verified — and the first one I tried was wrong** Keeping the owner *inside* the
+  refresh-token value makes the two unable to disagree, and it works, but it also reddens three of
+  the token store's own cases because it abandons the deliberate one-key-per-value layout. The
+  cheaper fix holds that layout: **delete the owner key first and write it last**, so any half-done
+  write reads as no owner, hence no session — fail-closed, one extra login, nothing lost, and the
+  rows left behind are unowned so the next adopt clears them. Verified: the tripwire turns red and
+  all 39 other auth cases stay green.
+- **A note on how this case is asserted** It checks the outcome against a set of acceptable states
+  rather than asserting the specific fix. My first version asserted the session was non-null, which
+  **rejected the fail-closed fix** — the better of the two — and would have sent Mobile Dev to
+  re-do correct work. A tripwire that only accepts its author's preferred fix cries wolf.
 
 ---
 
@@ -1161,21 +1245,21 @@ common offline-sync bug", so these cases get the proxy harness from §2 rather t
 - **Layer** API
 - **Pre** `F-FRESH`
 - **Steps** Push with `clientMutationId: M`; advance the injected server clock; push `M` again
-- **Expect** `[BLOCKED-BY-GAP 3]` — still open, and now concrete rather than theoretical. The
-  ledger exists (`sync_mutations`, with a `created_at`), but **nothing prunes it**:
-  `pruneTombstones` deletes only from `expenses` and `categories`, and no other code path deletes
-  a `sync_mutations` row. So today the answer is "forever", which is correct for de-duplication
-  and wrong for a table that takes one row per mutation per user with no ceiling. `SYNC-39` and
-  `SYNC-40` now pin that defect as two failing automated cases, so the *absence* of a window is
-  covered even while this case — which needs a window to exist before it can assert its boundary —
-  stays parked.
-- **What to assert once it closes** The boundary in both directions: a push one tick inside the
-  window replays the recorded outcome, one tick outside is processed as new. Until a window is
-  stated, `SYNC-09`–`SYNC-12` cover the part that matters for correctness (a retry inside any
-  plausible window never double-applies) and this case covers only the part that needs a number.
-  Not executed until GAP 3 closes.
+- **Expect** **Unparked — the window is 90 days**, the same horizon as tombstones, swept by the
+  same job (`9f2edc8`, written down in `docs/PLAN.md` §4). Assert the boundary in both directions:
+  a replay of `M` whose ledger row is 89 days old returns the **recorded** outcome and applies
+  nothing a second time; a replay whose row is 91 days old is processed as a **new** mutation,
+  because the id has been forgotten. The second half is a behaviour change rather than a cleanup
+  and is the reason the number is in the contract: past the window a delete-then-recreate under the
+  same id applies twice, and an `invalid` result a client was replaying in order to re-read stops
+  being replayable. Both are acceptable at 90 days and neither would be at 90 minutes.
+- **Why one number and not two** A client resyncing at the tombstone horizon is exactly the client
+  most likely to be replaying mutation ids from before it. If the ledger expired first, that client
+  could replay an id the server has forgotten while the deletes it raced against are still on file.
+- **Was** `[BLOCKED-BY-GAP 3]`, because a boundary cannot be asserted before a window exists. See
+  `SYNC-39` / `SYNC-40` for the defect that made it unassertable and the fix that closed it.
 
-### SYNC-39 — The ledger is never pruned, so `sync_mutations` grows without a ceiling
+### SYNC-39 — A ledger entry past the horizon is pruned, so `sync_mutations` has a ceiling
 
 - **Layer** API (automated: `backend/tests/sync.idempotency.test.ts`)
 - **Pre** `F-FRESH`
@@ -1183,21 +1267,26 @@ common offline-sync bug", so these cases get the proxy harness from §2 rather t
   1. Push one category with `clientMutationId: M`
   2. Backdate that ledger row's `created_at` to 91 days ago — one day past the tombstone horizon
   3. Run `pruneTombstones(db, userId)`
-- **Expect** **Expected to FAIL, and the failure is the point.** The ledger row survives. The
-  pruner issues two `DELETE`s, against `expenses` and `categories`, and none against
-  `sync_mutations`; `created_at` is written by the schema default and read by nothing. The table
-  therefore takes one row per mutation per user and never gives one back.
-- **Why it is filed for operations and not for correctness** Remembering every id forever
-  de-duplicates everything, so no retry is ever double-applied — the property `SYNC-09`–`SYNC-12`
-  defend is safe today. What is not safe is the growth, and the fact that the window `SYNC-13`
-  wants to assert does not exist to be asserted.
-- **Guard** A sibling case (deliberately not expected-fail) pushes a row aged 89 days and asserts
-  it *survives* the prune. It is vacuous while nothing prunes the ledger and is kept on purpose:
-  when the fix lands it is the only thing standing between it and over-pruning, which would break
-  de-duplication inside the retry window. Leaking rows costs disk; pruning too early costs the
-  user their data.
+- **Expect** The ledger row is deleted, and the returned `ledgerEntries` count reports it. The
+  sweep ages on `created_at` — the ledger has no `deleted_at` to age on — and is ordered last
+  inside the per-user transaction, since no foreign key, revision or pull depends on it.
+- **Was, until `9f2edc8`** Expected to FAIL: the row survived. The pruner issued two `DELETE`s,
+  against `expenses` and `categories`, and none against `sync_mutations`; `created_at` was written
+  by the schema default and read by nothing, so the table took one row per mutation per user and
+  never gave one back. Filed for operations rather than correctness — remembering every id forever
+  de-duplicates everything, so no retry was ever double-applied and `SYNC-09`–`SYNC-12` held
+  throughout. **Re-tested and verified** after the fix landed, together with `SYNC-40`.
+- **Guard, and now the load-bearing half** A sibling case pushes a row aged 89 days and asserts it
+  *survives* the prune. It was vacuous while nothing pruned the ledger and was kept on purpose:
+  now that something does, it is the only thing standing between the sweep and over-pruning, which
+  would break de-duplication inside the retry window. Leaking rows costs disk; pruning too early
+  costs the user their data. It stayed green across the fix.
+- **One thing not covered here** The sweep's cost. `9f2edc8` adds `sync_mutations_created_at_idx`
+  on `created_at` alone — not user-first, because discovery scans the column across every account
+  while the primary key already serves the user-first lookups every push uses. Worth a line in the
+  load pass rather than a case: this is the largest table in the schema.
 
-### SYNC-40 — The pruner job cannot find a user whose only stale rows are in the ledger
+### SYNC-40 — The pruner job finds a user whose only stale rows are in the ledger
 
 - **Layer** API (automated: `backend/tests/sync.idempotency.test.ts`)
 - **Pre** `F-FRESH`, with **no tombstone anywhere on the account** — one pushed mutation and
@@ -1206,15 +1295,18 @@ common offline-sync bug", so these cases get the proxy harness from §2 rather t
   1. Backdate the ledger row's `created_at` to 91 days ago
   2. Run `pruneAllTombstones()`
   3. Read the returned `users` count
-- **Expect** **Expected to FAIL.** `users` is `0`. `pruneAllTombstones` selects the accounts to
-  sweep with a `UNION ALL` over tombstoned `categories` and `expenses` only, so an account that
-  has made mutations but deleted nothing is never passed to `pruneTombstones` at all.
-- **Why it is separate from `SYNC-39`** Because the obvious fix — a third `DELETE` inside
-  `pruneTombstones` — closes `SYNC-39` and leaves this one open, and the user it leaves behind is
-  the ordinary one: somebody who adds expenses and never deletes a category. Kept as its own case,
-  asserting only the discovery count, so the two halves go green independently and neither can
-  mask the other. Verified by applying both halves of the candidate fix locally, watching exactly
-  these two cases turn red, then reverting it.
+- **Expect** `users` is `1`, and the stale ledger row is gone. `pruneAllTombstones` discovers
+  accounts with a `UNION ALL` over all **three** swept tables, and the `sync_mutations` branch is
+  load-bearing rather than belt-and-braces.
+- **Was, until `9f2edc8`** Expected to FAIL with `users: 0`: discovery covered tombstoned
+  `categories` and `expenses` only, so an account that had made mutations but deleted nothing was
+  never passed to `pruneTombstones` at all.
+- **Why it is separate from `SYNC-39`, which is the whole value of this case** The obvious fix — a
+  third `DELETE` inside `pruneTombstones`, *which I recommended myself in two comments before
+  writing the test* — closes `SYNC-39` and leaves this one open, and the user it leaves behind is
+  the ordinary one: somebody who adds expenses and never deletes a category. Kept as its own case
+  asserting only the discovery count, so the two halves go green independently and neither can mask
+  the other. The landed fix covers both. **Re-tested and verified.**
 
 ### 8.4 Deletes must not come back
 
@@ -1961,11 +2053,14 @@ TVO-5 and flagged to Chief**; contract changes go through Chief per `docs/PLAN.m
 them is assumed resolved, and the cases that depend on one are marked `[BLOCKED-BY-GAP n]` above
 rather than guessed at.
 
-Ten gaps were filed when this plan was first written. **Five have since closed**, four of them in
-the contract and backend work of 8–9 Oct — which is the plan paying for itself before a single
-case was executed. The numbering is kept stable so the TVO-5 thread still reads correctly, and the
-closed entries are kept rather than deleted so the decision is recorded where the test that
-depends on it can find it.
+Ten gaps were filed when this plan was first written, and **seven have since closed** — five in the
+contract and backend work of 8–9 Oct, and GAP 4 and GAP 3 by being read against the landed code and
+then fixed. That is the plan paying for itself before a single case was executed by hand. One new
+gap has been opened since, **GAP 11**, and it was found by re-testing one of those fixes rather than
+by reading a contract — which is the argument for re-testing rather than closing on a green suite.
+
+The numbering is kept stable so the TVO-5 thread still reads correctly, and closed entries are kept
+rather than deleted, so the decision stays recorded where the test that depends on it can find it.
 
 ### Closed
 
@@ -1976,6 +2071,8 @@ depends on it can find it.
 | 6   | The clock clamp is one-sided; a slow clock silently always loses | Recorded as intended on `clampClientUpdatedAt`. `SYNC-20` is a test rather than an open question                 |
 | 8   | The server clock must be injectable                              | Resolver is pure functions over `now`; `pruneTombstones(db, userId, now)` takes it too. §2 updated               |
 | 7a  | `immutable_field` unreachable on the **sync** path               | `sync/batch.ts` maps a server-owned unknown key to `immutable_field`. `API-04` asserts it; the REST half is open |
+| 4   | Does a forced session clear wipe undrained local writes?         | It does not, and never did — `AUTH-12` asserts it. Reading the client turned the question into two defects, fixed in `b1f7d7f` and re-tested: `AUTH-18`, `AUTH-19` |
+| 3   | How long is a `clientMutationId` remembered?                     | 90 days — the tombstone horizon, swept by the same job (`9f2edc8`). Was "forever", because nothing pruned the ledger. Re-tested by `SYNC-39` / `SYNC-40`; `SYNC-13` is unparked |
 
 Also settled in passing, though never filed as a numbered gap: `EXP-02`'s `[CONFIRM]` on a
 re-posted REST create, which `openapi.yaml` now answers — idempotent `201`, retried body ignored,
@@ -1983,31 +2080,53 @@ no new `revision`, and another account's id rejected as `400 validation_error`.
 
 ### Still open
 
-| #   | Gap                                                              | Severity | Blocks             |
-| --- | ---------------------------------------------------------------- | -------- | ------------------ |
-| 3   | The ledger never prunes — retention is "forever" (filed, backend) | Medium   | `SYNC-13`          |
-| 5   | A future-dated row arriving by sync is unreachable in every view | Medium   | `EDGE-04`          |
-| 7b  | `immutable_field` is unreachable on the **REST** path            | Low      | `API-04` (half)    |
-| 9   | No E2E driver is named in `docs/PLAN.md` §7                      | Low      | 7 cases run manual |
-| 10  | Rate limits are not quantified                                   | Low      | `API-09`           |
+| #   | Gap                                                                  | Severity | Blocks             |
+| --- | -------------------------------------------------------------------- | -------- | ------------------ |
+| 11  | Session writes are not atomic, and the wipe runs first (filed, mobile) | Medium   | nothing            |
+| 5   | A future-dated row arriving by sync is unreachable in every view     | Medium   | `EDGE-04`          |
+| 7b  | `immutable_field` is unreachable on the **REST** path                | Low      | `API-04` (half)    |
+| 9   | No E2E driver is named in `docs/PLAN.md` §7                          | Low      | 7 cases run manual |
+| 10  | Rate limits are not quantified                                       | Low      | `API-09`           |
 
-**No open gap is now a blocking decision for Chief.** Two left that state in consecutive runs, both
-by being read against the landed code rather than waited on:
+**No open gap is a blocking decision for Chief.** Three stopped being questions in consecutive
+runs, each by being read against the landed code rather than waited on — GAP 4, GAP 3 and now the
+re-test of both fixes, which produced GAP 11. All three turned out to be defects rather than
+decisions, which is the pattern worth noting: a gap that has sat unanswered for three runs is more
+often unexamined code than an undecided policy.
 
-- **GAP 4** stopped being a question when the client answered it, and became two defects in
-  `mobile/`: the local database is never wiped on a session clear (safe, and contrary to the
-  design) and is never partitioned by user (a cross-account data leak). Both are Mobile Dev's,
-  carried by `AUTH-18` / `AUTH-19`; `AUTH-12` is unparked and executable.
-- **GAP 3** stopped being a question this run for the same reason. "How long does the server
-  remember a mutation id" has an answer in the code — forever, because nothing prunes the ledger —
-  so it is a defect against `backend/` with `SYNC-39` / `SYNC-40` behind it, not a retention policy
-  someone must choose before QA can proceed. Severity drops High → Medium with it: the unbounded
-  table is real, the correctness property it guards is not at risk.
+GAP 11 is the only one of the three still open, and it blocks nothing: `AUTH-20` and `AUTH-21` are
+written, automated and expected-fail, so they report the fix the moment it lands. What is left
+needs its owner's input rather than a ruling, and none of it blocks executing §8: GAP 5 is the
+Designer's, GAP 9 wants Mobile Dev's agreement on a driver before 7 cases stop being manual, GAP 10
+wants numbers from whoever sets the limits, and GAP 7b is a contract-hygiene choice between two
+one-line fixes.
 
-What is left needs its owner's input rather than a ruling, and none of it blocks executing §8:
-GAP 5 is the Designer's, GAP 9 wants Mobile Dev's agreement on a driver before 7 cases stop being
-manual, GAP 10 wants numbers from whoever sets the limits, and GAP 7b is a contract-hygiene choice
-between two one-line fixes.
+### GAP 11 — A session change is not atomic, and the destructive half runs first — **OPEN**
+
+Found by re-testing the GAP 4 fix rather than by reading the contract, which is why it is numbered
+after the ten the plan opened with. The fix for `TVO-16` is sound in the path it was written for and
+leaves two narrower holes, both rooted in the same thing: **the owner of the local store and the
+tokens that authorise it are separate writes, and the order assumes writes do not fail.**
+
+1. **`signIn` wipes before it writes.** `localStore.adopt()` runs first — correctly, since
+   adopting after publishing `authenticated` would let the tab bar read another account's rows on
+   its first frame — but the token write that follows can fail, and by then the previous user's
+   undrained work is already deleted for a sign-in that never happened. `session.ts` states the
+   opposite as a safety property in a comment on that exact ordering. Carried by `AUTH-20`.
+2. **The owner is a fourth secure-store value written in parallel with the tokens.** A partial
+   write leaves them disagreeing, and `read()` reassembles the mix into a session that is one user
+   on the device and another at the server — which re-opens the leak GAP 4 closed, from a side the
+   wipe cannot defend. Carried by `AUTH-21`.
+
+Both need a secure-store write to fail, which is uncommon and not exotic: a locked keystore, a full
+disk, Android keystore corruption after an OS upgrade. Severity is **Medium** on that basis — the
+outcomes are the two worst in this area (silent loss of the user's own writes; cross-account data)
+behind a failure that is rare rather than rank-ordered by probability alone.
+
+Both fixes are orderings rather than new mechanisms, and both were applied locally and reverted:
+write tokens → adopt → publish, rolling the tokens back if the adopt fails; and delete the owner
+key first, write it last, so a half-done write reads as no owner and therefore no session. Each
+turns its case red and leaves the other 39 auth cases green. Filed for Mobile Dev.
 
 ### GAP 1 — Who seeds the default categories, and the duplicate-six risk — **CLOSED**
 
@@ -2087,7 +2206,15 @@ a tombstoned category. `SYNC-23`'s second and third bullets cover both halves of
 outbox survives and drains, and that a peer editing one of those expenses gets a per-record
 `invalid` with `unknown_category` and recovers through `02-offline-and-sync.md` §5.1.
 
-### GAP 3 — `clientMutationId` retention: the answer is "forever" — **CONFIRMED DEFECT, NOT A DECISION**
+### GAP 3 — `clientMutationId` retention: the answer was "forever" — **CLOSED, FIXED AND RE-TESTED**
+
+**Closed by `9f2edc8` and `ccde610`:** the ledger is swept on the same 90-day horizon as
+tombstones, by the same job, and the number is written down in `docs/PLAN.md` §4 rather than only
+in the code. The fix covers **both** halves below, including the discovery branch the cheap fix
+would have missed. `SYNC-39` and `SYNC-40` are ordinary passing cases now, the 89-day
+over-pruning guard stayed green across the change, and `SYNC-13` is unparked with a boundary it
+can finally assert. The record of the defect is kept below because it is what those three cases
+exist to prevent coming back.
 
 `docs/PLAN.md` §Idempotency and the push description both require a replayed `clientMutationId` to
 be a no-op, and the contract calls a double-apply "the most common offline-sync bug". Neither says
@@ -2129,7 +2256,18 @@ result a client is replaying in order to re-read stops being replayable. Both ar
 days; neither is at 90 minutes. That is the one judgement call left in it, and it is Backend Dev's
 to make with the number written down.
 
-### GAP 4 — Does a forced session clear wipe undrained local writes? — **ANSWERED BY THE CODE, AND IT FOUND TWO DEFECTS**
+### GAP 4 — Does a forced session clear wipe undrained local writes? — **CLOSED, FIXED AND RE-TESTED**
+
+**Closed by `1d68717` and `b1f7d7f`.** The answer to the question was "it does not, and never
+did"; the two defects reading the code turned up are both fixed. The store now carries its owner
+(`meta.ownerUserId`, schema v2) and a session starting under a different one wipes it before the
+first read, logout wipes as rule 14 always said it did, and the forced clear on `token_invalid`
+still does not — which is the branch `AUTH-12` asserts. A wipe rather than a per-user partition,
+deliberately: partitioning would leave every query in the app, including every one not yet
+written, one forgotten `WHERE userId = ?` away from the same leak.
+
+`AUTH-18` and `AUTH-19` now assert the fixed behaviour. **Re-testing them produced GAP 11**, two
+narrower defects the fix did not reach. The record below is kept as history.
 
 I filed this as a question for Chief. Reading the landed client instead of waiting answered it, so
 it is no longer a decision anyone owes QA — it is two bugs against `mobile/`. `AUTH-12` is
@@ -2368,6 +2506,10 @@ bugs, and this is what proves none of them came back. Target: under 30 minutes p
       first push after the switch must not file them into the new account
 - [ ] Log out with a non-empty outbox → whatever the dialog promises is what actually happens to
       the local database (`AUTH-18`)
+- [ ] A session whose refresh token has expired → Welcome with the expired banner, and the
+      undrained outbox **still intact**; log back in as the same user and it drains (`AUTH-12`)
+- [ ] A sign-in that fails at the last step → the previous user's local rows are still there, and
+      the app does not come back authenticated on the next launch (`AUTH-20`, `AUTH-21`)
 
 **Expenses**
 
