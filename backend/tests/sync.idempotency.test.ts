@@ -469,22 +469,22 @@ describe('an unauthenticated replay', () => {
 });
 
 /**
- * The ledger's retention window — QA GAP 3, filed against `pruneTombstones`.
+ * The ledger's retention window — QA GAP 3 (TVO-17), now fixed in `pruneTombstones`.
  *
- * `sync_mutations` is the one table in the schema with no ceiling. It gains a row per
- * mutation per user forever: nothing deletes from it, `created_at` is written and never
- * read, and `pruneTombstones` sweeps `expenses` and `categories` only. Remembering every
- * id forever is the *safe* answer for de-duplication, which is why this is not a
- * correctness bug today — it is unbounded growth plus a boundary no test can reach.
+ * `sync_mutations` used to be the one table in the schema with no ceiling: a row per
+ * mutation per user forever, with `created_at` written by the schema default and read by
+ * nothing. Remembering every id forever is the *safe* answer for de-duplication, so that
+ * was unbounded growth rather than a correctness bug — but it also left a boundary no
+ * test could reach.
  *
- * The two `it.fails` cases below are tripwires, not pending work: each passes while the
- * defect is present and turns red the moment it is fixed, which is the signal to delete
- * the `.fails` and keep the assertion. They are deliberately orthogonal — one covers
- * *what* is deleted, the other *which users the job visits* — because a sweep added
- * inside `pruneTombstones` alone would fix the first and leave the second broken, and a
- * single combined case would hide that.
+ * It is now swept on the same 90-day horizon as tombstones, by the same job. The first
+ * and third cases below are QA's tripwires with the `.fails` removed and the assertions
+ * kept; they stay deliberately orthogonal — one covers *what* is deleted, the other
+ * *which users the job visits* — because a sweep added inside `pruneTombstones` alone
+ * would fix the first and leave the second broken, and a single combined case would hide
+ * that.
  */
-describe('the idempotency ledger has no retention bound', () => {
+describe('the idempotency ledger is bounded by the tombstone horizon', () => {
   /** Push one category, then backdate its ledger row's `created_at` by `days`. */
   async function pushAndAgeLedgerRow(days: number): Promise<void> {
     const clientMutationId = uuidv7();
@@ -506,12 +506,11 @@ describe('the idempotency ledger has no retention bound', () => {
   const ledgerRows = async (): Promise<number> =>
     getPrisma().syncMutation.count({ where: { userId: user.user.id } });
 
-  it.fails('prunes a ledger entry older than the tombstone horizon', async () => {
+  it('prunes a ledger entry older than the tombstone horizon', async () => {
     await pushAndAgeLedgerRow(91);
 
     await pruneTombstones(getPrisma(), user.user.id);
 
-    // Fails today: the row survives, because no statement in the pruner addresses it.
     expect(await ledgerRows()).toBe(0);
   });
 
@@ -527,17 +526,35 @@ describe('the idempotency ledger has no retention bound', () => {
     expect(await ledgerRows()).toBe(1);
   });
 
-  it.fails('visits a user whose only stale rows are in the ledger', async () => {
+  it('visits a user whose only stale rows are in the ledger', async () => {
     // No tombstone anywhere for this user — just an aged ledger row.
     await pushAndAgeLedgerRow(91);
 
     const result = await pruneAllTombstones();
 
-    // Fails today at 0. `pruneAllTombstones` discovers users with a UNION over
-    // tombstoned `categories` and `expenses` only, so this account is never passed to
-    // `pruneTombstones` at all. If this case is still failing once the sweep above is
-    // green, the sweep landed inside `pruneTombstones` and the job that calls it still
-    // cannot find the users who need it.
+    // Asserts discovery, not deletion, deliberately: this is the case the obvious fix
+    // does not close. A sweep added inside `pruneTombstones` alone would leave this at
+    // 0, because the job discovered its users from tombstoned `categories` and
+    // `expenses` only — and an account that pushes and never deletes has no tombstone
+    // anywhere. It is the `sync_mutations` branch of that UNION that this holds down.
     expect(result.users).toBe(1);
+  });
+
+  /**
+   * The two above are orthogonal on purpose, so this one joins them end to end: the
+   * scheduled entry point, on an account with no tombstone, deleting the row and
+   * reporting it. Neither of the others would notice a sweep that found the user and
+   * then swept the wrong thing, or one that deleted without reporting a count — and the
+   * count is what `prune:tombstones` logs, so it is the only visibility an operator has.
+   */
+  it('deletes the stale ledger row when the scheduled job runs', async () => {
+    await pushAndAgeLedgerRow(91);
+
+    const result = await pruneAllTombstones();
+
+    expect(result.ledgerEntries).toBe(1);
+    expect(result.expenses).toBe(0);
+    expect(result.categories).toBe(0);
+    expect(await ledgerRows()).toBe(0);
   });
 });

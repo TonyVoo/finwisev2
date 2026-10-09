@@ -192,6 +192,10 @@ model SyncMutation {
   /// Unique per user, which is the whole point. Keyed user-first so the lookup on
   /// every pushed item is a primary-key probe.
   @@id([userId, clientMutationId])
+  /// The ledger is bounded by the same 90-day horizon as tombstones, swept by the
+  /// same job. That sweep finds the accounts to visit by scanning `created_at`
+  /// across every user, so the index is on `created_at` alone, not user-first.
+  @@index([createdAt])
   @@map("sync_mutations")
 }
 

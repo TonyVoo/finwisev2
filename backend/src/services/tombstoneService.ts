@@ -22,11 +22,22 @@ import { TOMBSTONE_HORIZON_DAYS, tombstoneHorizon } from '../sync/resolver.ts';
  * This is not invoked from a request path. `GET /v1/sync` is a read, and making it write
  * would put a counter update on every poll from every device. It runs from
  * `src/scripts/pruneTombstones.ts`, on a schedule; see `backend/README.md`.
+ *
+ * The same job also bounds the idempotency ledger (`sync_mutations`), on the same 90-day
+ * horizon. Keeping every `clientMutationId` forever is the *safe* answer for
+ * de-duplication, so that is a cost problem rather than a correctness one: the ledger was
+ * the only table in the schema with no ceiling. The two windows are deliberately one
+ * number, not two, because a client resyncing at the tombstone horizon is exactly the
+ * client most likely to be replaying mutation ids from before it — letting the ledger
+ * expire first would mean a replay of an id the server has forgotten while the deletes it
+ * raced against are still on file. See `docs/PLAN.md` §4 for what expiry changes.
  */
 
 export interface PruneResult {
   readonly expenses: number;
   readonly categories: number;
+  /** Idempotency-ledger rows swept on the same horizon. */
+  readonly ledgerEntries: number;
   /** Rows older than the horizon that could not be pruned yet; see below. */
   readonly categoriesRetained: number;
   /** The watermark after this run. */
@@ -73,6 +84,18 @@ export async function pruneTombstones(
       RETURNING "revision"
     `;
 
+    // The ledger sweep. Unrelated to the two above — no foreign key, no revision, and
+    // nothing in a pull depends on it — so it is ordered last and ages on `created_at`
+    // (when the mutation was recorded) rather than on a `deleted_at` it does not have.
+    // Past the horizon an id stops being de-duplicated, which is a behaviour change and
+    // not a cleanup: a delete-then-recreate under the same id would apply a second time,
+    // and an `invalid` result a client was replaying to re-read stops being replayable.
+    // Both are fine at 90 days and neither would be at 90 minutes, which is the whole
+    // reason the number is written down in the contract instead of only living here.
+    const ledgerEntries = await tx.syncMutation.deleteMany({
+      where: { userId, createdAt: { lt: horizon } },
+    });
+
     const retained = await tx.category.count({
       where: { userId, deletedAt: { not: null, lt: horizon } },
     });
@@ -99,6 +122,7 @@ export async function pruneTombstones(
     return {
       expenses: expenses.length,
       categories: categories.length,
+      ledgerEntries: ledgerEntries.count,
       categoriesRetained: retained,
       prunedThroughRevision,
     };
@@ -109,16 +133,24 @@ export async function pruneTombstones(
 }
 
 /**
- * Prune every user with at least one tombstone past the horizon.
+ * Prune every user with at least one tombstone — or one ledger entry — past the horizon.
  *
  * Per-user transactions rather than one sweeping statement: the watermark is per-user,
  * and a single transaction over every account would hold locks across the whole table
  * for as long as the slowest account takes.
+ *
+ * Discovery is a `UNION ALL` over all three swept tables, and the `sync_mutations` branch
+ * is load-bearing rather than belt-and-braces. Without it the ledger sweep inside
+ * `pruneTombstones` would never run for an account that has pushed mutations and deleted
+ * nothing — which is the ordinary user, somebody who adds expenses and never deletes a
+ * category. That account has no tombstone anywhere, so the other two branches cannot see
+ * it, and it is precisely the account whose ledger grows unchecked.
  */
 export async function pruneAllTombstones(now = new Date()): Promise<{
   users: number;
   expenses: number;
   categories: number;
+  ledgerEntries: number;
 }> {
   const db = getPrisma();
   const horizon = tombstoneHorizon(now);
@@ -128,15 +160,19 @@ export async function pruneAllTombstones(now = new Date()): Promise<{
       SELECT "user_id" FROM "categories" WHERE "deleted_at" IS NOT NULL AND "deleted_at" < ${horizon}
       UNION ALL
       SELECT "user_id" FROM "expenses"   WHERE "deleted_at" IS NOT NULL AND "deleted_at" < ${horizon}
+      UNION ALL
+      SELECT "user_id" FROM "sync_mutations" WHERE "created_at" < ${horizon}
     ) AS "stale"
   `;
 
   let expenses = 0;
   let categories = 0;
+  let ledgerEntries = 0;
   for (const { user_id: userId } of userIds) {
     const result = await pruneTombstones(db, userId, now);
     expenses += result.expenses;
     categories += result.categories;
+    ledgerEntries += result.ledgerEntries;
   }
 
   logger.info('tombstones pruned', {
@@ -144,6 +180,7 @@ export async function pruneAllTombstones(now = new Date()): Promise<{
     users: userIds.length,
     expenses,
     categories,
+    ledgerEntries,
   });
-  return { users: userIds.length, expenses, categories };
+  return { users: userIds.length, expenses, categories, ledgerEntries };
 }
