@@ -95,8 +95,31 @@ CREATE INDEX idx_outbox_entity_seq ON outbox (entity, seq);
 CREATE INDEX idx_outbox_record ON outbox (entity, recordId);
 `;
 
+/**
+ * Records *whose* rows this file holds, which v1 had no way to say.
+ *
+ * Without it the store is anonymous, so a second account logging in on the same device
+ * reads the first account's categories and expenses, and - once the drain ships - pushes
+ * the first account's outbox under the second account's bearer token (`TVO-16`). The
+ * owner is what makes a user change detectable; `localStore.ts` holds the rule applied
+ * when it changes.
+ *
+ * A key/value table rather than a `userId` column per row because the fix is a wipe, not
+ * a partition. Partitioning would put a `userId` on `categories`, `expenses` and
+ * `outbox`, and from then on every query in the app - including every one not yet
+ * written - would be one forgotten `WHERE userId = ?` away from the same leak. One row
+ * that says who owns the file cannot be forgotten by a query that does not mention it.
+ */
+const STORE_OWNER = `
+CREATE TABLE meta (
+  key   TEXT NOT NULL PRIMARY KEY,
+  value TEXT NOT NULL
+);
+`;
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: 'initial-schema', up: INITIAL_SCHEMA },
+  { version: 2, name: 'store-owner', up: STORE_OWNER },
 ];
 
 /** Highest version `MIGRATIONS` can bring a database to. */

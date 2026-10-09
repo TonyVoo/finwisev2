@@ -22,14 +22,35 @@ describe('migrate', () => {
     expect(version?.user_version).toBe(LATEST_SCHEMA_VERSION);
   });
 
-  it('creates the three tables the store is built on', async () => {
+  it('creates the tables the store is built on', async () => {
     await migrate(database);
 
     const tables = await database.getAllAsync<{ name: string }>(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
       [],
     );
-    expect(tables.map((table) => table.name)).toEqual(['categories', 'expenses', 'outbox']);
+    // `meta` arrived in v2 and holds exactly one thing today: which user the rows belong
+    // to (`src/db/localStore.ts`).
+    expect(tables.map((table) => table.name)).toEqual(['categories', 'expenses', 'meta', 'outbox']);
+  });
+
+  /**
+   * v1 shipped to dev devices before v2 existed, so the upgrade path is the one that
+   * actually runs on them - and `migrate` is also the only thing standing between a v1
+   * database and a `no such table: meta` on the first sign-in.
+   */
+  it('adds the owner table to a database that stopped at v1', async () => {
+    const [first] = MIGRATIONS;
+    await database.withExclusiveTransactionAsync(async (txn) => {
+      await txn.execAsync(first!.up);
+      await txn.execAsync('PRAGMA user_version = 1');
+    });
+
+    await expect(migrate(database)).resolves.toBe(LATEST_SCHEMA_VERSION);
+
+    await expect(
+      database.getFirstAsync<{ value: string }>('SELECT value FROM meta WHERE key = ?', ['x']),
+    ).resolves.toBeNull();
   });
 
   // Called on every app start, so a second run must not try to re-create the schema.
