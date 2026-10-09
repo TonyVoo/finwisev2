@@ -1733,7 +1733,7 @@ and they are where a security or correctness regression shows up first.
 - **Expect** Every shape is validated closed, but the sync path reports at a different level:
   - The seven REST bodies and the two query strings are `400 validation_error` with
     `details.issues[].path` naming the unexpected key.
-  - `SyncPushRequest` itself (a stray key beside `items`) is `400 validation_error` — that is the
+  - `SyncPushRequest` itself (a stray key beside `changes`) is `400 validation_error` — that is the
     batch envelope, not a row.
   - A stray key on a **push item** or on its `fields` is per-record `invalid` with
     `error.code: "validation_error"`, inside an HTTP `200`. `nope` is not server-owned, so this is
