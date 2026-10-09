@@ -44,8 +44,7 @@ async function drain(user: TestUser, query: string): Promise<string[]> {
   let pages = 0;
 
   for (;;) {
-    const url: string =
-      cursor === null ? query : `${query}&cursor=${encodeURIComponent(cursor)}`;
+    const url: string = cursor === null ? query : `${query}&cursor=${encodeURIComponent(cursor)}`;
     const response = await api().get(url).set('Authorization', user.auth);
     const body = response.body as ExpenseListResponse;
     expect(response.status).toBe(200);

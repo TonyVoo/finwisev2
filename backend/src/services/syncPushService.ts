@@ -444,11 +444,12 @@ function buildResult(args: {
  *  3. **Item validation third**, as a per-record `invalid` that is itself recorded, so a
  *     retry of a malformed row is a cheap replay rather than a re-parse.
  */
-async function applyOne(
+async function attemptItem(
   tx: Db,
   userId: string,
   parsed: ParsedPushItem,
   now: Date,
+  savepointTag: string,
 ): Promise<SyncPushResult> {
   const { identity, payloadHash } = parsed;
   const { entity, id, clientMutationId } = identity;
@@ -501,7 +502,7 @@ async function applyOne(
 
   let outcome: Outcome;
   try {
-    outcome = await inSavepoint(tx, parsed.index, 'apply', () =>
+    outcome = await inSavepoint(tx, parsed.index, `${savepointTag}-apply`, () =>
       attempt(async () => {
         if (parsed.item === null) {
           // Failed its own schema in `parsePushBatch`. Recorded like any other outcome so
@@ -526,6 +527,14 @@ async function applyOne(
       }
     }
 
+    // Lost the race to *create the row*, which fires before the ledger insert because the
+    // create comes first. Rethrown as `LostCreateRace` so the caller re-runs the item from
+    // the top: a fresh read then sees the committed row, and the item resolves as either an
+    // idempotent replay or an ordinary last-write-wins update. See {@link applyOne}.
+    if (isUniqueViolation(error, `${entity === 'category' ? 'categories' : 'expenses'}_pkey`)) {
+      throw new LostCreateRace(id);
+    }
+
     // The unique partial index on `lower(name)` is the real guard against two live
     // categories sharing a name — two devices inventing "Coffee" offline is an ordinary
     // event, not a race worth pre-checking for.
@@ -539,7 +548,7 @@ async function applyOne(
     // The savepoint that would have recorded this is gone, so take a second one for the
     // ledger write alone. It can itself lose the idempotency race, which replays.
     try {
-      outcome = await inSavepoint(tx, parsed.index, 'record', () =>
+      outcome = await inSavepoint(tx, parsed.index, `${savepointTag}-record`, () =>
         attempt(async () => ({ status: 'invalid', record: null, error: recordError })),
       );
     } catch (ledgerError) {
@@ -564,18 +573,87 @@ async function applyOne(
   return buildResult({ entity, id, clientMutationId, outcome, idempotentReplay: false });
 }
 
+/**
+ * Another transaction created this row while we were deciding to create it too.
+ *
+ * Its own error type rather than a sentinel return, so it cannot be mistaken for a
+ * per-record `invalid` — "someone else got there first" is not a client mistake, and
+ * reporting it as one would make a client drop a change it should have had applied.
+ */
+class LostCreateRace extends Error {
+  constructor(readonly recordId: string) {
+    super(`another transaction created ${recordId} first`);
+    this.name = 'LostCreateRace';
+  }
+}
+
+/**
+ * Apply one item, retrying once if another transaction created the row underneath us.
+ *
+ * Two pushes of the same client-minted id race like this: both read the row and see
+ * nothing (it is uncommitted in the other transaction), both decide to create, and one
+ * blocks on the primary key until the other commits and then fails. That is not a client
+ * error — it is a stale read — so the answer is to run the item again rather than report
+ * anything. On the second pass the row is committed and visible, which resolves it as
+ * exactly one of two things:
+ *
+ *  * the same `clientMutationId` raced itself (a retried request, the common case), so the
+ *    ledger lookup at the top now finds the winner and the item is an idempotent replay;
+ *  * a different mutation created the row, so the item becomes an ordinary update and
+ *    last-write-wins decides it.
+ *
+ * Once, not in a loop: the retry's create path cannot lose the same race again, because
+ * the row it would have created is now visible to it.
+ */
+async function applyOne(
+  tx: Db,
+  userId: string,
+  parsed: ParsedPushItem,
+  now: Date,
+): Promise<SyncPushResult> {
+  try {
+    return await attemptItem(tx, userId, parsed, now, 'first');
+  } catch (error) {
+    if (!(error instanceof LostCreateRace)) throw error;
+    logger.info('sync push lost a create race; retrying the item', {
+      userId,
+      recordId: error.recordId,
+      clientMutationId: parsed.identity.clientMutationId,
+    });
+    return attemptItem(tx, userId, parsed, now, 'retry');
+  }
+}
+
 /** The pushed name, for the `category_name_taken` message. */
 function categoryNameOf(parsed: ParsedPushItem): string | undefined {
   return parsed.item?.entity === 'category' ? parsed.item.fields.name : undefined;
 }
 
 /**
- * Apply a whole batch and answer per record.
+ * Transaction settings for a push, all three stated rather than inherited.
  *
- * One `ReadCommitted` transaction, stated rather than inherited. Two properties depend
- * on it: a savepoint rollback followed by a re-read has to see what another transaction
- * committed in the meantime (which is how the idempotency race resolves), and that is
- * precisely what `RepeatableRead` would forbid.
+ * `isolationLevel` is the one with teeth. A savepoint rollback followed by a re-read has
+ * to see what another transaction committed in the meantime — that is how both the
+ * idempotency race and the create race resolve — and `RepeatableRead` would forbid
+ * exactly that.
+ *
+ * `timeout` is raised from Prisma's 5-second default because the contract allows 500
+ * items in one batch and each one costs several round trips. At the default, a legal
+ * full-size batch from a client that had been offline for a day would fail with a
+ * transaction timeout — a 500 for a request that is entirely within spec, and one that
+ * would only show up under a real device's backlog rather than in a two-item test.
+ *
+ * `maxWait` is the queue for a connection, which matters when several devices on one
+ * account sync at once: they serialise on the user's revision counter row anyway.
+ */
+const PUSH_TRANSACTION_OPTIONS = {
+  isolationLevel: 'ReadCommitted',
+  timeout: 60_000,
+  maxWait: 15_000,
+} as const;
+
+/**
+ * Apply a whole batch and answer per record.
  */
 export async function pushChanges(
   db: Db,
@@ -598,9 +676,7 @@ export async function pushChanges(
 
   const prisma = getPrisma();
   const results =
-    db === prisma
-      ? await prisma.$transaction(run, { isolationLevel: 'ReadCommitted' })
-      : await run(db);
+    db === prisma ? await prisma.$transaction(run, PUSH_TRANSACTION_OPTIONS) : await run(db);
 
   const counter = await db.revisionCounter.findUnique({ where: { userId } });
 

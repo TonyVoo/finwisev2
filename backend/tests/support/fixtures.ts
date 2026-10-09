@@ -90,10 +90,12 @@ export async function revisionWatermark(userId: string): Promise<number> {
 /**
  * Every row of the user that a sync pull would deliver after `since`.
  *
- * `GET /v1/sync` does not exist yet (it is the next task), so this is the pull's
- * selection predicate — `revision > cursor`, ordered by `revision` — applied directly to
- * the tables. It is the only honest way to assert "this write reaches a syncing client"
- * before the endpoint lands, and the tests that use it say so.
+ * The pull's selection predicate — `revision > cursor`, ordered by `revision` — applied
+ * directly to the tables. `GET /v1/sync` now exists, and the suites that test it use the
+ * real endpoint (`tests/support/sync.ts`); this stays as the independent restatement of
+ * what the endpoint is *supposed* to select, so a CRUD test can assert "this write
+ * reaches a syncing client" without depending on the implementation it would be
+ * checking.
  */
 export async function changesSince(
   userId: string,
