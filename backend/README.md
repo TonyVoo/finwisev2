@@ -89,14 +89,16 @@ pnpm --filter @expense-tracker/backend prune:tombstones
 Deletes are soft, so tombstones accumulate; they are pruned after 90 days
 (`LIMITS.TOMBSTONE_HORIZON_DAYS`). This is a cron job, not a request path — `GET /v1/sync`
 is a read, and making it write would put a counter update on every poll from every device.
-Run it daily; it is safe to run more often and safe to miss, since nothing but disk use
-depends on its timeliness.
+Run it at least daily. It is idempotent, so running it more often costs nothing; the floor
+matters because of the ledger sweep described next.
 
 The same job sweeps the sync idempotency ledger (`sync_mutations`) on the same 90-day
 window, which is the only thing bounding that table. Unlike the tombstone sweep, that part
 *is* a behaviour change at the boundary — past 90 days a `clientMutationId` is forgotten
 and a replay of it is applied afresh rather than de-duplicated — so if you ever shorten the
 horizon, read `docs/PLAN.md` §4 first. The number belongs to both windows deliberately.
+This is what the cadence floor is protecting: a skipped tombstone sweep is deferred cleanup,
+a skipped ledger sweep is a table with nothing holding it down.
 
 It is not merely cleanup. Each run records how far it got in
 `revision_counters.pruned_through_revision`, and `GET /v1/sync` answers
@@ -105,6 +107,13 @@ that had been offline longer than the horizon would ask for changes since a curs
 tombstones no longer exist, never be told about those deletes, and keep the deleted rows
 forever. **If you run the prune without the watermark write (or reset the column), dormant
 clients silently resurrect deleted rows.**
+
+The watermark only witnesses the tombstone half, so do not read it as proof the whole job
+ran: an account can be swept for ledger rows alone and never advance a revision counter.
+Each run logs `users`, `expenses`, `categories` and `ledgerEntries` (plus `horizonDays` and
+`ms`) under `prune:tombstones finished`, and a non-zero exit code on failure. The
+`ledgerEntries` count is the only visibility an operator has into ledger retention — check
+it separately from `pruned_through_revision`.
 
 ---
 
