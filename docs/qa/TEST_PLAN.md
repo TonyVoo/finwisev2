@@ -26,8 +26,8 @@ account-switch leak and `9f2edc8` / `ccde610` for the ledger — so `AUTH-12`, `
 four expected-fail cases among them are ordinary cases. Re-testing the first one turned up **GAP
 11**, two narrower defects in the same area that the fix did not cover: the account-switch wipe
 runs *before* the write that can fail, and the owner is stored as a separate value from the tokens
-it describes. `AUTH-20` and `AUTH-21` carry those; with `CAT-15`, `CAT-16`, `AUTH-23` and `AUTH-24` below they
-are the six expected-fail cases left.
+it describes. `AUTH-20` and `AUTH-21` carry those; with `CAT-15`, `CAT-16`, `AUTH-23`, `AUTH-24`,
+`SYNC-44` and `SYNC-45` below they are the eight expected-fail cases left.
 
 **The API-layer steps of `EDGE-01`, `EDGE-02` and `EDGE-04` are now executed** rather than merely
 written (`backend/tests/expenses.edgecases.test.ts`), and all three pass. They were picked because
@@ -64,6 +64,24 @@ two operations share a response schema — swapping `updateExpense` and `deleteE
 cleanly and sends `DELETE` when the user edits an amount (`API-12`). Testing the container also
 produced **GAP 14**: the hazard its doc comment says the module exists to prevent is no longer
 reachable, because `authorize.ts` closed it one layer down.
+
+**`GAP 2`'s known consequence turned out to reach two layers further than `GAP 2` recorded, and
+that is GAP 15.** GAP 2 settled that a sync-path category delete reassigns nothing server-side,
+chose that branch for good reasons, and named the state a client leaves behind when it dies between
+the category push and the expense pushes. What nothing measured until now is what that state costs.
+The server then serves an `Expense.categoryId` the client provably cannot resolve — the category is
+absent from `GET /v1/categories` for being a tombstone — against an `openapi.yaml` description that
+calls the field "always a live category". And the tombstone itself becomes **un-prunable for the
+life of the account**: `pruneTombstones` leaves a category whose expenses still exist "for the next
+run", which converges for a *tombstoned* expense and never for a **live** one, so the 90-day
+horizon does not apply to it. `SYNC-41`–`SYNC-46` carry it, with `SYNC-44` and `SYNC-45` expected-fail.
+The two cases that pass are there to constrain the fix: both obvious repairs are ruled out by
+measurement, and §11's GAP 15 entry says which case each one breaks.
+
+**The pruner's own entry point is now executed** rather than only unit-tested around. `pnpm prune:tombstones` is
+the sole caller of `pruneAllTombstones` and therefore the only thing that bounds the largest table in
+the schema, and nothing in 320 backend cases loaded it. It is sound in both directions — see the
+commands and results recorded in §2.
 
 Inputs this plan was derived from, and the authority order when they disagree:
 
@@ -138,6 +156,46 @@ database was discarded and the run still went to `expense_tracker_test`.
 
 So: one API-layer pass per machine at a time. If two people — or two agents in one workspace —
 need to run the suite simultaneously, one of them edits `backend/.env` first.
+
+### The pruner is a script, not a route — executed 2026-10-10
+
+`pnpm prune:tombstones` is the only caller of `pruneAllTombstones`, which makes it the only thing
+that bounds `sync_mutations`, the one table in the schema with no other ceiling (GAP 3). No backend
+case loads it: the suite exercises the function and nothing had ever started the process. It is
+sound in both directions, and these are the commands, because a tester should not have to rediscover
+how to redirect it:
+
+```sh
+# Success. Runs against expense_tracker_test; the logger is 'silent' under NODE_ENV=test,
+# so LOG_FORMAT is what makes the result visible at all.
+cd backend && NODE_ENV=test LOG_FORMAT=json npx tsx src/scripts/pruneTombstones.ts
+# -> two info lines ({users,expenses,categories,ledgerEntries} and the same plus ms), exit 0
+
+# Failure. dotenv resolves '.env' from the CWD, so running from a directory with its own
+# .env is how the target is redirected without touching the repo's file -- the exported
+# variable is ignored, per the note above.
+mkdir /tmp/prune-fail && cd /tmp/prune-fail
+# Keep the real credentials and change only the database name, so the failure under test is
+# "the target is gone" (3D000) and not "the password is wrong" (28P01) -- both exit 1, but
+# only the first is the one a scheduled job actually meets.
+printf 'DATABASE_URL="<backend/.env DATABASE_URL, database renamed>"\nJWT_SECRET=<32 chars>\n' > .env
+NODE_ENV=test LOG_FORMAT=json npx tsx <abs path>/backend/src/scripts/pruneTombstones.ts
+# -> one error line carrying Postgres 3D000, exit 1
+```
+
+The exit code is the part worth having checked. A scheduled job's only alarm is its status, and a
+pruner that logged its failure and still exited 0 would leave the ledger growing with a green
+cron history. It exits 1.
+
+The success run also shows GAP 15's reporting half without any fixture at all: the two lines carry
+`{users, expenses, categories, ledgerEntries}` and **no `categoriesRetained`**. That is the only
+output an operator ever sees from this job, and it is the field that would tell them an account is
+stuck. `SYNC-45` asserts it at the function level; this is the same thing at the process level.
+
+One thing a reader should not conclude from the success run: it proves the entry point starts,
+connects and disconnects, not that pruning works — that is `SYNC-13`, `SYNC-39`, `SYNC-40` and
+`SYNC-44`. And note the deployment caveat carried from GAP 3: nothing schedules this yet
+(`b4f49b91`), so in a deployed environment the ceiling is not in place until that lands.
 
 ### The mobile suite prints a worker-teardown warning. It is not a failure — diagnosed 2026-10-10
 
@@ -1553,6 +1611,115 @@ common offline-sync bug", so these cases get the proxy harness from §2 rather t
   asserting only the discovery count, so the two halves go green independently and neither can mask
   the other. The landed fix covers both. **Re-tested and verified.**
 
+### SYNC-41 — A category delete and its reassignments in one batch converge in one round trip
+
+- **Layer** API (automated: `backend/tests/sync.categoryOrphan.test.ts`)
+- **Pre** `F-FRESH`, plus a category `C` the user created with two live expenses on it
+- **Steps**
+  1. Push one batch containing, **listed expenses-first**, both expense reassignments to the
+     `isDefault` category and the `deletedAt` tombstone for `C`
+  2. Count live expenses still referencing `C`
+  3. Run `pruneTombstones` with `now` 91 days on
+- **Expect** all three items are `applied`, no live expense still references `C`, and the prune
+  collects it (`categories: 1`, `categoriesRetained: 0`). This is the flow `07-categories.md` §4
+  rules 6–7 specifies and it is correct today.
+- **Why a passing case is worth writing down** It is the case that rules out the first obvious fix
+  for GAP 15. "Refuse a category delete while live expenses reference it" would reject **this**
+  batch, because `SYNC-42` shows the server applies every category before any expense — so in the
+  flow that is working correctly, the delete always runs while those expenses still point at it.
+  Listed expenses-first on purpose: a client is not required to order a batch, the server is.
+
+### SYNC-42 — Every category in a batch is applied before any expense
+
+- **Layer** API (automated: `backend/tests/sync.categoryOrphan.test.ts`)
+- **Pre** `F-FRESH`, plus a category `C` with one live expense `E`
+- **Steps**
+  1. Push one batch of two items: the `deletedAt` tombstone for `C`, then an update to `E` that
+     repoints it **at `C`** and changes its amount
+- **Expect** `C` is `applied`; `E` is a per-record `invalid` with `unknown_category` inside the
+  `200`. The ordering is `orderBatch`'s, and it is the same property that lets an expense created
+  offline against a category created offline sync in one round trip (`SYNC-21`).
+- **Note** This is the constraint, not a defect. It is recorded as its own case because GAP 15's
+  severity and its available fixes both turn on it.
+
+### SYNC-43 — The server serves an expense whose `categoryId` the client cannot resolve
+
+- **Layer** API (automated: `backend/tests/sync.categoryOrphan.test.ts`)
+- **Pre** `F-FRESH`, plus a category `C` with one live expense `E`
+- **Steps**
+  1. Push **only** the `deletedAt` tombstone for `C` — the client that dies, or is wiped, between
+     the category push and the expense pushes
+  2. `GET /v1/categories` and `GET /v1/expenses`
+  3. `GET /v1/sync?since=0` as a device syncing from scratch
+- **Expect** `C` is absent from the category list (it is a tombstone), and `E` is still served with
+  `categoryId = C` by both the REST list and the pull. The reference is unresolvable by any client.
+- **Observed 2026-10-10, and it contradicts the contract** `openapi.yaml`'s `Expense.categoryId`
+  reads "Always a live category of the same user; reassigned to the `Uncategorized` default if its
+  category is deleted". Both halves are false on this path. See GAP 15.
+- **Why this case asserts the behaviour and not the guarantee** The resolution here is expected to
+  be the contract's wording, because the two code-level repairs are ruled out by `SYNC-41` and
+  `SYNC-46`. An expected-fail asserting "always live" would encode a fix nobody should make and
+  would stay red for good — the `AUTH-21` mistake. It still earns its place: if someone does make
+  the server reassign, this case reddens and forces the conversation rather than silently trading
+  one defect for a worse one. **Re-point it when GAP 15's prose is settled.**
+
+### SYNC-44 — [EXPECTED FAIL] The orphaned category tombstone is never collected
+
+- **Layer** API (automated: `backend/tests/sync.categoryOrphan.test.ts`)
+- **Pre** As `SYNC-43` — a category tombstoned through the sync path with a live expense on it
+- **Steps**
+  1. Run `pruneTombstones` with `now` 91 days on
+  2. Run it again with `now` **4000 days** on
+  3. Read the `categories` row directly, and `GET /v1/sync?since=0`
+- **Expect** the row is gone and no full pull carries it.
+- **Expected to FAIL today** The row survives both runs and is delivered in every full pull for the
+  life of the account. `pruneTombstones` leaves a category whose expenses still exist "for the next
+  run rather than cascading" — correct for a **tombstoned** expense, which is collected at its own
+  horizon so the next run converges, and never true for a **live** one, which does not age out.
+  The 90-day horizon does not bound this row at all.
+- **Why two runs, the second eleven years out** One prune cannot distinguish the deferral the
+  design intends from never converging, and that distinction is the entire finding.
+- **Why it asserts only the end state** An earlier draft asserted `categoriesRetained === 1` at the
+  horizon as a precondition — which a working repair makes false, so the case could not have gone
+  green against the fix it is asking for. Caught by applying the candidate fix rather than
+  reasoning about it.
+
+### SYNC-45 — [EXPECTED FAIL] The scheduled prune cannot report a retained category
+
+- **Layer** API (automated: `backend/tests/sync.categoryOrphan.test.ts`)
+- **Pre** As `SYNC-43`
+- **Steps**
+  1. Run `pruneTombstones` for the user and read `categoriesRetained`
+  2. Run `pruneAllTombstones()` — the aggregate `src/scripts/pruneTombstones.ts` actually calls —
+     and look for the same field
+- **Expect** both report it.
+- **Expected to FAIL today** `PruneResult.categoriesRetained` exists on the per-user result and its
+  only caller in the codebase drops it. The scheduled job's one log line is
+  `{users, expenses, categories, ledgerEntries}`, so a stuck account is indistinguishable from a
+  quiet one.
+- **Why it is separate from `SYNC-44`** Plumbing the field through and making the prune converge
+  are different changes; a combined case would go green on the first and hide the second — the
+  `SYNC-39`/`SYNC-40` lesson. It asserts the field is *reported*, not that anything is retained: a
+  repair that converges leaves nothing to retain, and an operator still needs the number to read
+  zero rather than be absent.
+
+### SYNC-46 — The reassignment pushed late is still accepted, and the prune then converges
+
+- **Layer** API (automated: `backend/tests/sync.categoryOrphan.test.ts`)
+- **Pre** As `SYNC-43`
+- **Steps**
+  1. Push the expense reassignment to the `isDefault` category, carrying a **newer** client
+     `updatedAt` and also a corrected `amountMinor`
+  2. Run `pruneTombstones` with `now` 91 days on
+- **Expect** `applied`, the corrected amount survives on the returned record, and the prune then
+  collects `C` (`categories: 1`, `categoriesRetained: 0`).
+- **Why this is the case that keeps GAP 15 short of data loss** The orphan is recoverable by any
+  client that comes back and follows through; it is permanent only if none ever does. This is also
+  the case that rules out the second obvious fix: had the server reassigned at delete time with its
+  own `now`, this push would come back `conflict_server_wins` and the amount the user corrected in
+  the same offline session would be dropped silently — GAP 2's second bullet, which is the reason
+  the current behaviour was called the better branch in the first place.
+
 ### 8.4 Deletes must not come back
 
 Defends: soft deletes, tombstones, and the 90-day horizon.
@@ -2361,7 +2528,10 @@ this plan had already written — against a fixture that, it turned out, could n
 and **GAP 13** by verifying another task's acceptance criteria and finding the one interleaving its
 own good tests did not reach. **GAP 14** came from a coverage report: the composition root was the
 largest wholly untested module in `mobile/src`, and testing it showed that the hazard its own doc
-comment says it exists to prevent has since been neutralised one layer down.
+comment says it exists to prevent has since been neutralised one layer down. **GAP 15** came from
+the opposite direction — re-reading a gap this plan had already *closed*. GAP 2's chosen branch has
+a documented cost, and measuring it showed the cost is not the transient GAP 2 recorded: it breaks
+a wire-contract guarantee, and it produces a tombstone the 90-day horizon never collects.
 
 The numbering is kept stable so the TVO-5 thread still reads correctly, and closed entries are kept
 rather than deleted, so the decision stays recorded where the test that depends on it can find it.
@@ -2390,6 +2560,7 @@ no new `revision`, and another account's id rejected as `400 validation_error`.
 | 12  | The category list's local order is wrong twice (filed, mobile)        | Low      | nothing            |
 | 13  | An in-flight request is retried under the next user's token (`TVO-20`) | Medium   | nothing            |
 | 14  | Two defences for the refresh-recursion hazard; only one is live        | Low      | nothing            |
+| 15  | An orphaned category tombstone outlives the horizon (filed, backend)   | Medium   | nothing            |
 | 5   | A future-dated row arriving by sync is unreachable in every view     | Medium   | `EDGE-04`          |
 | 7b  | `immutable_field` is unreachable on the **REST** path                | Low      | `API-04` (half)    |
 | 9   | No E2E driver is named in `docs/PLAN.md` §7                          | Low      | 7 cases run manual |
@@ -2401,9 +2572,12 @@ re-test of both fixes, which produced GAP 11. All three turned out to be defects
 decisions, which is the pattern worth noting: a gap that has sat unanswered for three runs is more
 often unexamined code than an undecided policy.
 
-GAP 11, GAP 12 and GAP 13 are filed defects rather than open questions, and none of them blocks
-anything: `AUTH-20`, `AUTH-21`, `CAT-15`, `CAT-16`, `AUTH-23` and `AUTH-24` are written, automated
-and expected-fail, so they report each fix the moment it lands. GAP 14 is a documentation accuracy
+GAP 11, GAP 12, GAP 13 and GAP 15 are filed defects rather than open questions, and none of them
+blocks anything: `AUTH-20`, `AUTH-21`, `CAT-15`, `CAT-16`, `AUTH-23`, `AUTH-24`, `SYNC-44` and
+`SYNC-45` are written, automated and expected-fail, so they report each fix the moment it lands.
+GAP 15 carries one extra thing a reader should not skip: both of its obvious fixes are wrong, and
+each is ruled out by a case that *passes*, so the entry is worth reading before any of it is
+written. GAP 14 is a documentation accuracy
 finding with no behavioural change behind it, and `AUTH-27` records the measurement. What is left
 needs its owner's input rather than a ruling, and none of it blocks executing §8: GAP 5 is the
 Designer's, GAP 9 wants Mobile Dev's agreement on a driver before 7 cases stop being manual, GAP 10
@@ -2553,6 +2727,73 @@ The fix is two sentences in `container.ts` saying which layer actually holds and
 is deliberate redundancy — not a code change. Low severity; blocks nothing. `AUTH-27` records the
 measurement so this cannot be re-derived a second time.
 
+### GAP 15 — An orphaned category tombstone outlives the horizon, and nothing reports it — **OPEN**
+
+This is GAP 2's chosen cost, measured. GAP 2 settled that a sync-path category delete reassigns
+nothing server-side, argued correctly that this is the better branch, and named the state left
+behind by a client that dies between the category push and the expense pushes. It recorded that
+state as a transient the client recovers from. Two of its consequences are not transient.
+
+**Defect 1 — the server serves an `Expense.categoryId` no client can resolve.** `openapi.yaml`
+describes the field as "Always a live category of the same user; reassigned to the `Uncategorized`
+default if its category is deleted". After a sync-path delete whose reassignments never land, both
+halves are false: `GET /v1/expenses` and `GET /v1/sync` both serve the expense pointing at a
+category that is absent from `GET /v1/categories` for being a tombstone. Measured in `SYNC-43`,
+including from a device syncing from scratch, so every device reaches it, not just the one that
+pushed. This is the same class as GAP 12's doc comment and GAP 14's rationale — a stated guarantee
+the code does not have — except that this one is on the wire contract a second client would be
+written against.
+
+**Defect 2 — the tombstone is then un-prunable for the life of the account, and the scheduled job
+cannot say so.** `pruneTombstones` leaves a category whose expenses still exist "for the next run
+rather than cascading". That converges for a **tombstoned** expense, which is collected at its own
+horizon. It never converges for a **live** one, which does not age out — so the row survives a
+prune at 91 days and at 4000, and is delivered in every full pull forever (`SYNC-44`). The 90-day
+horizon, which is the number the whole tombstone design is built on, does not bound this row at
+all. Compounding it, `PruneResult.categoriesRetained` exists to make exactly this visible and
+`pruneAllTombstones` — the aggregate the scheduled script calls — drops it, so a stuck account
+reads identically to a quiet one in the only line an operator sees (`SYNC-45`).
+
+**Severity: medium, and the reason is `SYNC-46`.** The orphan is recoverable by any client that
+comes back and pushes the reassignment: that push is still accepted, an amount corrected in the
+same session survives it, and the prune converges immediately after. So this is permanent only if
+no client ever follows through — a device lost, wiped, or reinstalled between the two pushes, or a
+second client written from the contract, which says the delete reassigns. Not data loss, and the
+correct flow is clean (`SYNC-41`). What it is: a wire-contract guarantee that does not hold, plus
+one unreclaimable row per occurrence with no way to observe the accumulation.
+
+**Both obvious fixes are wrong, and each is ruled out by a passing case.** This is the part worth
+reading before writing any of it:
+
+1. **Reassign server-side at delete time** — breaks `SYNC-46`, by reintroducing precisely the
+   silent data loss GAP 2 rejected. The server would write each expense with its own `now`, so the
+   client's own expense items lose last-write-wins and come back `conflict_server_wins`, and an
+   amount the user also corrected offline is dropped.
+2. **Refuse the delete while live expenses reference it** — breaks `SYNC-41`, the flow that is
+   working correctly. `SYNC-42` shows the server applies every category in a batch before any
+   expense, so when the delete runs its expenses have *always* still got the old `categoryId`,
+   including in the one-round-trip flow the design specifies. This fix rejects the normal case.
+
+**What QA would do instead**, offered as a recommendation and not a ruling, since the call is
+Backend Dev's and Chief's:
+
+- **The contract's wording**, for Defect 1. The "always a live category" sentence cannot be made
+  true without fix 1, so narrow it: say the field may reference a category the client has already
+  seen tombstoned when the owning client has not yet pushed its reassignments, and point at
+  `02-offline-and-sync.md` §5.1 for what the client does about it — the same user-picks rule that
+  already covers `unknown_category`. This also closes the prose half of GAP 2, which has been open
+  since the beginning and now has a measurable consequence rather than only an inconsistency.
+- **A repair at the horizon**, for Defect 2. At 90 days past the delete, a category still blocked
+  by a **live** expense is unambiguously a client that never followed through — far outside any
+  in-flight batch — so reassigning those expenses to the `isDefault` category inside the existing
+  prune transaction both converges the prune and restores the invariant, and bumps `revision` so
+  devices learn. Verified: with that plus `categoriesRetained` plumbed through the aggregate,
+  `SYNC-44` and `SYNC-45` turn red (they are `it.fails`) and **all 324 other backend cases stay
+  green**, including `SYNC-41` and `SYNC-46`. Reverted; the fix is Backend Dev's to make.
+
+Filed as `TVO-22` against `backend/`, unassigned. Blocks nothing: the two tripwires report the fix
+when it lands.
+
 ### GAP 1 — Who seeds the default categories, and the duplicate-six risk — **CLOSED**
 
 The contract's `POST /v1/auth/signup` says it "**seeds the default categories**", while an earlier
@@ -2630,6 +2871,13 @@ client that dies between the category push and the expense pushes leaves live ex
 a tombstoned category. `SYNC-23`'s second and third bullets cover both halves of it — that the
 outbox survives and drains, and that a peer editing one of those expenses gets a per-record
 `invalid` with `unknown_category` and recovers through `02-offline-and-sync.md` §5.1.
+
+**And that state has since been measured, which reopened this entry as GAP 15.** It is not the
+transient this paragraph assumed. While it lasts the server serves an `Expense.categoryId` that
+`openapi.yaml` calls "always a live category" and that no client can resolve; and the category
+tombstone is blocked from pruning by a *live* expense, which never ages out, so the 90-day horizon
+never collects it. `SYNC-41`-`SYNC-46` carry it. The prose fix this entry asks for is now part of
+GAP 15's recommendation rather than a tidy-up on its own.
 
 ### GAP 3 — `clientMutationId` retention: the answer was "forever" — **CLOSED, FIXED AND RE-TESTED**
 
@@ -2956,6 +3204,11 @@ bugs, and this is what proves none of them came back. Target: under 30 minutes p
 - [ ] Create, rename and recolour a category offline → all succeed, all show the clock glyph
 - [ ] Delete a category with expenses → dialog states the exact all-time count; expenses **move**
       and the month total is unchanged
+- [ ] Delete a category with expenses **offline**, then kill the app before it can sync, then
+      reconnect → the next push carries the tombstone **and** every reassigned expense, and no
+      expense is left pointing at the deleted category on the server (`SYNC-41`, GAP 15). This is
+      the one category step whose failure is invisible on the device that did it: the local
+      reassignment always looks right, and only a second device or the server shows the orphan
 - [ ] The default category offers no delete affordance anywhere
 - [ ] A duplicate name is blocked case-insensitively, offline
 - [ ] Add a category named `vacation` → it sorts between `Transport` and `Uncategorized`, and the
