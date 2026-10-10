@@ -282,6 +282,65 @@ describe('applyLocalMutation', () => {
       expect(entries[0]!.clientMutationId).not.toBe(entries[1]!.clientMutationId);
     });
 
+    /**
+     * `SYNC-48`. The two entries above are what the server receives as one batch, so the
+     * shape is pinned here as well as the count: disjoint `fields`, a `recordId` they
+     * share, and a strictly increasing `updatedAt`. That combination is what makes a
+     * conflict resolve per *field* rather than per row on the server — the measured cost
+     * of appending, in `backend/tests/sync.uncoalescedOutbox.test.ts`.
+     *
+     * Note which clock this needs. The rest of this file pins one instant, which would
+     * make both entries share an `updatedAt` — the tie `SYNC-49` is about, where the
+     * server drops the second entry's fields. Two real saves are milliseconds apart, so
+     * this case advances the clock rather than inheriting the fixture's.
+     */
+    it('leaves two entries whose fields are disjoint and whose times increase', async () => {
+      let tick = AT.getTime();
+      const ticking = () => new Date((tick += 1000));
+
+      await applyLocalMutation(
+        database,
+        {
+          entity: 'expense',
+          id: EXPENSE_ID,
+          fields: {
+            categoryId: CATEGORY_ID,
+            amountMinor: 1000,
+            currency: 'USD',
+            date: '2026-10-08',
+          },
+        },
+        { ...options(), clock: ticking },
+      );
+      await applyLocalMutation(
+        database,
+        { entity: 'expense', id: EXPENSE_ID, fields: { amountMinor: 1100 } },
+        { ...options(), clock: ticking },
+      );
+      await applyLocalMutation(
+        database,
+        { entity: 'expense', id: EXPENSE_ID, fields: { note: 'lunch with Sam' } },
+        { ...options(), clock: ticking },
+      );
+
+      const entries = await outbox();
+      expect(entries).toHaveLength(3);
+      expect(entries.map((entry) => entry.recordId)).toEqual([
+        EXPENSE_ID,
+        EXPENSE_ID,
+        EXPENSE_ID,
+      ]);
+      // Disjoint: the second and third entries name one field each, so neither carries
+      // the other's. A coalescing outbox would hold one entry naming both.
+      expect(entries.slice(1).map((entry) => JSON.parse(entry.fields))).toEqual([
+        { amountMinor: 1100 },
+        { note: 'lunch with Sam' },
+      ]);
+      const times = entries.map((entry) => entry.updatedAt);
+      expect([...times].sort()).toEqual(times);
+      expect(new Set(times).size).toBe(3);
+    });
+
     it('records a delete as a tombstone, not a removal', async () => {
       await createGroceries();
       await applyLocalMutation(
