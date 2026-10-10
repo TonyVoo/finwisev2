@@ -1,5 +1,5 @@
-import { API_ROUTES, routeKey } from '@expense-tracker/shared';
-import { createApiClient, resolvePath } from '@/api/client';
+import { API_ROUTES, type ApiOperationId, routeKey } from '@expense-tracker/shared';
+import { type ApiClient, createApiClient, resolvePath } from '@/api/client';
 import { ENDPOINTS } from '@/api/endpoints';
 import { ApiRequestError, ResponseShapeError, UNKNOWN_ERROR_CODE } from '@/api/errors';
 import type { Transport, TransportRequest, TransportResponse } from '@/api/transport';
@@ -52,6 +52,80 @@ describe('the endpoint table', () => {
     for (const endpoint of Object.values(ENDPOINTS)) {
       expect(endpoint.responseSchema === null).toBe(endpoint.route.successStatus === 204);
     }
+  });
+});
+
+/**
+ * Every method on the client, against the route the contract gives the operation it is
+ * named for.
+ *
+ * The endpoint table above is checked key-by-key, but nothing checked that
+ * `client.deleteExpense` reaches for `ENDPOINTS.deleteExpense` rather than a neighbour.
+ * TypeScript will not catch that: `send` is typed by the endpoint's response schema, and
+ * the three expense writes all answer `ExpenseResponse`, as do the three category writes,
+ * as do signup and login with `AuthResponse`. So `deleteExpense` wired to
+ * `ENDPOINTS.updateExpense` compiles cleanly and issues a `PATCH` where the user asked
+ * for a delete - and the reverse sends `DELETE` when they asked to edit an amount.
+ *
+ * Eight of the sixteen methods had no test at all before this table.
+ */
+describe('every client method', () => {
+  const ID = '0192f5a0-0000-7000-8000-0000000000aa';
+
+  // A 400 envelope, so one transport serves all sixteen without sixteen valid success
+  // bodies. The request is recorded before the status is read.
+  const REJECTED: TransportResponse = {
+    status: 400,
+    body: { error: { code: 'validation_error', message: 'no' } },
+    requestId: null,
+  };
+
+  const CALLS: ReadonlyArray<readonly [ApiOperationId, (client: ApiClient) => Promise<unknown>]> = [
+    ['getHealth', (client) => client.getHealth()],
+    ['signup', (client) => client.signup({ email: 'a@example.com', password: 'correct horse 42' })],
+    ['login', (client) => client.login({ email: 'a@example.com', password: 'correct horse 42' })],
+    ['refresh', (client) => client.refresh({ refreshToken: 'r' })],
+    ['logout', (client) => client.logout({ refreshToken: 'r' })],
+    ['getMe', (client) => client.getMe()],
+
+    ['listCategories', (client) => client.listCategories()],
+    ['createCategory', (client) => client.createCategory({ name: 'Rent' })],
+    ['updateCategory', (client) => client.updateCategory(ID, { name: 'Rent' })],
+    ['deleteCategory', (client) => client.deleteCategory(ID)],
+
+    ['listExpenses', (client) => client.listExpenses()],
+    [
+      'createExpense',
+      (client) => client.createExpense({ categoryId: ID, amountMinor: 1, date: '2026-10-10' }),
+    ],
+    ['updateExpense', (client) => client.updateExpense(ID, { amountMinor: 2 })],
+    ['deleteExpense', (client) => client.deleteExpense(ID)],
+
+    ['pullSync', (client) => client.pullSync({ since: 0 })],
+    ['pushSync', (client) => client.pushSync({ changes: [] })],
+  ];
+
+  it('covers the whole client surface', () => {
+    expect(CALLS.map(([operationId]) => operationId).sort()).toEqual(
+      API_ROUTES.map((route) => route.operationId).sort(),
+    );
+  });
+
+  it.each(CALLS)('%s issues the method, path and auth flag the contract declares', async (
+    operationId,
+    call,
+  ) => {
+    const route = API_ROUTES.find((candidate) => candidate.operationId === operationId)!;
+    const { client, seen } = clientReturning(REJECTED);
+
+    await call(client).catch(() => undefined);
+
+    expect(seen).toHaveLength(1);
+    expect(seen[0]).toMatchObject({
+      method: route.method,
+      path: resolvePath(route.path, { id: ID }),
+      requiresAuth: route.auth,
+    });
   });
 });
 
