@@ -1,6 +1,6 @@
 # MVP Test Plan
 
-Owner: QA Tester · Status: ready to execute · Last updated: 2026-10-09
+Owner: QA Tester · Status: ready to execute · Last updated: 2026-10-10
 
 Written in Wave 1 against the contract and the designs, **before** the features land, so that it
 is ready the moment they do — and so that the gaps in §11 were found by writing it rather than by
@@ -26,7 +26,8 @@ account-switch leak and `9f2edc8` / `ccde610` for the ledger — so `AUTH-12`, `
 four expected-fail cases among them are ordinary cases. Re-testing the first one turned up **GAP
 11**, two narrower defects in the same area that the fix did not cover: the account-switch wipe
 runs *before* the write that can fail, and the owner is stored as a separate value from the tokens
-it describes. `AUTH-20` and `AUTH-21` carry those and are the only expected-fail cases left.
+it describes. `AUTH-20` and `AUTH-21` carry those; with `CAT-15` and `CAT-16` below they are the
+four expected-fail cases left.
 
 **The API-layer steps of `EDGE-01`, `EDGE-02` and `EDGE-04` are now executed** rather than merely
 written (`backend/tests/expenses.edgecases.test.ts`), and all three pass. They were picked because
@@ -35,6 +36,14 @@ the *accept* side — the side where an off-by-one in a limit, or an `int4` colu
 twelve-digit contract, would have left every existing test green. `EDGE-04`'s result also narrows
 GAP 5: the future-dated row is on the wire, in the list response and ordered first, so nothing
 server-side filters it and the fix has to be a client decision.
+
+**`src/db/queries.ts` — the reads the UI renders from — is now covered too, and it opened GAP 12.**
+`listLiveCategories` gets the category list's order wrong twice: `ORDER BY c.name` is
+case-sensitive under SQLite's default collation, and nothing pins the `isDefault` row last. What
+makes this worth reading is that `CAT-01` already asserted the right order and **could not have
+caught either defect**: its precondition is `F-FRESH`, whose six seeded names sort identically
+under the right ordering and the wrong one. The plan's own fixture was the blind spot. `CAT-15`
+and `CAT-16` seed names chosen to separate them and are expected-fail until the fix lands.
 
 Inputs this plan was derived from, and the authority order when they disagree:
 
@@ -753,6 +762,10 @@ validation_error`, and the body names no owner — the id is the global primary 
   `Uncategorized` last — alphabetical case-insensitively, with the `isDefault` row pinned last
   regardless of where its name would otherwise sort. Each row shows an all-time expense count, and
   a count of zero renders as `0`, never as blank or `—`.
+- **This case cannot fail on `F-FRESH` alone** — `Bills` … `Uncategorized` sort the same way under
+  a case-sensitive order, a case-insensitive one, and with or without the default pinned, so the
+  fixture agrees with every candidate implementation. `CAT-15` and `CAT-16` carry the seeds that
+  tell them apart; run them before trusting a green `CAT-01`. [GAP 12]
 
 ### CAT-02 — Names are unique per user among live categories, case-insensitively
 
@@ -904,6 +917,50 @@ validation_error`, and the body names no owner — the id is the global primary 
 - **Expect** The Name field enters its error state with `You already have a category called "groceries".`
   and `Create` is disabled. The check runs against local SQLite, so it is correct offline. A name
   matching a **deleted** category is accepted.
+
+### CAT-15 — The order is case-insensitive, so a lowercase name is not exiled to the end
+
+- **Layer** Unit (`mobile/tests/db/queries.test.ts`)
+- **Pre** A local store holding three live categories named `Bills`, `rent` and `Transport`, all
+  pulled rather than locally created
+- **Steps** Call `listLiveCategories` and read the names in order
+- **Expect** `Bills`, `rent`, `Transport`. The design specifies case-insensitive alphabetical
+  order (`07-categories.md` §1 state `default`), which is also what the backend already does for
+  `GET /v1/categories` and documents the reason for.
+- **Result — fails.** The query returns `Bills`, `Transport`, `rent`: `ORDER BY c.name` uses
+  SQLite's default BINARY collation, so every capital letter sorts before every lowercase one.
+  Expected-fail until GAP 12 is fixed. [GAP 12]
+
+### CAT-16 — The default category is pinned last whatever it is called
+
+- **Layer** Unit (`mobile/tests/db/queries.test.ts`)
+- **Pre** A local store holding `Bills`, `Uncategorized` (`isDefault`) and `Vacation`
+- **Steps** Call `listLiveCategories` and read the names in order
+- **Expect** `Bills`, `Vacation`, `Uncategorized`. The `isDefault` row is pinned last regardless
+  of where its name would sort, because the list's last row is also the one with no swipe action
+  (§4 rule 4) and a protected row in the middle of the list reads as an arbitrary exception.
+- **Result — fails.** The query returns `Bills`, `Uncategorized`, `Vacation`: nothing pins the
+  default. The defect is invisible on the seeded set, where `Uncategorized` sorts last by
+  accident, and surfaces on the first category a user adds that sorts after it. Expected-fail
+  until GAP 12 is fixed. [GAP 12]
+
+### CAT-17 — `pending` is derived from the outbox, and only for the row the user edited
+
+- **Layer** Unit (`mobile/tests/db/queries.test.ts`)
+- **Pre** A local store holding a pulled `Bills`
+- **Steps**
+  1. Create a category locally through `applyLocalMutation`; read the list
+  2. Clear the outbox; read the list again
+  3. Create an **expense** against `Bills` locally; read the list again
+  4. Tombstone `Bills` locally; read the list and `countPendingRecords`
+- **Expect** Step 1 reports `pending: true`, step 2 `pending: false` — the outbox is the single
+  source of truth for the state, derived per read rather than stored as a column that could fall
+  out of step (`02-offline-and-sync.md` §2). Step 3 leaves `Bills` **not** pending: the expense's
+  outbox entry names the category in its `fields`, not in `recordId`, and a clock glyph on a
+  category the user never touched would be wrong. In step 4 the category disappears from the list
+  while its row stays in the table, and it still counts as **1** pending record — the undelivered
+  delete is exactly what is pending.
+- **Result — passes**, all four steps.
 
 ---
 
@@ -1145,6 +1202,9 @@ row.
   distinct records, not outbox rows. The sheet's section header reads `1 change waiting`
   (singular, never `1 changes`). On reconnect the server ends up with the **final** amount and
   note. The row remained fully editable while pending: `pending` is never a blocker.
+- **Result — the Unit half passes.** Three local mutations of one row leave three `outbox` rows
+  and `countPendingRecords` returns `1`, so the pill's `{n}` is already distinct-records rather
+  than entries. The E2E half still needs a driven app (GAP 9).
 
 ### SYNC-05 — A full offline session of mixed writes drains in one round trip
 
@@ -2109,9 +2169,11 @@ rather than guessed at.
 
 Ten gaps were filed when this plan was first written, and **seven have since closed** — five in the
 contract and backend work of 8–9 Oct, and GAP 4 and GAP 3 by being read against the landed code and
-then fixed. That is the plan paying for itself before a single case was executed by hand. One new
-gap has been opened since, **GAP 11**, and it was found by re-testing one of those fixes rather than
-by reading a contract — which is the argument for re-testing rather than closing on a green suite.
+then fixed. That is the plan paying for itself before a single case was executed by hand. Two new
+gaps have been opened since, and neither came from reading a contract: **GAP 11** was found by
+re-testing one of those fixes rather than closing on a green suite, and **GAP 12** was found by
+executing a case this plan had already written — against a fixture that, it turned out, could not
+have failed it.
 
 The numbering is kept stable so the TVO-5 thread still reads correctly, and closed entries are kept
 rather than deleted, so the decision stays recorded where the test that depends on it can find it.
@@ -2137,6 +2199,7 @@ no new `revision`, and another account's id rejected as `400 validation_error`.
 | #   | Gap                                                                  | Severity | Blocks             |
 | --- | -------------------------------------------------------------------- | -------- | ------------------ |
 | 11  | Session writes are not atomic, and the wipe runs first (filed, mobile) | Medium   | nothing            |
+| 12  | The category list's local order is wrong twice (filed, mobile)        | Low      | nothing            |
 | 5   | A future-dated row arriving by sync is unreachable in every view     | Medium   | `EDGE-04`          |
 | 7b  | `immutable_field` is unreachable on the **REST** path                | Low      | `API-04` (half)    |
 | 9   | No E2E driver is named in `docs/PLAN.md` §7                          | Low      | 7 cases run manual |
@@ -2148,8 +2211,9 @@ re-test of both fixes, which produced GAP 11. All three turned out to be defects
 decisions, which is the pattern worth noting: a gap that has sat unanswered for three runs is more
 often unexamined code than an undecided policy.
 
-GAP 11 is the only one of the three still open, and it blocks nothing: `AUTH-20` and `AUTH-21` are
-written, automated and expected-fail, so they report the fix the moment it lands. What is left
+GAP 11 and GAP 12 are the only ones still open, and neither blocks anything: `AUTH-20`, `AUTH-21`,
+`CAT-15` and `CAT-16` are written, automated and expected-fail, so they report each fix the moment
+it lands. What is left
 needs its owner's input rather than a ruling, and none of it blocks executing §8: GAP 5 is the
 Designer's, GAP 9 wants Mobile Dev's agreement on a driver before 7 cases stop being manual, GAP 10
 wants numbers from whoever sets the limits, and GAP 7b is a contract-hygiene choice between two
@@ -2181,6 +2245,47 @@ Both fixes are orderings rather than new mechanisms, and both were applied local
 write tokens → adopt → publish, rolling the tokens back if the adopt fails; and delete the owner
 key first, write it last, so a half-done write reads as no owner and therefore no session. Each
 turns its case red and leaves the other 39 auth cases green. Filed for Mobile Dev.
+
+### GAP 12 — The category list's local order is wrong twice — **OPEN**
+
+Found by executing `CAT-01` at the unit layer, and the interesting part is why executing it was
+worth anything: **`CAT-01` was already written, already correct, and could not have failed.** Its
+precondition is `F-FRESH`, and the six seeded names — `Bills`, `Eating out`, `Groceries`,
+`Health`, `Transport`, `Uncategorized` — come out in the same order under a case-sensitive sort, a
+case-insensitive one, and with or without the default pinned last. The fixture agreed with every
+candidate implementation, so the case was decoration. That is a defect in this plan as much as in
+the client, and it is the reason `CAT-15` and `CAT-16` state their seeds rather than reusing a
+fixture.
+
+`listLiveCategories` (`mobile/src/db/queries.ts`) sorts with `ORDER BY c.name`, against a `name`
+column declared with no collation. Two deviations from `07-categories.md` §1 state `default`:
+
+1. **Not case-insensitive.** SQLite's default BINARY collation puts every capital letter before
+   every lowercase one, so a user with `Bills`, `rent`, `Transport` sees `rent` last. Carried by
+   `CAT-15`.
+2. **The `isDefault` row is not pinned last.** It sorts on its name like any other, and
+   `Uncategorized` only looks right because it happens to sort after the other five seeds. The
+   first category a user adds that sorts after it — `Vacation`, `Work`, anything lowercase —
+   moves the protected row into the middle of a list where §4 rule 4 says the last row is the one
+   without a swipe action. Carried by `CAT-16`.
+
+Severity **Low**: it is wrong order, not wrong data, and nothing is lost or leaked. It is filed
+rather than left as a note for two reasons. The query's own doc comment claims it returns "the
+order `docs/design/07-categories.md` specifies for the category list", and a stated guarantee the
+code does not have is worse than an unstated one — the next reader stops checking. And the backend
+hit this exact problem first and solved it deliberately: `byName` in `categoryService.ts` sorts in
+process specifically because "Postgres orders text by the database's collation, which in a
+`C`-locale cluster puts every capital letter before every lowercase one". The client then
+reintroduced the same bug one layer down, in the only place the pin-last rule can live, since the
+REST contract promises plain name order and leaves presentation to the client.
+
+The candidate fix is one line — `ORDER BY c.isDefault, c.name COLLATE NOCASE` — and it was applied
+locally and reverted: it turns exactly `CAT-15` and `CAT-16` red and leaves all 176 other mobile
+cases green. Two notes for whoever takes it: `idx_categories_live (deletedAt, name)` no longer
+serves that sort, which is acceptable on an unpaginated set of a few dozen rows but is a choice
+worth making knowingly rather than discovering; and a `COLLATE NOCASE` column would also change
+what the `UNIQUE`-style local name check in `CAT-14` compares, so the collation belongs in the
+`ORDER BY` rather than in the schema unless that is checked too. Filed for Mobile Dev.
 
 ### GAP 1 — Who seeds the default categories, and the duplicate-six risk — **CLOSED**
 
@@ -2580,6 +2685,8 @@ bugs, and this is what proves none of them came back. Target: under 30 minutes p
       and the month total is unchanged
 - [ ] The default category offers no delete affordance anywhere
 - [ ] A duplicate name is blocked case-insensitively, offline
+- [ ] Add a category named `vacation` → it sorts between `Transport` and `Uncategorized`, and the
+      default stays the last row (`CAT-15`, `CAT-16`) — the seeded six cannot show this
 
 **Totals and chart**
 
