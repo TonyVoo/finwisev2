@@ -54,6 +54,17 @@ None covered the other reason the stored token can differ when a request comes b
 belongs to a different user — and on that path an in-flight request is retried under the next user's
 token with its body replayed verbatim. `AUTH-22`–`AUTH-25` carry it.
 
+**The composition root and the client's route table are now covered, and no defect was found in
+either — which is a result, not a non-event.** A coverage run over `mobile/src` picked the targets
+rather than intuition: `bootstrap/container.ts` was at 0%, and half of `api/client.ts`'s sixteen
+methods had never been called by a test. Both matter to this plan specifically. The container is
+the one place TVO-16's account-switch fix can be undone with every other mobile case still green
+(`AUTH-26`, `AUTH-28`), and the client's method-to-route wiring is invisible to TypeScript wherever
+two operations share a response schema — swapping `updateExpense` and `deleteExpense` typechecks
+cleanly and sends `DELETE` when the user edits an amount (`API-12`). Testing the container also
+produced **GAP 14**: the hazard its doc comment says the module exists to prevent is no longer
+reachable, because `authorize.ts` closed it one layer down.
+
 Inputs this plan was derived from, and the authority order when they disagree:
 
 1. [`docs/api/openapi.yaml`](../api/openapi.yaml) — the HTTP surface (statuses, headers, codes).
@@ -127,6 +138,33 @@ database was discarded and the run still went to `expense_tracker_test`.
 
 So: one API-layer pass per machine at a time. If two people — or two agents in one workspace —
 need to run the suite simultaneously, one of them edits `backend/.env` first.
+
+### The mobile suite prints a worker-teardown warning. It is not a failure — diagnosed 2026-10-10
+
+Every `pnpm test` of `mobile/` ends with `A worker process has failed to exit gracefully … Try
+running with --detectOpenHandles`. All cases pass. A tester seeing it for the first time should not
+chase it, and should not take it as a leak in whatever file they just added, so the evidence is
+written down here once:
+
+- It appears **only when jest uses a worker pool**. `--maxWorkers=2` and the default both show it;
+  `--runInBand` never does. So the handle is in a worker, not in the main process.
+- The warning's own advice is a dead end: `--detectOpenHandles` implies `--runInBand`, which is the
+  one mode that does not reproduce it.
+- It is **not** an unclosed `node:sqlite` handle. Every `createTestDatabase()` in the suite is
+  matched by a `close()`, and the six pure-SQLite files pair together cleanly.
+- Bisected to `tests/db/hooks.test.tsx`, then to a **16-line reproducer with no app code in it**:
+  mounting a `useQuery` observer inside a `QueryClientProvider` via `renderHook` is enough. Neither
+  half alone does it — `renderHook` with a plain `useState` hook is clean, and a `QueryClient`
+  driven with no React at all is clean.
+- No test-side teardown closes it: `queryClient.clear()`, `queryClient.unmount()` and an explicit
+  `unmount()` of the tree were each tried, together and separately, and the warning survives all of
+  them.
+
+So it is an environment/library interaction (TanStack Query + RNTL under `jest-expo`), not a defect
+in this suite or in the app, and not something a test author can fix. It still matters once CI
+exists, because a force-exited worker is the shape a flaky run takes: the lever is
+`--runInBand` for the mobile project, which costs wall-clock and should be a deliberate choice.
+Filed at low severity for that decision rather than for a fix.
 
 ### The E2E driver is not yet chosen — [GAP 9]
 
@@ -607,6 +645,55 @@ turns every case that uses it into a false green, which is worse than a fixture 
   token is defensible and so is failing closed. An epoch-counter fix for GAP 13 refuses every
   post-change retry and would fail a case that insisted on the retry. This is the `AUTH-21` lesson
   applied up front: assert the unsafe outcome, not a preferred fix.
+
+### AUTH-26 — A session is never published over a database that has not been adopted
+
+- **Layer** Unit (`mobile/tests/bootstrap/container.test.ts`)
+- **Pre** A local database holding one category and **no** `meta.ownerUserId` row — a store
+  restored from a backup, or written before the owner was recorded. A token store holding a
+  session for `USER_A`
+- **Steps**
+  1. `createAppContainer({ database, tokenStore, transport })`
+- **Expect** On resolve, `meta.ownerUserId` is `USER_A` and `categories` is empty: an unowned store
+  with rows in it is treated as somebody else's. `session.getSnapshot()` is
+  `{ status: 'authenticated', expired: false }`, and `container.database` is the handle passed in.
+- **Result — PASSES**
+- **Why this is not a duplicate of `AUTH-19`** `AUTH-19` proves the *store* decides correctly;
+  this proves the *wiring* reaches that decision. The composition root is the one place TVO-16's
+  fix can be undone without a single other test going red — swapping
+  `createSqliteLocalStore(database)` for `createMemoryLocalStore()` leaves 205 of the 207 mobile
+  cases green. Verified by applying exactly that and watching this case and `AUTH-28` turn red.
+
+### AUTH-27 — The 401 round trip, through the real wiring rather than the parts
+
+- **Layer** Unit (`mobile/tests/bootstrap/container.test.ts`)
+- **Pre** A session for `USER_A` with `accessToken: access-a`. A transport that `401`s `access-a`,
+  rotates on `POST /v1/auth/refresh`, and answers anything else
+- **Steps**
+  1. `container.api.getMe()`
+  2. Separately, two `getMe()` calls started together
+- **Expect** Step 1 makes exactly three requests, in order: `get /v1/me`, `post /v1/auth/refresh`,
+  `get /v1/me`. The refresh carries `requiresAuth: false`, no `accessToken`, and the body
+  `{ refreshToken: 'refresh-a' }` — the one from the store. The retry carries the rotated
+  `access-a2` and resolves. Step 2 produces exactly **one** refresh.
+- **Result — PASSES**
+- **What it does not prove — [GAP 14]** Not that `publicApi` must be built on the raw transport.
+  Wiring `refreshTokens` to the *authorized* client instead — the exact hazard
+  `bootstrap/container.ts` says the module exists to prevent — was applied here and changed nothing
+  observable: all 105 cases in `tests/api`, `tests/auth` and `tests/bootstrap` stayed green,
+  because `authorize.ts` returns early for a route with `auth: false` and the refresh route is one.
+
+### AUTH-28 — A second account signing in wipes the first out of the open database
+
+- **Layer** Unit (`mobile/tests/bootstrap/container.test.ts`)
+- **Pre** A container built on a session for `USER_A`, then one category written locally
+- **Steps**
+  1. `container.session.signIn(authResponseFor(USER_B))`
+- **Expect** `meta.ownerUserId` is `USER_B` and `categories` is empty.
+- **Result — PASSES**
+- **Note** The live half of TVO-16 at the wiring layer. With no stored session at all, the
+  container starts `anonymous`, leaves `meta` unclaimed, and sends **nothing** — a cold start of an
+  offline-first app talks to nobody, which is also what makes `AUTH-26`'s adoption observable.
 
 ---
 
@@ -2234,6 +2321,28 @@ and they are where a security or correctness regression shows up first.
   rejects the rest. With `limit` omitted the page holds at most 50
   (`EXPENSE_LIST_DEFAULT_LIMIT`).
 
+### API-12 — Every client method reaches for the route named after it
+
+- **Layer** Unit (`mobile/tests/api/client.test.ts`)
+- **Pre** None. A transport that records its request and answers `400`
+- **Steps**
+  1. Call each of the sixteen `ApiClient` methods once, with the minimum valid arguments
+  2. For each, compare the recorded request against `API_ROUTES.find(r => r.operationId === name)`
+- **Expect** Sixteen requests, each carrying the `method`, the `path` (with `{id}` substituted) and
+  the `requiresAuth` flag the contract declares for the operation of the same name. A seventeenth
+  case asserts the call table itself covers `API_ROUTES` exactly, so a route added to the contract
+  cannot be left untested here.
+- **Result — PASSES** (all sixteen)
+- **Why this is worth sixteen cases** The existing endpoint-table cases check
+  `ENDPOINTS.deleteExpense.route.operationId === 'deleteExpense'`. Nothing checked that
+  `client.deleteExpense` reaches for that entry rather than a neighbour, and **TypeScript cannot**:
+  `send` is typed by the endpoint's response schema, and the three expense writes all answer
+  `ExpenseResponse`, as do the three category writes, as do `signup` and `login` with
+  `AuthResponse`. Verified by swapping `updateExpense` and `deleteExpense` in
+  `src/api/client.ts`: `pnpm typecheck` stayed clean, exactly these two cases turned red, and the
+  app would have sent `DELETE` when the user edited an amount. Eight of the sixteen methods had no
+  test of any kind before this table.
+
 ---
 
 ## 11. Contract and design gaps found while writing this plan
@@ -2250,7 +2359,9 @@ gaps have been opened since, and none came from reading a contract: **GAP 11** w
 re-testing one of those fixes rather than closing on a green suite, **GAP 12** by executing a case
 this plan had already written — against a fixture that, it turned out, could not have failed it —
 and **GAP 13** by verifying another task's acceptance criteria and finding the one interleaving its
-own good tests did not reach.
+own good tests did not reach. **GAP 14** came from a coverage report: the composition root was the
+largest wholly untested module in `mobile/src`, and testing it showed that the hazard its own doc
+comment says it exists to prevent has since been neutralised one layer down.
 
 The numbering is kept stable so the TVO-5 thread still reads correctly, and closed entries are kept
 rather than deleted, so the decision stays recorded where the test that depends on it can find it.
@@ -2278,6 +2389,7 @@ no new `revision`, and another account's id rejected as `400 validation_error`.
 | 11  | Session writes are not atomic, and the wipe runs first (filed, mobile) | Medium   | nothing            |
 | 12  | The category list's local order is wrong twice (filed, mobile)        | Low      | nothing            |
 | 13  | An in-flight request is retried under the next user's token (`TVO-20`) | Medium   | nothing            |
+| 14  | Two defences for the refresh-recursion hazard; only one is live        | Low      | nothing            |
 | 5   | A future-dated row arriving by sync is unreachable in every view     | Medium   | `EDGE-04`          |
 | 7b  | `immutable_field` is unreachable on the **REST** path                | Low      | `API-04` (half)    |
 | 9   | No E2E driver is named in `docs/PLAN.md` §7                          | Low      | 7 cases run manual |
@@ -2291,7 +2403,8 @@ often unexamined code than an undecided policy.
 
 GAP 11, GAP 12 and GAP 13 are filed defects rather than open questions, and none of them blocks
 anything: `AUTH-20`, `AUTH-21`, `CAT-15`, `CAT-16`, `AUTH-23` and `AUTH-24` are written, automated
-and expected-fail, so they report each fix the moment it lands. What is left
+and expected-fail, so they report each fix the moment it lands. GAP 14 is a documentation accuracy
+finding with no behavioural change behind it, and `AUTH-27` records the measurement. What is left
 needs its owner's input rather than a ruling, and none of it blocks executing §8: GAP 5 is the
 Designer's, GAP 9 wants Mobile Dev's agreement on a driver before 7 cases stop being manual, GAP 10
 wants numbers from whoever sets the limits, and GAP 7b is a contract-hygiene choice between two
@@ -2406,6 +2519,39 @@ original response. Applied locally and reverted: `AUTH-23` and `AUTH-24` turn re
 `authorize.test.ts` stay green along with `AUTH-22` and `AUTH-25`. Bumping on rotation as well
 would redden "retries with the current token when it 401s after someone else rotated", which is
 correct behaviour. Filed as `TVO-20` for Mobile Dev.
+
+### GAP 14 — Two defences for the refresh-recursion hazard, and only one of them is live — **OPEN**
+
+Not a defect. A stale rationale, which is the same class of problem as GAP 12's doc comment and is
+filed for the same reason: the next reader trusts it and stops checking.
+
+`bootstrap/container.ts` opens by saying the module exists because "the wiring has one knot in it",
+and that resolving it the obvious way "would make the refresh call go *through* the interceptor, so
+a 401 on a refresh would trigger a refresh". That was true when it was written. It is no longer
+reachable: `authorize.ts` returns early for any route with `auth: false`, and
+`POST /v1/auth/refresh` is one — so a refresh issued through the authorized client never enters the
+interceptor either.
+
+Measured rather than reasoned about. `refreshTokens` was rewired to the authorized client via a
+late-bound reference — the exact shape the comment warns against — and **every one of the 105 cases
+in `tests/api`, `tests/auth` and `tests/bootstrap` stayed green**, including `AUTH-27`, which is
+the case that looks like it should catch it. Reverted.
+
+Two things follow, and the second is the reason this is written down:
+
+1. The live defence is the `requiresAuth` short-circuit in `authorize.ts`, and it **is** pinned —
+   removing it reddens `authorize.test.ts`'s "never refreshes for a route that takes no token",
+   and nothing else in the suite. Verified the same way.
+2. So the ordering in the composition root is a second, currently inert layer. That is fine as
+   belt-and-braces, but anyone reading the two files could conclude the opposite of the truth in
+   either direction: that the ordering is what protects them (it is not), or that the
+   short-circuit is redundant because the container handles it (it is not). Removing the
+   short-circuit on that belief would reopen the hazard with no test failing for the stated
+   reason.
+
+The fix is two sentences in `container.ts` saying which layer actually holds and that the ordering
+is deliberate redundancy — not a code change. Low severity; blocks nothing. `AUTH-27` records the
+measurement so this cannot be re-derived a second time.
 
 ### GAP 1 — Who seeds the default categories, and the duplicate-six risk — **CLOSED**
 
@@ -2793,6 +2939,9 @@ bugs, and this is what proves none of them came back. Target: under 30 minutes p
       the slowest proxy profile in §2 first) → the stalled request fails rather than completing
       under the new account's token, and nothing of the previous user's appears in the new
       account's month (`AUTH-23`, `AUTH-24`)
+- [ ] Let an access token expire with the app open, then act → the action completes after one
+      silent refresh, with no re-login prompt and no duplicate write (`AUTH-27` is the unit half;
+      this is the device half, and the refresh is invisible when it works)
 
 **Expenses**
 
