@@ -2726,7 +2726,7 @@ no new `revision`, and another account's id rejected as `400 validation_error`.
 | 13  | An in-flight request is retried under the next user's token (`TVO-20`) | Medium   | nothing            |
 | 14  | Two defences for the refresh-recursion hazard; only one is live        | Low      | nothing            |
 | 15  | An orphaned category tombstone outlives the horizon (filed, backend)   | Medium   | nothing            |
-| 16  | The client/server seam cannot reach `authorize.ts` (filed, mobile)     | Low      | `API-19`           |
+| 16  | The client/server seam cannot reach `authorize.ts` (`TVO-23`)          | Low      | `API-19`           |
 | 5   | A future-dated row arriving by sync is unreachable in every view     | Medium   | `EDGE-04`          |
 | 7b  | `immutable_field` is unreachable on the **REST** path                | Low      | `API-04` (half)    |
 | 9   | No E2E driver is named in `docs/PLAN.md` §7                          | Low      | 7 cases run manual |
@@ -3008,7 +3008,12 @@ and the cost is that the one seam neither package's suite can cover stays uncove
 
 Either lands `API-19` as written, and the test file in `backend/tests/` would need one import added
 and the `withToken` helper deleted. **Severity: low.** It blocks one QA case and no product
-behaviour; nothing a user does is affected. Filed against `mobile/`.
+behaviour; nothing a user does is affected. Filed as **`TVO-23`** against `mobile/`.
+
+Fix 1 was applied locally before filing rather than proposed on paper: with the two-member
+interface in place, `pnpm typecheck` is green repo-wide, mobile stays at **207 passed** —
+`SessionController` satisfies it structurally, so `container.ts` is untouched — and `API-19`
+passes, reddening alone when the retry is removed from `authorize.ts`. Then reverted.
 
 ### GAP 1 — Who seeds the default categories, and the duplicate-six risk — **CLOSED**
 
