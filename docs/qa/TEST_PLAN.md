@@ -90,8 +90,20 @@ session (`API-15`), and the seam cannot reach `api/authorize.ts` at all, which i
 
 **The pruner's own entry point is now executed** rather than only unit-tested around. `pnpm prune:tombstones` is
 the sole caller of `pruneAllTombstones` and therefore the only thing that bounds the largest table in
-the schema, and nothing in 320 backend cases loaded it. It is sound in both directions — see the
+the schema, and no backend case loaded it. It is sound in both directions — see the
 commands and results recorded in §2.
+
+**The shape the mobile client actually pushes had never been pushed, and that is GAP 17.** Every
+case in §8 and every case in `backend/tests/sync.convergence.test.ts` sends **one item per row per
+device** — the coalescing client `02-offline-and-sync.md` §2 rule 2 describes. The landed client
+appends an outbox entry per edit instead, deliberately and with a test of its own, so a user who
+edits one expense twice offline pushes two items for one row. §8.10 pushes that shape against the
+real server: a conflict then resolves **per field**, and `SYNC-48` ends with the server holding one
+device's amount beside the other device's note — a row that existed on neither device. Convergence
+survives (`SYNC-50`); what differs is which of the user's edits do. The finding came from re-reading
+a Result this plan had already recorded: `SYNC-04` says three edits leave three outbox entries,
+under a case titled "coalesces instead of queueing twice", and nobody had noticed the contradiction
+— including whoever wrote it down.
 
 Inputs this plan was derived from, and the authority order when they disagree:
 
@@ -1448,7 +1460,7 @@ row.
   deleted-but-unsynced row was absent from the local list in step 1 too, exactly as a synced
   delete would be.
 
-### SYNC-04 — Editing a pending row coalesces instead of queueing twice
+### SYNC-04 — [SUPERSEDED TITLE] Editing a pending row queues a second entry
 
 - **Layer** E2E + Unit
 - **Pre** `F-FRESH`. Aeroplane mode on
@@ -1462,9 +1474,17 @@ row.
   distinct records, not outbox rows. The sheet's section header reads `1 change waiting`
   (singular, never `1 changes`). On reconnect the server ends up with the **final** amount and
   note. The row remained fully editable while pending: `pending` is never a blocker.
-- **Result — the Unit half passes.** Three local mutations of one row leave three `outbox` rows
-  and `countPendingRecords` returns `1`, so the pill's `{n}` is already distinct-records rather
-  than entries. The E2E half still needs a driven app (GAP 9).
+- **Result — the Unit half passes, and the case's own title was wrong.** Three local mutations of
+  one row leave **three** `outbox` rows, and `countPendingRecords` returns `1`, so the pill's `{n}`
+  is already distinct-records rather than entries. That result was recorded here before anybody
+  noticed it contradicts the title and the design rule the title came from: three entries is not
+  coalescing. `mobile/src/db/write.ts` appends by design and
+  `mobile/tests/db/write.test.ts` pins the append, while `02-offline-and-sync.md` §2 rule 2 says
+  the opposite. The title is left standing with this flag rather than quietly rewritten, because it
+  is the design rule's wording and the decision is `TVO-24`'s. See **GAP 17** and §8.10, which
+  measure what the append costs on the wire. The expectation above still holds in full — the pill
+  reads `1 pending` and the server does end up with the final amount and note (`SYNC-47`). The E2E
+  half still needs a driven app (GAP 9).
 
 ### SYNC-05 — A full offline session of mixed writes drains in one round trip
 
@@ -2162,6 +2182,96 @@ connectivity.
   `nextCursor` equal to the `since` sent — so an up-to-date client can store it unconditionally.
   `serverRevision` from a push is **not** used as the next `since`.
 
+### 8.10 One row, several outbox entries in one batch
+
+Defends: nothing in `docs/PLAN.md` — and that is why this subsection exists. Every other case in
+§8, and every case in `backend/tests/sync.convergence.test.ts`, pushes **one item per row per
+device**. That is the client `02-offline-and-sync.md` §2 rule 2 describes, and it is not the client
+that landed: `mobile/src/db/write.ts` appends a fresh `outbox` entry per edit, so a user who edits
+one expense twice offline pushes two items for one row, each carrying only the fields that changed
+at that moment.
+
+Both shapes were green and nothing had ever pushed the second one. These four cases do. See
+**GAP 17**, and `TVO-24` for the decision it needs.
+
+One practical note for whoever writes the next case here: `backend/tests/support/sync.ts`'s
+`resultFor` helper throws unless a batch holds exactly **one** result per id, so it cannot read
+these batches. That assumption is the coalescing model again, in the test helpers this time — which
+is a fair measure of how settled the wrong shape had become.
+
+### SYNC-47 — Two entries for one row both apply, and the row ends at the later one
+
+- **Layer** API (automated: `backend/tests/sync.uncoalescedOutbox.test.ts`)
+- **Pre** `F-FRESH`. An expense `E` on the server at `amountMinor: 1000`, `updatedAt = T`
+- **Steps**
+  1. Push one batch of two `expense` items for `E`: `{amountMinor: 1100}` at `T+10m`, then
+     `{note: "lunch with Sam"}` at `T+20m`
+  2. Read the row back through `GET /v1/sync?since=0`
+  3. Read the user's revision counter before and after
+- **Expect** `["applied", "applied"]`. The stored row carries **both** edits — `1100` and the note
+  — because the merge is per field, so the second entry does not erase what the first set. Its
+  `updatedAt` is the later entry's. The counter advances by **2**: one row's worth of user intent
+  costs two revisions and two ledger rows, which is the price of not coalescing and is the half of
+  `SYNC-04` that was previously only claimed.
+- **Result — passes.** Also the case that pins the within-entity sort end to end: reversing the
+  `index` tiebreak in `inApplyOrder` reddens it.
+
+### SYNC-48 — A conflict resolves per field, leaving a row neither device ever had
+
+- **Layer** API (automated, same file)
+- **Pre** `F-TWO-DEV` state on the server: expense `E` at `amountMinor: 1000`, `updatedAt = T`.
+  Both clocks correct
+- **Steps**
+  1. The phone, offline, edits the amount at `T+10m` → entry 1, `{amountMinor: 1100}`
+  2. The phone, still offline, edits the note at `T+20m` → entry 2, `{note: "from the phone"}`
+  3. The tablet edits the amount at `T+15m` and syncs first; the server holds `2200`
+  4. The phone reconnects and pushes both entries in one batch
+  5. Repeat steps 1–4 on a second row with a single coalesced entry at `T+20m` carrying both fields
+- **Expect** Step 4 returns `["conflict_server_wins", "applied"]` — entry 1 is older than the
+  tablet's write, entry 2 is newer. The server then holds **`amountMinor: 2200` with note
+  `"from the phone"`**: the tablet's amount and the phone's note, a state that existed on neither
+  device. Step 5, the coalescing client, returns `["applied"]` and the server holds `1100` with the
+  note — row-level last-write-wins, which is what §5.2 describes.
+- **Result — passes, and this is GAP 17's finding.** For an expense the hybrid is worse than either
+  device winning outright: the note now describes an amount it was never written about. The outcome
+  is **not** an ordering artifact — reversing the within-entity sort produces the same row, because
+  per-field merge is the cause.
+
+### SYNC-49 — Two entries sharing one millisecond lose the second one's fields
+
+- **Layer** API (automated, same file)
+- **Pre** `F-FRESH`
+- **Steps** Push one batch of two `expense` items for the same new id with the **same**
+  `updatedAt`: a create, then `{note: "the second save"}`
+- **Expect** `["applied", "conflict_server_wins"]` and the stored row's `note` is `null`. Ties go
+  to the server, and by the time the second entry is judged the server holds what the *first entry
+  of the same batch* wrote — so the row's own earlier entry is what beats it. Both results carry
+  the authoritative record, so a client following §5.2 ends up correct locally and the note the
+  user typed is simply gone: no `invalid`, no retry, nothing to show them.
+- **Result — passes.** Reachability is the honest caveat: `applyLocalMutation` reads
+  `systemClock()` per mutation, so this needs two saves inside one millisecond — a double-tap on
+  Save, or a code path that writes twice without awaiting a tick. Worth pinning because the outcome
+  is silent and because a coalescing client cannot reach it at all: one entry cannot tie with
+  itself. Note that `mobile/tests/db/write.test.ts` pins **one** instant for the whole file, so
+  this is the shape its fixtures produce by default.
+
+### SYNC-50 — Convergence survives the split, but only if every result is written back
+
+- **Layer** API (automated, same file)
+- **Pre** As `SYNC-48` through step 4
+- **Steps**
+  1. Compare the **last** result for the row against the server's row
+  2. Compare the `conflict_server_wins` result's record against the server's row
+  3. Pull from `since=0`
+- **Expect** Step 1: equal — a client that writes back every result in request order converges
+  inside the push, which is what makes a conflict cost one round trip instead of two. Step 2:
+  **not** equal. That record is the row as it stood when entry 1 lost, and entry 2 of the same
+  batch then changed it, so a client that writes back only the conflicted record — the obvious
+  reading of "on `conflict_server_wins`, overwrite the local row with the server row" — stores a
+  stale row with nothing pending to correct it. Step 3 repairs it.
+- **Result — passes.** The finding is a stale window, not permanent drift: convergence itself
+  holds. Worth knowing in both directions before `TVO-13` writes the write-back.
+
 ---
 
 ## 9. The named edge cases
@@ -2694,7 +2804,10 @@ largest wholly untested module in `mobile/src`, and testing it showed that the h
 comment says it exists to prevent has since been neutralised one layer down. **GAP 15** came from
 the opposite direction — re-reading a gap this plan had already *closed*. **GAP 16** came from
 building a test layer that did not exist: the two implementations had never run in one process, and
-the first attempt to make them broke the backend's own typecheck from a type-only import. GAP 2's chosen branch has
+the first attempt to make them broke the backend's own typecheck from a type-only import.
+**GAP 17** came from a result this plan had already recorded and read the wrong way: `SYNC-04`'s
+own Result says three edits of one row leave three outbox entries, under a case titled "coalesces
+instead of queueing twice". Nobody noticed the contradiction, including whoever wrote it down. GAP 2's chosen branch has
 a documented cost, and measuring it showed the cost is not the transient GAP 2 recorded: it breaks
 a wire-contract guarantee, and it produces a tombstone the 90-day horizon never collects.
 
@@ -2727,6 +2840,7 @@ no new `revision`, and another account's id rejected as `400 validation_error`.
 | 14  | Two defences for the refresh-recursion hazard; only one is live        | Low      | nothing            |
 | 15  | An orphaned category tombstone outlives the horizon (filed, backend)   | Medium   | nothing            |
 | 16  | The client/server seam cannot reach `authorize.ts` (`TVO-23`)          | Low      | `API-19`           |
+| 17  | The outbox does not coalesce, so a conflict resolves per field (`TVO-24`) | Low      | nothing            |
 | 5   | A future-dated row arriving by sync is unreachable in every view     | Medium   | `EDGE-04`          |
 | 7b  | `immutable_field` is unreachable on the **REST** path                | Low      | `API-04` (half)    |
 | 9   | No E2E driver is named in `docs/PLAN.md` §7                          | Low      | 7 cases run manual |
@@ -3014,6 +3128,68 @@ Fix 1 was applied locally before filing rather than proposed on paper: with the 
 interface in place, `pnpm typecheck` is green repo-wide, mobile stays at **207 passed** —
 `SessionController` satisfies it structurally, so `container.ts` is untouched — and `API-19`
 passes, reddening alone when the retry is removed from `authorize.ts`. Then reverted.
+
+### GAP 17 — The outbox does not coalesce, so a sync conflict resolves per field — **OPEN**
+
+Found by re-reading a Result this plan had already recorded, and reading it the right way the
+second time. `SYNC-04` is titled "Editing a pending row coalesces instead of queueing twice", its
+expectation is drawn from `02-offline-and-sync.md` §2 rule 2, and the Result underneath it says
+**three local mutations of one row leave three `outbox` rows.** Three entries is not coalescing.
+The contradiction sat inside one case entry, written by QA, unflagged, for two runs.
+
+**The two sides.** `02-offline-and-sync.md` §2 rule 2: "Editing a `pending` row updates the same
+row and coalesces into the outbox — **it does not queue a second mutation**", cited again by
+`06-expense-form.md` for the `offline-pending` form state. `mobile/src/db/write.ts` → `enqueue()`
+always `INSERT`s a fresh row, and `mobile/tests/db/write.test.ts` pins that as *"appends a second
+entry rather than replacing the first"*, with distinct `clientMutationId`s "so a retry of one is
+not mistaken for the other". Both sides green; neither aware of the other.
+
+**Why it is not a documentation nicety.** The two clients do not produce the same data. §8.10
+measures it against the real server: with two entries, a conflict is resolved **per entry**, so one
+field of the user's row can be dropped while another lands in the same batch. `SYNC-48` ends with
+the server holding one device's amount and the other device's note — a row that existed on neither
+device and that no user authored. For an expense that is worse than either device winning outright,
+because the note now describes an amount it was never written about. The same divergence pushed by
+a coalescing client applies whole, which is the row-level outcome §5.2 describes. The hybrid is not
+an ordering artifact: reversing the within-entity sort produces the same row.
+
+Convergence itself survives (`SYNC-50`), so this is about which fields survive, not drift.
+
+**The implementation looks like the side that is right.** Three things make §2 rule 2 unsafe as
+written:
+
+1. **The outbox has no in-flight marker.** `migrations.ts` v1 gives it `attempts` and `lastError`
+   and nothing that separates *queued* from *sent, awaiting a response* — while §2's own state
+   table says an entry may be "queued **or in flight**". A coalescing `enqueue` cannot tell which
+   one it is merging into.
+2. **Merging into an in-flight entry is an already-tested error.** It changes the payload under a
+   `clientMutationId` the server may have recorded, and the server answers per-record `invalid`
+   with `mutation_id_reused` (`SYNC-11`, `backend/tests/sync.idempotency.test.ts:296`). So a second
+   edit of a pending row would drive the row into `needs-attention` through ordinary use, against
+   §2 rule 1 ("`pending` is not an error") and rule 2's own "never a blocker".
+3. **The naive fix breaks seven mobile cases.** Measured rather than guessed: a coalescing
+   `enqueue` that merges into the newest entry for the same record reddens 7 of 208 — four that
+   assert appending, and three (`countPendingRecords`, the TanStack Query pending count, and the
+   tombstone/undelete pair) whose *premise* is that one row can have several entries. Reverted.
+
+**What QA recommends**, as a recommendation and not a ruling, since the docs are the Designer's and
+the consequence is Mobile Dev's: amend §2 rule 2 to describe what the client does — one entry per
+edit, carrying only that edit's fields, with the row `pending` while any of them is undrained — and
+extend §5.2, which currently reads as row-level, to say that a conflict is per entry and that the
+client must write back **every** result in request order. `SYNC-50` is the case for that last
+clause: writing back only the `conflict_server_wins` record, which is the obvious reading of the
+text as it stands, stores a row the batch's own later entry has already changed.
+
+If row-level last-write-wins is wanted instead — a defensible product call, since it keeps a user's
+edits together — it is not a one-line change. Coalescing has to happen at **drain** time over
+entries provably not in flight, which needs a marker in the `outbox` schema and a rule for the
+merged entry's `clientMutationId`. That is a decision to take **before** `TVO-13` writes the drain.
+
+**Severity: low.** Nothing is broken today: the drain does not exist, so no batch has ever been
+pushed from a real outbox. The cost is that two design docs describe a client the code is not, and
+whoever writes `TVO-13` will build against one of them. Filed as **`TVO-24`**, unassigned, with
+the Designer as the recommended owner. Blocks nothing — the four cases in §8.10 are green and
+record the behaviour either decision has to account for.
 
 ### GAP 1 — Who seeds the default categories, and the duplicate-six risk — **CLOSED**
 
@@ -3451,6 +3627,10 @@ bugs, and this is what proves none of them came back. Target: under 30 minutes p
 - [ ] An offline delete is still deleted after a subsequent pull
 - [ ] The same row edited on two devices converges on the newer `updatedAt`, loser overwritten,
       user not notified
+- [ ] Edit **one** expense twice offline, with another device editing it in between, then
+      reconnect → check the server row field by field, not just that it synced. Two outbox entries
+      resolve per field, so the amount and the note can come from different devices (`SYNC-48`,
+      GAP 17). Whatever `02-offline-and-sync.md` §2 rule 2 says by then is what this must match
 - [ ] A `+6h` device clock does not win the next conflict
 - [ ] Force-stop mid-push → no expense lost and none duplicated
 - [ ] Pill state 1 renders **nothing**; `Try again` exists only in the error state
