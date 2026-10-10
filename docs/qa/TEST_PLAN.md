@@ -26,8 +26,8 @@ account-switch leak and `9f2edc8` / `ccde610` for the ledger — so `AUTH-12`, `
 four expected-fail cases among them are ordinary cases. Re-testing the first one turned up **GAP
 11**, two narrower defects in the same area that the fix did not cover: the account-switch wipe
 runs *before* the write that can fail, and the owner is stored as a separate value from the tokens
-it describes. `AUTH-20` and `AUTH-21` carry those; with `CAT-15` and `CAT-16` below they are the
-four expected-fail cases left.
+it describes. `AUTH-20` and `AUTH-21` carry those; with `CAT-15`, `CAT-16`, `AUTH-23` and `AUTH-24` below they
+are the six expected-fail cases left.
 
 **The API-layer steps of `EDGE-01`, `EDGE-02` and `EDGE-04` are now executed** rather than merely
 written (`backend/tests/expenses.edgecases.test.ts`), and all three pass. They were picked because
@@ -44,6 +44,15 @@ makes this worth reading is that `CAT-01` already asserted the right order and *
 caught either defect**: its precondition is `F-FRESH`, whose six seeded names sort identically
 under the right ordering and the wrong one. The plan's own fixture was the blind spot. `CAT-15`
 and `CAT-16` seed names chosen to separate them and are expected-fail until the fix lands.
+
+**`TVO-6`'s own acceptance criteria are now verified, and the one hole in them is GAP 13.** The AC
+singles out two guarantees as must-test, and both hold up: the transactional write helper genuinely
+cannot leave a row without its outbox entry (its cases inject a real `UNIQUE` violation that fires
+*after* the row insert, so they can fail), and the single-flight refresh is correct under every
+interleaving `authorize.test.ts` scripts. Those all cover the token changing **within one session**.
+None covered the other reason the stored token can differ when a request comes back — that it now
+belongs to a different user — and on that path an in-flight request is retried under the next user's
+token with its body replayed verbatim. `AUTH-22`–`AUTH-25` carry it.
 
 Inputs this plan was derived from, and the authority order when they disagree:
 
@@ -531,6 +540,73 @@ turns every case that uses it into a false green, which is worse than a fixture 
   rather than asserting the specific fix. My first version asserted the session was non-null, which
   **rejected the fail-closed fix** — the better of the two — and would have sent Mobile Dev to
   re-do correct work. A tripwire that only accepts its author's preferred fix cries wolf.
+
+### AUTH-22 — A request in flight when the user logs out surfaces its own 401
+
+- **Layer** Unit (`mobile/tests/api/authorizeSessionChange.test.ts`)
+- **Pre** A session for `USER_A`. One authorized request (`POST /v1/sync`) sent and still away
+- **Steps**
+  1. While the request is in flight, call `signOut()`
+  2. Let the request's `401` arrive
+- **Expect** The original `401` is returned to the caller, the request is **not** retried, and no
+  refresh is attempted — there is no refresh token left to rotate, so trying would be a wasted
+  round trip against a session that is deliberately gone.
+- **Result — PASSES** One attempt, status `401`, zero refresh calls.
+- **Why it is here when it already passes** It is the branch a fix for `AUTH-23` is most likely to
+  break. A guard that refuses to retry after *any* session change must still surface the real
+  failure here rather than inventing an empty success — interceptor rule 4, "never swallow the
+  401".
+
+### AUTH-23 — A request in flight when a second user logs in is retried under their token
+
+- **Layer** Unit (`mobile/tests/api/authorizeSessionChange.test.ts`)
+- **Pre** A session for `USER_A` holding access token `access-a`. One authorized request sent and
+  still away
+- **Steps**
+  1. While the request is in flight: `signOut()`, then `signIn()` as `USER_B` (token `access-b`)
+  2. Let the first request's `401` arrive
+- **Expect** No request carrying this body is sent under `access-b`. Either outcome is acceptable:
+  the original `401` is surfaced, or the retry fails closed without a usable token.
+- **Actual — expected to FAIL** Two attempts, tokens `["access-a", "access-b"]`, **zero** refresh
+  calls, final status `200`. The retry goes out under `USER_B`'s token.
+- **Root cause** `ensureFreshAccessToken` decides a refresh is unnecessary by comparing the stale
+  token against the stored one. The comment above that check names one reason they can differ — a
+  concurrent rotation — and for that reason the behaviour is right. A different user signing in
+  makes them differ too, and takes the same branch. The comparison is on the token *string*; the
+  session's *identity* is not part of it. See GAP 13 / `TVO-20`.
+
+### AUTH-24 — The same defect, from the payload side
+
+- **Layer** Unit (`mobile/tests/api/authorizeSessionChange.test.ts`)
+- **Pre** As `AUTH-23`, with the in-flight request a push whose body was built from `USER_A`'s
+  outbox
+- **Steps** As `AUTH-23`, then inspect the body of the retried request
+- **Expect** `USER_A`'s batch is never sent under `USER_B`'s token.
+- **Actual — expected to FAIL** The retry replays the body **verbatim** —
+  `{"items":["USER_A_DATA"]}` under `access-b`.
+- **Why this half is stated separately** It is what makes GAP 13 a leak rather than a nuisance. A
+  wrong `GET` hands the caller the wrong data; a wrong write files one account's spending into
+  another's, and the server is not at fault — it scopes the write to the authenticated user, as it
+  should. The local wipe `signOut` performs **cannot defend this**: the batch was serialised into
+  the request before the wipe ran and is held in memory, not in SQLite. That is the same leak as
+  `TVO-16` arriving through a door the wipe does not cover.
+- **Reachability** Latent until a screen or the sync engine issues an authorized write (`TVO-11`,
+  `TVO-13`). `authorize.ts` is the single interceptor all of them pass through, which is why it is
+  cheaper to fix before they depend on it. One fix closes this and `AUTH-23` together.
+
+### AUTH-25 — Re-login as the same user never borrows a foreign token
+
+- **Layer** Unit (`mobile/tests/api/authorizeSessionChange.test.ts`)
+- **Pre** A session for `USER_A`. One authorized request sent and still away
+- **Steps**
+  1. While the request is in flight, `signIn()` as `USER_A` again with a new pair
+  2. Let the `401` arrive
+- **Expect** No request ever carries a token belonging to another account. Nothing more.
+- **Result — PASSES** Two attempts, tokens `["access-a", "access-a-relogin"]`.
+- **Why it asserts so little, deliberately** The account has not changed, so retrying under the new
+  token is defensible and so is failing closed. An epoch-counter fix for GAP 13 refuses every
+  post-change retry and would fail a case that insisted on the retry. This is the `AUTH-21` lesson
+  applied up front: assert the unsafe outcome, not a preferred fix.
 
 ---
 
@@ -2169,11 +2245,12 @@ rather than guessed at.
 
 Ten gaps were filed when this plan was first written, and **seven have since closed** — five in the
 contract and backend work of 8–9 Oct, and GAP 4 and GAP 3 by being read against the landed code and
-then fixed. That is the plan paying for itself before a single case was executed by hand. Two new
-gaps have been opened since, and neither came from reading a contract: **GAP 11** was found by
-re-testing one of those fixes rather than closing on a green suite, and **GAP 12** was found by
-executing a case this plan had already written — against a fixture that, it turned out, could not
-have failed it.
+then fixed. That is the plan paying for itself before a single case was executed by hand. Three new
+gaps have been opened since, and none came from reading a contract: **GAP 11** was found by
+re-testing one of those fixes rather than closing on a green suite, **GAP 12** by executing a case
+this plan had already written — against a fixture that, it turned out, could not have failed it —
+and **GAP 13** by verifying another task's acceptance criteria and finding the one interleaving its
+own good tests did not reach.
 
 The numbering is kept stable so the TVO-5 thread still reads correctly, and closed entries are kept
 rather than deleted, so the decision stays recorded where the test that depends on it can find it.
@@ -2200,6 +2277,7 @@ no new `revision`, and another account's id rejected as `400 validation_error`.
 | --- | -------------------------------------------------------------------- | -------- | ------------------ |
 | 11  | Session writes are not atomic, and the wipe runs first (filed, mobile) | Medium   | nothing            |
 | 12  | The category list's local order is wrong twice (filed, mobile)        | Low      | nothing            |
+| 13  | An in-flight request is retried under the next user's token (`TVO-20`) | Medium   | nothing            |
 | 5   | A future-dated row arriving by sync is unreachable in every view     | Medium   | `EDGE-04`          |
 | 7b  | `immutable_field` is unreachable on the **REST** path                | Low      | `API-04` (half)    |
 | 9   | No E2E driver is named in `docs/PLAN.md` §7                          | Low      | 7 cases run manual |
@@ -2211,9 +2289,9 @@ re-test of both fixes, which produced GAP 11. All three turned out to be defects
 decisions, which is the pattern worth noting: a gap that has sat unanswered for three runs is more
 often unexamined code than an undecided policy.
 
-GAP 11 and GAP 12 are the only ones still open, and neither blocks anything: `AUTH-20`, `AUTH-21`,
-`CAT-15` and `CAT-16` are written, automated and expected-fail, so they report each fix the moment
-it lands. What is left
+GAP 11, GAP 12 and GAP 13 are filed defects rather than open questions, and none of them blocks
+anything: `AUTH-20`, `AUTH-21`, `CAT-15`, `CAT-16`, `AUTH-23` and `AUTH-24` are written, automated
+and expected-fail, so they report each fix the moment it lands. What is left
 needs its owner's input rather than a ruling, and none of it blocks executing §8: GAP 5 is the
 Designer's, GAP 9 wants Mobile Dev's agreement on a driver before 7 cases stop being manual, GAP 10
 wants numbers from whoever sets the limits, and GAP 7b is a contract-hygiene choice between two
@@ -2286,6 +2364,48 @@ serves that sort, which is acceptable on an unpaginated set of a few dozen rows 
 worth making knowingly rather than discovering; and a `COLLATE NOCASE` column would also change
 what the `UNIQUE`-style local name check in `CAT-14` compares, so the collation belongs in the
 `ORDER BY` rather than in the schema unless that is checked too. Filed for Mobile Dev.
+
+### GAP 13 — An in-flight request is retried under the next user's token — **OPEN**
+
+Found by verifying `TVO-6`'s acceptance criteria rather than by reading the contract. The AC names
+two guarantees as must-test, and both are covered well: the transactional write helper
+(`write.test.ts` injects a real `UNIQUE` violation that fires *after* the row insert, and a
+mid-transaction failure, so the atomicity cases can genuinely fail) and the single-flight refresh.
+`authorize.test.ts` covers every way the token can change **within one session** — a concurrent
+rotation, a refresh that fails, a retry that 401s again.
+
+Nothing covered the other reason the stored token can differ by the time a request comes back:
+**it now belongs to somebody else.** `ensureFreshAccessToken` short-circuits on
+
+```ts
+if (staleAccessToken !== null && session.accessToken !== staleAccessToken) return session.accessToken;
+```
+
+and the comment above it names one reason those differ — a concurrent rotation — for which the
+behaviour is exactly right. A different user signing in makes them differ too and takes the same
+branch. The comparison is on the token *string*; the session's **identity** is not part of it. So
+`authorize.ts` retries under whatever token is now stored, without checking it still belongs to the
+account the request was built for. Measured: tokens `["access-a", "access-b"]`, zero refresh calls,
+and the body replayed verbatim. Carried by `AUTH-23` (token) and `AUTH-24` (payload).
+
+Severity **Medium**, on the same basis as GAP 11. The sequence needs a request still in flight when
+the user logs out *and* a second user logs in before its `401` lands — uncommon, and not exotic on
+a shared device, where the request most likely to still be in flight is precisely the slow one. It
+is **latent** today: no screen issues authorized API writes yet and the push is `TVO-13`. A plain
+`signOut` mid-flight is already handled correctly (`AUTH-22`), which is what keeps this narrow.
+
+One thing the Medium label should not hide: §14's exit criterion 2 lists **a cross-tenant read or
+write** as P1, and that is this gap's outcome, not a worst case. The Medium is a judgement about
+reachability today, when nothing issues an authorized write; it is not a judgement that the app
+could ship with this open. Once `TVO-11` or `TVO-13` lands, `AUTH-24` is a P1 and criterion 2
+cannot be met with it red.
+
+The fix is a session **epoch**, bumped on `signIn` and `signOut` and **not** on a rotation,
+captured in `authorize.ts` before the send and re-checked after the `401`; if it changed, return the
+original response. Applied locally and reverted: `AUTH-23` and `AUTH-24` turn red, all 15 cases in
+`authorize.test.ts` stay green along with `AUTH-22` and `AUTH-25`. Bumping on rotation as well
+would redden "retries with the current token when it 401s after someone else rotated", which is
+correct behaviour. Filed as `TVO-20` for Mobile Dev.
 
 ### GAP 1 — Who seeds the default categories, and the duplicate-six risk — **CLOSED**
 
@@ -2669,6 +2789,10 @@ bugs, and this is what proves none of them came back. Target: under 30 minutes p
       undrained outbox **still intact**; log back in as the same user and it drains (`AUTH-12`)
 - [ ] A sign-in that fails at the last step → the previous user's local rows are still there, and
       the app does not come back authenticated on the next launch (`AUTH-20`, `AUTH-21`)
+- [ ] Log out and log in as a different account **while a request is still in flight** (throttle to
+      the slowest proxy profile in §2 first) → the stalled request fails rather than completing
+      under the new account's token, and nothing of the previous user's appears in the new
+      account's month (`AUTH-23`, `AUTH-24`)
 
 **Expenses**
 
