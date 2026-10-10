@@ -78,6 +78,16 @@ horizon does not apply to it. `SYNC-41`–`SYNC-46` carry it, with `SYNC-44` and
 The two cases that pass are there to constrain the fix: both obvious repairs are ruled out by
 measurement, and §11's GAP 15 entry says which case each one breaks.
 
+**The two implementations had never met in one process, and now they do — `API-13`–`API-18`.**
+Every suite in this repo tests one side of the client/server seam with the other side faked: the
+backend files answer hand-written request bodies through supertest, and the mobile files answer
+hand-written response bodies through an injected `fetchImpl`. Both can be green while disagreeing
+with each other, because nothing built a request with one and parsed it with the other. Six new
+cases boot the real app on an ephemeral port and drive the real transport and client against it
+through the global `fetch`. **No defect at the seam** — which is the result, and it is now a tested
+result rather than a lucky one. Two things came out of it anyway: the access token is not unique per
+session (`API-15`), and the seam cannot reach `api/authorize.ts` at all, which is **GAP 16**.
+
 **The pruner's own entry point is now executed** rather than only unit-tested around. `pnpm prune:tombstones` is
 the sole caller of `pruneAllTombstones` and therefore the only thing that bounds the largest table in
 the schema, and nothing in 320 backend cases loaded it. It is sound in both directions — see the
@@ -140,6 +150,7 @@ IDs are stable and are quoted in bug reports and in commit messages.
 | ------ | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | Unit   | `vitest` (backend, shared); `jest` + `@testing-library/react-native` (mobile) | Pure logic: the sync resolver per branch, money formatting, month bounds, the amount keypad reducer, the outbox state machine |
 | API    | `vitest` + `supertest` against the Express app on a throwaway Postgres        | Every status, code and body in the contract. All of §10 and most of §8                                                        |
+| Integration | `vitest` in `backend/`, driving the **mobile** client over real HTTP against the real app on an ephemeral port | The join: URL and query construction, the `Bearer` header, the correlation id, a real keyset cursor, a 204 with no body. `API-13`–`API-18` |
 | E2E    | The app driven on a simulator/emulator, plus at least one physical device     | The flows a user performs, and every case whose precondition is "aeroplane mode"                                              |
 | Manual | Scripted, against the §12 matrix                                              | Accessibility, dynamic type, Reduce Motion, and anything needing a real radio                                                 |
 
@@ -156,6 +167,34 @@ database was discarded and the run still went to `expense_tracker_test`.
 
 So: one API-layer pass per machine at a time. If two people — or two agents in one workspace —
 need to run the suite simultaneously, one of them edits `backend/.env` first.
+
+### The integration layer, and the two things it cannot see — executed 2026-10-10
+
+`backend/tests/integration.mobileClient.test.ts` boots `createApp()` on an ephemeral port with
+`node:http` and drives `mobile/src/api/{transport,client,errors}.ts` against it through the global
+`fetch`. It runs inside the backend's own vitest project, so it inherits the one-file-at-a-time rule
+and the truncating database above: no extra setup, and `pnpm test` already runs it.
+
+Two limits are worth writing down, because both look like coverage a reader would otherwise assume.
+
+**It cannot exercise the client's strict response parsing.** The client parses every body against
+the `shared/` schema, so an undocumented server field is a `ResponseShapeError` on a device — but
+`src/http/respond.ts` parses the same body against the same schema *before sending* and throws,
+which arrives as a `500`. Probed by making `toWireCategory` emit a non-ISO `createdAt`: 182 backend
+cases failed, every one of them on a 500, and none of them on a response-shape failure in the
+integration file. That guard is `validateResponses: !isProduction`, so in production it is **off**
+and the client's parse is the only check left — which is why that path belongs in the mobile suite's
+scripted-transport cases, where the server can be made to answer anything.
+
+**It cannot reach `api/authorize.ts`**, the 401 interceptor — and the reason is a typecheck one, not
+a runtime one. A *type-only* import of `SessionController` puts `auth/session.ts` into the backend's
+TypeScript program, which pulls `auth/tokenStore.ts` → `expo-secure-store` → `expo-modules-core` →
+`react-native` → `@types/jsdom`, which references `lib.dom`; with the DOM globals loaded,
+`setTimeout` in `backend/src/server.ts` returns a `number` with no `unref` and the backend fails its
+own typecheck in two files nobody touched. Traced with `tsc --explainFiles`. Filed as **GAP 16**;
+`API-19` is the case that lands when it is fixed. Until then the token is attached by a four-line
+`withToken` wrapper in the test file, and the interceptor's own choreography stays covered where it
+already is — `mobile/tests/api/authorize*.test.ts`.
 
 ### The pruner is a script, not a route — executed 2026-10-10
 
@@ -2510,6 +2549,130 @@ and they are where a security or correctness regression shows up first.
   app would have sent `DELETE` when the user edited an amount. Eight of the sixteen methods had no
   test of any kind before this table.
 
+### API-13 — `X-Request-Id` is on an error response too, and the client reads it
+
+- **Layer** Integration (`backend/tests/integration.mobileClient.test.ts`)
+- **Pre** The real app on an ephemeral port. No session
+- **Steps**
+  1. `GET /v1/health` through the real transport
+  2. `GET /v1/me` through the real transport with `accessToken: null`
+- **Expect** Step 1 is `200` and step 2 is `401`, and **both** `TransportResponse.requestId` values
+  are non-null and differ from each other. The id on step 2 is the point: `app.ts` mounts the
+  middleware first so that "even a 415 or a 500 carries the id", and `health.test.ts` only ever
+  asserted it on a `200` from one route
+- **Result — PASSES.** Verified by deleting `res.setHeader(HEADER, id)`: this case and `API-18`'s
+  envelope case turn red, along with three in `health.test.ts`, and nothing else in 335 backend
+  cases
+
+### API-14 — The client and the server agree across the whole REST surface
+
+- **Layer** Integration
+- **Pre** The real app on an ephemeral port. A user signed up **through the client**
+- **Steps**
+  1. `getMe`, `listCategories`, `updateCategory`, `createExpense`, `updateExpense`,
+     `deleteExpense`, `deleteCategory`, in that order, all through the real client
+- **Expect** Eleven real round trips, every one under `400`, with `POST /v1/expenses` answering
+  `201`; the rename reads back as `Commuting`, the patched amount as `999`, and both deletes return
+  a row with a non-null `deletedAt`. No `ResponseShapeError` from any of them
+- **Result — PASSES.** What it proves that the per-package suites cannot: the
+  `Authorization: Bearer` string the transport builds is the one the server's parser accepts — an
+  unauthorized transport answered `Authorization header must be "Bearer <accessToken>"` while this
+  file was being written. Verified by sending `Token` instead of `Bearer`: **7 of the 9** cases in
+  the file turn red, the two exceptions being the ones that take no token
+
+### API-15 — A refresh through the client rotates the pair and spends the old one
+
+- **Layer** Integration
+- **Pre** A user signed up through the client. An access token the **server** signed with a
+  negative TTL, so it is well-formed, correctly signed and already expired
+- **Steps**
+  1. `getMe` carrying the expired token
+  2. `refresh` with the signup refresh token
+  3. `getMe` carrying the rotated access token
+  4. `refresh` again with the **same** refresh token as step 2
+- **Expect** Step 1 is `401 token_expired` — not `token_invalid`, because the client's reaction to
+  the two differs. Step 2 returns a refresh token different from the one sent. Step 3 is `200` for
+  the same user. Step 4 is `401 token_invalid`: single-use rotation
+- **Result — PASSES, and it corrected the case.** The first version also asserted
+  `rotated.accessToken !== auth.accessToken` and **failed**: the access token is an HS256 JWT over
+  an empty payload with no `jti`, so for one user it is a pure function of `iat`/`exp`, and two
+  minted in the same second are byte-identical. Not a defect by itself — an *expired* token was
+  minted an hour ago, so its `exp` differs — but `authorize.ts` rule 3 and `session.ts`'s
+  `ensureFreshAccessToken` both treat the token string as the session's identity, and this is a
+  measured case where that string is not unique. A second, independent reason for the epoch counter
+  `AUTH-23`/`AUTH-24` already recommend
+
+### API-16 — Query parameters and a real keyset cursor survive the URL
+
+- **Layer** Integration
+- **Pre** A signed-up user with three expenses, dated `2026-10-01`, `-02` and `-03`
+- **Steps**
+  1. `listExpenses()` with no argument
+  2. `listExpenses({ limit: 2, cursor: undefined, categoryId: undefined })`
+  3. `listExpenses({ limit: 2, from: '2026-10-01', to: '2026-10-03' })`
+  4. `listExpenses({ limit: 2, cursor: <step 3's nextCursor> })`
+  5. `listExpenses({ from: '2026-10-03', to: '2026-10-01' })`
+- **Expect** Step 1 sends the bare path `/v1/expenses` and returns all three with `hasMore: false`
+  and `nextCursor: null`. Step 2 puts **only** `limit=2` on the wire: the explicitly `undefined`
+  keys are dropped rather than serialised as `cursor=undefined`, which the strict query schema
+  would answer `400`. Step 3 sends exactly `from`, `to` and `limit` and returns 2 with
+  `hasMore: true`. Step 4 returns the remaining 1 with `hasMore: false` and `nextCursor: null`, and
+  the two pages together are the three dates with no overlap and no gap. Step 5 is
+  `400 validation_error`, the contract's `to >= from` refinement
+- **Result — PASSES.** Verified in two directions: removing `buildQueryString`'s
+  `undefined`/`null` skip reddens step 2 alone, and truncating the cursor value in transit reddens
+  the paging case alone. Parameter **order** is deliberately not asserted — it follows the call
+  site's object literal and no part of the contract depends on it
+
+### API-17 — A push batch and a pull page, built and parsed by the client
+
+- **Layer** Integration
+- **Pre** A signed-up user. Two client-minted UUIDv7 ids
+- **Steps**
+  1. `pushSync` with one `category` item and one `expense` item that references it, in one batch
+  2. `pullSync({ since: 0 })`
+  3. `pullSync({ since: <step 2's nextCursor> })`
+- **Expect** Step 1 returns `['applied', 'applied']`. Step 2 returns `resyncRequired: false` and
+  both rows, the expense carrying the `categoryId` of the category created in the same batch.
+  Step 3 — the steady state a synced client sits in — returns `changes: []`, `hasMore: false` and
+  the **same** `nextCursor` it was given, rather than `0`
+- **Result — PASSES.** This is `SYNC-21`'s wire half with the client as the author of the batch
+  rather than a test fixture: the discriminated union, the ISO `updatedAt` and the `fields` merge
+  shape all go out exactly as the app would send them
+
+### API-18 — A 204 and a real error envelope, as the client sees them
+
+- **Layer** Integration
+- **Pre** A signed-up user
+- **Steps**
+  1. `logout({ refreshToken })` through the client
+  2. `refresh` with the same token
+  3. `createExpense` with a `categoryId` that is a well-formed UUID belonging to nothing
+- **Expect** Step 1 resolves to `undefined` off a real `204` with a genuinely empty body — the
+  branch in `readJsonBody` no mobile case can reach, because a scripted transport supplies the body.
+  Step 2 is `401 token_invalid`. Step 3 rejects with an `ApiRequestError` whose `status` is `422`,
+  whose `code` is `unknown_category`, and whose `requestId` is non-null — the id the contract tells
+  a user to quote, read off a real response header rather than a fixture's
+- **Result — PASSES**
+
+### API-19 — [BLOCKED-BY-GAP 16] The 401 interceptor's own round trip against a real server
+
+- **Layer** Integration
+- **Pre** A signed-up user whose stored access token is expired and whose refresh token is valid
+- **Steps**
+  1. One `getMe` through a transport wrapped by `createAuthorizedTransport`
+- **Expect** Exactly three round trips, in order — `GET /v1/me` `401`, `POST /v1/auth/refresh`
+  `200`, `GET /v1/me` `200` — one refresh, one retry, and the call resolves for the right user.
+  This was written, run and **passing** before GAP 16 forced it out of the file: removing the retry
+  in `authorize.ts` reddened it and nothing else
+- **Why it is parked, and what unblocks it** `authorize.ts` cannot be imported into the backend's
+  TypeScript program at all — see GAP 16 and the §2 note. Either fix listed there lands this case
+  unchanged. Until then the interceptor is covered against a *scripted* transport in
+  `mobile/tests/api/authorize.test.ts` and `authorizeSessionChange.test.ts` — 19 cases and every
+  interleaving; what is missing is only that those answers are hand-written
+
+---
+
 ---
 
 ## 11. Contract and design gaps found while writing this plan
@@ -2529,7 +2692,9 @@ and **GAP 13** by verifying another task's acceptance criteria and finding the o
 own good tests did not reach. **GAP 14** came from a coverage report: the composition root was the
 largest wholly untested module in `mobile/src`, and testing it showed that the hazard its own doc
 comment says it exists to prevent has since been neutralised one layer down. **GAP 15** came from
-the opposite direction — re-reading a gap this plan had already *closed*. GAP 2's chosen branch has
+the opposite direction — re-reading a gap this plan had already *closed*. **GAP 16** came from
+building a test layer that did not exist: the two implementations had never run in one process, and
+the first attempt to make them broke the backend's own typecheck from a type-only import. GAP 2's chosen branch has
 a documented cost, and measuring it showed the cost is not the transient GAP 2 recorded: it breaks
 a wire-contract guarantee, and it produces a tombstone the 90-day horizon never collects.
 
@@ -2561,6 +2726,7 @@ no new `revision`, and another account's id rejected as `400 validation_error`.
 | 13  | An in-flight request is retried under the next user's token (`TVO-20`) | Medium   | nothing            |
 | 14  | Two defences for the refresh-recursion hazard; only one is live        | Low      | nothing            |
 | 15  | An orphaned category tombstone outlives the horizon (filed, backend)   | Medium   | nothing            |
+| 16  | The client/server seam cannot reach `authorize.ts` (filed, mobile)     | Low      | `API-19`           |
 | 5   | A future-dated row arriving by sync is unreachable in every view     | Medium   | `EDGE-04`          |
 | 7b  | `immutable_field` is unreachable on the **REST** path                | Low      | `API-04` (half)    |
 | 9   | No E2E driver is named in `docs/PLAN.md` §7                          | Low      | 7 cases run manual |
@@ -2578,7 +2744,9 @@ blocks anything: `AUTH-20`, `AUTH-21`, `CAT-15`, `CAT-16`, `AUTH-23`, `AUTH-24`,
 GAP 15 carries one extra thing a reader should not skip: both of its obvious fixes are wrong, and
 each is ruled out by a case that *passes*, so the entry is worth reading before any of it is
 written. GAP 14 is a documentation accuracy
-finding with no behavioural change behind it, and `AUTH-27` records the measurement. What is left
+finding with no behavioural change behind it, and `AUTH-27` records the measurement. GAP 16 is a
+module-layering finding with a two-line fix, and it is the only gap that currently parks a case
+this plan can otherwise run (`API-19`). What is left
 needs its owner's input rather than a ruling, and none of it blocks executing §8: GAP 5 is the
 Designer's, GAP 9 wants Mobile Dev's agreement on a driver before 7 cases stop being manual, GAP 10
 wants numbers from whoever sets the limits, and GAP 7b is a contract-hygiene choice between two
@@ -2793,6 +2961,54 @@ Backend Dev's and Chief's:
 
 Filed as `TVO-22` against `backend/`, unassigned. Blocks nothing: the two tripwires report the fix
 when it lands.
+
+### GAP 16 — The two halves of the app cannot be exercised in one process — **OPEN**
+
+Found by writing the integration layer rather than by reading anything, and it is the reason
+`API-19` is parked rather than passing.
+
+**The 401 interceptor cannot be imported outside the mobile package.** `api/authorize.ts` opens
+with `import type { SessionController } from '../auth/session'`. The `import type` is erased at
+runtime, so this is not a bundling problem — it is a **typecheck** one. The specifier still puts
+`auth/session.ts` into the importing package's TypeScript program, and from there:
+
+```
+authorize.ts -> auth/session.ts -> auth/tokenStore.ts -> expo-secure-store
+             -> expo-modules-core -> react-native -> @types/jsdom -> lib.dom
+```
+
+With the DOM globals loaded, `setTimeout` resolves to the browser overload returning `number`, so
+`backend/src/server.ts:44` fails on `.unref()`, and `process.env.NODE_ENV` narrows to a union that
+makes `src/loadEnv.ts:24` an impossible comparison. **Two errors in backend files nobody touched,
+from one type-only import in a test.** Traced with `tsc --noEmit --explainFiles`; the DOM reference
+is `@types/jsdom/base.d.ts`, reached through `expo-modules-core`'s global declarations.
+
+`auth/session.ts` also cannot be *loaded* at all in a non-RN runner, for the same shape of reason
+one layer down: it imports `sessionFromTokenPair` — a value, not a type — from `auth/tokenStore.ts`,
+whose first line is `import * as SecureStore from 'expo-secure-store'`. Vite fails to parse
+`react-native/index.js` (Flow syntax). So the real `SessionController` is out of reach of any runner
+except mobile's jest, regardless of the typecheck issue.
+
+**Why this is worth filing and not just noting.** `authorize.ts` needs exactly two methods —
+`getAccessToken` and `ensureFreshAccessToken` — and takes a dependency on the type of the whole
+session module to name them. The module is otherwise careful about this layering: its own doc
+comment explains that `refreshTokens` is *injected* "rather than imported so this module does not
+depend on the API client that depends on it". The same reasoning applies to the type it does import,
+and the cost is that the one seam neither package's suite can cover stays uncovered.
+
+**Two candidate fixes, both small.**
+
+1. Have `authorize.ts` declare the narrow interface it actually uses — two methods — and let
+   `SessionController` satisfy it structurally. No runtime change, no change to `session.ts`, and
+   it also documents what the interceptor needs.
+2. Move the native-free half of `auth/tokenStore.ts` — `StoredSession`, `TokenStore` and
+   `sessionFromTokenPair` — into a module that does not import `expo-secure-store`, leaving the
+   `createSecureTokenStore` factory behind. This is the better fix if the real `SessionController`
+   is ever wanted in a non-RN runner, and it would unblock a `createMemoryTokenStore` import too.
+
+Either lands `API-19` as written, and the test file in `backend/tests/` would need one import added
+and the `withToken` helper deleted. **Severity: low.** It blocks one QA case and no product
+behaviour; nothing a user does is affected. Filed against `mobile/`.
 
 ### GAP 1 — Who seeds the default categories, and the duplicate-six risk — **CLOSED**
 
@@ -3243,6 +3459,9 @@ bugs, and this is what proves none of them came back. Target: under 30 minutes p
 - [ ] `GET /v1/health` returns `503` when Postgres is down
 - [ ] Both ends of the money range — `0` and `999999999999` — save and read back as exactly that
       JSON **number**, on the REST and the sync paths (`EDGE-01`, `EDGE-02`)
+- [ ] The mobile client, driven against a real server, completes the REST surface, a cursor-paged
+      list, a push/pull round trip and a `204` with no `ResponseShapeError` (`API-13`–`API-18`) —
+      this is the only check that runs one side's requests through the other's parser
 - [ ] `pnpm lint && pnpm typecheck && pnpm test` is green
 
 **Accessibility**
