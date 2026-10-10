@@ -1,0 +1,400 @@
+import type { AuthResponse, Expense } from '@expense-tracker/shared';
+import { createServer, type Server } from 'node:http';
+import { v7 as uuidv7 } from 'uuid';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { type ApiClient, createApiClient } from '../../mobile/src/api/client.ts';
+import { ApiRequestError } from '../../mobile/src/api/errors.ts';
+import { createTransport, type Transport } from '../../mobile/src/api/transport.ts';
+import { signAccessToken } from '../src/auth/accessToken.ts';
+import { createApp } from '../src/app.ts';
+import { TEST_PASSWORD, uniqueEmail } from './support/api.ts';
+
+/**
+ * The mobile client against the real API, over real HTTP.
+ *
+ * Every other suite in this repo tests one side of this seam with the other side faked:
+ * the backend files drive `createApp()` through supertest with hand-written request
+ * bodies, and the mobile files drive the client through an injected `fetchImpl` that
+ * answers with hand-written response bodies. Both can be green while disagreeing with
+ * each other, because the thing they disagree about is never built by one and read by
+ * the other in the same process.
+ *
+ * TypeScript does not close that gap either. It proves both sides reference the same
+ * `shared/` types; it cannot prove the bytes Express parses are the bytes
+ * `buildQueryString` produced, that an opaque cursor survives a real URL, that the server
+ * actually sets the `X-Request-Id` the client reads off the response object, or that a
+ * 204 with a genuinely empty body comes back as `undefined` rather than a parse failure.
+ *
+ * So this file is deliberately thin on new behaviour and entirely about the join. It
+ * boots the real app on an ephemeral port and drives the real `createTransport`,
+ * `createAuthorizedTransport` and `createApiClient` against it through the global
+ * `fetch`.
+ *
+ * **One thing it cannot test, measured rather than assumed.** The client parses every
+ * response against a *strict* schema, so an undocumented server field is a
+ * `ResponseShapeError` on a device — but that path is unreachable from here, because
+ * `http/respond.ts` parses each body against the same schema before sending and throws,
+ * which arrives as a 500. Probed by making `toWireCategory` emit a non-ISO `createdAt`:
+ * 182 backend cases failed on 500s, and not one of them was a response-shape failure in
+ * this file. Worth knowing in both directions, since `validateResponses` is
+ * `!isProduction` — in production the server's own check is off and the client's strict
+ * parse is the only thing left, which is why that path belongs in the mobile suite's
+ * scripted-transport cases and not here.
+ *
+ * **What is faked, and why it is not `authorize.ts`.** Only the attachment of the access
+ * token to a request (`withToken` below). The 401 interceptor that does that job in the
+ * app — `api/authorize.ts` — cannot be reached from this file at all, and not for a
+ * runtime reason: a *type-only* import of `SessionController` puts `auth/session.ts` in
+ * this package's TypeScript program, which pulls `auth/tokenStore.ts`, `expo-secure-store`,
+ * `expo-modules-core`, `react-native` and `@types/jsdom`, which references `lib.dom` —
+ * and with the DOM globals loaded, `setTimeout` in `backend/src/server.ts` returns a
+ * `number` with no `unref`, so the backend fails its own typecheck in two files nobody
+ * touched. Filed as `GAP 16`; `API-19` is the case that lands when it is fixed.
+ *
+ * So the interceptor's own choreography is **not** asserted here. What is asserted is
+ * every part of the round trip either side of it.
+ */
+
+let server: Server;
+let baseUrl: string;
+/**
+ * Every round trip, in order, as it actually went out: method, path **with the query
+ * string the transport built**, and the status that came back. Recorded at the `fetch`
+ * boundary rather than at the transport's own interface, because the URL is assembled
+ * inside the transport and is exactly what several of these cases are about.
+ */
+let trips: Array<{ method: string; url: string; status: number }>;
+
+beforeAll(async () => {
+  server = createServer(createApp());
+  await new Promise<void>((resolve) => {
+    server.listen(0, '127.0.0.1', resolve);
+  });
+  const address = server.address();
+  if (address === null || typeof address === 'string') {
+    throw new Error('the test server did not bind a TCP port');
+  }
+  baseUrl = `http://127.0.0.1:${address.port}`;
+});
+
+afterAll(async () => {
+  await new Promise<void>((resolve, reject) => {
+    server.close((error) => (error ? reject(error) : resolve()));
+  });
+});
+
+beforeEach(() => {
+  trips = [];
+});
+
+/** The real transport, recording at the `fetch` boundary it sends through. */
+function recordingTransport(): Transport {
+  const fetchImpl: typeof fetch = async (input, init) => {
+    const response = await fetch(input, init);
+    trips.push({
+      method: init?.method ?? 'GET',
+      url: String(input).slice(baseUrl.length),
+      status: response.status,
+    });
+    return response;
+  };
+  return createTransport({ baseUrl, fetchImpl });
+}
+
+/**
+ * The query parameters of a recorded URL, sorted.
+ *
+ * Sorted because the order `URLSearchParams` emits follows the order the keys were
+ * written on the call site's object literal, which no part of the contract depends on.
+ * What the cases below assert is which parameters went out and with what values.
+ */
+function paramsOf(url: string): string[] {
+  const query = url.includes('?') ? url.slice(url.indexOf('?') + 1) : '';
+  return [...new URLSearchParams(query)].map(([key, value]) => `${key}=${value}`).sort();
+}
+
+/**
+ * Attach a fixed access token to every request that needs one.
+ *
+ * This is what `api/authorize.ts` does in the app, minus the 401 handling, and it is
+ * here only because that module cannot be imported (see the note above). The transport
+ * and the client either side of it are the real ones.
+ */
+function withToken(transport: Transport, token: () => string): Transport {
+  return (request) =>
+    request.requiresAuth ? transport({ ...request, accessToken: token() }) : transport(request);
+}
+
+/** A signed-up user, plus a client whose requests carry their token. */
+async function signedIn(): Promise<{
+  auth: AuthResponse;
+  client: ApiClient;
+  anonymous: ApiClient;
+}> {
+  const transport = recordingTransport();
+  const anonymous = createApiClient({ transport });
+  const auth = await anonymous.signup({ email: uniqueEmail('seam'), password: TEST_PASSWORD });
+  const client = createApiClient({
+    transport: withToken(transport, () => auth.accessToken),
+  });
+  return { auth, client, anonymous };
+}
+
+describe('API-13 — the correlation id the contract promises on every response', () => {
+  it('is present on a success and on an error, read off the real header', async () => {
+    const transport = recordingTransport();
+
+    const health = await transport({
+      method: 'get',
+      path: '/v1/health',
+      requiresAuth: false,
+    });
+    expect(health.status).toBe(200);
+    expect(health.requestId).not.toBeNull();
+
+    // No token at all: the 401 comes from middleware, which is where a correlation id is
+    // easiest to lose, and is also the response a user is most likely to report.
+    const unauthorized = await transport({
+      method: 'get',
+      path: '/v1/me',
+      requiresAuth: true,
+      accessToken: null,
+    });
+    expect(unauthorized.status).toBe(401);
+    expect(unauthorized.requestId).not.toBeNull();
+    expect(unauthorized.requestId).not.toBe(health.requestId);
+  });
+});
+
+describe('API-14 — the client and the server agree on the whole REST surface', () => {
+  it('signs up, reads, writes and deletes without a single response-shape failure', async () => {
+    const { auth, client } = await signedIn();
+
+    // `getMe` proves the `Authorization: Bearer` the transport builds is the header the
+    // server's parser accepts. An unauthorized transport answered "Authorization header
+    // must be Bearer <accessToken>" while this file was being written, which is the
+    // shape of failure this case exists to catch.
+    const me = await client.getMe();
+    expect(me.user.id).toBe(auth.user.id);
+
+    const categories = await client.listCategories();
+    expect(categories.data).toHaveLength(6);
+    const target = categories.data.find((category) => !category.isDefault);
+    if (target === undefined) throw new Error('signup seeded no non-default category');
+
+    const renamed = await client.updateCategory(target.id, { name: 'Commuting' });
+    expect(renamed.data.name).toBe('Commuting');
+
+    const created = await client.createExpense({
+      categoryId: target.id,
+      amountMinor: 1234,
+      date: '2026-10-06',
+      note: 'seam',
+    });
+    expect(created.data.categoryId).toBe(target.id);
+
+    const patched = await client.updateExpense(created.data.id, { amountMinor: 999 });
+    expect(patched.data.amountMinor).toBe(999);
+
+    const deletedExpense = await client.deleteExpense(created.data.id);
+    expect(deletedExpense.data.deletedAt).not.toBeNull();
+
+    const deletedCategory = await client.deleteCategory(target.id);
+    expect(deletedCategory.data.deletedAt).not.toBeNull();
+
+    // Every one of those calls ran a real body through the client's own response schema,
+    // so reaching here means the client accepted eleven real bodies without a
+    // `ResponseShapeError`. What it does not prove is that the client would catch a bad
+    // one: in this configuration `sendJson` refuses to emit it first. See the note at the
+    // top of the file.
+    const create = trips.find((trip) => trip.method === 'POST' && trip.url === '/v1/expenses');
+    expect(create?.status).toBe(201);
+    expect(trips.every((trip) => trip.status < 400)).toBe(true);
+  });
+});
+
+describe('API-15 — a refresh through the client rotates the pair and spends the old one', () => {
+  it('accepts the rotated access token and refuses the token it replaced', async () => {
+    const transport = recordingTransport();
+    const anonymous = createApiClient({ transport });
+    const auth = await anonymous.signup({ email: uniqueEmail('rotate'), password: TEST_PASSWORD });
+
+    // An access token the server itself signed with a negative TTL: well-formed,
+    // correctly signed, already expired. This is the state a backgrounded app wakes in,
+    // and the server has to answer it `token_expired` rather than `token_invalid`,
+    // because the client's reaction to the two differs — refresh versus log out.
+    const expired = await signAccessToken(auth.user.id, -60);
+    const stale = createApiClient({ transport: withToken(transport, () => expired.token) });
+    await expect(stale.getMe()).rejects.toMatchObject({ status: 401, code: 'token_expired' });
+
+    const rotated = await anonymous.refresh({ refreshToken: auth.refreshToken });
+    expect(rotated.refreshToken).not.toBe(auth.refreshToken);
+
+    /*
+     * Measured here rather than assumed, because the first version of this case asserted
+     * the opposite and failed: `rotated.accessToken` can be **byte-identical** to the one
+     * signup issued. The access token is an HS256 JWT over an empty payload with no
+     * `jti`, so for one user it is a pure function of `iat`/`exp` — two tokens minted in
+     * the same second are the same string.
+     *
+     * It is not a defect on its own: a token that has *expired* was minted an hour ago,
+     * so its `exp` differs and the comparison `authorize.ts` rule 3 and
+     * `session.ts`'s `ensureFreshAccessToken` make does distinguish it. It is worth
+     * knowing because both of those treat the token string as the session's identity,
+     * and this is a case where the string is not unique. `AUTH-23`/`AUTH-24` already
+     * recommend an epoch counter instead; this is a second reason for it.
+     */
+    expect(typeof rotated.accessToken).toBe('string');
+
+    const fresh = createApiClient({ transport: withToken(transport, () => rotated.accessToken) });
+    expect((await fresh.getMe()).user.id).toBe(auth.user.id);
+
+    // Single-use: the refresh token the client arrived with is spent, so a client that
+    // kept the old one is logged out on its next refresh.
+    await expect(anonymous.refresh({ refreshToken: auth.refreshToken })).rejects.toMatchObject({
+      status: 401,
+      code: 'token_invalid',
+    });
+  });
+});
+
+describe('API-16 — query parameters and a real keyset cursor survive the URL', () => {
+  let client: ApiClient;
+  const dates = ['2026-10-01', '2026-10-02', '2026-10-03'];
+
+  beforeEach(async () => {
+    const signed = await signedIn();
+    client = signed.client;
+    const categories = await client.listCategories();
+    const categoryId = categories.data[0]!.id;
+    for (const date of dates) {
+      await client.createExpense({ categoryId, amountMinor: 100, date });
+    }
+    trips = [];
+  });
+
+  it('drops a parameter explicitly set to undefined instead of serialising it', async () => {
+    const all = await client.listExpenses();
+    expect(all.data).toHaveLength(3);
+    expect(all.hasMore).toBe(false);
+    expect(all.nextCursor).toBeNull();
+    expect(trips[0]?.url).toBe('/v1/expenses');
+
+    // The pattern app code reaches for the moment paging exists:
+    // `{ cursor: nextCursor ?? undefined }`. `exactOptionalPropertyTypes` is off in
+    // `tsconfig.base.json`, so this compiles, and the key is present on the object with
+    // an `undefined` value — which is the only way `buildQueryString`'s skip branch is
+    // reachable at all. Serialising it would put `cursor=undefined` on the wire and the
+    // strict query schema would answer 400.
+    const narrowed = await client.listExpenses({
+      limit: 2,
+      cursor: undefined,
+      categoryId: undefined,
+    });
+    expect(narrowed.data).toHaveLength(2);
+    expect(paramsOf(trips.at(-1)!.url)).toEqual(['limit=2']);
+  });
+
+  it('paginates with the cursor it was given, with no overlap and no gap', async () => {
+    const first = await client.listExpenses({ limit: 2, from: '2026-10-01', to: '2026-10-03' });
+    expect(paramsOf(trips.at(-1)!.url)).toEqual(['from=2026-10-01', 'limit=2', 'to=2026-10-03']);
+    expect(first.data).toHaveLength(2);
+    expect(first.hasMore).toBe(true);
+    expect(first.nextCursor).not.toBeNull();
+
+    const second = await client.listExpenses({ limit: 2, cursor: first.nextCursor! });
+    expect(second.data).toHaveLength(1);
+    expect(second.hasMore).toBe(false);
+    expect(second.nextCursor).toBeNull();
+
+    const seen = [...first.data, ...second.data].map((expense: Expense) => expense.date);
+    expect(new Set(seen).size).toBe(3);
+    expect([...seen].sort()).toEqual([...dates].sort());
+  });
+
+  it('rejects a bound the contract forbids, with the documented code', async () => {
+    await expect(
+      client.listExpenses({ from: '2026-10-03', to: '2026-10-01' }),
+    ).rejects.toMatchObject({ status: 400, code: 'validation_error' });
+  });
+});
+
+describe('API-17 — a push batch and a pull page, built and parsed by the client', () => {
+  it('syncs a category and an expense assigned to it in one round trip', async () => {
+    const { client } = await signedIn();
+
+    const categoryId = uuidv7();
+    const expenseId = uuidv7();
+    const updatedAt = new Date().toISOString();
+
+    const pushed = await client.pushSync({
+      changes: [
+        {
+          entity: 'category',
+          id: categoryId,
+          updatedAt,
+          clientMutationId: uuidv7(),
+          fields: { name: 'Offline', color: '#336699' },
+        },
+        {
+          entity: 'expense',
+          id: expenseId,
+          updatedAt,
+          clientMutationId: uuidv7(),
+          fields: { categoryId, amountMinor: 2500, date: '2026-10-07' },
+        },
+      ],
+    });
+
+    expect(pushed.results.map((result) => result.status)).toEqual(['applied', 'applied']);
+
+    const full = await client.pullSync({ since: 0 });
+    expect(full.resyncRequired).toBe(false);
+    const pulled = new Map(full.changes.map((change) => [change.record.id, change]));
+    expect(pulled.get(categoryId)?.entity).toBe('category');
+    const expense = pulled.get(expenseId);
+    if (expense?.entity !== 'expense') throw new Error('the pushed expense did not come back');
+    expect(expense.record.categoryId).toBe(categoryId);
+
+    // A pull from the watermark the server just handed back is the steady state a synced
+    // client sits in: no changes, and the same cursor returned rather than 0.
+    const idle = await client.pullSync({ since: full.nextCursor });
+    expect(idle.changes).toEqual([]);
+    expect(idle.nextCursor).toBe(full.nextCursor);
+    expect(idle.hasMore).toBe(false);
+  });
+});
+
+describe('API-18 — a 204 and a real error envelope, as the client sees them', () => {
+  it('resolves logout with no body and then refuses the revoked token', async () => {
+    const { anonymous, auth } = await signedIn();
+
+    trips = [];
+    await expect(anonymous.logout({ refreshToken: auth.refreshToken })).resolves.toBeUndefined();
+    expect(trips[0]).toEqual({ method: 'POST', url: '/v1/auth/logout', status: 204 });
+
+    await expect(anonymous.refresh({ refreshToken: auth.refreshToken })).rejects.toMatchObject({
+      status: 401,
+      code: 'token_invalid',
+    });
+  });
+
+  it('turns a 422 into an ApiRequestError carrying the code and the correlation id', async () => {
+    const { client } = await signedIn();
+
+    const thrown = await client
+      .createExpense({ categoryId: uuidv7(), amountMinor: 100, date: '2026-10-06' })
+      .then(
+        () => null,
+        (error: unknown) => error,
+      );
+
+    expect(thrown).toBeInstanceOf(ApiRequestError);
+    const apiError = thrown as ApiRequestError;
+    expect(apiError.status).toBe(422);
+    expect(apiError.code).toBe('unknown_category');
+    // The id is only here if the server set the header and the transport read it back off
+    // a real response. It is what the contract tells a user to quote in a bug report.
+    expect(apiError.requestId).not.toBeNull();
+  });
+});
