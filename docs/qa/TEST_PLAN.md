@@ -300,7 +300,7 @@ stuck. `SYNC-45` asserts it at the function level; this is the same thing at the
 One thing a reader should not conclude from the success run: it proves the entry point starts,
 connects and disconnects, not that pruning works — that is `SYNC-13`, `SYNC-39`, `SYNC-40` and
 `SYNC-44`. And note the deployment caveat carried from GAP 3: nothing schedules this yet
-(`b4f49b91`), so in a deployed environment the ceiling is not in place until that lands.
+(**TVO-15**, `b4f49b91`), so in a deployed environment the ceiling is not in place until that lands.
 
 ### The mobile suite prints a worker-teardown warning. It is not a failure — diagnosed 2026-10-10
 
@@ -3299,29 +3299,49 @@ no new `revision`, and another account's id rejected as `400 validation_error`.
 
 ### Still open
 
-| #   | Gap                                                                  | Severity | Blocks             |
-| --- | -------------------------------------------------------------------- | -------- | ------------------ |
-| 11  | Session writes are not atomic, and the wipe runs first (filed, mobile) | Medium   | nothing            |
-| 12  | The category list's local order is wrong twice (filed, mobile)        | Low      | nothing            |
-| 13  | An in-flight request is retried under the next user's token (`TVO-20`) | Medium   | nothing            |
-| 14  | Two defences for the refresh-recursion hazard; only one is live        | Low      | nothing            |
-| 15  | An orphaned category tombstone outlives the horizon (filed, backend)   | Medium   | nothing            |
-| 16  | The client/server seam cannot reach `authorize.ts` (`TVO-23`)          | Low      | `API-19`           |
-| 17  | The outbox does not coalesce, so a conflict resolves per field (`TVO-24`) | Low      | nothing            |
-| 18  | The pull's `RepeatableRead` snapshot is load-bearing and unasserted (`d0c66465`) | Low      | `SYNC-57`          |
-| 19  | The `/v1` additive-only policy breaks every installed client (`917f33d0`) | Medium   | nothing            |
-| 20  | A refresh whose answer is lost logs the user out (`a5dc9cc1`)          | Medium   | nothing            |
-| 21  | The contract accepts currencies the design's `decimals` rule gets wrong (`dbf7b8d6`) | Low      | nothing            |
-| 5   | A future-dated row arriving by sync is unreachable in every view     | Medium   | `EDGE-04`          |
-| 7b  | `immutable_field` is unreachable on the **REST** path                | Low      | `API-04` (half)    |
-| 9   | No E2E driver is named in `docs/PLAN.md` §7                          | Low      | 7 cases run manual |
-| 10  | Rate limits are not quantified                                       | Low      | `API-09`           |
+| #   | Gap | Sev | Board item | Parks | Re-test with |
+| --- | --- | --- | --- | --- | --- |
+| 11  | Session writes are not atomic, and the wipe runs first | Medium | **TVO-18** (`17cf182a`) | — | `AUTH-20`, `AUTH-21` flip expected-fail → green |
+| 12  | The category list's local order is wrong twice | Low | **TVO-19** (`cb2520bb`) | — | `CAT-15`, `CAT-16` flip expected-fail → green |
+| 13  | An in-flight request is retried under the next user's token | Medium | **TVO-20** (`1c87c76f`) | — | `AUTH-23`, `AUTH-24` flip; `AUTH-22` and `AUTH-25` must stay green |
+| 14  | Two defences for the refresh-recursion hazard; only one is live | Low | **not filed** — doc-only, for whoever next edits `container.ts` | — | nothing flips; `AUTH-27` records the limitation in the case itself |
+| 15  | An orphaned category tombstone outlives the horizon | Medium | **TVO-22** (`4c6d24c9`) | — | `SYNC-44`, `SYNC-45` flip; `SYNC-41`, `SYNC-43`, `SYNC-46` must stay green |
+| 16  | The client/server seam cannot reach `authorize.ts` | Low | **TVO-23** (`5e12a02e`) | `API-19` | `API-19` unparks and passes |
+| 17  | The outbox does not coalesce, so a conflict resolves per field | Low | **TVO-24** (`f4e9863b`) | — | no tripwire by design; `SYNC-47`–`SYNC-50` are re-read against whichever branch is chosen |
+| 18  | The pull's `RepeatableRead` snapshot is load-bearing and unasserted | Low | **TVO-25** (`d0c66465`) | `SYNC-57` | `SYNC-57` unparks |
+| 19  | The `/v1` additive-only policy breaks every installed client | Medium | **TVO-27** (`917f33d0`) | — | `API-20`–`API-24` flip **only** if the lenient branch is chosen; the closed branch leaves them green |
+| 20  | A refresh whose answer is lost logs the user out | Medium | **TVO-28** (`a5dc9cc1`) | — | branch 1 flips `API-25` step 3 and `AUTH-29` step 2; branches 2 and 3 leave both green, which is the honest signal that they mitigate rather than fix |
+| 21  | The contract accepts currencies the design's `decimals` rule gets wrong | Low | **TVO-29** (`dbf7b8d6`) | — | `EDGE-13` stays green under either branch; `EDGE-14` reddens if the Sheet ever gains a zero-decimal currency |
+| 5   | A future-dated row arriving by sync is unreachable in every view | Medium | **not filed** — the Designer's call | `EDGE-04` step 3 | `EDGE-04` unparks |
+| 7b  | `immutable_field` is unreachable on the **REST** path | Low | **not filed** — a choice between two one-line fixes | `API-04` (half) | `API-04`'s REST half unparks |
+| 9   | No E2E driver is named in `docs/PLAN.md` §7 | Low | **not filed** — wants Mobile Dev's agreement, not a ruling | 7 cases run manual | the 7 driven-app cases become automatable |
+| 10  | Rate limits are not quantified | Low | **not filed** — an owner call | `API-09` | `API-09` can assert that a limit exists, not just its shape |
 
-**No open gap is a blocking decision for Chief.** Three stopped being questions in consecutive
-runs, each by being read against the landed code rather than waited on — GAP 4, GAP 3 and now the
-re-test of both fixes, which produced GAP 11. All three turned out to be defects rather than
-decisions, which is the pattern worth noting: a gap that has sat unanswered for three runs is more
-often unexamined code than an undecided policy.
+**Nothing open blocks *executing* this plan — but four of the open gaps now need an owner's
+decision rather than more testing, and that is a reversal.** When this section was first written
+the opposite was true: GAP 4 and GAP 3 had both stopped being questions by being read against the
+landed code, and the pattern worth noting was that a gap sitting unanswered for three runs is more
+often unexamined code than an undecided policy. That pattern held for GAP 11 through GAP 18, every
+one of which turned out to be a defect with a test behind it. It stopped holding at GAP 19. The
+three newest gaps (19, 20, 21) each come down to a contract or posture choice that QA should not
+make unilaterally, and GAP 5, 7b, 9 and 10 have been waiting on their owners throughout. So the
+honest state of this register is: the testable half is done and reported, and what remains is
+mostly waiting on decisions.
+
+**Eleven board items are open from this plan**, all `todo` and unassigned: the ten filed gaps named
+in the table above, plus **TVO-21** (`1238853a`) — the mobile jest suite force-exits a worker on
+every run. That last one is test infrastructure rather than a numbered gap, because it is not a
+product defect and §2 records how to tell it apart from a failure mid-execution; it is listed here
+so the board and this register agree on the count.
+
+A note on identifiers, because two earlier runs of this plan got it wrong in opposite directions.
+Every issue carries a stable `TVO-NN` under the `identifier` field of `GET /api/issues/{id}`; the
+**list** route omits that field, which is why one run concluded no human-readable handle existed
+and recorded the last four filings by raw UUID prefix instead. Both handles resolve, but `TVO-NN`
+is the one the board displays, so that is what this register leads with and what a comment asking
+someone to pick an item up should use. Earlier runs that guessed the next `TVO-NN` from the
+sequence happened to guess right every time; that was luck, not a rule — read it back after
+filing.
 
 GAP 11, GAP 12, GAP 13 and GAP 15 are filed defects rather than open questions, and none of them
 blocks anything: `AUTH-20`, `AUTH-21`, `CAT-15`, `CAT-16`, `AUTH-23`, `AUTH-24`, `SYNC-44` and
@@ -3332,10 +3352,12 @@ written. GAP 14 is a documentation accuracy
 finding with no behavioural change behind it, and `AUTH-27` records the measurement. GAP 16 is a
 module-layering finding with a two-line fix, and it is the only gap that currently parks a case
 this plan can otherwise run (`API-19`). What is left
-needs its owner's input rather than a ruling, and none of it blocks executing §8: GAP 5 is the
-Designer's, GAP 9 wants Mobile Dev's agreement on a driver before 7 cases stop being manual, GAP 10
-wants numbers from whoever sets the limits, and GAP 7b is a contract-hygiene choice between two
-one-line fixes.
+divides into two kinds, and none of it blocks executing §8. **Owner input rather than a ruling:**
+GAP 5 is the Designer's, GAP 9 wants Mobile Dev's agreement on a driver before 7 cases stop being
+manual, GAP 10 wants numbers from whoever sets the limits, and GAP 7b is a contract-hygiene choice
+between two one-line fixes. **A ruling QA should not make:** GAP 19 (the evolution policy), GAP 20
+branch 1 (a grace window is a security-posture change) and GAP 21 (whether `CurrencyCode` narrows
+to the ten the design renders correctly).
 
 **GAP 19 is the one with a shipping deadline on it**, and it is the only open gap whose cost rises
 with time rather than staying flat. It is not a defect in anything running today — no app is
@@ -3369,7 +3391,8 @@ behind a failure that is rare rather than rank-ordered by probability alone.
 Both fixes are orderings rather than new mechanisms, and both were applied locally and reverted:
 write tokens → adopt → publish, rolling the tokens back if the adopt fails; and delete the owner
 key first, write it last, so a half-done write reads as no owner and therefore no session. Each
-turns its case red and leaves the other 39 auth cases green. Filed for Mobile Dev.
+turns its case red and leaves the other 39 auth cases green. Filed as **TVO-18**
+(`17cf182a`) for Mobile Dev, unassigned.
 
 ### GAP 12 — The category list's local order is wrong twice — **OPEN**
 
@@ -3410,7 +3433,8 @@ cases green. Two notes for whoever takes it: `idx_categories_live (deletedAt, na
 serves that sort, which is acceptable on an unpaginated set of a few dozen rows but is a choice
 worth making knowingly rather than discovering; and a `COLLATE NOCASE` column would also change
 what the `UNIQUE`-style local name check in `CAT-14` compares, so the collation belongs in the
-`ORDER BY` rather than in the schema unless that is checked too. Filed for Mobile Dev.
+`ORDER BY` rather than in the schema unless that is checked too. Filed as **TVO-19**
+(`cb2520bb`) for Mobile Dev, unassigned.
 
 ### GAP 13 — An in-flight request is retried under the next user's token — **OPEN**
 
@@ -3452,7 +3476,7 @@ captured in `authorize.ts` before the send and re-checked after the `401`; if it
 original response. Applied locally and reverted: `AUTH-23` and `AUTH-24` turn red, all 15 cases in
 `authorize.test.ts` stay green along with `AUTH-22` and `AUTH-25`. Bumping on rotation as well
 would redden "retries with the current token when it 401s after someone else rotated", which is
-correct behaviour. Filed as `TVO-20` for Mobile Dev.
+correct behaviour. Filed as **TVO-20** (`1c87c76f`) for Mobile Dev, unassigned.
 
 ### GAP 14 — Two defences for the refresh-recursion hazard, and only one of them is live — **OPEN**
 
@@ -3551,7 +3575,7 @@ Backend Dev's and Chief's:
   `SYNC-44` and `SYNC-45` turn red (they are `it.fails`) and **all 324 other backend cases stay
   green**, including `SYNC-41` and `SYNC-46`. Reverted; the fix is Backend Dev's to make.
 
-Filed as `TVO-22` against `backend/`, unassigned. Blocks nothing: the two tripwires report the fix
+Filed as **TVO-22** (`4c6d24c9`) against `backend/`, unassigned. Blocks nothing: the two tripwires report the fix
 when it lands.
 
 ### GAP 16 — The two halves of the app cannot be exercised in one process — **OPEN**
@@ -3600,7 +3624,7 @@ and the cost is that the one seam neither package's suite can cover stays uncove
 
 Either lands `API-19` as written, and the test file in `backend/tests/` would need one import added
 and the `withToken` helper deleted. **Severity: low.** It blocks one QA case and no product
-behaviour; nothing a user does is affected. Filed as **`TVO-23`** against `mobile/`.
+behaviour; nothing a user does is affected. Filed as **TVO-23** (`5e12a02e`) against `mobile/`, unassigned.
 
 Fix 1 was applied locally before filing rather than proposed on paper: with the two-member
 interface in place, `pnpm typecheck` is green repo-wide, mobile stays at **207 passed** —
@@ -3665,13 +3689,13 @@ merged entry's `clientMutationId`. That is a decision to take **before** `TVO-13
 
 **Severity: low.** Nothing is broken today: the drain does not exist, so no batch has ever been
 pushed from a real outbox. The cost is that two design docs describe a client the code is not, and
-whoever writes `TVO-13` will build against one of them. Filed as **`TVO-24`**, unassigned, with
+whoever writes `TVO-13` will build against one of them. Filed as **TVO-24** (`f4e9863b`), unassigned, with
 the Designer as the recommended owner. Blocks nothing — the four cases in §8.10 are green and
 record the behaviour either decision has to account for.
 
 ### GAP 18 — The pull's snapshot isolation is load-bearing and nothing asserts it — **OPEN**
 
-Filed as `d0c66465` (low, Backend Dev). Not a defect: the code is correct today. The finding is that
+Filed as **TVO-25** (`d0c66465`, low, Backend Dev). Not a defect: the code is correct today. The finding is that
 the **one mechanism standing between a two-table merge and the loss this codebase ranks first is
 unguarded**, and I measured exactly how unguarded.
 
@@ -3716,7 +3740,7 @@ is not reachably testable, so the thing to pin is the setting. It is the same re
 
 ### GAP 19 — The contract's evolution policy and the client's response parsing are opposites — **OPEN**
 
-Filed as `917f33d0` (medium, Chief's call on the contract; the code change is Mobile Dev's). Not a
+Filed as **TVO-27** (`917f33d0`, medium, Chief's call on the contract; the code change is Mobile Dev's). Not a
 defect in anything running today: no app is deployed, and inside this monorepo both sides always
 carry the same `shared/`. It is **a trap that arms itself the day the app ships**, and the cost of
 disarming it is one line while nobody is holding an installed copy.
@@ -3786,7 +3810,7 @@ knows which cases it is expected to flip.
 
 ### GAP 20 — A refresh whose answer is lost logs the user out, and the design's own rule is what licenses it — **OPEN**
 
-Filed as `a5dc9cc1` (medium; the contract half is Chief's, the mitigation is Mobile Dev's and
+Filed as **TVO-28** (`a5dc9cc1`, medium; the contract half is Chief's, the mitigation is Mobile Dev's and
 Backend Dev's). **Not a bug in anyone's code.** Every piece behaves as its own file specifies. The
 defect is in the seam between two rules that were each written correctly and never read together.
 
@@ -3848,7 +3872,7 @@ knows which cases it flips. Branch 1 flips `API-25`'s step 3 and `AUTH-29`'s ste
 
 ### GAP 21 — The contract accepts currencies the design's `decimals` rule gets wrong, and this plan's money literals had no locale — **OPEN**
 
-Filed as `dbf7b8d6` (low; the contract half is Chief's, the rendering half is Mobile Dev's).
+Filed as **TVO-29** (`dbf7b8d6`, low; the contract half is Chief's, the rendering half is Mobile Dev's).
 Two halves, one of which was a defect in this plan and is already fixed.
 
 **Three places have an opinion about which currencies exist, and they disagree.**
