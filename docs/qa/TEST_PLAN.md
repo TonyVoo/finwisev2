@@ -844,6 +844,36 @@ turns every case that uses it into a false green, which is worse than a fixture 
   container starts `anonymous`, leaves `meta` unclaimed, and sends **nothing** — a cold start of an
   offline-first app talks to nobody, which is also what makes `AUTH-26`'s adoption observable.
 
+### AUTH-29 — A refresh whose answer is lost logs the user out on the retry — [GAP 20]
+
+- **Layer** Unit (`mobile/tests/auth/session.test.ts`) + Integration (`API-25` for the server half)
+- **Pre** A stored session holding `refresh-1`. The first refresh attempt reaches the server, which
+  rotates and commits; its answer never arrives. The second attempt presents the same stored token
+- **Steps**
+  1. `ensureFreshAccessToken('access-1')` — the attempt whose answer is lost
+  2. `ensureFreshAccessToken('access-1')` again, which is the retry step 1 licenses
+- **Expect** Step 1 rejects with `NetworkUnavailableError` and the session is **still**
+  `{ status: 'authenticated', expired: false }` with the token store intact — `01-flows.md` §3
+  rule 1 holding exactly as written. Step 2 resolves `null`, the snapshot is
+  `{ status: 'anonymous', expired: true }`, and the token store is cleared. Exactly two refresh
+  calls are made
+- **Expect (second case)** The local database is **not** taken down with it: the store is still
+  stamped with this user, so `adopt(sameUser)` is `kept` and the undrained outbox still drains after
+  a re-login. `AUTH-12`'s guarantee, reached from a new direction
+- **Result — BOTH PASS.** The user is logged out and has to re-enter their password; they lose no
+  data
+- **What this adds over `can retry after a failure`** That case has attempt 1 fail and attempt 2
+  succeed, which assumes the failed attempt never reached the server. That is the optimistic half of
+  a two-branch reality and it was the only half any case had. This is the other branch, and on a
+  mobile radio it is the common one
+- **Why the throws are not invented** What the server answers to a replayed token is measured, not
+  assumed: `API-25` drives the real client against the real server over a dropped answer and reads
+  the outcome back out of Postgres. These two rejections are that measurement, scripted
+- **Honest limit** This pair *characterises* a path; it is not a new tripwire. The no-wipe half is
+  already pinned by `sessionTeardown.test.ts`, and a regression that discarded on any refresh
+  failure would redden `keeps the session on a network failure` too. Its value is the sequence,
+  which nothing recorded
+
 ---
 
 ## 5. Expense CRUD
@@ -3047,6 +3077,38 @@ and they are where a security or correctness regression shows up first.
   an additive response field into exactly the data-loss path `AUTH-12` exists to rule out — so the
   case is here to defend that, not only to record it
 
+### API-25 — A refresh the server completed and the client never saw — [GAP 20]
+
+- **Layer** Integration (`backend/tests/integration.mobileClient.test.ts`)
+- **Pre** A user signed up over the real HTTP seam. The transport's `fetchImpl` performs the real
+  request, waits for the real answer, drains it, and *then* throws — the shape of a dropped answer,
+  modelled at the `fetch` boundary so the server genuinely does the work
+- **Steps**
+  1. `client.refresh({ refreshToken })`, whose answer is dropped
+  2. Read `refresh_tokens` for that user back out of Postgres
+  3. `client.refresh({ refreshToken })` again with the same stored token
+- **Expect** Step 1 rejects with `NetworkUnavailableError` after a recorded `POST /v1/auth/refresh`
+  → `200`. Step 2 shows **two** rows: the presented token revoked, and one live successor whose
+  `expiresAt` is in the future. Step 3 is `401 token_invalid`
+- **Result — PASSES.** The successor is then unreachable: a live 60-day credential for the account
+  that no client holds and nothing prunes before its expiry
+- **Second case — the asymmetry** The same lost answer on `POST /v1/auth/logout` costs nothing: the
+  retry resolves, because `authService.logout` is "idempotent and deliberately forgiving". One of
+  the two routes that spend a refresh token was written for a client that may have to ask twice and
+  the other was not
+- **Shown able to fail — and the recipe matters, because the narrow one does nothing** `refresh` has
+  **two independent single-use defences**: the early `existing.revokedAt !== null` check, and the
+  `revokedAt: null` guard on the claimed `updateMany`. Either alone rejects a replay. Removing
+  **both** reddens the first case here and leaves the second green — so it is pinned to the rotation,
+  not to the fake — plus 3 cases in `auth.refresh.test.ts` and 2 elsewhere in this file (`API-15`,
+  `API-18`), which is the attribution. Removing only the early check reddens **exactly one** case in
+  the whole backend suite (`reports a reused token as token_invalid even once it has also expired`),
+  and that case pins the error *code* for a token both revoked and expired, not the replay rejection.
+  So a tester who reaches for the obvious single-line regression here will see 344 green and conclude
+  this case cannot fail. It can; it takes both lines. Reverted; no product source is in the commit
+- **Consequence for a fix** A grace window (GAP 20 branch 1) has to be threaded through *both*
+  defences. A change that relaxes only one will look fully tested
+
 ---
 
 ---
@@ -3585,6 +3647,68 @@ I have **not** written an expected-fail case for either branch. An `it.failing` 
 would encode a decision nobody has made and stay red indefinitely — the `AUTH-21` mistake. The five
 cases assert what the client measurably does, and they are listed here so whichever branch is taken
 knows which cases it is expected to flip.
+
+### GAP 20 — A refresh whose answer is lost logs the user out, and the design's own rule is what licenses it — **OPEN**
+
+Filed as `a5dc9cc1` (medium; the contract half is Chief's, the mitigation is Mobile Dev's and
+Backend Dev's). **Not a bug in anyone's code.** Every piece behaves as its own file specifies. The
+defect is in the seam between two rules that were each written correctly and never read together.
+
+**The crossing, in four steps.** The client refreshes. The server rotates, commits, and answers
+`200`. The answer never arrives — the transport's own 15s `AbortController` fires on a congested
+radio, or the OS reclaims a backgrounded app mid-request, or a handover drops the socket. The client
+sees a `NetworkUnavailableError`, and `01-flows.md` §3 rule 1 is explicit about what to do with one:
+*"Being offline never logs the user out. A failed request, a timeout, or a DNS failure leaves the
+session intact."* So it keeps the session — **and the session's only refresh token is now one the
+server has already revoked.** The retry that rule licenses is a replay, and `openapi.yaml` tells the
+client exactly how to read a replay: *"Replaying an already-rotated token is `401 token_invalid` —
+treat that as 'session over, re-login'."* It does. The user is logged out.
+
+Rule 1 describes its two branches as disjoint — a timeout on one side, an explicit `token_invalid`
+from a server we reached on the other. This path starts on the safe side and arrives on the fatal
+one, one request later, *because* it took the safe branch.
+
+**Measured, not argued.** `API-25` drops the answer at the `fetch` boundary after the real server
+has answered and reads the consequence back out of Postgres: the presented token revoked, one live
+successor nobody holds, and `401 token_invalid` on the retry. `AUTH-29` scripts those two answers
+into the real session controller and records the sequence — session intact, then `anonymous` with
+`expired: true`.
+
+**The bound on the damage, and why this is medium.** No data is lost. `discard` leaves SQLite alone
+and the store stays stamped with its owner, so a re-login as the same user is `kept` and the
+undrained outbox drains (`AUTH-12`, `AUTH-29`'s second case). The cost is a forced re-login and a
+*"Your session expired"* banner the user did nothing to deserve. Reachability, though, is high: this
+is not an exotic interleaving but the ordinary failure of a mobile network, and the app's own 15s
+ceiling is the most likely trigger.
+
+**Why the obvious fix is impossible here, and it is worth knowing before anyone tries.** The exact
+analogue already exists one protocol over: `clientMutationId` makes a push *idempotent*, so a
+retried write after a dropped answer returns the original result. A refresh cannot do that.
+`auth/refreshToken.ts` stores **only the SHA-256** of each token — a well-argued decision, so that a
+database dump cannot be replayed as a session — which means the server cannot reproduce an answer it
+has already sent. True idempotency on this route would require storing the plaintext successor, and
+that trades the whole point of the column. So the branches are:
+
+1. **A grace window.** A presented token revoked less than N seconds ago mints a *fresh* pair
+   instead of rejecting. Removes the trigger entirely. The cost is real and should be stated: a
+   stolen token replayed inside N seconds yields a working session, and the `refresh token reused
+   after rotation` log line stops being an unambiguous theft signal. Wants Chief's ruling, because
+   it is a security posture change, not an implementation detail.
+2. **Stop generating the trigger.** The refresh inherits `DEFAULT_TIMEOUT_MS = 15_000` because
+   `container.ts` builds **one** transport and the unauthenticated client that carries the refresh
+   shares it. An abort on this one route costs the session, which no other route does — so a longer
+   ceiling (or none, with the caller retrying) for the refresh transport alone is a few lines in the
+   composition root, weakens nothing, and removes the most reachable cause. It does not remove the
+   OS-reclaim or handover cases. **This is the one I would do first regardless of the others.**
+3. **Accept it and write it down.** Add the branch to `01-flows.md` §3 rule 1 and to the refresh
+   endpoint's description, so a client author knows the licensed retry is not safe. Cheapest, and
+   strictly better than today, where the two documents contradict each other by omission.
+
+**No expected-fail case for any of them.** An `it.failing` asserting a grace window would encode a
+decision nobody has made and stay red indefinitely — the `AUTH-21` mistake. `API-25` and `AUTH-29`
+assert what the system measurably does today, and they are listed here so whichever branch is taken
+knows which cases it flips. Branch 1 flips `API-25`'s step 3 and `AUTH-29`'s step 2; branches 2 and
+3 leave both green, which is itself the honest signal that they mitigate rather than fix.
 
 ### GAP 1 — Who seeds the default categories, and the duplicate-six risk — **CLOSED**
 
