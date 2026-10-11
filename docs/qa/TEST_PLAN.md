@@ -3015,7 +3015,7 @@ no new `revision`, and another account's id rejected as `400 validation_error`.
 | 15  | An orphaned category tombstone outlives the horizon (filed, backend)   | Medium   | nothing            |
 | 16  | The client/server seam cannot reach `authorize.ts` (`TVO-23`)          | Low      | `API-19`           |
 | 17  | The outbox does not coalesce, so a conflict resolves per field (`TVO-24`) | Low      | nothing            |
-| 18  | The pull's `RepeatableRead` snapshot is load-bearing and unasserted (`TVO-25`) | Low      | `SYNC-57`          |
+| 18  | The pull's `RepeatableRead` snapshot is load-bearing and unasserted (`d0c66465`) | Low      | `SYNC-57`          |
 | 5   | A future-dated row arriving by sync is unreachable in every view     | Medium   | `EDGE-04`          |
 | 7b  | `immutable_field` is unreachable on the **REST** path                | Low      | `API-04` (half)    |
 | 9   | No E2E driver is named in `docs/PLAN.md` §7                          | Low      | 7 cases run manual |
@@ -3368,7 +3368,7 @@ record the behaviour either decision has to account for.
 
 ### GAP 18 — The pull's snapshot isolation is load-bearing and nothing asserts it — **OPEN**
 
-Filed as `TVO-25` (low, Backend Dev). Not a defect: the code is correct today. The finding is that
+Filed as `d0c66465` (low, Backend Dev). Not a defect: the code is correct today. The finding is that
 the **one mechanism standing between a two-table merge and the loss this codebase ranks first is
 unguarded**, and I measured exactly how unguarded.
 
