@@ -3,10 +3,12 @@ import { createServer, type Server } from 'node:http';
 import { v7 as uuidv7 } from 'uuid';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { type ApiClient, createApiClient } from '../../mobile/src/api/client.ts';
-import { ApiRequestError } from '../../mobile/src/api/errors.ts';
+import { ApiRequestError, NetworkUnavailableError } from '../../mobile/src/api/errors.ts';
 import { createTransport, type Transport } from '../../mobile/src/api/transport.ts';
 import { signAccessToken } from '../src/auth/accessToken.ts';
+import { hashRefreshToken } from '../src/auth/refreshToken.ts';
 import { createApp } from '../src/app.ts';
+import { getPrisma } from '../src/db/client.ts';
 import { TEST_PASSWORD, uniqueEmail } from './support/api.ts';
 
 /**
@@ -396,5 +398,101 @@ describe('API-18 — a 204 and a real error envelope, as the client sees them', 
     // The id is only here if the server set the header and the transport read it back off
     // a real response. It is what the contract tells a user to quote in a bug report.
     expect(apiError.requestId).not.toBeNull();
+  });
+});
+
+/**
+ * A round trip the server completed and the client never saw.
+ *
+ * `fetchImpl` performs the real request, waits for the real answer, drains it, and *then*
+ * fails. That is exactly the shape of a dropped answer: the write is committed, the
+ * socket is gone, and the client is left with a rejected promise and no way to know which
+ * side of the commit it is on. On a device it arrives as the transport's own 15s
+ * `AbortController` firing on a congested radio, as the OS reclaiming a backgrounded app
+ * mid-request, or as a radio handover - all routine, none of them exotic.
+ *
+ * Modelled at the `fetch` boundary rather than by stubbing the client, so the server
+ * genuinely did the work: every assertion about what the server now holds is read back
+ * out of Postgres, not out of this fake.
+ */
+function droppingTransport(dropPath: string): Transport {
+  const fetchImpl: typeof fetch = async (input, init) => {
+    const response = await fetch(input, init);
+    trips.push({
+      method: init?.method ?? 'GET',
+      url: String(input).slice(baseUrl.length),
+      status: response.status,
+    });
+    if (String(input).includes(dropPath)) {
+      await response.text();
+      throw new Error('the connection dropped before the answer arrived');
+    }
+    return response;
+  };
+  return createTransport({ baseUrl, fetchImpl });
+}
+
+describe('API-25 — a refresh whose answer never arrives', () => {
+  it('rotates server-side anyway, so the licensed retry is a logout', async () => {
+    const anonymous = createApiClient({ transport: recordingTransport() });
+    const auth = await anonymous.signup({
+      email: uniqueEmail('lostrefresh'),
+      password: TEST_PASSWORD,
+    });
+
+    const dropping = createApiClient({ transport: droppingTransport('/v1/auth/refresh') });
+    trips = [];
+
+    // Branch one of `01-flows.md` §3 rule 1: "a failed request, a timeout, or a DNS
+    // failure leaves the session intact". The client cannot tell this from being offline,
+    // and the contract gives it nothing to tell it with.
+    await expect(dropping.refresh({ refreshToken: auth.refreshToken })).rejects.toBeInstanceOf(
+      NetworkUnavailableError,
+    );
+    expect(trips).toEqual([{ method: 'POST', url: '/v1/auth/refresh', status: 200 }]);
+
+    // The server answered 200 and committed. Read back out of Postgres rather than
+    // inferred: the presented token is revoked, and the successor it minted is live.
+    const rows = await getPrisma().refreshToken.findMany({ where: { userId: auth.user.id } });
+    expect(rows).toHaveLength(2);
+    const presented = rows.find((row) => row.tokenHash === hashRefreshToken(auth.refreshToken));
+    expect(presented?.revokedAt).not.toBeNull();
+    const successor = rows.filter((row) => row.revokedAt === null);
+    expect(successor).toHaveLength(1);
+    expect(successor[0]?.expiresAt.getTime()).toBeGreaterThan(Date.now());
+
+    // Branch two, reached *because of* branch one. The stored token is the only one the
+    // client has, so the retry rule 1 licenses presents an already-rotated token - and
+    // `openapi.yaml` tells the client to read that as "session over, re-login".
+    await expect(anonymous.refresh({ refreshToken: auth.refreshToken })).rejects.toMatchObject({
+      status: 401,
+      code: 'token_invalid',
+    });
+
+    // And the successor is now unreachable: a live 60-day credential for this account
+    // that no client holds, and that nothing prunes before its expiry.
+    const after = await getPrisma().refreshToken.findMany({
+      where: { userId: auth.user.id, revokedAt: null },
+    });
+    expect(after.map((row) => row.id)).toEqual([successor[0]?.id]);
+  });
+
+  it('costs nothing on logout, which is the same lost answer one route over', async () => {
+    const anonymous = createApiClient({ transport: recordingTransport() });
+    const auth = await anonymous.signup({
+      email: uniqueEmail('lostlogout'),
+      password: TEST_PASSWORD,
+    });
+
+    const dropping = createApiClient({ transport: droppingTransport('/v1/auth/logout') });
+    await expect(dropping.logout({ refreshToken: auth.refreshToken })).rejects.toBeInstanceOf(
+      NetworkUnavailableError,
+    );
+
+    // Same shape, opposite outcome. `authService.logout` is "idempotent and deliberately
+    // forgiving", so retrying a lost logout reaches the state the user asked for. The
+    // asymmetry is the finding: one of the two routes that spend a refresh token was
+    // written for a client that may have to ask twice, and the other was not.
+    await expect(anonymous.logout({ refreshToken: auth.refreshToken })).resolves.toBeUndefined();
   });
 });

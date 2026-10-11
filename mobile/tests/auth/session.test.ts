@@ -281,5 +281,84 @@ describe('createSessionController', () => {
         await expect(controller.ensureFreshAccessToken('access-1')).resolves.toBe('access-2');
       });
     });
+
+    /**
+     * AUTH-29. The other half of the retry above, and the one that actually happens.
+     *
+     * `can retry after a failure` has the first attempt fail and the second succeed. That
+     * is the optimistic branch: it assumes the failed attempt never reached the server. A
+     * *lost answer* is the other branch - the server rotated, committed, and the answer
+     * did not arrive - and it is not exotic. The transport aborts at 15s on a congested
+     * radio, the OS reclaims a backgrounded app mid-request, a handover drops the socket.
+     *
+     * What the server then answers is not assumed here. `API-25`
+     * (`backend/tests/integration.mobileClient.test.ts`) drives the real client against
+     * the real server over a dropped answer and reads the outcome back out of Postgres:
+     * the presented token is revoked, a live successor exists that nobody holds, and
+     * presenting the stored token again is `401 token_invalid`. These two throws are that
+     * measurement, scripted.
+     */
+    describe('when the refresh reached the server but its answer did not', () => {
+      it('keeps the session, then ends it on the retry the first failure licensed', async () => {
+        let attempt = 0;
+        const { controller, tokenStore } = controllerWith(tokenPair('1'), async () => {
+          attempt += 1;
+          // Attempt 1: rotated server-side, answer lost. Indistinguishable, from here,
+          // from never having left the device.
+          if (attempt === 1) throw new NetworkUnavailableError(new Error('socket closed'));
+          // Attempt 2: the same stored token, now already rotated.
+          throw new ApiRequestError({
+            status: 401,
+            code: 'token_invalid',
+            message: 'Refresh token has already been used.',
+          });
+        });
+        await controller.initialize();
+
+        await expect(controller.ensureFreshAccessToken('access-1')).rejects.toThrow(
+          NetworkUnavailableError,
+        );
+        // `01-flows.md` §3 rule 1 holds here, and this is the whole trouble: it holds by
+        // preserving a token the server has already thrown away.
+        expect(controller.getSnapshot()).toEqual({ status: 'authenticated', expired: false });
+
+        await expect(controller.ensureFreshAccessToken('access-1')).resolves.toBeNull();
+        expect(controller.getSnapshot()).toEqual({ status: 'anonymous', expired: true });
+        await expect(tokenStore.read()).resolves.toBeNull();
+        expect(attempt).toBe(2);
+      });
+
+      it('does not take the local database down with it', async () => {
+        // Built here rather than through `controllerWith`, because this case is about the
+        // local store and needs one it can read back: a store with rows in it, owned.
+        let attempt = 0;
+        const localStore = createMemoryLocalStore({ owner: USER_ID, hasRows: true });
+        const controller = createSessionController({
+          tokenStore: createMemoryTokenStore(
+            sessionFromTokenPair(tokenPair('1'), USER_ID, ISSUED_AT),
+          ),
+          localStore,
+          refreshTokens: async () => {
+            attempt += 1;
+            if (attempt === 1) throw new NetworkUnavailableError(new Error('socket closed'));
+            throw new ApiRequestError({ status: 401, code: 'token_invalid', message: 'used' });
+          },
+          clock: () => ISSUED_AT,
+        });
+        await controller.initialize();
+
+        await expect(controller.ensureFreshAccessToken('access-1')).rejects.toThrow();
+        await expect(controller.ensureFreshAccessToken('access-1')).resolves.toBeNull();
+        expect(controller.getSnapshot().expired).toBe(true);
+
+        // The bound on the damage, and the reason this is medium and not high: `discard`
+        // leaves SQLite alone, and the store stays stamped with this user - so a re-login
+        // as the same user is `kept`, and the undrained outbox still pushes. `AUTH-12`,
+        // reached from a new direction. A fix that widened `UNRECOVERABLE_CODES` or added
+        // a wipe here would turn a forced re-login into lost work.
+        await expect(localStore.readOwner()).resolves.toBe(USER_ID);
+        await expect(localStore.adopt(USER_ID)).resolves.toBe('kept');
+      });
+    });
   });
 });
