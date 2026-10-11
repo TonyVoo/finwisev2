@@ -69,6 +69,9 @@ describe('the endpoint table', () => {
  *
  * Eight of the sixteen methods had no test at all before this table.
  */
+// `API-12`. TypeScript cannot catch a method reaching for a neighbour's route: the three
+// expense writes all answer `ExpenseResponse`, as do the three category writes, as do signup
+// and login. Swapping `updateExpense` and `deleteExpense` leaves `tsc` clean.
 describe('every client method', () => {
   const ID = '0192f5a0-0000-7000-8000-0000000000aa';
 

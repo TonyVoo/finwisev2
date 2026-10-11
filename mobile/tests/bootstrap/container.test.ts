@@ -123,6 +123,8 @@ describe('createAppContainer', () => {
     );
   }
 
+  // `AUTH-26`. The unowned-but-populated store, which is the branch that closes the
+  // v1-to-v2 upgrade path: a store with no owner and rows in it is somebody else's.
   it('publishes the stored session, over the database it was handed', async () => {
     const { transport } = scriptedTransport(() => ({ status: 200, body: {}, requestId: null }));
 
@@ -140,6 +142,8 @@ describe('createAppContainer', () => {
   // else's tokens. It is only reachable if the session was wired to the *sqlite* store
   // over the opened database. A `createMemoryLocalStore()` here would leave these rows in
   // place and `meta` empty, and every other test in the suite would still pass.
+  // `AUTH-26`, continued: the adoption itself, observable only because a cold start of an
+  // offline-first app sends nothing.
   it('adopts the opened database at startup, before any screen can read it', async () => {
     await seedCategory();
     expect(await owner()).toBeNull();
@@ -156,6 +160,7 @@ describe('createAppContainer', () => {
     await expect(database.getAllAsync('SELECT id FROM categories', [])).resolves.toEqual([]);
   });
 
+  // `AUTH-27`. The 401 round trip through the real wiring rather than the parts.
   it('attaches the stored access token to an authenticated call', async () => {
     const { transport, seen } = scriptedTransport(() => ({
       status: 200,
@@ -186,6 +191,8 @@ describe('createAppContainer', () => {
    * live defence is that short-circuit, pinned by `authorize.test.ts`; the ordering here
    * is a second, currently inert layer. Worth knowing before anyone leans on the wrong one.
    */
+  // `AUTH-27`, continued. See GAP 14 for what this case does *not* prove: the refresh
+  // staying off the authorized client is no longer the live defence against recursion.
   it('refreshes through the unauthenticated transport, and retries once', async () => {
     const { transport, seen } = expiringTransport();
 
@@ -211,6 +218,7 @@ describe('createAppContainer', () => {
   // One refresh for many concurrent 401s, through the real wiring rather than the
   // controller alone: the refresh token is single-use, so a second rotation would arrive
   // already revoked and log the user out for no reason.
+  // `AUTH-27`, continued: one rotation for two concurrent 401s.
   it('rotates once for two calls that 401 together', async () => {
     const { transport, seen } = expiringTransport();
 
@@ -224,6 +232,8 @@ describe('createAppContainer', () => {
     expect(seen.filter((request) => request.path === '/v1/auth/refresh')).toHaveLength(1);
   });
 
+  // `AUTH-28` note: with no stored session the container talks to nobody, which is what
+  // makes `AUTH-26`'s adoption observable at all.
   it('starts anonymous, and leaves the store unclaimed, with no stored session', async () => {
     const { transport, seen } = scriptedTransport(() => ({
       status: 200,
@@ -244,6 +254,7 @@ describe('createAppContainer', () => {
   });
 
   // The live half of TVO-16, through the real wiring: a second account on the same device.
+  // `AUTH-28`. The live half of `TVO-16` at the wiring layer.
   it('wipes the previous user out of the opened database when another signs in', async () => {
     const { transport } = scriptedTransport(() => ({ status: 200, body: {}, requestId: null }));
     const container = await createAppContainer({

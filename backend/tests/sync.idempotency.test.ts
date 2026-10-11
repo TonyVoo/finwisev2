@@ -506,6 +506,7 @@ describe('the idempotency ledger is bounded by the tombstone horizon', () => {
   const ledgerRows = async (): Promise<number> =>
     getPrisma().syncMutation.count({ where: { userId: user.user.id } });
 
+  // `SYNC-39`. Was expected-fail until `9f2edc8`; re-tested and green since.
   it('prunes a ledger entry older than the tombstone horizon', async () => {
     await pushAndAgeLedgerRow(91);
 
@@ -514,6 +515,8 @@ describe('the idempotency ledger is bounded by the tombstone horizon', () => {
     expect(await ledgerRows()).toBe(0);
   });
 
+  // `SYNC-39`'s guard, and now the load-bearing half: over-pruning would break
+  // de-duplication inside the retry window, which costs the user their data rather than disk.
   it('leaves a ledger entry inside the horizon alone', async () => {
     await pushAndAgeLedgerRow(89);
 
@@ -526,6 +529,8 @@ describe('the idempotency ledger is bounded by the tombstone horizon', () => {
     expect(await ledgerRows()).toBe(1);
   });
 
+  // `SYNC-40`. The discovery branch the cheap fix would have missed - an account that
+  // mutates and never deletes has no tombstone for the other two UNION branches to see.
   it('visits a user whose only stale rows are in the ledger', async () => {
     // No tombstone anywhere for this user — just an aged ledger row.
     await pushAndAgeLedgerRow(91);
@@ -547,6 +552,7 @@ describe('the idempotency ledger is bounded by the tombstone horizon', () => {
    * then swept the wrong thing, or one that deleted without reporting a count — and the
    * count is what `prune:tombstones` logs, so it is the only visibility an operator has.
    */
+  // `SYNC-40`, continued: through the aggregate the scheduled script actually calls.
   it('deletes the stale ledger row when the scheduled job runs', async () => {
     await pushAndAgeLedgerRow(91);
 

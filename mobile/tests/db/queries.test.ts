@@ -106,6 +106,8 @@ describe('queries', () => {
       expect(remaining).toHaveLength(2);
     });
 
+    // `CAT-17`. `pending` is derived from the outbox per read, never stored as a column
+    // that could fall out of step with it.
     it('marks a row pending while an undrained outbox entry references it', async () => {
       await applyLocalMutation(
         database,
@@ -124,6 +126,8 @@ describe('queries', () => {
       ]);
     });
 
+    // `CAT-17`, continued: an expense's outbox entry names its category in `fields`, not in
+    // `recordId`, so a clock glyph must not appear on a category the user never touched.
     it('does not mark a category pending because an expense is pending', async () => {
       await pull({ id: ids.bills, name: 'Bills' });
       await applyLocalMutation(
@@ -182,6 +186,7 @@ describe('queries', () => {
       expect(await countPendingRecords(database)).toBe(0);
     });
 
+    // `CAT-17` and `SYNC-04`'s unit half: distinct *records*, so three edits of one row is 1.
     it('counts one record per row, not one per edit', async () => {
       await applyLocalMutation(
         database,
@@ -229,6 +234,7 @@ describe('queries', () => {
       expect(await countPendingRecords(database)).toBe(2);
     });
 
+    // `CAT-17`, continued: an undelivered delete is itself the pending thing.
     it('still counts a record whose row is tombstoned', async () => {
       await pull({ id: ids.bills, name: 'Bills' });
       await applyLocalMutation(

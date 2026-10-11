@@ -38,6 +38,9 @@ beforeEach(async () => {
 });
 
 describe('a pull that overlaps an uncommitted write', () => {
+  // `SYNC-51`. Passes and *cannot do otherwise*: MVCC hides an uncommitted counter
+  // increment from every reader whatever this code does, so it characterises Postgres
+  // rather than the pull. `SYNC-52` below is the variant that can fail.
   it('neither delivers the row nor advances the cursor past it', async () => {
     // The hazard `revision.ts` names as the reason a timestamp cursor is unusable: "a
     // cursor can be advanced past a row whose transaction had not yet committed, so the
@@ -88,6 +91,8 @@ describe('a pull that overlaps an uncommitted write', () => {
     expect(after.changes.map((change) => change.record.id)).toContain(id);
   });
 
+  // `SYNC-52`. The violation `revision.ts` requirement 1 forbids - a revision drawn in its
+  // own committed transaction - survived only because `nextCursor` comes from the page.
   it('does not strand a row whose revision was committed ahead of it', async () => {
     // The case above passes under every regression tried against it, because MVCC hides
     // an uncommitted counter increment from every reader no matter what this code does.
