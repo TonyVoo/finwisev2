@@ -180,6 +180,27 @@ database was discarded and the run still went to `expense_tracker_test`.
 So: one API-layer pass per machine at a time. If two people — or two agents in one workspace —
 need to run the suite simultaneously, one of them edits `backend/.env` first.
 
+### Concurrency is a dimension, not a layer — executed 2026-10-11
+
+Two requests in flight at once is the only way to reach several deliberately-written code paths,
+and it needs no new tooling: `Promise.all` over `supertest`, plus `getPrisma().$transaction` to hold
+a write uncommitted on one connection while a request runs on another. `fileParallelism: false`
+and the truncate-between-tests rule are unaffected — the concurrency is *within* one test.
+
+What this buys, and what it does not:
+
+- **Reaches** the push's `LostCreateRace` retry (`sync.idempotency.test.ts`, both documented
+  outcomes) and the revision counter's row lock (§8.11). Neither is reachable sequentially.
+- **Does not reach** `readPage`'s `RepeatableRead` snapshot, measured — see **GAP 18**. The window
+  is the gap between two queries on one connection.
+- **Holding a transaction open across an HTTP request** needs Prisma's `timeout` and `maxWait`
+  raised from their 5-second defaults, or the held transaction expires mid-case and the failure
+  looks like a product defect rather than a harness limit.
+- **A walk against a moving database must sample "is the writer done?" before each request, not
+  after.** Sampling after lets the writer finish during the round trip, so an empty page read
+  before its last commit reads as "caught up for good". That cost me a false failure in `SYNC-55`;
+  it is written into the case.
+
 ### The integration layer, and the two things it cannot see — executed 2026-10-10
 
 `backend/tests/integration.mobileClient.test.ts` boots `createApp()` on an ephemeral port with
@@ -2274,6 +2295,159 @@ is a fair measure of how settled the wrong shape had become.
 
 ---
 
+### 8.11 The pull side, against a database that is still moving
+
+Defends: `syncPullService.ts`'s own ranking — *"Never skip a row. A skipped row is permanent,
+silent data loss on the device: the cursor has moved past it and nothing will ever send it
+again."* — and `revision.ts`'s two stated consequences.
+
+Every concurrency case already in this suite is **push against push**: `sync.idempotency.test.ts`
+races two requests to write the same row, and both halves of the create race are covered there. The
+**pull** had never been run against a database that was changing underneath it. That is the
+asymmetry this subsection closes, and it matters because the two mechanisms protecting the pull are
+both unreachable from a sequential test:
+
+1. `revision_counters` is incremented by `UPDATE ... RETURNING` **inside** the writing transaction,
+   so concurrent writers serialise on its row lock and no two rows can share a revision.
+2. `readPage` reads both tables from one `RepeatableRead` snapshot, so a write committing between
+   the two queries cannot leave a hole in the merged page.
+
+The strong property is asserted across a whole cursor walk rather than on one page (`SYNC-55`):
+*every row arrives exactly once, and a revision already delivered is never followed by a lower
+one.* A page-at-a-time assertion cannot tell that apart from a cursor that stepped over a row.
+
+Two things this subsection established about the cases themselves, both worth more than the
+verdicts:
+
+- **`revision.test.ts`'s non-repetition case cannot fail.** It asserts "hands out strictly
+  increasing, never-repeated revisions" from a `for` loop with an `await` in it, and its comment
+  says "two rows sharing a revision means one of them can be stepped over". One writer at a time
+  can never produce that. Measured: with the counter's `UPDATE ... RETURNING` replaced by a plain
+  `SELECT` (no row lock, so two transactions read the same value and both compute the same block),
+  **all 6 cases in `revision.test.ts` stayed green** while `SYNC-53` and `SYNC-54` went red. Same
+  pattern as `CAT-01`, in the foundation of the sync protocol rather than in a list order.
+- **`SYNC-51` cannot fail either, and is recorded as such.** No regression tried against it changes
+  its verdict, because MVCC hides an uncommitted counter increment from every reader whatever this
+  code does. It characterises Postgres, not the pull. `SYNC-52` is the version that *can* fail, and
+  the pair is the point: the cursor rule and the in-transaction rule are independent defences.
+
+See **GAP 18** for the one mechanism here that no black-box case can guard.
+
+### SYNC-51 — A pull overlapping an uncommitted write sees neither the row nor its revision
+
+- **Layer** API (automated: `backend/tests/sync.pullConcurrency.test.ts`)
+- **Pre** `F-FRESH`, watermark at 6
+- **Steps**
+  1. Open a transaction, draw a revision with `nextRevision`, insert an expense stamped with it,
+     and **do not commit**
+  2. While it is open, `GET /v1/sync?since=6` on another connection
+  3. Commit, then pull again from the cursor step 2 returned
+- **Expect** Step 2 returns no changes and `nextCursor: 6` — the echoed `since`, strictly below the
+  allocated revision, never the counter's value (which the uncommitted increment has already
+  moved). Step 3 delivers the row, so the device that polled at the wrong moment is not the device
+  that loses it.
+- **Result — passes, and cannot do otherwise.** See the note above: this is Postgres' guarantee
+  rather than this code's. Kept because it is the hazard `revision.ts` names as the reason a
+  timestamp cursor is unusable, and because a reader of `SYNC-52` needs it to see what the
+  difference is.
+
+### SYNC-52 — A revision committed ahead of its row does not strand the row
+
+- **Layer** API (automated, same file)
+- **Pre** `F-FRESH`, watermark at 6
+- **Steps**
+  1. Draw a revision with `nextRevision` **in its own transaction**, so it commits alone — the
+     violation `revision.ts` requirement 1 forbids ("call this inside the transaction that performs
+     the write"). The counter is now at 7 with no row at 7
+  2. In a second, still-open transaction, insert the expense stamped 7
+  3. While it is open, `GET /v1/sync?since=6`
+  4. Commit, then pull from the cursor step 3 returned
+- **Expect** Step 3: an empty page with `nextCursor: 6`, **not** 7. Step 4 delivers the row. A
+  client that had stored 7 would ask for `> 7` for ever and nothing would send it this row again.
+- **Result — passes.** This is the case that shows the two rules are independent: the row survives
+  a violation of requirement 1 only because `nextCursor` comes from the page. Reddens when
+  `nextCursor` is sourced from `snapshot.lastRevision`.
+
+### SYNC-53 — Concurrent writers for one account each get a distinct revision
+
+- **Layer** API (automated, same file)
+- **Pre** `F-FRESH`, watermark at 6
+- **Steps**
+  1. Issue 10 `POST /v1/expenses` for the same user **in flight at the same time**
+  2. Read each response's `revision`, and the counter afterwards
+- **Expect** All 10 are `201`. The revisions are 10 distinct values, exactly `7..16` with no repeat
+  and no gap, and the counter ends at 16. A repeated revision means a cursor can step over one of
+  the two rows permanently — and the `@@unique([userId, revision])` backstop would surface it as a
+  `500` on a request that is entirely within spec.
+- **Result — passes.** Reddens when the counter's row lock is removed; see the note above for what
+  stays green when it is.
+
+### SYNC-54 — One account is not serialised behind another
+
+- **Layer** API (automated, same file)
+- **Pre** Two fresh accounts
+- **Steps**
+  1. Issue 4 concurrent `POST /v1/expenses` for each account, all 8 in flight together
+  2. Pull each account from `since=6`
+- **Expect** Each account's own four rows are `7, 8, 9, 10` — contiguous from its own watermark,
+  with no numbers consumed by the other. A global lock or a shared sequence would still hand out
+  distinct revisions, so independence has to be checked separately.
+- **Result — passes.**
+
+### SYNC-55 — A client walking the cursor while writes commit receives every row exactly once
+
+- **Layer** API (automated, same file)
+- **Pre** `F-FRESH`
+- **Steps**
+  1. Start a writer committing 18 rows, alternating `POST /v1/categories` and `POST /v1/expenses`
+     so both tables advance
+  2. Concurrently, walk the documented loop — `GET /v1/sync?since=<nextCursor>&limit=3`, following
+     `hasMore` — until the writer has finished *and* the walk is caught up
+  3. Drain once more from the final cursor
+- **Expect** 24 changes delivered (6 seeded categories + 18), **no id twice**, every written id
+  present, revisions ascending across the *whole* walk rather than within each page, more than one
+  page involved, and the drain empty.
+- **Result — passes.** Reddens when `nextCursor` is sourced from the watermark.
+- **Note on stopping.** The walk must sample "has the writer finished?" **before** issuing each
+  pull, not after. Sampling it afterwards lets the writer finish during the round trip, so an empty
+  page read before its last commit looks like "caught up, and nothing more is coming" and the walk
+  stops one row short. My first version did exactly that and the drain assertion caught it — the
+  same mistake in the test as the one the protocol has to avoid in the client, and the reason step
+  3 is in the case rather than being redundant.
+
+### SYNC-56 — A walk never hands over an expense before the category it references
+
+- **Layer** API (automated, same file)
+- **Pre** `F-FRESH`
+- **Steps**
+  1. Start a `POST /v1/sync` batch creating a category and an expense that references it
+  2. Concurrently walk with `limit=1`, and at the moment **each** expense arrives, assert its
+     `categoryId` is one already delivered
+- **Expect** The assertion holds on arrival, not merely at the end of the walk. The push is one
+  transaction and revisions are allocated in dependency order, so the walk sees both rows or
+  neither.
+- **Result — passes.** This is the ordering half of `openapi.yaml`'s promise that
+  `Expense.categoryId` is "always a live category of the same user"; `SYNC-43` and **GAP 15** are
+  the half where that promise is false. Reddens when `nextCursor` is sourced from the watermark.
+
+### SYNC-57 — [BLOCKED-BY-GAP 18] The pull reads both tables at the isolation level it claims
+
+- **Layer** API
+- **Pre** None — this is a guard on a setting, not on a behaviour
+- **Steps**
+  1. Read the isolation level `syncPullService.ts` passes to `$transaction`
+- **Expect** `RepeatableRead`. Written as a structural assertion on purpose: the behaviour it
+  protects — a write committing between the page's two queries — needs a window of roughly a tenth
+  of a millisecond to be hit, so any behavioural case for it would be probabilistic, and a case
+  that fails a few percent of the time costs more than it buys
+- **Why it is parked, and what unblocks it** The level is inline in the call, so there is nothing to
+  assert against. Lifting it into an exported `PULL_TRANSACTION_OPTIONS`, mirroring the push side's
+  existing `PUSH_TRANSACTION_OPTIONS`, lands this case unchanged — measured in GAP 18: the case
+  passes with the constant in place and reddens alone when the level is flipped. Until then the
+  line is defended by its comment only, and **342 backend cases pass without it**
+
+---
+
 ## 9. The named edge cases
 
 These are the cases the task singles out. Each one is here because it has a plausible wrong
@@ -2841,6 +3015,7 @@ no new `revision`, and another account's id rejected as `400 validation_error`.
 | 15  | An orphaned category tombstone outlives the horizon (filed, backend)   | Medium   | nothing            |
 | 16  | The client/server seam cannot reach `authorize.ts` (`TVO-23`)          | Low      | `API-19`           |
 | 17  | The outbox does not coalesce, so a conflict resolves per field (`TVO-24`) | Low      | nothing            |
+| 18  | The pull's `RepeatableRead` snapshot is load-bearing and unasserted (`TVO-25`) | Low      | `SYNC-57`          |
 | 5   | A future-dated row arriving by sync is unreachable in every view     | Medium   | `EDGE-04`          |
 | 7b  | `immutable_field` is unreachable on the **REST** path                | Low      | `API-04` (half)    |
 | 9   | No E2E driver is named in `docs/PLAN.md` §7                          | Low      | 7 cases run manual |
@@ -3190,6 +3365,51 @@ pushed from a real outbox. The cost is that two design docs describe a client th
 whoever writes `TVO-13` will build against one of them. Filed as **`TVO-24`**, unassigned, with
 the Designer as the recommended owner. Blocks nothing — the four cases in §8.10 are green and
 record the behaviour either decision has to account for.
+
+### GAP 18 — The pull's snapshot isolation is load-bearing and nothing asserts it — **OPEN**
+
+Filed as `TVO-25` (low, Backend Dev). Not a defect: the code is correct today. The finding is that
+the **one mechanism standing between a two-table merge and the loss this codebase ranks first is
+unguarded**, and I measured exactly how unguarded.
+
+`readPage` reads categories and expenses from one `RepeatableRead` transaction, and its doc comment
+says plainly why: *"The transaction is the load-bearing part, and `RepeatableRead` is why it exists
+rather than being an optimisation"*, followed by the three-step interleaving that loses a row under
+the default `READ COMMITTED` — the categories query returns up to revision 40, a write commits a
+category at 41 and an expense at 42, the expenses query returns 42, and the category at 41 is never
+delivered to that device again.
+
+**Measured.** With `isolationLevel` changed to `'ReadCommitted'`, **all 342 backend cases pass** —
+including the six new cases in §8.11, and including `SYNC-55`, which is the case most likely to
+catch it. Three repeat runs, same result. The window to hit is the gap between two queries issued
+back to back on one connection, on the order of a tenth of a millisecond, so a black-box test would
+have to be probabilistic to see it, and a test that fails a few percent of the time is worse than
+no test at all. **So no case in this plan can defend this line, and I am not going to pretend one
+does.** That is the whole gap.
+
+**The asymmetry that makes it worth filing.** The push side of the same pair is guarded. Its
+settings are a named constant, `PUSH_TRANSACTION_OPTIONS`, whose comment says *"`isolationLevel` is
+the one with teeth"* and explains that `RepeatableRead` would break the idempotency and create
+races. Measured in the other direction: raising the push to `'RepeatableRead'` reddens **exactly
+the 2 cases its comment names** and nothing else. So one half of the sync service has its isolation
+level pinned by tests and the other half has it pinned by a comment, and it is the second half that
+protects against silent data loss.
+
+**Recommended fix, applied and measured rather than proposed on paper.** Mirror the push: lift the
+inline options into an exported constant and assert it.
+
+```ts
+export const PULL_TRANSACTION_OPTIONS = { isolationLevel: 'RepeatableRead' } as const;
+```
+
+With that in place a one-line case passes, and flipping the level to `'ReadCommitted'` reddens it
+alone. Verified, then reverted — the source change is Backend Dev's, not something to land under a
+QA test commit. The case is **parked** until it does, because it cannot be written against the
+current shape of the module.
+
+This is a structural guard, not a behavioural one, and that is the right trade here: the behaviour
+is not reachably testable, so the thing to pin is the setting. It is the same reasoning that made
+`PUSH_TRANSACTION_OPTIONS` a named constant in the first place.
 
 ### GAP 1 — Who seeds the default categories, and the duplicate-six risk — **CLOSED**
 
@@ -3625,6 +3845,9 @@ bugs, and this is what proves none of them came back. Target: under 30 minutes p
 - [ ] A category plus an expense assigned to it, both created offline, sync in one round trip
 - [ ] A retried push after a dropped response leaves **exactly one** row at the same `revision`
 - [ ] An offline delete is still deleted after a subsequent pull
+- [ ] Two devices on one account syncing **at the same moment** — every row the server holds
+      reaches both exactly once, and neither ends on a revision the other skipped
+      (`SYNC-53`, `SYNC-55`, `SYNC-56`). The failure here is permanent and silent on the device
 - [ ] The same row edited on two devices converges on the newer `updatedAt`, loser overwritten,
       user not notified
 - [ ] Edit **one** expense twice offline, with another device editing it in between, then
