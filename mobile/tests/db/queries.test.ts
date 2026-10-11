@@ -142,7 +142,7 @@ describe('queries', () => {
     });
 
     /**
-     * [GAP 12] `ORDER BY c.name` uses SQLite's default BINARY collation, so every
+     * `CAT-15` [GAP 12] `ORDER BY c.name` uses SQLite's default BINARY collation, so every
      * capital letter sorts before every lowercase one. A user whose categories are
      * `Bills`, `rent`, `Transport` sees `rent` after `Transport`.
      *
@@ -159,7 +159,7 @@ describe('queries', () => {
     });
 
     /**
-     * [GAP 12] The query does not pin the `isDefault` row last
+     * `CAT-16` [GAP 12] The query does not pin the `isDefault` row last
      * (`docs/design/07-categories.md` §1 state `default`). `Uncategorized` sorts last
      * among the six seeded names by accident, which is why nothing has noticed; the
      * first category a user adds that sorts after it exposes the order.
