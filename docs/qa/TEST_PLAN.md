@@ -1,6 +1,6 @@
 # MVP Test Plan
 
-Owner: QA Tester · Status: ready to execute · Last updated: 2026-10-10
+Owner: QA Tester · Status: ready to execute · Last updated: 2026-10-11
 
 Written in Wave 1 against the contract and the designs, **before** the features land, so that it
 is ready the moment they do — and so that the gaps in §11 were found by writing it rather than by
@@ -104,6 +104,21 @@ survives (`SYNC-50`); what differs is which of the user's edits do. The finding 
 a Result this plan had already recorded: `SYNC-04` says three edits leave three outbox entries,
 under a case titled "coalesces instead of queueing twice", and nobody had noticed the contradiction
 — including whoever wrote it down.
+
+**The contract's conventions list had never been read adversarially, and it is self-contradictory —
+GAP 19.** Every gap before this one came out of a schema, a design rule, the landed code, or a
+result this plan had already recorded. GAP 19 came out of four sentences of prose about how the API
+is permitted to change. `openapi.yaml` says responses are *not* closed and that clients should
+"ignore fields you do not know"; `docs/api/README.md` says a new optional field is a fine additive
+change inside `/v1`; every response schema in that same document sets `additionalProperties: false`;
+and the client parses every success body with a `z.strictObject`. `API-20`–`API-24` add one key to
+an otherwise-documented body and drive the real client: the expense list, the sync pull on the
+envelope *and* nested in a row, and a push result all reject it. So the one change the contract
+calls safe would stop **every installed app** from working. `API-24` bounds that — the refresh
+failure is not an `ApiRequestError`, so the session survives and the local database is untouched, and
+no user's unsynced work is lost. Patching the client to ignore unknown keys leaves all 208
+pre-existing mobile cases green, which is how unpinned this was: the two existing shape-error cases
+send a *missing* field and a *malformed* one, and neither is the additive case.
 
 Inputs this plan was derived from, and the authority order when they disagree:
 
@@ -217,7 +232,11 @@ which arrives as a `500`. Probed by making `toWireCategory` emit a non-ISO `crea
 cases failed, every one of them on a 500, and none of them on a response-shape failure in the
 integration file. That guard is `validateResponses: !isProduction`, so in production it is **off**
 and the client's parse is the only check left — which is why that path belongs in the mobile suite's
-scripted-transport cases, where the server can be made to answer anything.
+scripted-transport cases, where the server can be made to answer anything. **That is now done**:
+`API-20`–`API-24` in `mobile/tests/api/responseForwardCompat.test.ts`, and they produced GAP 19.
+Note what the two layers divide between them — the integration layer proves the server does not
+*accidentally* emit an undocumented field, and the scripted layer proves what happens when it does
+so *deliberately*, which is the version-skew case no amount of monorepo discipline prevents.
 
 **It cannot reach `api/authorize.ts`**, the 401 interceptor — and the reason is a typecheck one, not
 a runtime one. A *type-only* import of `SessionController` puts `auth/session.ts` into the backend's
@@ -2955,6 +2974,79 @@ and they are where a security or correctness regression shows up first.
   `mobile/tests/api/authorize.test.ts` and `authorizeSessionChange.test.ts` — 19 cases and every
   interleaving; what is missing is only that those answers are hand-written
 
+### API-20 — A new optional field on a response envelope
+
+- **Layer** Unit (`mobile/tests/api/responseForwardCompat.test.ts`)
+- **Pre** None. A transport answering `200` with a body this case supplies
+- **Steps**
+  1. `listExpenses()` against the documented `{ data, nextCursor, hasMore }`
+  2. `listExpenses()` against the same body plus `totalCount: 1`
+- **Expect** Step 1 resolves. Step 2 **rejects with `ResponseShapeError`**. The only difference
+  between the two bodies is the one extra key, so the rejection is attributable to it and nothing
+  else about the fixture
+- **Result — PASSES** (the client rejects it)
+- **What this is a case about** `openapi.yaml`'s conventions list says responses are *not* closed
+  "for the client's purposes — ignore fields you do not know", and `docs/api/README.md` calls "a new
+  optional field" an acceptable additive change inside `/v1`. This is that change, and an installed
+  client does not ignore it. See GAP 19 — **these five cases assert today's behaviour, not a
+  preferred fix, and they are the ones to flip when GAP 19 is decided**
+
+### API-21 — A new field inside a row, and the path the error names
+
+- **Layer** Unit (`mobile/tests/api/responseForwardCompat.test.ts`)
+- **Pre** None
+- **Steps**
+  1. `listExpenses()` against `{ data: [{ ...expense, tags: ['work'] }], nextCursor: null, hasMore: false }`
+- **Expect** Rejects with `ResponseShapeError` whose message contains both `tags` and `data.0` —
+  `z.strictObject` is recursive, so a new column on `expenses` breaks the same way a new envelope
+  key does. The path matters on its own: it is the only diagnostic a report from a real device
+  would carry
+- **Result — PASSES**
+
+### API-22 — The same field on the sync pull, which is the one that matters
+
+- **Layer** Unit (`mobile/tests/api/responseForwardCompat.test.ts`)
+- **Pre** None
+- **Steps**
+  1. `pullSync()` against the documented page
+  2. `pullSync()` against the same page plus `serverRevision`
+  3. `pullSync()` against the same page with an extra key inside `changes[0].record`
+- **Expect** Step 1 resolves with `nextCursor: 7`. Steps 2 and 3 both reject with
+  `ResponseShapeError`. A client that cannot parse `SyncPullResponse` **cannot sync at all**: local
+  writes stay in the outbox, the sync pill reads `pending` indefinitely, and nothing surfaces
+  server-side, because the failure is in the client's own parse
+- **Result — PASSES**
+
+### API-23 — The same field on a push result
+
+- **Layer** Unit (`mobile/tests/api/responseForwardCompat.test.ts`)
+- **Pre** None
+- **Steps**
+  1. `pushSync(batch)` against a documented one-result response
+  2. `pushSync(batch)` against the same response plus `appliedCount`
+- **Expect** Step 1 resolves with `serverRevision: 9`. Step 2 rejects with `ResponseShapeError`.
+  Worse here than on the pull, because the batch **has already been applied server-side**: the
+  client cannot read the results, so it cannot clear its outbox, and the retry replays ids the
+  server has recorded — idempotent by `clientMutationId`, so correct, but the row never leaves
+  `pending`
+- **Result — PASSES**
+
+### API-24 — What it costs: the session survives, and the local database is untouched
+
+- **Layer** Unit (`mobile/tests/api/responseForwardCompat.test.ts`)
+- **Pre** A signed-in session whose `refreshTokens` answers a valid `TokenPair` plus one extra key
+- **Steps**
+  1. `ensureFreshAccessToken('access-1')`
+- **Expect** Rejects with `ResponseShapeError`, which is **not** an `ApiRequestError`, so it is not
+  in `UNRECOVERABLE_CODES` and `performRefresh` rethrows rather than calling `discard`. The session
+  snapshot is still `authenticated` and the token store still non-null
+- **Result — PASSES**
+- **Why this case bounds the severity** It is the difference between "every installed app stops
+  working" and "every installed app loses the user's unsynced work". The second does not happen.
+  It is also the branch a careless widening of `UNRECOVERABLE_CODES` would break, which would turn
+  an additive response field into exactly the data-loss path `AUTH-12` exists to rule out — so the
+  case is here to defend that, not only to record it
+
 ---
 
 ---
@@ -2984,6 +3076,11 @@ own Result says three edits of one row leave three outbox entries, under a case 
 instead of queueing twice". Nobody noticed the contradiction, including whoever wrote it down. GAP 2's chosen branch has
 a documented cost, and measuring it showed the cost is not the transient GAP 2 recorded: it breaks
 a wire-contract guarantee, and it produces a tombstone the 90-day horizon never collects.
+**GAP 18** came from a dimension this suite did not have — two things happening at once — and
+**GAP 19** from the only input this plan had never read adversarially: the contract's *conventions
+list*, the prose above the schemas. Every earlier gap came from a schema, a design rule or the
+landed code. This one is four sentences about how the API is allowed to change, and they contradict
+each other, the document's own schemas, and the client.
 
 The numbering is kept stable so the TVO-5 thread still reads correctly, and closed entries are kept
 rather than deleted, so the decision stays recorded where the test that depends on it can find it.
@@ -3016,6 +3113,7 @@ no new `revision`, and another account's id rejected as `400 validation_error`.
 | 16  | The client/server seam cannot reach `authorize.ts` (`TVO-23`)          | Low      | `API-19`           |
 | 17  | The outbox does not coalesce, so a conflict resolves per field (`TVO-24`) | Low      | nothing            |
 | 18  | The pull's `RepeatableRead` snapshot is load-bearing and unasserted (`d0c66465`) | Low      | `SYNC-57`          |
+| 19  | The `/v1` additive-only policy breaks every installed client (`917f33d0`) | Medium   | nothing            |
 | 5   | A future-dated row arriving by sync is unreachable in every view     | Medium   | `EDGE-04`          |
 | 7b  | `immutable_field` is unreachable on the **REST** path                | Low      | `API-04` (half)    |
 | 9   | No E2E driver is named in `docs/PLAN.md` §7                          | Low      | 7 cases run manual |
@@ -3040,6 +3138,13 @@ needs its owner's input rather than a ruling, and none of it blocks executing §
 Designer's, GAP 9 wants Mobile Dev's agreement on a driver before 7 cases stop being manual, GAP 10
 wants numbers from whoever sets the limits, and GAP 7b is a contract-hygiene choice between two
 one-line fixes.
+
+**GAP 19 is the one with a shipping deadline on it**, and it is the only open gap whose cost rises
+with time rather than staying flat. It is not a defect in anything running today — no app is
+deployed and inside this repo both sides always carry the same `shared/` — but the contract's own
+evolution policy instructs people to make the one change that would break every installed copy, and
+the fix is one line while nobody is holding one. It needs a contract ruling from Chief before it
+needs any code from Mobile Dev.
 
 ### GAP 11 — A session change is not atomic, and the destructive half runs first — **OPEN**
 
@@ -3410,6 +3515,76 @@ current shape of the module.
 This is a structural guard, not a behavioural one, and that is the right trade here: the behaviour
 is not reachably testable, so the thing to pin is the setting. It is the same reasoning that made
 `PUSH_TRANSACTION_OPTIONS` a named constant in the first place.
+
+### GAP 19 — The contract's evolution policy and the client's response parsing are opposites — **OPEN**
+
+Filed as `917f33d0` (medium, Chief's call on the contract; the code change is Mobile Dev's). Not a
+defect in anything running today: no app is deployed, and inside this monorepo both sides always
+carry the same `shared/`. It is **a trap that arms itself the day the app ships**, and the cost of
+disarming it is one line while nobody is holding an installed copy.
+
+**Four statements, and they cannot all be true.**
+
+1. `openapi.yaml` conventions, "Unknown fields are rejected": *"Every request body is validated
+   closed (`additionalProperties: false`) … **Responses are _not_ closed for the client's purposes —
+   ignore fields you do not know.**"*
+2. `openapi.yaml` conventions, base path: *"A breaking change ships as `/v2`; this version is
+   **additive-only**."* `docs/api/README.md` spells out what that permits: *"Additive changes within
+   `/v1` are fine — a new optional field, a new endpoint."*
+3. Every response schema in `openapi.yaml` is `additionalProperties: false`. Measured over all 26
+   object schemas in `components.schemas`: not one is open except `ErrorDetails`. So the document
+   closes responses in the same breath as its prose says they are not closed.
+4. `mobile/src/api/client.ts` parses every success body with the `shared/` schema, each of which is
+   a `z.strictObject`, and an unrecognised key is a `ResponseShapeError`. Its doc comment gives the
+   reason: *"Both sides ship from the same `shared/` version, so there is no older-client case to
+   stay permissive for."*
+
+Statement 4's premise is false for a mobile app. The backend deploys; the app is whatever version
+the user last installed, or never installed. This app is designed *around* stale clients — a 60-day
+refresh window, an offline store, background sync — so "both sides ship together" is the one
+assumption its own architecture rules out.
+
+**Measured, not argued.** `API-20`–`API-24` add exactly one key to an otherwise documented body and
+drive the real client. Every operation that matters rejects it: the expense list, the sync pull on
+the envelope *and* nested in a row, and a push result. The consequence is bounded by `API-24` and it
+is worth stating precisely, because the dramatic reading is wrong: a `ResponseShapeError` out of the
+refresh is not an `ApiRequestError`, so it misses `UNRECOVERABLE_CODES`, `performRefresh` rethrows
+instead of calling `discard`, and the session and the local database both survive. **Every installed
+app stops working; none of them loses the user's unsynced work.**
+
+**What was unpinned, and by how much.** Patching `send` to ignore `unrecognized_keys` issues — the
+shape the lenient fix would take — leaves **all 208 pre-existing mobile cases green** and reddens
+only the five new ones. The two existing `ResponseShapeError` cases in `client.test.ts` do not
+notice, and they could not: one sends a *missing* field and the other a *malformed* one. Both of
+those are bugs on one side or the other. An **extra** field is not — it is the one change the
+contract explicitly permits — and nothing in this repo had ever sent one.
+
+**There is also no version negotiation of any kind.** No `X-Api-Version`, no minimum-client header,
+no `User-Agent` convention — grepped across `openapi.yaml`, `shared/src` and `mobile/src/api`. So
+the server cannot detect a stale client, and the client cannot be told to update. Whatever is
+decided below, that absence is the reason the failure would arrive as an unexplained dead app rather
+than an update prompt.
+
+**The decision, and the two branches.** This plan's own authority order (§preamble, rule 2) says the
+zod schema wins where a body and the YAML disagree — which settles it in favour of *closed*
+responses and makes statements 1 and 2 the wrong ones. If that stands:
+
+- Correct `openapi.yaml`'s conventions list and `docs/api/README.md`, and say plainly that **an
+  additive response field is a `/v2` concern**, not a `/v1` one. "Additive-only" currently reads as
+  a permission and is in fact a prohibition.
+- Decide the version-negotiation question before the app ships, or accept that the first additive
+  response change requires every user to update first.
+
+The other branch — make *response* parsing lenient while requests stay strict — is defensible and
+cheap today: it is what statement 1 already promises, it costs the `undefined`-spreading protection
+`client.ts` argues for, and it would redden exactly the five cases above. `SYNC-50`'s lesson applies
+to the client side of it: leniency must drop unknown keys, not pass the raw body through, or an
+unparsed response reaches the store.
+
+I have **not** written an expected-fail case for either branch. An `it.failing` asserting leniency
+would encode a decision nobody has made and stay red indefinitely — the `AUTH-21` mistake. The five
+cases assert what the client measurably does, and they are listed here so whichever branch is taken
+knows which cases it is expected to flip.
 
 ### GAP 1 — Who seeds the default categories, and the duplicate-six risk — **CLOSED**
 
@@ -3870,6 +4045,11 @@ bugs, and this is what proves none of them came back. Target: under 30 minutes p
 - [ ] The mobile client, driven against a real server, completes the REST surface, a cursor-paged
       list, a push/pull round trip and a `204` with no `ResponseShapeError` (`API-13`–`API-18`) —
       this is the only check that runs one side's requests through the other's parser
+- [ ] Install the **previous** release on one device, point it at the current server and use it —
+      list a month, pull, push, let an access token expire. Any `ResponseShapeError` means a
+      response field was added since that build, and by GAP 19 that is a `/v2` change, not the
+      additive one `/v1` advertises (`API-20`–`API-24` are the unit half; this is the only check
+      that sees a real version skew, and it cannot be run until there is a previous release)
 - [ ] `pnpm lint && pnpm typecheck && pnpm test` is green
 
 **Accessibility**
