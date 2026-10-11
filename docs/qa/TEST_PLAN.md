@@ -181,6 +181,37 @@ IDs are stable and are quoted in bug reports and in commit messages.
 | `EDGE` | The named edge cases       | 9   |
 | `API`  | Cross-cutting API contract | 10  |
 
+**An automated case must name its own id inside the test file**, not only in its `**Layer**` line
+here. The id is the handle a bug report, a commit message and a gap entry all use, so a fixer's
+first move is to grep for it — and a case whose assertions live in a file that never mentions it
+answers that grep with this document and not the test. That is how `CAT-15` and `CAT-16` came to be
+cited as live tripwires by a gap entry while `queries.test.ts` named neither. Checked mechanically
+rather than by eye, since eight cases were in that state when it was first swept on 2026-10-11:
+
+```sh
+# every `### ID` whose `**Layer**` names a file, against that file's contents
+python - <<'EOF'
+import io, re, os
+rows, cur = [], None
+for line in io.open('docs/qa/TEST_PLAN.md', encoding='utf-8'):
+    m = re.match(r'^### ([A-Z]+-\d+)', line)
+    if m: cur = m.group(1); continue
+    if cur and line.strip().startswith('- **Layer**'):
+        rows.append((cur, re.findall(r'`([^`]*tests/[^`]*\.tsx?)`', line))); cur = None
+for cid, files in rows:
+    for f in files:
+        body = io.open(f, encoding='utf-8', errors='replace').read() if os.path.exists(f) else ''
+        if cid not in body: print('unnamed:', cid, f)
+EOF
+```
+
+It also catches the reverse, which is the more expensive direction: a `**Layer**` pointing at a file
+that has been renamed or deleted. What it does **not** check is that the id sits on the right `it`:
+it asks whether the file mentions the id at all. Shown while proving the check can fail — a first
+attempt at breaking it renamed three of `CAT-17`'s four mentions and the check stayed correctly
+silent, because the fourth still named it. So this guards the grep, not the mapping; the mapping is
+read by eye when a case is written.
+
 ---
 
 ## 2. Environment and tooling
@@ -749,8 +780,10 @@ turns every case that uses it into a false green, which is worse than a fixture 
 - **Candidate fix, verified** Write the tokens, then adopt, then publish `authenticated`, clearing
   the tokens again if the adopt fails. The property `AUTH-19` depends on is preserved — nothing is
   published before the store is safe to read — and the destructive step leaves the failure path.
-  Applied locally: this case and `AUTH-21` turned red, the other 39 auth cases stayed green, then
-  reverted.
+  Applied locally: this case and `AUTH-21` turned red and every other mobile case stayed green,
+  then reverted. **Re-measured on 2026-10-11** against the whole suite rather than the auth
+  directory: 2 of 221, with `bootstrap/container.test.ts` and `auth/sessionTeardown.test.ts` —
+  both written after the original measurement — green, and `pnpm typecheck` green repo-wide.
 
 ### AUTH-21 — A half-written session reads back as one user holding another user's tokens
 
@@ -3306,9 +3339,9 @@ no new `revision`, and another account's id rejected as `400 validation_error`.
 | 13  | An in-flight request is retried under the next user's token | Medium | **TVO-20** (`1c87c76f`) | — | `AUTH-23`, `AUTH-24` flip; `AUTH-22` and `AUTH-25` must stay green |
 | 14  | Two defences for the refresh-recursion hazard; only one is live | Low | **not filed** — doc-only, for whoever next edits `container.ts` | — | nothing flips; `AUTH-27` records the limitation in the case itself |
 | 15  | An orphaned category tombstone outlives the horizon | Medium | **TVO-22** (`4c6d24c9`) | — | `SYNC-44`, `SYNC-45` flip; `SYNC-41`, `SYNC-43`, `SYNC-46` must stay green |
-| 16  | The client/server seam cannot reach `authorize.ts` | Low | **TVO-23** (`5e12a02e`) | `API-19` | `API-19` unparks and passes |
+| 16  | The client/server seam cannot reach `authorize.ts` | Low | **TVO-23** (`5e12a02e`) | `API-19` | `API-19` is **written in §10 but has no test file** — landing it is part of the fix, not a flip |
 | 17  | The outbox does not coalesce, so a conflict resolves per field | Low | **TVO-24** (`f4e9863b`) | — | no tripwire by design; `SYNC-47`–`SYNC-50` are re-read against whichever branch is chosen |
-| 18  | The pull's `RepeatableRead` snapshot is load-bearing and unasserted | Low | **TVO-25** (`d0c66465`) | `SYNC-57` | `SYNC-57` unparks |
+| 18  | The pull's `RepeatableRead` snapshot is load-bearing and unasserted | Low | **TVO-25** (`d0c66465`) | `SYNC-57` | `SYNC-57` is **written in §8 but has no test file** — landing it is part of the fix, not a flip |
 | 19  | The `/v1` additive-only policy breaks every installed client | Medium | **TVO-27** (`917f33d0`) | — | `API-20`–`API-24` flip **only** if the lenient branch is chosen; the closed branch leaves them green |
 | 20  | A refresh whose answer is lost logs the user out | Medium | **TVO-28** (`a5dc9cc1`) | — | branch 1 flips `API-25` step 3 and `AUTH-29` step 2; branches 2 and 3 leave both green, which is the honest signal that they mitigate rather than fix |
 | 21  | The contract accepts currencies the design's `decimals` rule gets wrong | Low | **TVO-29** (`dbf7b8d6`) | — | `EDGE-13` stays green under either branch; `EDGE-14` reddens if the Sheet ever gains a zero-decimal currency |
@@ -3346,6 +3379,29 @@ filing.
 GAP 11, GAP 12, GAP 13 and GAP 15 are filed defects rather than open questions, and none of them
 blocks anything: `AUTH-20`, `AUTH-21`, `CAT-15`, `CAT-16`, `AUTH-23`, `AUTH-24`, `SYNC-44` and
 `SYNC-45` are written, automated and expected-fail, so they report each fix the moment it lands.
+
+**All four candidate fixes were re-measured against the tree on 2026-10-11, and the earlier numbers
+in those entries should not have been trusted as they stood.** Each was originally measured when it
+was found, against a suite that has since grown by 43 to 53 cases: GAP 11 said "the other 39 auth
+cases", GAP 12 "all 176 other mobile cases", GAP 15 "all 324 other backend cases". Every one of
+those is an extrapolation from a smaller tree, and the specific risk was real rather than
+theoretical — `bootstrap/container.test.ts` and `api/authorizeSessionChange.test.ts` were both
+written *after* GAP 11 was measured and both exercise `signIn`, so a fixer applying the recommended
+ordering could reasonably have expected unexplained red in a file this plan never mentioned. They
+hold: with both GAP 11 fixes applied together exactly `AUTH-20` and `AUTH-21` flip and the other
+219 of 221 pass; GAP 12's one-liner flips exactly its two; GAP 13's epoch flips exactly its two
+with all 15 cases in `authorize.test.ts` green; GAP 15's horizon repair plus the plumbed field
+flips exactly its two with 350 of 352 green. `pnpm typecheck` is green repo-wide under each. The
+rule this is worth keeping: a "nothing else reddens" claim has a measurement date, and it decays —
+re-run it before asking somebody to rely on it.
+
+**Two of the re-test entries do not describe a flip at all, and said so only after this was
+checked.** `API-19` (GAP 16) and `SYNC-57` (GAP 18) are parked, and parked here means the case text
+exists in this plan and **no test file contains it** — in both cases because the case cannot be
+written against the current shape of the module, which is the finding. "Unparks" therefore means
+somebody writes it as part of the fix. The two entries now say that, because "`API-19` unparks and
+passes" reads as though a test is waiting in the tree, and a fixer who applied the two-line change
+and then grepped for it would find nothing and have no way to tell the fix from a dead end.
 GAP 15 carries one extra thing a reader should not skip: both of its obvious fixes are wrong, and
 each is ruled out by a case that *passes*, so the entry is worth reading before any of it is
 written. GAP 14 is a documentation accuracy
@@ -3391,7 +3447,9 @@ behind a failure that is rare rather than rank-ordered by probability alone.
 Both fixes are orderings rather than new mechanisms, and both were applied locally and reverted:
 write tokens → adopt → publish, rolling the tokens back if the adopt fails; and delete the owner
 key first, write it last, so a half-done write reads as no owner and therefore no session. Each
-turns its case red and leaves the other 39 auth cases green. Filed as **TVO-18**
+turns its case red and leaves every other mobile case green — **re-measured 2026-10-11** with both
+fixes applied together: exactly `AUTH-20` and `AUTH-21` flip, the other **219 of 221** pass, and
+`pnpm typecheck` is green repo-wide. Filed as **TVO-18**
 (`17cf182a`) for Mobile Dev, unassigned.
 
 ### GAP 12 — The category list's local order is wrong twice — **OPEN**
@@ -3428,8 +3486,8 @@ reintroduced the same bug one layer down, in the only place the pin-last rule ca
 REST contract promises plain name order and leaves presentation to the client.
 
 The candidate fix is one line — `ORDER BY c.isDefault, c.name COLLATE NOCASE` — and it was applied
-locally and reverted: it turns exactly `CAT-15` and `CAT-16` red and leaves all 176 other mobile
-cases green. Two notes for whoever takes it: `idx_categories_live (deletedAt, name)` no longer
+locally and reverted: it turns exactly `CAT-15` and `CAT-16` red and leaves every other mobile
+case green — **re-measured 2026-10-11**, the other **219 of 221**. Two notes for whoever takes it: `idx_categories_live (deletedAt, name)` no longer
 serves that sort, which is acceptable on an unpaginated set of a few dozen rows but is a choice
 worth making knowingly rather than discovering; and a `COLLATE NOCASE` column would also change
 what the `UNIQUE`-style local name check in `CAT-14` compares, so the collation belongs in the
@@ -3474,7 +3532,9 @@ cannot be met with it red.
 The fix is a session **epoch**, bumped on `signIn` and `signOut` and **not** on a rotation,
 captured in `authorize.ts` before the send and re-checked after the `401`; if it changed, return the
 original response. Applied locally and reverted: `AUTH-23` and `AUTH-24` turn red, all 15 cases in
-`authorize.test.ts` stay green along with `AUTH-22` and `AUTH-25`. Bumping on rotation as well
+`authorize.test.ts` stay green along with `AUTH-22` and `AUTH-25` — **re-measured 2026-10-11**, the
+other **219 of 221** pass and `pnpm typecheck` is green, including `bootstrap/container.ts`, which
+builds the controller and therefore has to satisfy the widened interface. Bumping on rotation as well
 would redden "retries with the current token when it 401s after someone else rotated", which is
 correct behaviour. Filed as **TVO-20** (`1c87c76f`) for Mobile Dev, unassigned.
 
@@ -3572,8 +3632,9 @@ Backend Dev's and Chief's:
   in-flight batch — so reassigning those expenses to the `isDefault` category inside the existing
   prune transaction both converges the prune and restores the invariant, and bumps `revision` so
   devices learn. Verified: with that plus `categoriesRetained` plumbed through the aggregate,
-  `SYNC-44` and `SYNC-45` turn red (they are `it.fails`) and **all 324 other backend cases stay
-  green**, including `SYNC-41` and `SYNC-46`. Reverted; the fix is Backend Dev's to make.
+  `SYNC-44` and `SYNC-45` turn red (they are `it.fails`) and **every other backend case stays
+  green**, including `SYNC-41`, `SYNC-43` and `SYNC-46` — **re-measured 2026-10-11**, the other
+  **350 of 352** pass and `tsc --noEmit` is clean. Reverted; the fix is Backend Dev's to make.
 
 Filed as **TVO-22** (`4c6d24c9`) against `backend/`, unassigned. Blocks nothing: the two tripwires report the fix
 when it lands.
