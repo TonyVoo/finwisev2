@@ -37,6 +37,20 @@ twelve-digit contract, would have left every existing test green. `EDGE-04`'s re
 GAP 5: the future-dated row is on the wire, in the list response and ordered first, so nothing
 server-side filters it and the fix has to be a client decision.
 
+**Two of this plan's own money cases gave different testers different verdicts, and that is fixed
+— 11 Oct.** `EDGE-03` and `EDGE-12` asserted `$12.50`, `¥125` and `¥1,000` and told the tester to
+press a `.` key. All four are device-locale-dependent *by design* (`04-expense-list.md` rule 5,
+`05-month-switcher.md` rule 12, `06-expense-form.md` rule 12, `03-auth.md` rule 9), while §2 fixed
+three timezones and no locale at all. A UK device renders that USD account as `US$12.50`, a German
+one as `12,50 $` with no `.` key on the keypad, and a Japanese one as `￥125` — a different code
+point from the `¥` above and indistinguishable from it in a terminal. Both cases now pin `en-US`,
+§2 carries a **Locales** axis beside the Timezones one, §12 rule 6 repeats four cases under
+`de-DE`, and `EDGE-14` / `EDGE-15` measure which half of a money string is the currency's and
+which is the locale's. Same class as `API-02`–`API-04` above. Writing it up also opened **GAP 21**:
+`CurrencyCode` is `^[A-Z]{3}$`, so the server accepts `KWD` (three decimals), `KRW` (zero) and
+`XXX` (ISO 4217's code for *no currency*) — all of which `03-auth.md` rule 9's blanket "2 except
+JPY" gets wrong, by a factor of ten or a hundred on the one screen this app exists to get right.
+
 **`src/db/queries.ts` — the reads the UI renders from — is now covered too, and it opened GAP 12.**
 `listLiveCategories` gets the category list's order wrong twice: `ORDER BY c.name` is
 case-sensitive under SQLite's default collation, and nothing pins the `isDefault` row last. What
@@ -362,6 +376,46 @@ bug in this app is a UTC round-trip (`06-expense-form.md` §Behaviour rule 7):
 A date case that passes only in the control timezone is a fail. Run the UTC+14 pass in the
 morning and the UTC−11 pass in the evening local time, so the device's local date and the UTC date
 genuinely differ.
+
+### Locales — every money and date literal in this plan is one — added 2026-10-11
+
+Rendering is **device-locale-dependent by design**, in four rules: money through
+`Intl.NumberFormat` with "the user's `currency` and the device locale"
+(`04-expense-list.md` rule 5), month names through `Intl.DateTimeFormat`
+(`05-month-switcher.md` rule 12), the decimal key labelled with "the locale decimal separator,
+`.` or `,`" (`06-expense-form.md` rule 12), and `decimals` resolved from
+`Intl.NumberFormat(locale, { currency }).resolvedOptions()` (`03-auth.md` rule 9).
+
+This section fixes a locale for the same reason the one above fixes a timezone, and it was
+missing until 11 Oct — which made `EDGE-03` and `EDGE-12` unrepeatable between two testers.
+Measured with `Intl` (`mobile/tests/lib/currencyFormatting.test.ts`):
+
+| Locale  | `USD` 1250 | `JPY` 125 | `JPY` 1000 | decimal | group |
+| ------- | ---------- | --------- | ---------- | ------- | ----- |
+| `en-US` | `$12.50`   | `¥125`    | `¥1,000`   | `.`     | `,`   |
+| `en-GB` | `US$12.50` | `JP¥125`  | `JP¥1,000` | `.`     | `,`   |
+| `de-DE` | `12,50 $`  | `125 ¥`   | `1.000 ¥`  | `,`     | `.`   |
+| `fr-FR` | `12,50 $US`| `125 JPY` | `1 000 JPY`| `,`     | NBSP  |
+| `ja-JP` | `$12.50`   | `￥125`    | `￥1,000`   | `.`     | `,`   |
+
+- **`en-US` is the pinned locale.** Every money and month literal in this plan is written in it.
+  A device in another locale is a different case, not a failing one.
+- **Set the device locale explicitly before a money or month case**, and record it in the result.
+  An unrecorded locale makes a `¥`-vs-`JPY` mismatch unattributable.
+- **`en-GB` is the trap to watch for**, because it is the likeliest to be picked up by accident:
+  a UK device renders a USD account as `US$12.50`, so `EDGE-03` fails on a correct build.
+- **`ja-JP` is worse, because it looks like a pass.** It renders `￥` (U+FFE5 FULLWIDTH YEN
+  SIGN), not the `¥` (U+00A5) in this plan. The two are indistinguishable in a terminal and in
+  most review diffs; compare code points, not glyphs.
+- **A comma-separator locale has no `.` key at all** (`06-expense-form.md` rule 12), so a step
+  that says "press `.`" cannot be followed on `de-DE` or `fr-FR`. `EDGE-03` step 2 names the
+  separator rather than the character for that reason.
+
+**What no automated layer can tell you here.** The unit cases above run under Node's full ICU.
+The app runs on Hermes, where `Intl` is backed by the platform and its coverage is a property of
+the OS version rather than of this repo — so a green unit result is evidence about the *contract*
+these rules rely on, never about a device. `EDGE-12` is therefore a device case that cannot be
+promoted to a unit one, which is why the locale belongs in the matrix in §12 and not only here.
 
 ---
 
@@ -2561,10 +2615,13 @@ thing being tested.
 ### EDGE-03 — Decimal and rounding behaviour
 
 - **Layer** Unit + E2E
-- **Pre** `F-FRESH` (`USD`) and `F-FRESH-JPY`
+- **Pre** `F-FRESH` (`USD`) and `F-FRESH-JPY`, **device locale `en-US`** (§2, Locales — every
+  literal below is locale-bound, and on `de-DE` the expected strings and the keypad both differ)
 - **Steps**
   1. Keypad: `1`, `2`, `5`, `0`, then backspace four times
-  2. Keypad: `.` then `5`; and `.` then `.`; and `5`, `.`, `2`, `5`, `7`
+  2. Keypad: the **decimal key** then `5`; the decimal key twice; and `5`, decimal, `2`, `5`, `7`.
+     The key is labelled with the locale's decimal separator (`06-expense-form.md` rule 12), so it
+     is `.` on `en-US` and `,` on `de-DE`; press the key, not the character
   3. On `F-FRESH-JPY`, enter `1`, `2`, `5`
   4. Sum a month of `[1, 1, 1]` minor units and read the total
   5. Compute the legend for a month total of `3` split `[1, 1, 1]`
@@ -2578,6 +2635,10 @@ thing being tested.
   can arise. Step 5's labels are each `33%` and they sum to `99%`, which is **correct and
   expected**: percentages round independently, nothing adjusts the largest slice to force 100, and
   no "100%" figure is displayed anywhere.
+- **Locale** Steps 1–3's strings hold on `en-US` only. Under `de-DE` the same correct build
+  renders `12,50 $`; under `en-GB`, `US$12.50`. Steps 4 and 5 are locale-independent — they are
+  integer arithmetic and a percentage — so they are the only two that may be asserted without a
+  locale recorded. `EDGE-14` pins which half is which.
 
 ### EDGE-04 — An expense dated in the future
 
@@ -2700,11 +2761,84 @@ clears the token store and leaves SQLite intact, so that work survives and pushe
 ### EDGE-12 — Zero-decimal currency end to end
 
 - **Layer** E2E
-- **Pre** `F-FRESH-JPY`
+- **Pre** `F-FRESH-JPY`, **device locale `en-US`**
 - **Steps** Sign up choosing `JPY`, add expenses of `125` and `1000`, open Summary
 - **Expect** The keypad has no decimal key. Amounts render as `¥125` and `¥1,000` with no decimal
   places, the month total as `¥1,125`, and `minimumFractionDigits` resolves to `0` from
   `Intl.NumberFormat`, not from a hardcoded `2`. A `¥1.25` anywhere is a fail.
+- **Locale, and the one that looks like a pass** The three literals above are `en-US`. On `de-DE`
+  the correct build renders `125 ¥` and `1.000 ¥`; on `fr-FR`, `125 JPY`. On `ja-JP` it renders
+  `￥125` — U+FFE5 FULLWIDTH YEN SIGN, a **different code point** from the U+00A5 above and
+  visually identical in a terminal. Compare code points if the device is not `en-US`.
+- **Why this cannot become a unit case** The zero-decimal resolution is the one half that is
+  locale-independent (`EDGE-14` asserts it across five locales), so the unit layer can pin the
+  *contract*. It cannot pin the *device*: jest runs on Node's full ICU and the app runs on Hermes,
+  whose `Intl` coverage is an OS property. This case stays on §12 row 3 for that reason.
+
+### EDGE-13 — An account currency the signup Sheet never offers — [GAP 21] — executed 2026-10-11
+
+- **Layer** API
+- **Pre** none (each case signs up its own account)
+- **Steps** `POST /v1/auth/signup` with `currency` set to `KWD`, then `XXX`, then `ZZZ`; then
+  `usd`, `US`, `USDD`, `US1` and `""`. Then as a `JPY` account, create an expense of `125`, and
+  another with `currency: "USD"`
+- **Expect** The shape of the code is enforced in every case: lowercase, wrong length and empty
+  are `400 validation_error`. The `JPY` account stores and returns `amountMinor: 125` unscaled,
+  and refuses the `USD` row with `400 validation_error`.
+  **Either** outcome is acceptable for the first three — `201`, or `400 validation_error` if the
+  contract is narrowed to the ten currencies `03-auth.md` rule 8 offers. What is not acceptable is
+  a `500`, or a `2xx` storing something other than what was sent. The case asserts the pair, so it
+  does not encode the branch GAP 21 argues for.
+- **Result** `KWD`, `XXX` and `ZZZ` are all **accepted**, `201`, and echoed back verbatim. `XXX`
+  is ISO 4217's own code for "no currency" and `ZZZ` is not a currency at all. The `JPY` half
+  passes: the server is exponent-agnostic and never scales, so the display defect in GAP 21 is a
+  client-and-contract matter and not a backend one.
+- **Shown able to fail** Making the create path scale `amountMinor` for a zero-decimal currency
+  reddens the `JPY` case alone, with the other four green. The shape case reddens if `CurrencyCode`
+  is loosened.
+- **Automated** `backend/tests/currency.test.ts`
+
+### EDGE-14 — Fraction digits come from the currency; the rendered string comes from the locale — executed 2026-10-11
+
+- **Layer** Unit
+- **Pre** none
+- **Steps** For each of the ten currencies in the signup Sheet, across `en-US`, `en-GB`, `de-DE`,
+  `fr-FR` and `ja-JP`, read `Intl.NumberFormat(locale, { style: 'currency', currency })
+  .resolvedOptions().maximumFractionDigits` and compare it with `03-auth.md` rule 9. Repeat for
+  seven currencies outside the Sheet, and for `XXX` / `ZZZ`
+- **Expect** All fifty pairs match rule 9 — `0` for `JPY`, `2` for the other nine — in every
+  locale, so a decimal count may be asserted without a locale fixed. The seven outside it match it
+  in none.
+- **Result** Rule 9 **holds for its fixed list**, verified across all fifty pairs; the list was
+  evidently chosen to avoid the awkward exponents and it works. Outside the list it is wrong in
+  both directions: `KWD`, `BHD` and `TND` are **3** decimals, so rendering with 2 shows an amount
+  **ten times too large**; `KRW`, `CLP`, `ISK` and `VND` are **0**, so rendering with 2 shows it
+  **a hundred times too small**. `XXX` and `ZZZ` are silently given 2.
+- **Shown able to fail** Adding a zero-decimal currency such as `KRW` to the Sheet's list — the
+  actual future regression this guards — reddens exactly this case, naming the five
+  `KRW@locale` pairs, with the other five cases in the file green.
+- **Automated** `mobile/tests/lib/currencyFormatting.test.ts`
+- **Limit** Node's full ICU, not Hermes. This pins the contract the design rules rely on, never a
+  device; see §2, Locales.
+
+### EDGE-15 — This plan's money literals are `en-US` literals — executed 2026-10-11
+
+- **Layer** Unit
+- **Pre** none
+- **Steps** Render `JPY` 125 and 1000, and `USD` 1250, in the five locales above. Read the decimal
+  and group separators for each
+- **Expect** `EDGE-12`'s `¥125` is produced by `en-US` and by none of the other four.
+  `EDGE-03`'s `$12.50` is produced by `en-US` and not by `en-GB`. `ja-JP` yields a different code
+  point for the yen sign. `de-DE` swaps the decimal and group separators relative to `en-US`.
+- **Result** All of it holds. `en-GB` renders the same USD account as `US$12.50`; `de-DE` as
+  `12,50 $` with `.` as the group separator and `,` as the decimal one; `fr-FR` as `125 JPY` with a
+  no-break space for grouping; `ja-JP` as `￥125`, U+FFE5 rather than U+00A5. So `EDGE-03` and
+  `EDGE-12` as first written gave a tester on any of those four devices a **different verdict on a
+  correct build** — the failure the acceptance criteria exist to prevent. Both now pin `en-US`,
+  and §2 and §12 carry the axis.
+- **Shown able to fail** Asserting that the five locales render identically reddens it; so does
+  comparing `￥` with `¥` by glyph instead of code point.
+- **Automated** `mobile/tests/lib/currencyFormatting.test.ts`
 
 ---
 
@@ -3176,6 +3310,8 @@ no new `revision`, and another account's id rejected as `400 validation_error`.
 | 17  | The outbox does not coalesce, so a conflict resolves per field (`TVO-24`) | Low      | nothing            |
 | 18  | The pull's `RepeatableRead` snapshot is load-bearing and unasserted (`d0c66465`) | Low      | `SYNC-57`          |
 | 19  | The `/v1` additive-only policy breaks every installed client (`917f33d0`) | Medium   | nothing            |
+| 20  | A refresh whose answer is lost logs the user out (`a5dc9cc1`)          | Medium   | nothing            |
+| 21  | The contract accepts currencies the design's `decimals` rule gets wrong (`dbf7b8d6`) | Low      | nothing            |
 | 5   | A future-dated row arriving by sync is unreachable in every view     | Medium   | `EDGE-04`          |
 | 7b  | `immutable_field` is unreachable on the **REST** path                | Low      | `API-04` (half)    |
 | 9   | No E2E driver is named in `docs/PLAN.md` §7                          | Low      | 7 cases run manual |
@@ -3710,6 +3846,70 @@ assert what the system measurably does today, and they are listed here so whiche
 knows which cases it flips. Branch 1 flips `API-25`'s step 3 and `AUTH-29`'s step 2; branches 2 and
 3 leave both green, which is itself the honest signal that they mitigate rather than fix.
 
+### GAP 21 — The contract accepts currencies the design's `decimals` rule gets wrong, and this plan's money literals had no locale — **OPEN**
+
+Filed as `dbf7b8d6` (low; the contract half is Chief's, the rendering half is Mobile Dev's).
+Two halves, one of which was a defect in this plan and is already fixed.
+
+**Three places have an opinion about which currencies exist, and they disagree.**
+
+| Source                             | Says                                                       |
+| ---------------------------------- | ---------------------------------------------------------- |
+| `shared/src/primitives.ts`         | `CurrencyCode` is `^[A-Z]{3}$` — 17,576 codes                |
+| `docs/design/03-auth.md` rule 8    | the signup Sheet offers a fixed list of **ten**             |
+| `docs/design/03-auth.md` rule 9    | `decimals` is "2 for all of the above except `JPY`, which is 0" |
+
+Rule 9 is **correct for its ten**, verified across fifty currency/locale pairs (`EDGE-14`), and
+the list was evidently chosen to avoid the awkward exponents. It is wrong for anything outside
+them, and the server accepts those: `EDGE-13` measured `201` for `KWD`, for `XXX` — ISO 4217's own
+code for *no currency* — and for `ZZZ`. Rendering an amount with 2 decimals when the currency has
+**3** (`KWD`, `BHD`, `TND`) shows it ten times too large; with 2 when it has **0** (`KRW`, `CLP`,
+`ISK`, `VND`) shows it a hundred times too small. On the one screen an expense tracker exists to
+get right.
+
+**Not reachable from the app today**, because the Sheet is closed and `06-expense-form.md` holds
+the amount as integer minor units throughout — there is no float anywhere on the money path, which
+is why this is Low rather than Medium. It is reachable through the API, which is the system of
+record, and `03-auth.md` rule 8 already contemplates lifting the restriction ("The MVP offers a
+fixed list, not an ISO 4217 search"). The day that list opens, rule 9 is silently wrong.
+
+**The server is not at fault and a fix must not touch it.** `EDGE-13` pins that a `JPY` account
+stores and returns `125` unscaled: the server is deliberately exponent-agnostic, so `amountMinor`
+means whatever the currency's minor unit is. Making the server scale would corrupt every stored
+row and is ruled out by a case that passes.
+
+**Branches.**
+
+1. **Narrow `CurrencyCode` to the ten the MVP supports** — a `z.enum` in `shared/`, which makes
+   rule 9 provably total and gives the Sheet and the contract one source. One line, and cheapest
+   now: it is a *widening* later (adding a currency) rather than a breaking change, so it does not
+   collide with GAP 19 whichever way that is ruled. **Recommended.**
+2. **Keep the open regex and publish the exponent** — resolve `decimals` from
+   `Intl.NumberFormat(…).resolvedOptions()` per currency rather than from rule 9's blanket 2, and
+   say so in rule 9. Correct for every ISO code, but it leaves `XXX` and `ZZZ` accepted as
+   currencies, and it makes the amount keypad's digit count depend on ICU data that varies by OS
+   version.
+3. **Do nothing and record it.** Defensible for the MVP — nothing can reach it through the UI —
+   but then rule 9 should say "for the ten currencies in rule 8" rather than reading as a general
+   rule, because its generality is what will be wrong later.
+
+No expected-fail case is written for any branch: an `it.failing` asserting a narrowed schema would
+encode a decision nobody has made and stay red indefinitely, which is the `AUTH-21` mistake.
+`EDGE-13` asserts a pair of acceptable outcomes instead, so branch 1 leaves it green.
+
+**The second half was mine, and it is fixed.** `EDGE-03` and `EDGE-12` asserted `$12.50`, `¥125`
+and `¥1,000` and told the tester to press a `.` key — all four of which the design makes
+device-locale-dependent, while §2 fixed three timezones and no locale at all. Measured
+(`EDGE-15`): a UK device renders the same USD account as `US$12.50`, a German one as `12,50 $`
+with the separators swapped and no `.` key on the keypad, and a Japanese one as `￥125` — U+FFE5,
+not the U+00A5 in this plan, and indistinguishable from it in a terminal. So the two cases gave
+different testers **different verdicts on a correct build**, which is precisely what the
+acceptance criteria require them not to do. Same class as `API-02`/`API-03`/`API-04` on 9 Oct, and
+found the same way: by reading a case against what the code and the designs actually say rather
+than against what it was written to mean. Both cases now pin `en-US`, §2 carries a Locales axis
+beside the Timezones one, and §12 rule 6 repeats four cases under `de-DE` on row 3 — which on
+Hermes is the only layer that can see a hardcoded `$` or a hardcoded `2` at all.
+
 ### GAP 1 — Who seeds the default categories, and the duplicate-six risk — **CLOSED**
 
 The contract's `POST /v1/auth/signup` says it "**seeds the default categories**", while an earlier
@@ -4069,10 +4269,15 @@ Rules for the matrix:
    real radio, and aeroplane-mode behaviour, background-task throttling and genuine connectivity
    flap are the subject of this plan. Rows 3 and 4 are the intended physical devices.
 5. **Every row runs under both the UTC+14 and UTC−11 timezones** for the §9 date cases.
-6. **Background execution is tested with OS throttling at its most aggressive** (row 4: battery
+6. **Every row runs its money and month cases under the pinned `en-US` locale**, and one row
+   — row 3 — repeats `EDGE-03`, `EDGE-12`, `EXP-12` and `SUM-13` under `de-DE`. The second pass
+   is not a translation check: it is the only way to see whether a formatter hardcoded `$`, `.`
+   or two decimals, and on Hermes it is the only layer that can see it at all (§2, Locales).
+   A locale that was not recorded makes the result unusable.
+7. **Background execution is tested with OS throttling at its most aggressive** (row 4: battery
    optimisation Restricted; row 2: Background App Refresh off), because `SYNC-37` asserts
    correctness when background sync never fires.
-7. Accessibility passes run on row 1 with VoiceOver and row 3 with TalkBack. Dynamic type is
+8. Accessibility passes run on row 1 with VoiceOver and row 3 with TalkBack. Dynamic type is
    checked at the default scale, at `fontScale 1.3` and at `fontScale 1.5`, which are the three
    breakpoints the specs name.
 
@@ -4136,6 +4341,9 @@ bugs, and this is what proves none of them came back. Target: under 30 minutes p
 - [ ] Legend amounts sum to the displayed total; the count matches the live expense count
 - [ ] An empty month shows `$0.00` and no donut, with the right copy on both tabs
 - [ ] Switching month on one tab carries to the other; Next is disabled at the current month
+- [ ] Every money string was read under the pinned `en-US` locale, and the `de-DE` pass on row 3
+      shows no hardcoded `$`, `.` or two-decimal amount (§2 Locales; `EDGE-03`, `EDGE-12`)
+- [ ] A `JPY` account shows no decimal key and no decimal places anywhere (`EDGE-12`)
 
 **Offline and sync — the part that must never regress**
 
