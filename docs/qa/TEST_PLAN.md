@@ -230,7 +230,7 @@ print('expected-fail :', len(sites))
 EOF
 ```
 
-Reads `173 / 5 / 8` on `c2ae1e0`. Three details in it are load-bearing, and writing it produced the
+Reads `174 / 5 / 8` on `17b8ca8` (it read `173 / 5 / 8` from `c2ae1e0` until `SYNC-58` was added). Three details in it are load-bearing, and writing it produced the
 wrong number on each in turn: the scan **breaks at §11**, or the register's own prose about markers
 is attributed to the last case heading and parked reads 6; `**Was**` is excluded, or the historical
 marker on `SYNC-13` is counted; and the expected-fail figure counts **call sites in the test files**,
@@ -242,7 +242,7 @@ what makes it self-reference-proof.
 
 Shown able to fail: marking one case's `**Pre**` line takes parked from 5 to 6 and names that case.
 **Its limit** is the mirror of the id check's — it counts headings of the id *shape*, so it sees a
-case added or removed and **not** one renamed: `AUTH-01` → `AUTH-0001` leaves the figure at 173. A
+case added or removed and **not** one renamed: `AUTH-01` → `AUTH-0001` leaves the figure unchanged. A
 rename is what the id check above is for.
 
 The id check also catches the reverse, which is the more expensive direction: a `**Layer**` pointing
@@ -596,6 +596,13 @@ it lands. It is recorded here for two reasons: an executing tester should not as
 `02-offline-and-sync.md` §3 exist yet, and whoever builds the sync engine should know the design
 makes the `Offline` / `Sync failed` distinction rest on a package that still has to be added — which
 is the same distinction GAP 9 turns on.
+
+**Corrected 12 Oct by Mobile Dev, and the correction makes it bigger:** `netinfo` gates **three of
+the six** pill states, not two. States **4** (`Offline`) and **5** (`Offline · {n} pending`) are
+both conditioned on *"netinfo reports unreachable"*, and state **6**'s condition is *"last sync
+attempt failed **while online**"* — that clause is a reachability read too, so 6 cannot be computed
+without `netinfo` either. `netinfo` gates the offline branch *and* is what keeps 6 from firing in
+its place. `SYNC-58` is the case that follows from it.
 
 | Mechanism                                                                                    | Produces                                                      | Used for                                                                                                                                  |
 | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
@@ -2506,6 +2513,35 @@ connectivity.
   state changes. It appears on Home and Summary only — never on a pushed screen, a sheet or an
   auth screen.
 
+### SYNC-58 — A failed push followed by going offline shows `Offline`, not `Sync failed`
+
+- **Layer** E2E (**Android** — needs `setAirplaneMode`; manual on iOS per GAP 9), plus a unit half
+  against the sync-state module once it exists
+- **Pre** `F-MONTH`, online, against a server that fails the next push
+- **Steps**
+  1. Add an expense and let the push fail **while online**. Confirm the pill is state 6 —
+     `alert-circle` + `Sync failed` in `danger.*`
+  2. Turn aeroplane mode on. Make no further sync attempt
+  3. Read the pill
+- **Expect** Step 3 is state **5**: `cloud-off` + `Offline · 1 pending` in `warning.*`. **Not**
+  state 6. State 6's condition is *"last sync attempt failed **while online**"*, and the app is no
+  longer online, so the clause no longer holds. §3 rule 3 is explicit that the offline state **is
+  not an error** and is never coloured as one — so an engine that holds a `lastAttemptFailed`
+  boolean across a reachability drop puts a red `alert-circle` on the one condition this app treats
+  as expected, and tells the user something is broken when they are simply in a tunnel.
+- **Why `SYNC-32` does not cover it.** `SYNC-32` drives each of the six states from a clean start,
+  so a stale failure flag never gets the chance to show: all six go green and the defect still
+  ships. This case asserts the **transition**, which is the only place the bug can live. Same shape
+  as `CAT-01` and `SYNC-51`, the two cases this plan filed against itself for being incapable of
+  failing.
+- **Not yet runnable**, and not parked: the sync engine and `netinfo` are `TVO-13`'s work and no
+  decision is outstanding. It is written now because it constrains the engine's shape rather than
+  checking it afterwards.
+- **Credit:** derived by Mobile Dev on `TVO-13`, 12 Oct, while triaging QA's `netinfo` finding —
+  before any engine code exists. The four independent inputs they named in response
+  (`reachable`, `inFlight`, `lastAttemptFailed`, `pendingRecords`) are what make this expressible
+  at all: a success/failure boolean cannot distinguish states 4, 5 and 6.
+
 ### SYNC-33 — A sync faster than 800ms never renders the pill
 
 - **Layer** E2E
@@ -3656,7 +3692,7 @@ no new `revision`, and another account's id rejected as `400 validation_error`.
 | 21  | The contract accepts currencies the design's `decimals` rule gets wrong | Low | **TVO-29** (`dbf7b8d6`) | — | `EDGE-13` stays green under either branch; `EDGE-14` reddens if the Sheet ever gains a zero-decimal currency |
 | 5   | A future-dated row arriving by sync is unreachable in every view | Medium | **not filed** — the Designer's call | `EDGE-04` step 3 | `EDGE-04` unparks |
 | 7b  | `immutable_field` is unreachable on the **REST** path | Low | **not filed** — a choice between two one-line fixes | `API-04` (half) | `API-04`'s REST half unparks |
-| 9   | No E2E driver is named in `docs/PLAN.md` §7 | Low | **not filed** — wants Mobile Dev's agreement, not a ruling | 7 cases run manual | the 7 driven-app cases become automatable |
+| 9   | No E2E driver is named in `docs/PLAN.md` §7 | Low | **closed 12 Oct** — Maestro agreed with Mobile Dev, split by platform; the infrastructure half is **TVO-30** | nothing | — |
 | 10  | Rate limits are not quantified | Low | **not filed** — an owner call | `API-09` | `API-09` can assert that a limit exists, not just its shape |
 
 **No open *gap* blocks executing this plan — but something else does, and this sentence used to
@@ -4741,10 +4777,17 @@ used it — `backend/tests/sync.resolver.test.ts` covers the branches `docs/PLAN
 `F-STALE` fixture still needs a backdated tombstone at the API layer, which `pruneTombstones`'
 `now` argument provides.
 
-### GAP 9 — No E2E driver is named
+### GAP 9 — No E2E driver is named — **CLOSED 12 Oct, agreed**
+
+**Agreed by Mobile Dev on `TVO-13`, 12 Oct:** *"Android drives `SYNC-01`–`SYNC-05`; iOS is manual
+on physical hardware with the radio actually off. Agreed on Maestro with the stated limit."* They
+accepted the platform split on QA's proxy argument — a proxy produces state 6 where those cases
+assert state 4 — and took the `killApp` correction as the realistic background-sync failure rather
+than an edge. The driver half of this gap is settled; the infrastructure half below is not, and is
+now tracked as its own board item.
 
 `docs/PLAN.md` §7 names vitest/supertest and jest/RNTL. Seven cases here need a driven app with
-connectivity control. QA proposes **Maestro** — Expo support and native Windows both measured and
+connectivity control. QA proposed **Maestro** — Expo support and native Windows both measured and
 confirmed (§2), Java 17 present on this host.
 
 **The recommendation is now split by platform, and that is what needs agreeing.** `setAirplaneMode`
@@ -4755,10 +4798,10 @@ on exactly that condition, which rules out the proxy as a substitute. Android dr
 two further mechanism corrections (`killApp` is `am kill`, not `am force-stop`; no shell escape from
 a flow), is in §2 under *The E2E driver* and *Controlling the network*.
 
-**Measured against:** Maestro docs and issue #2895, 12 Oct 2026, and this host. Not filed as a
-board item — it is a decision for Chief and Mobile Dev, not a defect, and no case's expected result
-changes either way. Needs their agreement; until then the seven run manual, which is slower and
-less repeatable but not blocking.
+**Measured against:** Maestro docs and issue #2895, 12 Oct 2026, and this host. Never filed as a
+board item — it was a decision for Mobile Dev rather than a defect, and no case's expected result
+changed either way. It was settled in one reply once it was asked in a thread the decider reads,
+having sat in fifteen `TVO-5` reports they never saw.
 
 **Blocked on infrastructure before it is blocked on the driver.** Measured on this host: `adb` is
 present, but **no device is attached and no emulator binary or AVD is installed**; `xcrun` is
