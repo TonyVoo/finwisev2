@@ -390,13 +390,28 @@ good against the suite it was taken on.
 | 9 | `pnpm lint && pnpm typecheck && pnpm test` passes | **Met, and this is the bullet that changed** |
 | 10 | Note which `expo-background-task` version the pinned SDK provides | **Met, and its load-bearing facts check out** — see below |
 
-**Criterion 4 is guarded by exactly one case, and it is the right one.** Moving the outbox
-`enqueue` out of `applyLocalMutation`'s transaction — the defect the criterion exists to make
-impossible — reddens `write.test.ts:183` and **nothing else**: 220 of 221 mobile cases stay green.
-That case is the one that fires a real `UNIQUE` violation on `clientMutationId` on the *second*
-write of the transaction, after the row insert has already happened, which is the only
-interleaving that can observe a row landing without its entry. A case that mocked the failure, or
-that failed on the first write, would have gone green against the defect.
+**Criterion 4 was guarded by exactly one case, and the author widened it in response — re-tested
+2026-10-12.** The verdict above measured that moving the outbox `enqueue` out of
+`applyLocalMutation`'s transaction reddened `write.test.ts:183` and **nothing else**: 220 of 221
+mobile cases stayed green. That case is the one that fires a real `UNIQUE` violation on
+`clientMutationId` on the *second* write of the transaction, after the row insert has already
+happened — the only interleaving that can observe a row landing without its entry. A case that
+mocked the failure, or that failed on the first write, would have gone green against the defect.
+
+`95cfbf0` then added two cases of a different shape, and QA re-tested the claim rather than
+taking it: they wrap the database to record which transaction each statement was issued in, and
+assert on the happy path that the row write and its outbox entry share one. **Measured with the
+defect injected: 3 of 223 redden, 220 green** — the two new cases plus the original, exactly as
+`95cfbf0` claims. Two of the five atomicity cases stay green, which is the author's own stated
+reason for adding these: an injected failure that fires before the outbox write is reached cannot
+observe where that write would have been issued.
+
+The equality assertion is load-bearing rather than vacuous, which is the part worth measuring
+separately. A second defect shape — `enqueue` moved into its **own** transaction after the outer
+one commits, so both writes are transactional but not *together* — reddens the same three. So the
+new cases detect "a different transaction", not merely "no transaction"; and the helper fails the
+test outright if its pattern matches no statement or more than one, so it cannot pass by matching
+nothing. Both defects were reverted; no product source changed.
 
 **Criterion 6 is guarded at three layers.** Removing the `inFlightRefresh` single-flight guard
 reddens exactly three of 221, one in each of `auth/session.test.ts` (the controller),
@@ -408,7 +423,8 @@ was when it was handed over.
 was that the root `lint:code` was red at `backend/src/middleware/validate.ts:2` — not their file,
 and owned by `TVO-7`. `TVO-7` is now `done`, `eslint` on that file exits 0, and `pnpm lint`,
 `pnpm typecheck` and `pnpm test` all exit 0 repo-wide (shared 392, backend 350 + 2 expected-fail,
-mobile 221). The objection is resolved; nothing is waiting on it.
+mobile 223 as of `95cfbf0`; 221 when the verdict was first recorded). The objection is resolved;
+nothing is waiting on it.
 
 **Criterion 10's facts, verified against the installed package rather than taken on the note.**
 These govern how any background-sync observation has to be set up, which is why they are recorded
@@ -3473,6 +3489,14 @@ filing.
 GAP 11, GAP 12, GAP 13 and GAP 15 are filed defects rather than open questions, and none of them
 blocks anything: `AUTH-20`, `AUTH-21`, `CAT-15`, `CAT-16`, `AUTH-23`, `AUTH-24`, `SYNC-44` and
 `SYNC-45` are written, automated and expected-fail, so they report each fix the moment it lands.
+
+**The mobile denominator moved 221 → 223 on 2026-10-12** (`95cfbf0`), after the four
+re-measurements below were taken. The two added cases live in `mobile/tests/db/write.test.ts` and
+exercise `applyLocalMutation`'s statement-to-transaction mapping — a module none of the four
+candidate fixes touches, and the backend denominator is unchanged at 352. So a fixer should expect
+each `219 of 221` below to read **221 of 223**, with the same cases reddening. That is reasoned
+from the delta, not re-measured: if the count comes out any other way, the measurement has
+genuinely decayed and the whole entry should be re-run before it is relied on.
 
 **All four candidate fixes were re-measured against the tree on 2026-10-11, and the earlier numbers
 in those entries should not have been trusted as they stood.** Each was originally measured when it
