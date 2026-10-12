@@ -205,8 +205,48 @@ for cid, files in rows:
 EOF
 ```
 
-It also catches the reverse, which is the more expensive direction: a `**Layer**` pointing at a file
-that has been renamed or deleted. What it does **not** check is that the id sits on the right `it`:
+The three headline figures this plan is reported by — how many cases, how many parked, how many
+expected-fail — are computed the same way, because every run that counted them by eye or by a quick
+grep has had to correct one: a case grep that missed the `SUM-` prefix, a parked count that included
+the historical marker, an expected-fail count that matched two comment lines. Added 2026-10-12:
+
+```sh
+python - <<'EOF'
+import io, re, subprocess
+cases, parked, cur = [], set(), None
+for line in io.open('docs/qa/TEST_PLAN.md', encoding='utf-8'):
+    if line.startswith('## 11.'):
+        break                              # cases only; 11 onward is prose *about* them
+    m = re.match(r'^### ([A-Z]+-\d+)', line)
+    if m:
+        cur = m.group(1); cases.append(cur)
+    if cur and 'BLOCKED-BY-GAP' in line and '**Was**' not in line:
+        parked.add(cur)                    # heading-level or step-level, either parks the case
+sites = subprocess.run(['grep','-rhoE','it[.](failing|fails)[(]','mobile/tests','backend/tests'],
+                       capture_output=True, text=True).stdout.split()
+print('cases         :', len(cases), '| unique:', len(set(cases)))
+print('parked        :', len(parked), sorted(parked))
+print('expected-fail :', len(sites))
+EOF
+```
+
+Reads `173 / 5 / 8` on `c2ae1e0`. Three details in it are load-bearing, and writing it produced the
+wrong number on each in turn: the scan **breaks at §11**, or the register's own prose about markers
+is attributed to the last case heading and parked reads 6; `**Was**` is excluded, or the historical
+marker on `SYNC-13` is counted; and the expected-fail figure counts **call sites in the test files**,
+never mentions of `it.failing` in this document. A plain `grep -c BLOCKED-BY-GAP` here reads 9 —
+three of those lines describe the convention rather than using it — which is why the count is scoped
+rather than grepped flat. The first version also searched for the §11 heading with `split`, which
+matched **its own source line** and silently cut the body to 15 kB; walking lines and breaking is
+what makes it self-reference-proof.
+
+Shown able to fail: marking one case's `**Pre**` line takes parked from 5 to 6 and names that case.
+**Its limit** is the mirror of the id check's — it counts headings of the id *shape*, so it sees a
+case added or removed and **not** one renamed: `AUTH-01` → `AUTH-0001` leaves the figure at 173. A
+rename is what the id check above is for.
+
+The id check also catches the reverse, which is the more expensive direction: a `**Layer**` pointing
+at a file that has been renamed or deleted. What it does **not** check is that the id sits on the right `it`:
 it asks whether the file mentions the id at all. Shown while proving the check can fail — a first
 attempt at breaking it renamed three of `CAT-17`'s four mentions and the check stayed correctly
 silent, because the fourth still named it. So this guards the grep, not the mapping; the mapping is
@@ -2970,9 +3010,16 @@ clears the token store and leaves SQLite intact, so that work survives and pushe
   is ISO 4217's own code for "no currency" and `ZZZ` is not a currency at all. The `JPY` half
   passes: the server is exponent-agnostic and never scales, so the display defect in GAP 21 is a
   client-and-contract matter and not a backend one.
-- **Shown able to fail** Making the create path scale `amountMinor` for a zero-decimal currency
-  reddens the `JPY` case alone, with the other four green. The shape case reddens if `CurrencyCode`
-  is loosened.
+- **Shown able to fail — and it reaches outside this file, which the first version of this line did
+  not say** Making the create path scale `amountMinor` for a zero-decimal currency reddens **2 cases
+  of 352**: this one, and `expenses.test.ts`'s *"POST /v1/expenses › honours a non-USD account
+  currency"*. Within `currency.test.ts` the `JPY` case is the only one that moves and the other four
+  stay green, which is what the earlier wording said — but it read as a claim about the suite, and a
+  fixer would have met an unexplained red in a file this plan never named. Re-measured 2026-10-12
+  against `6acfca9`; the second case has been in the tree since `03d84af`, so this was incomplete
+  when written rather than decayed. Scale on the **resolved** currency, not on `input.currency`: the
+  request omits it, so a probe keyed on the field is all-green and reads as "the recipe does nothing".
+  The shape case reddens if `CurrencyCode` is loosened.
 - **Automated** `backend/tests/currency.test.ts`
 
 ### EDGE-14 — Fraction digits come from the currency; the rendered string comes from the locale — executed 2026-10-11
@@ -2991,9 +3038,10 @@ clears the token store and leaves SQLite intact, so that work survives and pushe
   both directions: `KWD`, `BHD` and `TND` are **3** decimals, so rendering with 2 shows an amount
   **ten times too large**; `KRW`, `CLP`, `ISK` and `VND` are **0**, so rendering with 2 shows it
   **a hundred times too small**. `XXX` and `ZZZ` are silently given 2.
-- **Shown able to fail** Adding a zero-decimal currency such as `KRW` to the Sheet's list — the
-  actual future regression this guards — reddens exactly this case, naming the five
-  `KRW@locale` pairs, with the other five cases in the file green.
+- **Shown able to fail** Adding a zero-decimal currency such as `KRW` to `DESIGN_CURRENCIES` — the
+  actual future regression this guards — reddens exactly this case, naming the five `KRW@locale`
+  pairs. **Re-measured 2026-10-12** against `95cfbf0`: 1 failed, 222 of 223 green, so it is the only
+  case in the suite that moves and not merely the only one in its file.
 - **Automated** `mobile/tests/lib/currencyFormatting.test.ts`
 - **Limit** Node's full ICU, not Hermes. This pins the contract the design rules rely on, never a
   device; see §2, Locales.
@@ -3410,13 +3458,21 @@ and they are where a security or correctness regression shows up first.
 - **Shown able to fail — and the recipe matters, because the narrow one does nothing** `refresh` has
   **two independent single-use defences**: the early `existing.revokedAt !== null` check, and the
   `revokedAt: null` guard on the claimed `updateMany`. Either alone rejects a replay. Removing
-  **both** reddens the first case here and leaves the second green — so it is pinned to the rotation,
-  not to the fake — plus 3 cases in `auth.refresh.test.ts` and 2 elsewhere in this file (`API-15`,
-  `API-18`), which is the attribution. Removing only the early check reddens **exactly one** case in
-  the whole backend suite (`reports a reused token as token_invalid even once it has also expired`),
-  and that case pins the error *code* for a token both revoked and expired, not the replay rejection.
-  So a tester who reaches for the obvious single-line regression here will see 344 green and conclude
-  this case cannot fail. It can; it takes both lines. Reverted; no product source is in the commit
+  **both** reddens **7 cases of 352** — re-measured 2026-10-12 against `6acfca9`. This case's first
+  half goes red and its second stays green, so it is pinned to the rotation and not to the fake; plus
+  3 in `auth.refresh.test.ts`, 2 elsewhere in this file (`API-15`, `API-18`) — and **1 in
+  `auth.logout.test.ts`**, *"makes the token unusable for refresh afterwards"*, which the first
+  version of this line omitted. That is six named against seven measured, and the missing one is in a
+  file the recipe did not mention, so a fixer threading a grace window would have met an unexplained
+  red in logout and had to work out whether they had broken it. The case has been in the tree since
+  `f367385`, so this was incomplete when written rather than decayed — the same error as the
+  `authorize.test.ts` count corrected on 12 Oct, and from the same cause: the result was read off one
+  file and written in language that reads as the suite. Removing only the early check reddens
+  **exactly one** case (`reports a reused token as token_invalid even once it has also expired`),
+  which pins the error *code* for a token both revoked and expired, not the replay rejection — 349
+  passed plus the 2 expected-fail, where this line previously said 344. So a tester who reaches for
+  the obvious single-line regression will see a near-green suite and conclude this case cannot fail.
+  It can; it takes both lines. Reverted; no product source is in the commit
 - **Consequence for a fix** A grace window (GAP 20 branch 1) has to be threaded through *both*
   defences. A change that relaxes only one will look fully tested
 
@@ -3546,6 +3602,55 @@ GAP 15 is backend and was **not** re-run, for a reason that is checkable rather 
 `git log 6acfca9..HEAD -- backend/ shared/` is empty, so its `350 of 352` was taken against the
 backend tree as it stands and has not decayed. A measurement decays against the tree it was taken
 on, not against the calendar — if that command stops being empty, re-run the entry.
+
+#### Whether a measurement in this plan is still current is a command, not a question for QA — swept 2026-10-12
+
+Three runs running, the fix for a stale number here was applied to the entries that happened to be
+noticed. On 2026-10-12 every remaining quantified "shown able to fail" claim was re-measured in one
+pass instead, and the two things that found are below. Each entry now names the commit its
+measurement was taken against, so the decay rule is executable:
+
+```sh
+# CURRENT = nothing the measurement depends on has changed since it was taken.
+for base_paths in "95cfbf0:mobile/ shared/" "6acfca9:backend/ shared/"; do
+  base=${base_paths%%:*}; paths=${base_paths#*:}
+  changed=$(git log --oneline "$base"..HEAD -- $paths)
+  [ -z "$changed" ] && echo "CURRENT  $base ($paths)" || echo "STALE    $base ($paths)
+$changed"
+done
+```
+
+| Baseline | Covers | Measurements taken against it |
+| --- | --- | --- |
+| `95cfbf0` | `mobile/`, `shared/` | GAP 11, 12, 13 (`221 of 223`), GAP 14, GAP 16, GAP 17 (`8 of 223`), GAP 19, `EDGE-14` |
+| `6acfca9` | `backend/`, `shared/` | GAP 15 (`350 of 352`), GAP 18 both directions, `EDGE-13`, `API-25` both recipes |
+
+**What it does not do**, stated because a green sweep is easy to over-read: it detects that the tree
+a number was taken on has moved, not that the number is wrong. A commit touching `mobile/` makes
+every mobile entry `STALE` even if it changed nothing those cases observe, and a measurement can
+also be wrong on the tree it was taken on — which is what the sweep actually found. So `STALE` means
+re-run before relying on it; `CURRENT` means the denominator has not moved, and nothing more.
+
+**Two of the eleven claims did not hold, and neither had decayed — both were incomplete when
+written.** `EDGE-13`'s recipe reddens 2 cases of 352 and named 1; `API-25`'s reddens 7 and named 6.
+In both the unnamed case predates the measurement (`03d84af`, `f367385`), so nothing had changed
+underneath them. The cause is the same in both, and it is the same as the `authorize.test.ts` count
+corrected earlier on 2026-10-12: the probe was run over one file, the file's result was recorded,
+and the sentence was written in language a reader takes as the whole suite. **The rule this adds to
+"cite a count with the file it came from": run the probe against the whole suite, or say which file
+the count is scoped to.** Both are corrected in place.
+
+**One claim changed rather than failed.** GAP 17's naive fix reddened 7 of 208 and now reddens 8 of
+223 — the eighth being a transaction-tracing case `95cfbf0` added, whose pattern a coalescing
+`enqueue` makes match nothing. That is a real instruction for whoever implements it, and only a
+re-measurement could have produced it.
+
+**Two probe errors of QA's own, both caught by running rather than reasoning**, and recorded because
+each would have been reported as a finding about the product. A coalescing `enqueue` written against
+`outbox.id` reddened **43 of 223** — the column is `seq`, and the broken probe looked exactly like a
+claim that had decayed badly. And scaling `amountMinor` on `input.currency` rather than the resolved
+account currency left the suite **all green**, which looked exactly like a recipe that does nothing;
+the request omits the field, so the branch never fires.
 
 **All four candidate fixes were re-measured against the tree on 2026-10-11, and the earlier numbers
 in those entries should not have been trusted as they stood.** Each was originally measured when it
@@ -3727,9 +3832,13 @@ reachable: `authorize.ts` returns early for any route with `auth: false`, and
 interceptor either.
 
 Measured rather than reasoned about. `refreshTokens` was rewired to the authorized client via a
-late-bound reference — the exact shape the comment warns against — and **every one of the 105 cases
-in `tests/api`, `tests/auth` and `tests/bootstrap` stayed green**, including `AUTH-27`, which is
-the case that looks like it should catch it. Reverted.
+late-bound reference — the exact shape the comment warns against — and nothing noticed. **Re-measured
+2026-10-12** against `95cfbf0`, because the first measurement was taken at mobile 207 and the suite
+is now 223: every one of the **129** cases in `tests/api`, `tests/auth` and `tests/bootstrap` stays
+green (it was 105 when first measured), and so does the **whole suite, 223 of 223** — which is a
+stronger statement than the original and the one worth making, since a reader of a three-directory
+figure cannot tell whether the fourth directory would have caught it. `AUTH-27`, the case that looks
+like it should catch this, is among the green. Reverted.
 
 Two things follow, and the second is the reason this is written down:
 
@@ -3863,10 +3972,12 @@ Either lands `API-19` as written, and the test file in `backend/tests/` would ne
 and the `withToken` helper deleted. **Severity: low.** It blocks one QA case and no product
 behaviour; nothing a user does is affected. Filed as **TVO-23** (`5e12a02e`) against `mobile/`, unassigned.
 
-Fix 1 was applied locally before filing rather than proposed on paper: with the two-member
-interface in place, `pnpm typecheck` is green repo-wide, mobile stays at **207 passed** —
-`SessionController` satisfies it structurally, so `container.ts` is untouched — and `API-19`
-passes, reddening alone when the retry is removed from `authorize.ts`. Then reverted.
+Fix 1 was applied locally before filing rather than proposed on paper, and **re-measured
+2026-10-12** against `95cfbf0`: with the two-member interface in place, `pnpm typecheck` is green
+repo-wide and mobile stays at **223 passed** (207 when first measured) — `SessionController`
+satisfies it structurally, so `container.ts` is untouched. The `API-19` half of that measurement is
+**not** re-run and cannot be: the case has no test file, which is the gap. Landing it is part of the
+fix. Then reverted.
 
 ### GAP 17 — The outbox does not coalesce, so a sync conflict resolves per field — **OPEN**
 
@@ -3906,10 +4017,18 @@ written:
    with `mutation_id_reused` (`SYNC-11`, `backend/tests/sync.idempotency.test.ts:296`). So a second
    edit of a pending row would drive the row into `needs-attention` through ordinary use, against
    §2 rule 1 ("`pending` is not an error") and rule 2's own "never a blocker".
-3. **The naive fix breaks seven mobile cases.** Measured rather than guessed: a coalescing
-   `enqueue` that merges into the newest entry for the same record reddens 7 of 208 — four that
-   assert appending, and three (`countPendingRecords`, the TanStack Query pending count, and the
-   tombstone/undelete pair) whose *premise* is that one row can have several entries. Reverted.
+3. **The naive fix breaks eight mobile cases.** Measured rather than guessed, and **re-measured
+   2026-10-12** against `95cfbf0`: a coalescing `enqueue` that merges into the newest entry for the
+   same record reddens **8 of 223** (it was 7 of 208 when first measured). Five assert appending or
+   the queued field shape, two (`countPendingRecords` and the TanStack Query pending count) have as
+   their *premise* that one row can have several entries — and the eighth is new and is the useful
+   part. `write.test.ts`'s *"issues an update and its outbox entry in the same transaction"*, one of
+   the two transaction-tracing cases `95cfbf0` added, fails with `Expected length: 1, Received
+   length: 0`: it locates the outbox write by matching `INSERT INTO outbox`, and a coalescing
+   `enqueue` issues an `UPDATE` instead, so the pattern matches nothing and the helper fails outright
+   rather than passing vacuously. That is the safeguard documented in §2 firing as designed, but for
+   a fixer it means **a real coalescing implementation must widen that pattern too**, or the case
+   reports a defect that is not there. Reverted.
 
 **What QA recommends**, as a recommendation and not a ruling, since the docs are the Designer's and
 the consequence is Mobile Dev's: amend §2 rule 2 to describe what the client does — one entry per
@@ -3943,9 +4062,10 @@ the default `READ COMMITTED` — the categories query returns up to revision 40,
 category at 41 and an expense at 42, the expenses query returns 42, and the category at 41 is never
 delivered to that device again.
 
-**Measured.** With `isolationLevel` changed to `'ReadCommitted'`, **all 342 backend cases pass** —
+**Measured.** With `isolationLevel` changed to `'ReadCommitted'`, **every backend case passes** —
 including the six new cases in §8.11, and including `SYNC-55`, which is the case most likely to
-catch it. Three repeat runs, same result. The window to hit is the gap between two queries issued
+catch it. Three repeat runs, same result. **Re-measured 2026-10-12** against `6acfca9`: 350 passed
+plus the 2 expected-fail, so all 352, where the first measurement read 342. The window to hit is the gap between two queries issued
 back to back on one connection, on the order of a tenth of a millisecond, so a black-box test would
 have to be probabilistic to see it, and a test that fails a few percent of the time is worse than
 no test at all. **So no case in this plan can defend this line, and I am not going to pretend one
@@ -3954,8 +4074,11 @@ does.** That is the whole gap.
 **The asymmetry that makes it worth filing.** The push side of the same pair is guarded. Its
 settings are a named constant, `PUSH_TRANSACTION_OPTIONS`, whose comment says *"`isolationLevel` is
 the one with teeth"* and explains that `RepeatableRead` would break the idempotency and create
-races. Measured in the other direction: raising the push to `'RepeatableRead'` reddens **exactly
-the 2 cases its comment names** and nothing else. So one half of the sync service has its isolation
+races. Measured in the other direction, and **re-measured 2026-10-12** against `6acfca9`: raising the push
+to `'RepeatableRead'` reddens **exactly the 2 cases its comment names** — `sync.idempotency.test.ts`'s
+*"applies once and replays the other, from two requests in flight at the same time"* and *"resolves
+two different mutations creating the same id as a create and an update"* — with the other 348 and both
+expected-fail cases unaffected. So one half of the sync service has its isolation
 level pinned by tests and the other half has it pinned by a comment, and it is the second half that
 protects against silent data loss.
 
@@ -4011,9 +4134,10 @@ refresh is not an `ApiRequestError`, so it misses `UNRECOVERABLE_CODES`, `perfor
 instead of calling `discard`, and the session and the local database both survive. **Every installed
 app stops working; none of them loses the user's unsynced work.**
 
-**What was unpinned, and by how much.** Patching `send` to ignore `unrecognized_keys` issues — the
-shape the lenient fix would take — leaves **all 208 pre-existing mobile cases green** and reddens
-only the five new ones. The two existing `ResponseShapeError` cases in `client.test.ts` do not
+**What was unpinned, and by how much.** Patching `send` to ignore `unrecognized_keys` issues and pass
+the body through — the shape the lenient fix would take — reddens **only `API-20` through `API-24`**
+and nothing else. **Re-measured 2026-10-12** against `95cfbf0`: 5 failed, **218 of 223 green**, where
+the first measurement read "all 208 pre-existing green". The two existing `ResponseShapeError` cases in `client.test.ts` do not
 notice, and they could not: one sends a *missing* field and the other a *malformed* one. Both of
 those are bugs on one side or the other. An **extra** field is not — it is the one change the
 contract explicitly permits — and nothing in this repo had ever sent one.
@@ -4091,6 +4215,20 @@ that trades the whole point of the column. So the branches are:
    stolen token replayed inside N seconds yields a working session, and the `refresh token reused
    after rotation` log line stops being an unambiguous theft signal. Wants Chief's ruling, because
    it is a security posture change, not an implementation detail.
+
+   **And it is not a few lines, because the schema cannot tell the two revocations apart.** Found
+   2026-10-12 while re-measuring this case's failure recipe. `RefreshToken` carries `revokedAt` — a
+   nullable timestamp — and **no column saying why**, and `authService.logout` revokes by writing
+   exactly that same field (`where: { tokenHash, revokedAt: null }`). So a window keyed on "revoked
+   less than N seconds ago" cannot exempt a token revoked by an explicit **logout**: for N seconds
+   after the user taps Log out, any holder of that refresh token — including one who captured it —
+   gets a fresh 60-day pair, and the logout the contract specifies as ending the session silently
+   does not. The measurement is what surfaced it: removing both defences reddens
+   `auth.logout.test.ts`'s *"makes the token unusable for refresh afterwards"*, which is the case
+   that pins logout's revocation being honoured by `refresh`. Exempting logout needs a reason column
+   and a migration, which moves branch 1 from a parameter choice to a schema change and widens the
+   gap between it and branch 2. QA is not ruling on it; the point is only that the cost comparison in
+   this entry was understated.
 2. **Stop generating the trigger.** The refresh inherits `DEFAULT_TIMEOUT_MS = 15_000` because
    `container.ts` builds **one** transport and the unauthenticated client that carries the refresh
    shares it. An abort on this one route costs the session, which no other route does — so a longer
