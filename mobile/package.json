@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@expense-tracker/shared": "workspace:*",
+    "@expo/vector-icons": "15.1.1",
     "@tanstack/react-query": "5.104.1",
     "expo": "57.0.27",
     "expo-background-task": "57.0.21",
