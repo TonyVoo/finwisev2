@@ -545,25 +545,86 @@ this plan stated wrongly, is diagnosed under §2 below — it is not an expired 
 
 `docs/PLAN.md` §7 names vitest/supertest and jest/RNTL but no end-to-end driver, and several cases
 below (`SYNC-01`–`SYNC-05`, `SYNC-19`, `SYNC-20`) are only meaningful against a running app with
-real connectivity control. QA's recommendation is **Maestro**: YAML flows, first-class Expo
-support, and a built-in `setAirplaneMode`, which is precisely the control this plan needs most.
-Until it is agreed those cases run as `Manual`, which is slower and less repeatable but not
-blocking.
+real connectivity control. QA's recommendation is **Maestro**, and it stands — but on measured
+grounds rather than the three properties this section asserted for fifteen runs. Two of those three
+were wrong, and the wrong one was the load-bearing one.
+
+| Property this plan claimed | Measured | Verdict |
+| --- | --- | --- |
+| First-class Expo support | Full support for Expo Go, development builds and EAS Workflows; operates at the accessibility layer with no source instrumentation | **Holds** |
+| Runs where this company's agents run | Native Windows since Maestro `1.39.9` — WSL no longer required; needs Java 17+, and this machine has `17.0.12` | **Holds** |
+| A built-in `setAirplaneMode`, "precisely the control this plan needs most" | **Android only.** On iOS the command *passes and has no effect* — the simulator exposes no airplane-mode toggle. Tracked as an open Maestro issue with no sanctioned workaround | **Wrong, and silently** |
+
+**Why the third one matters more than a missing feature would.** A command that fails is a blocked
+case; a command that *passes with no effect* is a case that goes green while never exercising its
+own precondition. Three of the five rows in the §12 matrix are iOS — rows 1, 2 and 5, and row 5 is
+where `SYNC-06` and every `F-TWO-DEV` case run. Driven naively, every `SYNC-0x` case on those rows
+would report a pass with the app online for the whole flow: the write syncs immediately, the
+"reconnect and confirm it reached the server" assertion is satisfied, and nothing has been tested.
+That is the same defect shape as `CAT-01` and `SYNC-51` in this plan — and here I was recommending
+the mechanism that produces it.
+
+**The substitution that does not work, and the design is what rules it out.** The obvious patch is
+to blackhole iOS traffic with the proxy from the table below. It is not equivalent, and
+`02-offline-and-sync.md` §3 proves it: pill state **4** is `Offline` / `cloud-off` on the condition
+*"netinfo reports unreachable"*, while state **6** is `Sync failed` / `alert-circle` on *"last sync
+attempt failed while online"*. A proxy leaves netinfo reporting connected, so it produces state 6
+where these cases expect state 4 — a tester would either file a bug against correct behaviour or,
+if the case only asserts that the write survived, pass for the wrong reason. The table below says
+these mechanisms are never interchangeable; this is the case that proves the rule.
+
+**So the driver decision is now split by platform, and that is the decision to take:**
+
+- **Android** — Maestro drives `SYNC-01`–`SYNC-05` fully (`setAirplaneMode` is real there).
+- **iOS** — no driver, Maestro or otherwise, can make netinfo report unreachable on a simulator.
+  Those cases are **manual on a physical iOS device** with the radio genuinely off, and the §12
+  rule that at least one row must be physical hardware is what carries them.
+
+Until that is agreed, the seven cases run as `Manual`, which is slower and less repeatable but not
+blocking. Nothing in this correction changes a case's expected result.
 
 ### Controlling the network
 
 Offline is the subject of this plan, so how it is produced matters more than usual. Three
 mechanisms, used deliberately and never interchangeably:
 
+**One precondition for the first row, measured 12 Oct and not yet true.** The table's `netinfo`
+column describes a library this app does not have: `@react-native-community/netinfo` is in no
+`package.json` in the repo, is not installed, and nothing under `mobile/src` reads connectivity at
+all — nor is the sync pill implemented. That is unbuilt work rather than a defect; `TVO-13` is where
+it lands. It is recorded here for two reasons: an executing tester should not assume states 4–6 of
+`02-offline-and-sync.md` §3 exist yet, and whoever builds the sync engine should know the design
+makes the `Offline` / `Sync failed` distinction rest on a package that still has to be added — which
+is the same distinction GAP 9 turns on.
+
 | Mechanism                                                                                    | Produces                                                      | Used for                                                                                                                                  |
 | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| OS aeroplane mode / `setAirplaneMode`                                                        | `netinfo` reports unreachable; sockets fail fast              | The honest offline case. Every `SYNC-0x` E2E case                                                                                         |
+| OS aeroplane mode (**Android `setAirplaneMode`, or a physical device's own toggle**)         | `netinfo` reports unreachable; sockets fail fast              | The honest offline case. Every `SYNC-0x` E2E case. **Not available as a driver command on iOS** — see GAP 9                               |
 | A proxy that forwards the request and drops the **response** (toxiproxy, or a stub in front) | A request the server applied and the client never heard about | `SYNC-07`, `SYNC-08`. Aeroplane mode cannot produce this, which is exactly why it is listed separately — it is the retry bug's only cause |
 | A jest mock of the `fetch` transport                                                         | Any status or body on demand                                  | Client-side unit cases: `token_expired` handling, per-record `invalid`, `resyncRequired`                                                  |
 
 **Killing the app** (`SYNC-19`, `SYNC-20`) means `adb shell am force-stop` on Android and
 `xcrun simctl terminate` on iOS. Not a backgrounding and not a JS reload — both leave the process
 alive and would make those cases pass vacuously.
+
+**Maestro's `killApp` is not that command, and the difference is the same vacuous-pass trap.**
+Measured against the primary reference: on Android `killApp` *"triggers a system-initiated process
+death, which is equivalent to running `adb shell am kill {package name}`"*. `am kill` is documented
+to kill only processes that are safe to kill — which excludes a **foregrounded** app. So a flow that
+backgrounds the app and calls `killApp` reproduces OS reclaim faithfully (the realistic cause during
+background sync, and the right mechanism for `SYNC-37`'s neighbourhood), while a flow that calls it
+with the app in the foreground mid-push may not kill anything at all: the push completes, nothing is
+lost or duplicated, and the case reports a pass it never earned. Where a case says `force-stop`, it
+means `force-stop`.
+
+**And it cannot be issued from inside a flow.** Maestro has no shell-escape command — `runScript`
+and `evalScript` are JavaScript only. So `am force-stop` and `xcrun simctl terminate` belong to the
+harness *around* the flow, not to a step inside it, and any case needing them is a flow plus a
+wrapper rather than a flow alone. One useful consequence in the other direction: that JavaScript
+*can* make HTTP calls (`http.get` / `http.post` / `http.request`), so a response-dropping proxy with
+an HTTP admin API — toxiproxy — **is** controllable from inside a flow. The mechanism this plan
+needs for `SYNC-07` and `SYNC-08` is the one that happens to be driveable; the two that are not are
+the device-level ones.
 
 ### Controlling the clocks
 
@@ -4629,9 +4690,27 @@ used it — `backend/tests/sync.resolver.test.ts` covers the branches `docs/PLAN
 ### GAP 9 — No E2E driver is named
 
 `docs/PLAN.md` §7 names vitest/supertest and jest/RNTL. Seven cases here need a driven app with
-connectivity control. QA proposes **Maestro** (YAML flows, Expo support, `setAirplaneMode`).
-Needs Chief's and Mobile Dev's agreement; until then those cases run manual, which is slower and
+connectivity control. QA proposes **Maestro** — Expo support and native Windows both measured and
+confirmed (§2), Java 17 present on this host.
+
+**The recommendation is now split by platform, and that is what needs agreeing.** `setAirplaneMode`
+is **Android only and a silent no-op on iOS**, so no driver can produce the netinfo-unreachable
+state these cases assert on an iOS simulator; the design distinguishes `Offline` from `Sync failed`
+on exactly that condition, which rules out the proxy as a substitute. Android drives
+`SYNC-01`–`SYNC-05` fully; iOS runs them manually on physical hardware. Full measurement, with the
+two further mechanism corrections (`killApp` is `am kill`, not `am force-stop`; no shell escape from
+a flow), is in §2 under *The E2E driver* and *Controlling the network*.
+
+**Measured against:** Maestro docs and issue #2895, 12 Oct 2026, and this host. Not filed as a
+board item — it is a decision for Chief and Mobile Dev, not a defect, and no case's expected result
+changes either way. Needs their agreement; until then the seven run manual, which is slower and
 less repeatable but not blocking.
+
+**Blocked on infrastructure before it is blocked on the driver.** Measured on this host: `adb` is
+present, but **no device is attached and no emulator binary or AVD is installed**; `xcrun` is
+absent, so iOS E2E is not reachable from this machine at all, simulator or otherwise; and there is
+no CI (`.github/workflows` does not exist). Agreeing the driver does not by itself make any of the
+seven runnable — it is the cheaper half of the decision, and the matrix in §12 is the expensive one.
 
 ### GAP 10 — Rate limits are not quantified
 
