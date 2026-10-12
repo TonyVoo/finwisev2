@@ -230,7 +230,8 @@ print('expected-fail :', len(sites))
 EOF
 ```
 
-Reads `174 / 5 / 8` on `17b8ca8` (it read `173 / 5 / 8` from `c2ae1e0` until `SYNC-58` was added). Three details in it are load-bearing, and writing it produced the
+Reads `179 / 5 / 8` on `4d279bd` (`174 / 5 / 8` on `17b8ca8`; `173 / 5 / 8` from `c2ae1e0` until
+`SYNC-58` was added). Three details in it are load-bearing, and writing it produced the
 wrong number on each in turn: the scan **breaks at §11**, or the register's own prose about markers
 is attributed to the last case heading and parked reads 6; `**Was**` is excluded, or the historical
 marker on `SYNC-13` is counted; and the expected-fail figure counts **call sites in the test files**,
@@ -1726,6 +1727,12 @@ validation_error`, and the body names no owner — the id is the global primary 
 - **Expect** The legend amounts sum exactly to the displayed total, and the count equals the
   number of live expenses in the month. All four figures come from one `GROUP BY`, so a
   discrepancy of even one cent means they are being computed in more than one place.
+- **A green verdict here means less than it looks, and the fixture is why.** `F-MONTH` holds no
+  expense under a deleted category, and that is the one state in which these figures come apart —
+  see `SUM-17`. Worse, the expected result above names the wrong cause for it: in that state the
+  figures *are* computed in one place and the legend's join drops a row, so a tester following this
+  text would send a fixer looking for a second computation that does not exist. Run `SUM-17`
+  alongside this case; a pass here on `F-MONTH` alone is not evidence.
 
 ### SUM-08 — Percentages round for display only, and never read as 0%
 
@@ -1806,6 +1813,81 @@ validation_error`, and the body names no owner — the id is the global primary 
 - **Expect** The total changes in the **same render pass** as the row appearing and disappearing —
   it is never briefly stale. It is one accessibility element, labelled as money, with
   `accessibilityLiveRegion="polite"`, so the new figure is announced without focus being stolen.
+
+### SUM-15 — A tie in the legend is not ordered by name, because the specified query cannot be
+
+- **Layer** Unit
+- **Pre** Three live categories (`Appliances`, `Groceries`, `Transport`) each holding exactly one
+  `$20.00` expense in the month
+- **Steps** Run `08-monthly-summary.md` §Behaviour rule 1's statement verbatim
+- **Expect** The three groups come back in an order that is **not** `Appliances, Groceries,
+  Transport`. The `default` state specifies "ties broken by category name ascending so the order is
+  stable between renders"; rule 1's `ORDER BY total DESC` has no second key, and the statement does
+  not join `categories` at all, so it has no name to order by. The assertion is the negative on
+  purpose — the order that *is* returned is a property of the query plan rather than of the data,
+  and pinning it would file a defect the day the index set or the SQLite version changes. See
+  **GAP 22**.
+- **Result** (12 Oct, `mobile/tests/db/summaryQuery.test.ts`) Measured. The order returned was
+  neither name order nor insertion order, and it was not the same shape in a two-category fixture
+  as in a three-category one.
+
+### SUM-16 — The stated tiebreak, written the obvious way, is case-sensitive
+
+- **Layer** Unit
+- **Pre** Two live categories, `Transport` and `rent`, each holding one `$20.00` expense in the month
+- **Steps** Add the missing tiebreak to the legend query as `ORDER BY total DESC, c.name` and run it
+- **Expect** `rent` sorts **after** `Transport`. `categories.name` carries no collation, so SQLite's
+  default BINARY ordering puts every capital before every lowercase. This is **GAP 12**'s defect in a
+  second query, and it means GAP 12's fix (`COLLATE NOCASE`) has to be applied here too when this
+  screen is written — the two are one change in two places, not one change.
+
+### SUM-17 — An expense under a tombstoned category is in Home's total and absent from the legend
+
+- **Layer** Unit + E2E
+- **Pre** `Housing` live with `$520.00` this month, and `Groceries` **tombstoned locally** while
+  still holding `$312.50` this month — the state `SYNC-43` measures the server producing, reached by
+  a sync-path category delete and made permanent by **GAP 15**
+- **Steps**
+  1. Run `04-expense-list.md` §Behaviour rule 3's statement — Home's total
+  2. Run `08-monthly-summary.md` §Behaviour rule 1's statement — the Summary groups
+  3. Run rule 1 with the join the legend needs to get a name and a colour, live categories only
+- **Expect** Steps 1 and 2 both read `$832.50`. Step 3 reads `$520.00` and lists `Housing` alone.
+  So the Expenses tab and the Summary tab display **different totals for the same month** — the
+  failure `05-month-switcher.md` rule 7 exists to prevent, arriving through a door that rule does
+  not cover. `08-monthly-summary.md` has no rule for an expense whose category is deleted, and the
+  three answers available each break something different. See **GAP 22**.
+- **Result** (12 Oct) Measured: `83250` from both of the first two, `52000` from the third.
+
+### SUM-18 — A month whose expenses all cost nothing is neither empty nor chartable
+
+- **Layer** Unit + E2E
+- **Pre** Three live expenses in the month, every one `amountMinor: 0`
+- **Steps** Compute `monthTotal` and the expense count from rule 1's statement
+- **Expect** `monthTotal` is `0` and the count is `3`. Rule 11 draws the donut only when
+  `monthTotal > 0` **and states that this is "the same condition as the `empty` state"** — but the
+  `empty` state's condition is "no expenses this month", and here the two disagree. The screen
+  renders `$0.00`, `3 expenses`, no donut and no empty-state message: a blank panel between the
+  total and the tab bar, which no state in the spec describes. See **GAP 22**.
+- **How the precondition is reached, stated precisely** — **not** through this app's own form.
+  `06-expense-form.md` rule 6 disables Save at `amountMinor === 0` and says so deliberately
+  ("Zero is not a valid expense… the contract permits `amountMinor: 0`"). The server does accept it
+  on all four write paths, which `EDGE-01` measured, so these rows arrive from the API directly, from
+  a `PATCH` down to zero, or from another client by sync. **The same blank panel is reachable from
+  inside the app** if `SUM-17` is answered by excluding the orphan: a month whose every expense sits
+  under a deleted category then has a legend-derived total of `0` with the expenses still present.
+- **Result** (12 Oct) Measured: `monthTotal = 0`, `count = 3`.
+
+### SUM-19 — The zero total is the client's coalesce, not SQL's
+
+- **Layer** Unit
+- **Pre** One live expense dated `2026-09-30`, nothing in October
+- **Steps** Run Home's total statement bounded to October
+- **Expect** One row whose `total` is **`NULL`** — `SUM()` over no rows is NULL, not 0 — and rule 1
+  returns no rows at all. Both specs state the total still renders `$0.00` rather than a blank or a
+  dash (`04-expense-list.md` `empty — first run`, `08-monthly-summary.md` `empty`), so the coalesce
+  is the client's and has to be written. A screen that formats the raw value renders `$NaN` or
+  nothing, in the one state a brand-new user sees first.
+- **Result** (12 Oct) Measured: `NULL`, and zero group rows.
 
 ---
 
@@ -3654,7 +3736,11 @@ a wire-contract guarantee, and it produces a tombstone the 90-day horizon never 
 **GAP 19** from the only input this plan had never read adversarially: the contract's *conventions
 list*, the prose above the schemas. Every earlier gap came from a schema, a design rule or the
 landed code. This one is four sentences about how the API is allowed to change, and they contradict
-each other, the document's own schemas, and the client.
+each other, the document's own schemas, and the client. **GAP 22** came from the newest direction
+of all: running a design document's own SQL **before the screen that will run it exists**. Both
+money figures in this app are specified as statements, printed in full in two design files, and
+nobody had executed either — they turn out to disagree with each other and with the prose around
+them, and every fix is still an edit to a document rather than to code.
 
 The numbering is kept stable so the TVO-5 thread still reads correctly, and closed entries are kept
 rather than deleted, so the decision stays recorded where the test that depends on it can find it.
@@ -3690,6 +3776,7 @@ no new `revision`, and another account's id rejected as `400 validation_error`.
 | 19  | The `/v1` additive-only policy breaks every installed client | Medium | **TVO-27** (`917f33d0`) | — | `API-20`–`API-24` flip **only** if the lenient branch is chosen; the closed branch leaves them green |
 | 20  | A refresh whose answer is lost logs the user out | Medium | **TVO-28** (`a5dc9cc1`) | — | branch 1 flips `API-25` step 3 and `AUTH-29` step 2; branches 2 and 3 leave both green, which is the honest signal that they mitigate rather than fix |
 | 21  | The contract accepts currencies the design's `decimals` rule gets wrong | Low | **TVO-29** (`dbf7b8d6`) | — | `EDGE-13` stays green under either branch; `EDGE-14` reddens if the Sheet ever gains a zero-decimal currency |
+| 22  | Two tabs can show different totals for the same month, and three rules in the Summary spec do not produce what it states | Medium | **TVO-31** (`68daabf3`) | — | `SUM-15`–`SUM-19` are measurements of the *design's* statements, not of a module; each reddens alone under the change its finding recommends. They re-point at `TVO-12`'s code when it lands |
 | 5   | A future-dated row arriving by sync is unreachable in every view | Medium | **not filed** — the Designer's call | `EDGE-04` step 3 | `EDGE-04` unparks |
 | 7b  | `immutable_field` is unreachable on the **REST** path | Low | **not filed** — a choice between two one-line fixes | `API-04` (half) | `API-04`'s REST half unparks |
 | 9   | No E2E driver is named in `docs/PLAN.md` §7 | Low | **closed 12 Oct** — Maestro agreed with Mobile Dev, split by platform; the infrastructure half is **TVO-30** | nothing | — |
@@ -3706,14 +3793,17 @@ the opposite was true: GAP 4 and GAP 3 had both stopped being questions by being
 landed code, and the pattern worth noting was that a gap sitting unanswered for three runs is more
 often unexamined code than an undecided policy. That pattern held for GAP 11 through GAP 18, every
 one of which turned out to be a defect with a test behind it. It stopped holding at GAP 19. The
-three newest gaps (19, 20, 21) each come down to a contract or posture choice that QA should not
-make unilaterally, and GAP 5, 7b, 9 and 10 have been waiting on their owners throughout. So the
+four newest gaps (19, 20, 21, 22) each come down to a contract, posture or design choice that QA
+should not make unilaterally, and GAP 5, 7b, 9 and 10 have been waiting on their owners throughout.
+GAP 22 is the cheapest of the four by a distance, because the screen it describes does not exist
+yet and every branch is still an edit to a document. So the
 honest state of this register is: the testable half is done and reported, and what remains is
 mostly waiting on decisions.
 
-**Eleven board items are open from this plan**, all `todo` and unassigned: the ten filed gaps named
-in the table above, plus **TVO-21** (`1238853a`) — the mobile jest suite force-exits a worker on
-every run. That last one is test infrastructure rather than a numbered gap, because it is not a
+**Twelve board items are open from this plan**, all `todo` and unassigned: the eleven filed gaps
+named in the table above, plus **TVO-21** (`1238853a`) — the mobile jest suite force-exits a worker
+on every run. **TVO-30** is a thirteenth, filed 12 Oct for the E2E infrastructure left over when
+GAP 9 closed, and it is not a gap entry because the decision it carried is settled. That last one is test infrastructure rather than a numbered gap, because it is not a
 product defect and §2 records how to tell it apart from a failure mid-execution; it is listed here
 so the board and this register agree on the count.
 
@@ -3767,8 +3857,19 @@ done
 
 | Baseline | Covers | Measurements taken against it |
 | --- | --- | --- |
-| `95cfbf0` | `mobile/`, `shared/` | GAP 11, 12, 13 (`221 of 223`), GAP 14, GAP 16, GAP 17 (`8 of 223`), GAP 19, `EDGE-14` |
+| `95cfbf0` | `mobile/`, `shared/` | GAP 11, 13 (`221 of 223`), GAP 14, GAP 16, GAP 17 (`8 of 223`), GAP 19, `EDGE-14` |
+| *the GAP 22 commit* | `mobile/`, `shared/` | GAP 12 (`226 of 228`), GAP 22's five recipes |
 | `6acfca9` | `backend/`, `shared/` | GAP 15 (`350 of 352`), GAP 18 both directions, `EDGE-13`, `API-25` both recipes |
+
+**The mobile denominator moved again, 223 → 228, when GAP 22 landed `summaryQuery.test.ts`** — so
+the check above now reads `STALE` for `95cfbf0`, correctly. That commit adds one new file and
+touches no `mobile/src` and no existing test, so the three mobile entries' *shape* should be
+unchanged and only their denominator should move. **GAP 12 was re-run to check that rather than
+asserted**: its one-liner now flips 2 of 228 with 226 green, which is the same two cases and five
+more green than before — so the five new cases are unaffected by it, including the two that are
+themselves about category ordering. **GAP 11 and GAP 13 were not re-run this time**, and that is a
+carry-over rather than a judgement: their candidate fixes are multi-line reconstructions rather than
+a one-liner, and `STALE` is the honest state to leave them in. Re-run both before relying on either.
 
 **What it does not do**, stated because a green sweep is easy to over-read: it detects that the tree
 a number was taken on has moved, not that the number is wrong. A commit touching `mobile/` makes
@@ -4460,6 +4561,96 @@ than against what it was written to mean. Both cases now pin `en-US`, §2 carrie
 beside the Timezones one, and §12 rule 6 repeats four cases under `de-DE` on row 3 — which on
 Hermes is the only layer that can see a hardcoded `$` or a hardcoded `2` at all.
 
+### GAP 22 — The two tabs can display different totals for the same month, and the Summary spec's own query does not produce what the same document states — **OPEN**
+
+Found by taking the two SQL statements `docs/design/` prints as the source of the app's two money
+figures and **running them**, before the screens that will run them exist. `TVO-11` and `TVO-12`
+are both unbuilt, which is what makes this the cheap moment: every finding below is a correction to
+a document, and three of the four stop being free the day the screen is written against it.
+
+**The decision — an expense whose category has been deleted.** `08-monthly-summary.md` rule 1 is
+explicit that one statement feeds the total, the chart, the legend and the count, "so [they] can
+never disagree with each other". It groups by `categoryId` and joins nothing. But the legend needs
+a **name** and a **colour**, which that statement does not select, so every implementation has to
+join `categories` — and the moment it filters live rows, the way every other read in this client
+does, an expense under a tombstoned category leaves the legend and takes its amount out of the
+Summary total with it. Home's total (`04-expense-list.md` rule 3) joins nothing and keeps it.
+Measured (`SUM-17`): **`$832.50` on Expenses, `$520.00` on Summary, same month**. That is the
+failure `05-month-switcher.md` rule 7 is written to prevent — "two tabs showing different months
+while both say *this month* would make the total look wrong" — reached without the months ever
+differing.
+
+It is reachable, it is not rare, and it does not heal: the orphan is produced by a sync-path
+category delete (**GAP 2**, settled and tested as the better branch), it reaches **every** device on
+the account through an ordinary pull, and **GAP 15** is the finding that its tombstone is never
+collected. So one such delete leaves a permanent disagreement between two tabs of the same app.
+
+Three answers exist and none is in the design:
+
+1. **Fold it into the fallback category.** `migrations.ts` already states this as the local rule —
+   "locally a dangling `categoryId` renders as the fallback category rather than failing the write"
+   — so the schema has an opinion the summary spec does not. Totals agree and every slice has a
+   name. The cost is that rule 1's "one query feeds everything" stops being literally true: the
+   remap happens after aggregation, and two groups can then map to one legend row, so they must be
+   merged or the user sees `Uncategorized` twice.
+2. **Keep the orphan as its own slice.** Totals agree, and the legend gains a row with no name and
+   no colour — which rule 5 (the 2px separating stroke, required because the palette is separated
+   by hue at near-identical luminance) and Accessibility rule 4 ("colour is never the only carrier
+   of category identity here") both assume cannot happen.
+3. **Exclude it and accept the disagreement.** Cheapest to write and the only one that produces a
+   wrong number on the MVP's headline screen.
+
+**Severity Medium**, and the reason is the outcome rather than the mechanism: §14's exit criteria
+rank a wrong money figure above a layout defect, and this one is wrong *quietly* — both screens
+render a confident, well-formatted total and neither has any way to know it disagrees with the
+other.
+
+**`SUM-07` is the case that should have caught this, and it cannot.** It asserts exactly the broken
+invariant — the legend amounts sum to the displayed total — but its fixture is `F-MONTH`, which
+holds no expense under a deleted category, so it agrees with every implementation above. Same shape
+as `CAT-01` and `SYNC-51`. Its expected result also named the wrong cause ("a discrepancy of even
+one cent means they are being computed in more than one place"), which in this state is false and
+would have sent a fixer hunting a second computation that does not exist. Both corrected in place.
+
+**Three smaller ones in the same document, each a one-line fix while nobody has written the query:**
+
+- **The legend's stated tie order is not implementable from the stated query.** The `default` state
+  requires "ties broken by category name ascending so the order is stable between renders"; rule 1
+  has `ORDER BY total DESC` and no second key, and no `categories` join to supply a name. Measured
+  (`SUM-15`): the returned order is neither name order nor insertion order, and it is not the same
+  shape in a two-category fixture as in a three-category one — it is a property of the query plan.
+  Ties are ordinary here (two categories with one `$20.00` expense each), so the legend reorders
+  itself for reasons the user cannot see.
+- **The obvious tiebreak is `GAP 12` again.** `ORDER BY total DESC, c.name` against the uncollated
+  `name` column is case-sensitive, so `rent` lands after `Transport` (`SUM-16`). GAP 12's fix and
+  this one are the same change in two places; whoever takes **TVO-19** should be told so.
+- **Rule 11 says two conditions are the same condition, and they are not.** "The donut is drawn only
+  when `monthTotal > 0` … it is the same condition as the `empty` state", while the `empty` state's
+  condition is "no expenses this month". A month holding only zero-amount expenses satisfies neither
+  (`SUM-18`): `$0.00`, `3 expenses`, no donut, and no empty-state message — a blank panel no state
+  in the spec describes. Reachability is narrower than it first looks and the case now says so:
+  `06-expense-form.md` rule 6 blocks a zero amount **deliberately**, so those rows arrive from the
+  API, from a `PATCH` to zero or from another client — the server accepts all four (`EDGE-01`).
+  The same blank panel is reachable from inside the app only if the orphan above is answered by
+  option 3, which is one more reason not to choose it.
+
+A fourth is not a defect but is worth a sentence to whoever writes the query: `SUM()` over no rows
+is **`NULL`**, not `0`, and both specs require the zero total to render as `$0.00` rather than a
+blank (`SUM-19`). The coalesce is the client's. Separately, `migrations.ts` says monthly totals
+"bucket on `substr(date, 1, 7)`" while both screens specify an inclusive `BETWEEN` pair; the two
+agree on every well-formed date, but only the second is served by `idx_expenses_live_date`.
+
+**Filed as TVO-31**, Designer, with the orphan as the decision and the other three as corrections —
+one task rather than four, because they are four edits to one document.
+
+**What this does not claim.** `mobile/tests/db/summaryQuery.test.ts` runs the design's statements
+against a real engine; it does **not** test a module, because none exists. A green run says the
+measurement reproduces, not that a screen is correct. Each case was shown able to fail against the
+change its finding recommends — a `COLLATE NOCASE` tiebreak reddens `SUM-16` alone, a `LEFT JOIN`
+reddens `SUM-17` alone, a coalesced `SUM()` reddens `SUM-19` alone, an `amountMinor > 0` filter
+reddens `SUM-18` alone, and a name-ordered tiebreak reddens `SUM-15` alone, each leaving the other
+four green. Measured at mobile **228** — `4d279bd` plus this commit's one new file.
+
 ### GAP 1 — Who seeds the default categories, and the duplicate-six risk — **CLOSED**
 
 The contract's `POST /v1/auth/signup` says it "**seeds the default categories**", while an earlier
@@ -4932,6 +5123,9 @@ bugs, and this is what proves none of them came back. Target: under 30 minutes p
 
 - [ ] Month total equals the SQL sum over the month, with more than one page of expenses
 - [ ] Legend amounts sum to the displayed total; the count matches the live expense count
+- [ ] Delete a category **through sync** while it holds expenses this month, then compare the two
+      tabs' totals for that month → they agree (`SUM-17`, GAP 22). `F-MONTH` alone cannot show this,
+      which is why the previous line passing is not evidence for this one
 - [ ] An empty month shows `$0.00` and no donut, with the right copy on both tabs
 - [ ] Switching month on one tab carries to the other; Next is disabled at the current month
 - [ ] Every money string was read under the pinned `en-US` locale, and the `de-DE` pass on row 3
