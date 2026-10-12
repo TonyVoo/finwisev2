@@ -360,6 +360,92 @@ exists, because a force-exited worker is the shape a flaky run takes: the lever 
 `--runInBand` for the mobile project, which costs wall-clock and should be a deliberate choice.
 Filed at low severity for that decision rather than for a fix.
 
+### Nothing in this plan can be executed until TVO-6's review is recorded — verified 2026-10-12
+
+This is a process fact rather than a product one, but it is the thing actually holding execution,
+so it belongs here rather than in a comment.
+
+**`TVO-6` — *Mobile: app scaffold, local SQLite store, and API client* — is the terminal blocker
+for five issues**, including `TVO-14`, the task that executes this plan. The board says so
+directly: `TVO-10`, `TVO-11`, `TVO-12`, `TVO-13` and `TVO-14` each carry
+`blockerAttention.state = "stalled"`, `reason = "stalled_review"`, `terminalBlocker = TVO-6`. It
+has been `in_review` since 2026-10-08 with **no reviewer** — its `reviewPolicy` is null, and the
+only review paths the board could find were the author's own wake and a queued copy of it.
+
+QA is the reviewer that issue was missing. The verification below is the verdict, measured against
+this tree rather than carried over: the two guarantees `TVO-6`'s own acceptance criteria single out
+as must-test were re-measured on **2026-10-12**, per the decay rule in §11 — a measurement is only
+good against the suite it was taken on.
+
+| # | Criterion | Verdict |
+| --- | --- | --- |
+| 1 | Expo managed TS app in the workspace, strict mode, boots on iOS and Android | **Met**, with one limit below |
+| 2 | expo-router placeholder routes, auth-gated vs public split | **Met** — `app/(app)` and `app/(auth)` carry mirror-image guards, and the gate is a `Redirect` rather than an effect, so there is no first frame of another user's data |
+| 3 | `expo-sqlite` schema + migration runner matching `docs/PLAN.md` §3 | **Met** — UUIDv7 TEXT ids, `updatedAt`/`deletedAt`/`revision`, `amountMinor` INTEGER + `currency`, `date` as TEXT `YYYY-MM-DD`; `PRAGMA user_version` runner, one transaction per migration |
+| 4 | `outbox` + a write helper that writes row and entry in one transaction, unit-tested | **Met, and the test can fail** — see below |
+| 5 | A typed API client whose types come from `shared/` | **Met** — `client.ts` imports 23 wire types from `@expense-tracker/shared`; no hand-written wire type |
+| 6 | `expo-secure-store` tokens, 401 refresh, one refresh for concurrent 401s | **Met, defended at three layers** — see below |
+| 7 | TanStack Query over SQLite, confirmed end to end with one trivial read | **Met** — `db/hooks.ts`, driven through a provider in `tests/db/hooks.test.tsx` |
+| 8 | jest + RNTL configured, with tests for the write helper and the interceptor | **Met** — `mobile/jest.config.js`, RNTL in `tests/setup.ts` and two `.tsx` suites; both named tests exist and both are shown able to fail below |
+| 9 | `pnpm lint && pnpm typecheck && pnpm test` passes | **Met, and this is the bullet that changed** |
+| 10 | Note which `expo-background-task` version the pinned SDK provides | **Met, and its load-bearing facts check out** — see below |
+
+**Criterion 4 is guarded by exactly one case, and it is the right one.** Moving the outbox
+`enqueue` out of `applyLocalMutation`'s transaction — the defect the criterion exists to make
+impossible — reddens `write.test.ts:183` and **nothing else**: 220 of 221 mobile cases stay green.
+That case is the one that fires a real `UNIQUE` violation on `clientMutationId` on the *second*
+write of the transaction, after the row insert has already happened, which is the only
+interleaving that can observe a row landing without its entry. A case that mocked the failure, or
+that failed on the first write, would have gone green against the defect.
+
+**Criterion 6 is guarded at three layers.** Removing the `inFlightRefresh` single-flight guard
+reddens exactly three of 221, one in each of `auth/session.test.ts` (the controller),
+`api/authorize.test.ts` (the interceptor) and `bootstrap/container.test.ts` (the real wiring). The
+third is `AUTH-27`, added by QA after the handback, so this criterion is better covered now than it
+was when it was handed over.
+
+**Criterion 9 is what changed since the handback.** The author's one open objection on 2026-10-08
+was that the root `lint:code` was red at `backend/src/middleware/validate.ts:2` — not their file,
+and owned by `TVO-7`. `TVO-7` is now `done`, `eslint` on that file exits 0, and `pnpm lint`,
+`pnpm typecheck` and `pnpm test` all exit 0 repo-wide (shared 392, backend 350 + 2 expected-fail,
+mobile 221). The objection is resolved; nothing is waiting on it.
+
+**Criterion 10's facts, verified against the installed package rather than taken on the note.**
+These govern how any background-sync observation has to be set up, which is why they are recorded
+here and not only on the task:
+
+- `expo-background-task@57.0.21` is installed and resolves to `build/BackgroundTask.js`;
+  `expo-background-fetch` is **not** installed, so none of its API exists in this app.
+- **`BackgroundTaskOptions.minimumInterval` is in MINUTES**, default once every 12 hours, floor 15
+  minutes — confirmed from `build/BackgroundTask.types.d.ts`. The deprecated package's equivalent
+  took seconds, so a seconds value passed here is silently read as minutes. This is the fact
+  `TVO-13` most depends on.
+- A consequence for this plan: **no case may conclude anything from backgrounding the app for
+  less than 15 minutes.** `SYNC-37` is unaffected because it disables background execution at the
+  OS level and asserts the four foreground triggers suffice on their own — but a case written to
+  *observe* a background fire needs `triggerTaskWorkerForTestingAsync()` (debug builds only) or a
+  wait longer than the floor.
+
+**The one criterion QA cannot close from here, stated precisely.** Criterion 1 says "booting on iOS
+and Android". What is verified is that both platforms *bundle*: `expo export --platform ios
+--platform android` exits 0 and emits Hermes bytecode for both (3.4 MB iOS, 3.7 MB Android), so the
+module graph resolves for both platforms with every native import included. That is not a device
+boot — a missing native module in the dev client, or a crash on the first frame, would survive it.
+It needs a run on hardware, which is the §12 matrix and not something this workspace can do.
+
+**The known hole, which does not belong to these criteria.** `GAP 13` / `TVO-20`: an in-flight
+request can be retried under the *next* user's token, because `ensureFreshAccessToken`
+short-circuits on the token string and the session's identity is not part of the comparison. Every
+criterion-6 case concerns the token changing within one session; this is the cross-session path, and
+it was filed separately for that reason. Also still deliberately absent, as the author recorded:
+outbox coalescing (`GAP 17` / `TVO-24`), where QA has since measured that the design is the side
+that should change.
+
+**So the review is done and the verdict is "met".** What is missing is the status move, and QA is
+not making it: with no agent token the write would be recorded as the board user, which would show
+the project lead signing off on a review they did not perform. That is the same reason the author
+gave for not closing it themselves, and it is a good one.
+
 ### The E2E driver is not yet chosen — [GAP 9]
 
 `docs/PLAN.md` §7 names vitest/supertest and jest/RNTL but no end-to-end driver, and several cases
@@ -2325,7 +2411,10 @@ connectivity.
 - **Expect** Nothing is lost. The four foreground triggers (app open, regaining connectivity, a
   settled local write, and pull-to-refresh) are sufficient on their own: step 2 drains the outbox
   completely. The app must be fully correct if background sync never fires once, so a pending row
-  that only ever syncs via `expo-background-task` is a fail.
+  that only ever syncs via `expo-background-task` is a fail. Note that the hour in step 1 is chosen
+  to be an ordinary backgrounding, **not** long enough for a background fire to be due at all —
+  `minimumInterval` has a 15-minute floor and a 12-hour default (§2) — so the absence of a
+  background sync during it is the precondition, never the finding.
 
 ### SYNC-38 — Pull paging terminates and delivers every row exactly once
 
@@ -3350,7 +3439,12 @@ no new `revision`, and another account's id rejected as `400 validation_error`.
 | 9   | No E2E driver is named in `docs/PLAN.md` §7 | Low | **not filed** — wants Mobile Dev's agreement, not a ruling | 7 cases run manual | the 7 driven-app cases become automatable |
 | 10  | Rate limits are not quantified | Low | **not filed** — an owner call | `API-09` | `API-09` can assert that a limit exists, not just its shape |
 
-**Nothing open blocks *executing* this plan — but four of the open gaps now need an owner's
+**No open *gap* blocks executing this plan — but something else does, and this sentence used to
+stop before saying so.** `TVO-14`, the task that executes this plan, is `blocked`, and its terminal
+blocker is `TVO-6`'s unrecorded review, not any gap below. §2 carries the verdict and the one move
+that ends it. The distinction matters because a reader of this register reasonably took the old
+sentence to mean execution was waiting on nothing but a scheduling decision; it is waiting on a
+review QA owed and filed in the wrong thread. **Four of the open gaps also need an owner's
 decision rather than more testing, and that is a reversal.** When this section was first written
 the opposite was true: GAP 4 and GAP 3 had both stopped being questions by being read against the
 landed code, and the pattern worth noting was that a gap sitting unanswered for three runs is more
