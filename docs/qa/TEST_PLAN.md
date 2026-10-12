@@ -1989,7 +1989,13 @@ common offline-sync bug", so these cases get the proxy harness from §2 rather t
 - **Expect** Step 2 returns `status: "invalid"` with `error.code = "mutation_id_reused"`. The
   stored row still has `amountMinor: 450`. It is not silently accepted and not silently replayed:
   a reused id with a different payload means the client lost track of its outbox, and hiding that
-  hides the bug.
+  hides the bug. **`record` is non-null and holds the stored row**, asserted at
+  `backend/tests/sync.idempotency.test.ts:325`. That is not incidental: the contract says `record`
+  "is null only when there is no server row to report", so an `invalid` whose row exists
+  server-side still hands the client an authoritative copy. A drain that keys its write-back on
+  `status` — applying on `applied` and `conflict_server_wins`, skipping `invalid` — throws that
+  copy away and leaves the local row diverged with nothing pending to correct it. See rule 2 of
+  the drain rules in §8.10.
 
 ### SYNC-12 — Idempotency is scoped per user
 
@@ -2601,6 +2607,44 @@ One practical note for whoever writes the next case here: `backend/tests/support
 these batches. That assumption is the coalescing model again, in the test helpers this time — which
 is a fair measure of how settled the wrong shape had become.
 
+#### Drain rules — the seven decisions `TVO-13` bakes in
+
+Each is read off the contract or the tree rather than inferred, with what verifies it. The four
+cases below are the evidence; this is what they amount to for the person writing the drain.
+
+1. **Match a result to its entry by `clientMutationId`, never by position.** Every result echoes
+   it precisely *"so results can be matched back to local mutations"*, and `outbox.clientMutationId`
+   is `UNIQUE`, so the match is an exact single-row lookup.
+2. **Write back `record` whenever it is non-null — including on `invalid`.** The contract says
+   `record` *"is null only when there is no server row to report"*, so null is the only signal
+   that there is nothing authoritative to apply. A drain that keys the write-back on `status`
+   discards a server row it was handed: `SYNC-11` is the measured case, where a
+   `mutation_id_reused` result carries the stored row
+   (`backend/tests/sync.idempotency.test.ts:325`).
+3. **Apply several results for one row in request order**, because the last write-back is the one
+   that survives locally. `SYNC-50`: writing back only the `conflict_server_wins` record stores a
+   row the batch's own later entry already changed.
+4. **Do not try to repair `SYNC-48`'s hybrid row in the drain.** After that batch the hybrid *is*
+   the server row, so converging on it is correct and repairing it locally would diverge from the
+   server. The authorship problem is upstream — per-field merge over uncoalesced entries — and it
+   is `TVO-24`'s decision, not the drain's.
+5. **Do not coalesce at `enqueue` time.** `outbox` carries `attempts` and `lastError` and nothing
+   separating *queued* from *sent, awaiting a response*, so a merging `enqueue` cannot tell what it
+   is merging into — and merging into an in-flight entry changes the payload under an id the server
+   may have recorded, which returns `mutation_id_reused` and drives the row into `needs-attention`
+   through ordinary use, against §2 rule 1. Coalescing, if chosen, belongs at drain time over
+   entries provably not in flight, and needs a schema marker first.
+6. **The `outbox` primary key is `seq`, not `id`** — `AUTOINCREMENT` deliberately, so a reused
+   rowid cannot sort a new entry before an older one. Recorded because a QA probe written against
+   `outbox.id` reddened 43 of 223 and read exactly like a badly decayed measurement.
+7. **If coalescing does land, widen the transaction tracer.** `mobile/tests/db/write.test.ts:240`
+   and `:255` find the outbox write by matching `/INSERT INTO outbox/`; a coalescing `enqueue`
+   issues an `UPDATE`, the pattern matches nothing, and the helper fails outright — reporting a
+   defect that is not there. Measured: 8 of 223.
+
+Rules 1–3 are the write-back, and they are separable from the `TVO-24` decision: they hold
+whichever branch is chosen, because they describe how to read a response the server already sends.
+
 ### SYNC-47 — Two entries for one row both apply, and the row ends at the later one
 
 - **Layer** API (automated: `backend/tests/sync.uncoalescedOutbox.test.ts`)
@@ -2665,8 +2709,12 @@ is a fair measure of how settled the wrong shape had become.
   1. Compare the **last** result for the row against the server's row
   2. Compare the `conflict_server_wins` result's record against the server's row
   3. Pull from `since=0`
-- **Expect** Step 1: equal — a client that writes back every result in request order converges
-  inside the push, which is what makes a conflict cost one round trip instead of two. Step 2:
+- **Expect** Step 1: equal — a client that writes back every result, applying them in request
+  order, converges inside the push, which is what makes a conflict cost one round trip instead of
+  two. "In request order" governs which write-back lands **last**; it is not how a result is
+  matched to its entry. Every result echoes `clientMutationId` precisely "so results can be
+  matched back to local mutations", and `outbox.clientMutationId` is `UNIQUE`, so the match is an
+  exact single-row lookup and never positional. Step 2:
   **not** equal. That record is the row as it stood when entry 1 lost, and entry 2 of the same
   batch then changed it, so a client that writes back only the conflicted record — the obvious
   reading of "on `conflict_server_wins`, overwrite the local row with the server row" — stores a
@@ -4095,9 +4143,15 @@ written:
 the consequence is Mobile Dev's: amend §2 rule 2 to describe what the client does — one entry per
 edit, carrying only that edit's fields, with the row `pending` while any of them is undrained — and
 extend §5.2, which currently reads as row-level, to say that a conflict is per entry and that the
-client must write back **every** result in request order. `SYNC-50` is the case for that last
-clause: writing back only the `conflict_server_wins` record, which is the obvious reading of the
-text as it stands, stores a row the batch's own later entry has already changed.
+client must write back **every** result, applying them in request order. `SYNC-50` is the case for
+that last clause: writing back only the `conflict_server_wins` record, which is the obvious reading
+of the text as it stands, stores a row the batch's own later entry has already changed.
+
+Two refinements to that wording, both read off the contract rather than inferred. "In request
+order" decides which write-back lands **last**, not how a result is matched to its entry — the
+echoed `clientMutationId` is the match, and it is exact. And the write-back is governed by
+`record` being non-null, **not** by `status`: an `invalid` whose row exists server-side still
+carries the authoritative row, which rule 2 of §8.10's drain rules states and `SYNC-11` measures.
 
 If row-level last-write-wins is wanted instead — a defensible product call, since it keeps a user's
 edits together — it is not a one-line change. Coalescing has to happen at **drain** time over
