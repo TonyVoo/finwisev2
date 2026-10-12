@@ -3533,13 +3533,19 @@ GAP 11, GAP 12, GAP 13 and GAP 15 are filed defects rather than open questions, 
 blocks anything: `AUTH-20`, `AUTH-21`, `CAT-15`, `CAT-16`, `AUTH-23`, `AUTH-24`, `SYNC-44` and
 `SYNC-45` are written, automated and expected-fail, so they report each fix the moment it lands.
 
-**The mobile denominator moved 221 → 223 on 2026-10-12** (`95cfbf0`), after the four
-re-measurements below were taken. The two added cases live in `mobile/tests/db/write.test.ts` and
-exercise `applyLocalMutation`'s statement-to-transaction mapping — a module none of the four
-candidate fixes touches, and the backend denominator is unchanged at 352. So a fixer should expect
-each `219 of 221` below to read **221 of 223**, with the same cases reddening. That is reasoned
-from the delta, not re-measured: if the count comes out any other way, the measurement has
-genuinely decayed and the whole entry should be re-run before it is relied on.
+**The mobile denominator moved 221 → 223 on 2026-10-12** (`95cfbf0`), after the 2026-10-11
+re-measurements were taken, so the three mobile entries were **re-measured again on 2026-10-12** at
+the new denominator rather than adjusted on paper. All three hold: GAP 11's two orderings applied
+together flip exactly `AUTH-20` and `AUTH-21`; GAP 12's one-liner flips exactly `CAT-15` and
+`CAT-16`; GAP 13's epoch flips exactly `AUTH-23` and `AUTH-24`. Each leaves the other **221 of
+223** green and `pnpm typecheck` green repo-wide. The first version of this paragraph predicted
+exactly that from the delta and said so; the prediction was right, and it is now a measurement,
+because a fixer should not have to tell which of those two a number is.
+
+GAP 15 is backend and was **not** re-run, for a reason that is checkable rather than assumed:
+`git log 6acfca9..HEAD -- backend/ shared/` is empty, so its `350 of 352` was taken against the
+backend tree as it stands and has not decayed. A measurement decays against the tree it was taken
+on, not against the calendar — if that command stops being empty, re-run the entry.
 
 **All four candidate fixes were re-measured against the tree on 2026-10-11, and the earlier numbers
 in those entries should not have been trusted as they stood.** Each was originally measured when it
@@ -3551,7 +3557,7 @@ written *after* GAP 11 was measured and both exercise `signIn`, so a fixer apply
 ordering could reasonably have expected unexplained red in a file this plan never mentioned. They
 hold: with both GAP 11 fixes applied together exactly `AUTH-20` and `AUTH-21` flip and the other
 219 of 221 pass; GAP 12's one-liner flips exactly its two; GAP 13's epoch flips exactly its two
-with all 15 cases in `authorize.test.ts` green; GAP 15's horizon repair plus the plumbed field
+with all 11 cases in `authorize.test.ts` green; GAP 15's horizon repair plus the plumbed field
 flips exactly its two with 350 of 352 green. `pnpm typecheck` is green repo-wide under each. The
 rule this is worth keeping: a "nothing else reddens" claim has a measurement date, and it decays —
 re-run it before asking somebody to rely on it.
@@ -3609,8 +3615,8 @@ Both fixes are orderings rather than new mechanisms, and both were applied local
 write tokens → adopt → publish, rolling the tokens back if the adopt fails; and delete the owner
 key first, write it last, so a half-done write reads as no owner and therefore no session. Each
 turns its case red and leaves every other mobile case green — **re-measured 2026-10-11** with both
-fixes applied together: exactly `AUTH-20` and `AUTH-21` flip, the other **219 of 221** pass, and
-`pnpm typecheck` is green repo-wide. Filed as **TVO-18**
+fixes applied together: exactly `AUTH-20` and `AUTH-21` flip, the other **221 of 223** pass, and
+`pnpm typecheck` is green repo-wide — **re-measured 2026-10-12** at the new denominator. Filed as **TVO-18**
 (`17cf182a`) for Mobile Dev, unassigned.
 
 ### GAP 12 — The category list's local order is wrong twice — **OPEN**
@@ -3648,7 +3654,7 @@ REST contract promises plain name order and leaves presentation to the client.
 
 The candidate fix is one line — `ORDER BY c.isDefault, c.name COLLATE NOCASE` — and it was applied
 locally and reverted: it turns exactly `CAT-15` and `CAT-16` red and leaves every other mobile
-case green — **re-measured 2026-10-11**, the other **219 of 221**. Two notes for whoever takes it: `idx_categories_live (deletedAt, name)` no longer
+case green — **re-measured 2026-10-12**, the other **221 of 223**. Two notes for whoever takes it: `idx_categories_live (deletedAt, name)` no longer
 serves that sort, which is acceptable on an unpaginated set of a few dozen rows but is a choice
 worth making knowingly rather than discovering; and a `COLLATE NOCASE` column would also change
 what the `UNIQUE`-style local name check in `CAT-14` compares, so the collation belongs in the
@@ -3692,10 +3698,19 @@ cannot be met with it red.
 
 The fix is a session **epoch**, bumped on `signIn` and `signOut` and **not** on a rotation,
 captured in `authorize.ts` before the send and re-checked after the `401`; if it changed, return the
-original response. Applied locally and reverted: `AUTH-23` and `AUTH-24` turn red, all 15 cases in
-`authorize.test.ts` stay green along with `AUTH-22` and `AUTH-25` — **re-measured 2026-10-11**, the
-other **219 of 221** pass and `pnpm typecheck` is green, including `bootstrap/container.ts`, which
-builds the controller and therefore has to satisfy the widened interface. Bumping on rotation as well
+original response. Applied locally and reverted: `AUTH-23` and `AUTH-24` turn red, all **11** cases
+in `authorize.test.ts` stay green along with `AUTH-22` and `AUTH-25` — **re-measured 2026-10-12**,
+the other **221 of 223** pass and `pnpm typecheck` is green, including `bootstrap/container.ts`,
+which builds the controller and therefore has to satisfy the widened interface (a getter satisfies
+it structurally, so that file needs no edit).
+
+That case count was wrong here and in the summary above from 2026-10-10 until 2026-10-12, and it is
+worth naming because of how a fixer meets it. `authorize.test.ts` has held **11** cases for its
+whole history (`80ad1b9`, `b1f7d7f`); **15** is `tests/api/transport.test.ts`'s count — a different
+file in the same directory. The substance was never affected: all 11 are green under the fix, and
+so are transport's 15. But a fixer who applied the epoch, ran the named file and read `11 passed`
+would have had to work out whether four cases had vanished or four had been counted that never
+existed. Cite a count with the file it came from. Bumping on rotation as well
 would redden "retries with the current token when it 401s after someone else rotated", which is
 correct behaviour. Filed as **TVO-20** (`1c87c76f`) for Mobile Dev, unassigned.
 
