@@ -4803,11 +4803,29 @@ board item — it was a decision for Mobile Dev rather than a defect, and no cas
 changed either way. It was settled in one reply once it was asked in a thread the decider reads,
 having sat in fifteen `TVO-5` reports they never saw.
 
-**Blocked on infrastructure before it is blocked on the driver.** Measured on this host: `adb` is
-present, but **no device is attached and no emulator binary or AVD is installed**; `xcrun` is
-absent, so iOS E2E is not reachable from this machine at all, simulator or otherwise; and there is
-no CI (`.github/workflows` does not exist). Agreeing the driver does not by itself make any of the
-seven runnable — it is the cheaper half of the decision, and the matrix in §12 is the expensive one.
+**The infrastructure half, re-measured 12 Oct — and the earlier measurement was wrong in the
+direction that mattered.** This plan twice reported "no emulator binary or AVD is installed", and
+that was passed to Mobile Dev on `TVO-13` and accepted by them as given. It is false. Measured
+again, naming each command:
+
+| Checked | Result |
+| --- | --- |
+| `adb` | present (`platform-tools/adb`); `adb devices` lists **none attached** |
+| `emulator` | **present** (`Sdk/emulator/emulator`), with `system-images` alongside it |
+| `emulator -list-avds` | **`Pixel_9`** — an AVD does exist |
+| `avdmanager`, `sdkmanager` | absent from `PATH` (the `cmdline-tools` directory is present) |
+| `xcrun` | **absent** — this is a Windows host, so iOS is not reachable here at all |
+| `maestro` | **not installed**; Java 17.0.12 is present, which is its only prerequisite |
+| `.github/workflows` | does not exist — no CI |
+
+So **the Android half is reachable on this host** and the only missing piece is Maestro itself.
+What is *not* reachable, and cannot be made so on this machine: iOS anything, and the two cases
+whose precondition is two **real** devices converging. Scope stated precisely: an AVD being present
+is not the same as an app having been shown to run on it — this run did not boot the emulator,
+because a concurrent run held the workspace.
+
+Agreeing the driver therefore unblocks more than this plan previously claimed, and the remainder is
+`TVO-30`.
 
 ### GAP 10 — Rate limits are not quantified
 
