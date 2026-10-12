@@ -360,6 +360,44 @@ exists, because a force-exited worker is the shape a flaky run takes: the lever 
 `--runInBand` for the mobile project, which costs wall-clock and should be a deliberate choice.
 Filed at low severity for that decision rather than for a fix.
 
+### No board write from this plan can be attributed to QA — diagnosed 2026-10-12
+
+This matters to `TVO-14`, which *files bugs as tasks*: an agent that cannot authenticate cannot
+attribute the bugs it files, and thirteen items filed from this plan are recorded under the board
+user rather than under QA. Twenty runs reported that as a token that "does not verify", or as
+capacity exhaustion. **Both were the wrong cause**, and the wrong cause sent the operator looking
+at connections and quotas. What is actually true, measured read-only against the host source and
+this run's environment:
+
+- **The variable the platform puts an agent credential in is `PAPERCLIP_API_KEY`**, and it is
+  **absent** here. It is the only source: the adapter sets it from the run token and refuses it
+  from config.
+- **`CLAUDE_CODE_MESSAGING_TOKEN` — the credential every one of those twenty reports tested — does
+  not appear anywhere in the host source tree.** It is a harness token and was never a board
+  credential, so "the agent token does not verify" was testing the wrong thing. The server's own
+  text distinguishes the two cases: `"Expired agent token…"` when the JWT's `exp` has passed,
+  `"Agent token did not verify…"` otherwise. Every run got the second — *not a Paperclip JWT at
+  all*, never "expired".
+- **The three configuration causes are each ruled out.** The adapter advertises JWT support
+  (`supportsLocalAgentJwt: true`); `adapterConfig.engine` is `"cli"`, not the `acp` path whose
+  adapter entry sets that flag `false`; and the signing secret is configured — it sits in the same
+  host `.env` that supplies `DATABASE_URL`, and `DATABASE_URL` *did* reach this run, which is what
+  proves the file is loaded. The secret itself is correctly withheld from a child process.
+- **That leaves one branch**: the credential is minted only for a run whose runtime resolves
+  `legacy`. So this run resolved **native**, where no key is injected by design because board
+  access is meant to come from native runtime tools — and **none are reachable**:
+  `get_task_history`, `get_task_context`, `list_documents` and `read_document`, the four this
+  run's own handoff envelope instructs it to use, are not in the runtime. The envelope's fallback
+  for legacy adapters is "their supplied API environment and skill", and both halves are missing
+  too: no `PAPERCLIP_API_KEY`, and the `paperclip` skill is not on disk (the synced instruction
+  directory holds only `AGENTS.md`).
+
+So it is a dispatch-mode mismatch, not an expired token: the run is dispatched under the native
+envelope while carrying neither the native tools nor the legacy credential. **It is operator-side
+and no test in this plan can route around it.** The read-only check that settles whether a run has
+a working credential, without a write probe: `GET /api/agents/{id}` returns **200 without** the
+bearer and **401 with** it, so the credential is actively rejected rather than merely absent.
+
 ### Nothing in this plan can be executed until TVO-6's review is recorded — verified 2026-10-12
 
 This is a process fact rather than a product one, but it is the thing actually holding execution,
@@ -458,9 +496,10 @@ outbox coalescing (`GAP 17` / `TVO-24`), where QA has since measured that the de
 that should change.
 
 **So the review is done and the verdict is "met".** What is missing is the status move, and QA is
-not making it: with no agent token the write would be recorded as the board user, which would show
-the project lead signing off on a review they did not perform. That is the same reason the author
-gave for not closing it themselves, and it is a good one.
+not making it: every board write from this run is recorded as the board user, which would show the
+project lead signing off on a review they did not perform. That is the same reason the author gave
+for not closing it themselves, and it is a good one. The *cause* of that, which twenty runs of
+this plan stated wrongly, is diagnosed under §2 below — it is not an expired credential.
 
 ### The E2E driver is not yet chosen — [GAP 9]
 
@@ -3477,14 +3516,18 @@ every run. That last one is test infrastructure rather than a numbered gap, beca
 product defect and §2 records how to tell it apart from a failure mid-execution; it is listed here
 so the board and this register agree on the count.
 
-A note on identifiers, because two earlier runs of this plan got it wrong in opposite directions.
-Every issue carries a stable `TVO-NN` under the `identifier` field of `GET /api/issues/{id}`; the
-**list** route omits that field, which is why one run concluded no human-readable handle existed
-and recorded the last four filings by raw UUID prefix instead. Both handles resolve, but `TVO-NN`
-is the one the board displays, so that is what this register leads with and what a comment asking
-someone to pick an item up should use. Earlier runs that guessed the next `TVO-NN` from the
-sequence happened to guess right every time; that was luck, not a rule — read it back after
-filing.
+A note on identifiers, because three runs of this plan have now got it wrong in three different
+directions. Every issue carries a stable `TVO-NN` under the `identifier` field, and the **list**
+route returns it too: measured 2026-10-12 against `GET /api/companies/{companyId}/issues`, which
+carries `identifier` as an own property on **28 of 28** rows. The previous sentence here claimed
+the list route omits it; that was wrong, and it was a correction layered on top of an earlier
+error rather than a reading of the response. The original mistake was narrower than either
+version: a run looked for a field named `key`, did not find one, and concluded no human-readable
+handle existed — so it recorded four filings by raw UUID prefix. Both handles resolve, but
+`TVO-NN` is the one the board displays, so that is what this register leads with and what a
+comment asking someone to pick an item up should use. Earlier runs that guessed the next
+`TVO-NN` from the sequence happened to guess right every time; that was luck, not a rule — read
+it back after filing.
 
 GAP 11, GAP 12, GAP 13 and GAP 15 are filed defects rather than open questions, and none of them
 blocks anything: `AUTH-20`, `AUTH-21`, `CAT-15`, `CAT-16`, `AUTH-23`, `AUTH-24`, `SYNC-44` and
