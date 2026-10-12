@@ -5,7 +5,7 @@ import {
 } from '@/db/write';
 import { migrate } from '@/db/migrations';
 import type { CategoryRow, ExpenseRow } from '@/db/entities';
-import type { SqliteExecutor } from '@/db/sqlite';
+import type { SqliteDatabase, SqliteExecutor } from '@/db/sqlite';
 import { createTestDatabase, type TestDatabase } from '../support/sqlite';
 
 const CATEGORY_ID = '0192f5a0-0000-7000-8000-000000000001';
@@ -23,6 +23,72 @@ interface OutboxRow {
   readonly clientMutationId: string;
   readonly queuedAt: string;
   readonly attempts: number;
+}
+
+/** One statement, and the transaction it was issued in - `null` meaning "no transaction". */
+interface IssuedStatement {
+  readonly source: string;
+  readonly transaction: number | null;
+}
+
+/**
+ * Wrap a database so a test can assert *where* a write was issued, not only what
+ * survived a failure.
+ *
+ * The failure-injection cases below observe atomicity indirectly: they break something
+ * and check that nothing is left behind. That catches a non-transactional `enqueue` in
+ * exactly one interleaving - the row write has landed and the outbox write is the thing
+ * that fails - so moving `enqueue` out of the transaction reddens only the first of the
+ * three. The other two never reach the outbox write at all, and stay green against the
+ * defect. This records the happy path instead, where the structural property can be
+ * stated directly: both writes carry the same transaction id.
+ */
+function tracingDatabase(database: SqliteDatabase): {
+  readonly database: SqliteDatabase;
+  /**
+   * The transaction the one statement matching `pattern` was issued in. Fails the test
+   * if it matched no statement or more than one, or if it ran outside a transaction.
+   */
+  transactionOf(pattern: RegExp): number;
+} {
+  const issued: IssuedStatement[] = [];
+  let transactions = 0;
+  let open: number | null = null;
+
+  const tracing = (executor: SqliteExecutor): SqliteExecutor => ({
+    ...executor,
+    runAsync: async (source, params) => {
+      issued.push({ source, transaction: open });
+      return executor.runAsync(source, params);
+    },
+  });
+
+  return {
+    transactionOf(pattern: RegExp): number {
+      const matches = issued.filter((statement) => pattern.test(statement.source));
+      expect(matches).toHaveLength(1);
+      const transaction = matches[0]!.transaction;
+      // `null` here means the statement ran outside any transaction.
+      expect(typeof transaction).toBe('number');
+      return transaction as number;
+    },
+
+    database: {
+      ...tracing(database),
+      withExclusiveTransactionAsync: (task) =>
+        database.withExclusiveTransactionAsync(async (txn) => {
+          transactions += 1;
+          open = transactions;
+          try {
+            await task(tracing(txn));
+          } finally {
+            // Cleared on the way out, so a statement issued with a stale `txn` handle
+            // after the transaction closed records `null` rather than the id it had.
+            open = null;
+          }
+        }),
+    },
+  };
 }
 
 describe('applyLocalMutation', () => {
@@ -154,9 +220,45 @@ describe('applyLocalMutation', () => {
     });
   });
 
+  // The guarantee this module exists for. If any of these ever passes with a stray row
+  // or a stray outbox entry, a user's expense is being saved and silently never sent.
+  //
+  // Two shapes, because neither alone is enough. The first two state the structure on the
+  // happy path - both writes in one transaction - and so hold whatever the failure is. The
+  // last three break something real and check that nothing is left behind, which is the
+  // only way to see that SQLite itself honours the rollback.
   describe('atomicity', () => {
-    // The guarantee this module exists for. If these two ever pass with a stray row or a
-    // stray outbox entry, a user's expense is being saved and silently never sent.
+    it('issues the row write and its outbox entry in the same transaction', async () => {
+      const traced = tracingDatabase(database);
+
+      await applyLocalMutation(
+        traced.database,
+        { entity: 'category', id: CATEGORY_ID, fields: { name: 'Groceries', color: '#2F8044' } },
+        options(),
+      );
+
+      expect(traced.transactionOf(/INSERT INTO outbox/)).toBe(
+        traced.transactionOf(/INSERT INTO categories/),
+      );
+    });
+
+    it('issues an update and its outbox entry in the same transaction', async () => {
+      await createGroceries();
+      const traced = tracingDatabase(database);
+
+      await applyLocalMutation(
+        traced.database,
+        { entity: 'category', id: CATEGORY_ID, fields: { name: 'Food' } },
+        options(),
+      );
+
+      expect(traced.transactionOf(/INSERT INTO outbox/)).toBe(
+        traced.transactionOf(/UPDATE categories/),
+      );
+    });
+
+    // The one interleaving that can observe a row surviving without its entry: a real
+    // UNIQUE violation on the *second* write, after the row insert has already landed.
     it('does not keep the row when queueing it fails', async () => {
       await createGroceries();
       const reusedMutationId = (await outbox())[0]!.clientMutationId;
@@ -325,11 +427,7 @@ describe('applyLocalMutation', () => {
 
       const entries = await outbox();
       expect(entries).toHaveLength(3);
-      expect(entries.map((entry) => entry.recordId)).toEqual([
-        EXPENSE_ID,
-        EXPENSE_ID,
-        EXPENSE_ID,
-      ]);
+      expect(entries.map((entry) => entry.recordId)).toEqual([EXPENSE_ID, EXPENSE_ID, EXPENSE_ID]);
       // Disjoint: the second and third entries name one field each, so neither carries
       // the other's. A coalescing outbox would hold one entry naming both.
       expect(entries.slice(1).map((entry) => JSON.parse(entry.fields))).toEqual([
