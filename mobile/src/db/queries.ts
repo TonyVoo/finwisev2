@@ -27,8 +27,18 @@ export interface CategoryListItem {
 }
 
 /**
- * Live categories, ordered by name - the order
- * `docs/design/07-categories.md` specifies for the category list.
+ * Live categories in the order `docs/design/07-categories.md` §1 specifies: alphabetical
+ * case-insensitively, with the `isDefault` row pinned last whatever it is called.
+ *
+ * Both halves of that `ORDER BY` are load-bearing and neither is visible on the seeded
+ * six, where `Bills` … `Uncategorized` sort the same way under every candidate ordering
+ * (`CAT-15`, `CAT-16`, GAP 12):
+ *
+ * - `COLLATE NOCASE`, because SQLite's default BINARY collation sorts every capital
+ *   before every lowercase, so a user's `rent` would land after `Transport`.
+ * - `isDefault` first, because the last row is also the one with no swipe action
+ *   (§4 rule 4), and a protected row in the middle of the list reads as an arbitrary
+ *   exception.
  *
  * Tombstoned rows are excluded. They stay in the table because sync needs to carry the
  * delete, but the UI must never show them.
@@ -46,7 +56,7 @@ export async function listLiveCategories(
             ) AS pending
        FROM categories c
       WHERE c.deletedAt IS NULL
-      ORDER BY c.name`,
+      ORDER BY c.isDefault, c.name COLLATE NOCASE`,
     [],
   );
 

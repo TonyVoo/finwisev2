@@ -146,13 +146,14 @@ describe('queries', () => {
     });
 
     /**
-     * `CAT-15` [GAP 12] `ORDER BY c.name` uses SQLite's default BINARY collation, so every
-     * capital letter sorts before every lowercase one. A user whose categories are
-     * `Bills`, `rent`, `Transport` sees `rent` after `Transport`.
+     * `CAT-15` [GAP 12, fixed in TVO-11] `ORDER BY c.name` used SQLite's default BINARY
+     * collation, so every capital letter sorted before every lowercase one and a user
+     * whose categories are `Bills`, `rent`, `Transport` saw `rent` after `Transport`.
+     * The query now orders `COLLATE NOCASE`.
      *
      * Invisible against `F-FRESH`: all six seeded names are capitalised.
      */
-    it.failing('orders case-insensitively, as the design specifies', async () => {
+    it('orders case-insensitively, as the design specifies', async () => {
       await pull(
         { id: ids.bills, name: 'Bills' },
         { id: ids.rent, name: 'rent' },
@@ -163,12 +164,13 @@ describe('queries', () => {
     });
 
     /**
-     * `CAT-16` [GAP 12] The query does not pin the `isDefault` row last
+     * `CAT-16` [GAP 12, fixed in TVO-11] The query did not pin the `isDefault` row last
      * (`docs/design/07-categories.md` §1 state `default`). `Uncategorized` sorts last
-     * among the six seeded names by accident, which is why nothing has noticed; the
-     * first category a user adds that sorts after it exposes the order.
+     * among the six seeded names by accident, which is why nothing had noticed; the
+     * first category a user adds that sorts after it exposed the order. The query now
+     * orders on `isDefault` before the name.
      */
-    it.failing('pins the default category last regardless of its name', async () => {
+    it('pins the default category last regardless of its name', async () => {
       await pull(
         { id: ids.bills, name: 'Bills' },
         { id: ids.uncategorized, name: 'Uncategorized', isDefault: true },
