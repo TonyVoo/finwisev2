@@ -124,48 +124,123 @@ export async function applyLocalMutation(
   mutation: LocalMutation,
   options: LocalMutationOptions = {},
 ): Promise<QueuedMutation> {
-  const spec = entitySpec(mutation.entity);
-  const recordId = Uuid.parse(mutation.id);
-
-  // Validate against the wire contract first. A mutation the server would reject has no
-  // business being in the outbox: it would fail every push, forever.
-  const fields = definedFields(spec.parseFields(mutation.fields));
-  const changed = Object.keys(fields);
-  if (changed.length === 0) {
-    throw new EmptyLocalMutationError(mutation.entity, recordId);
+  const [queued] = await applyLocalMutations(database, [mutation], options);
+  // `applyLocalMutations` returns one result per mutation and throws rather than returning
+  // fewer, so this is a narrowing for the type checker, not a case that happens.
+  if (queued === undefined) {
+    throw new EmptyLocalMutationError(mutation.entity, mutation.id);
   }
+  return queued;
+}
 
-  const at = (options.clock ?? systemClock)();
-  const updatedAt = toTimestamp(at);
-  const clientMutationId = (options.newMutationId ?? uuidv7)();
+/**
+ * Persist several mutations and queue them, **all in one transaction**.
+ *
+ * One call for the operations that are a single change to the user and several rows to the
+ * database. Deleting a category is the one the design calls out: it reassigns every
+ * expense that pointed at it and then tombstones the category, and
+ * `docs/design/07-categories.md` §4 rule 6 requires both in one transaction because "a
+ * crash between them would leave expenses pointing at a deleted category".
+ *
+ * Every rule {@link applyLocalMutation} follows holds per mutation, and two more hold
+ * across the batch:
+ *
+ * - **Each mutation gets its own outbox entry and its own `clientMutationId`**, because
+ *   each is a separate record on the wire; the push applies them in dependency order
+ *   (`SYNC_APPLY_ORDER`), which the drain already guarantees.
+ * - **They share one `updatedAt`**, taken once before the transaction opens. Last-write-wins
+ *   orders on it, and a batch that is one change from the user should not resolve as
+ *   several instants - the reassignments and the tombstone that caused them are the same
+ *   edit.
+ *
+ * Validation of every mutation happens before the transaction opens, so a batch with one
+ * bad member writes nothing at all rather than half of itself.
+ */
+export async function applyLocalMutations(
+  database: SqliteDatabase,
+  mutations: readonly LocalMutation[],
+  options: LocalMutationOptions = {},
+): Promise<readonly QueuedMutation[]> {
+  return await applyLocalMutationPlan(database, async () => mutations, options);
+}
 
-  let seq = 0;
-  let created = false;
+/**
+ * The same, for a batch whose membership is a **query**.
+ *
+ * `plan` runs inside the transaction and returns the mutations to apply, so the read that
+ * decides the batch and the writes that carry it out cannot be separated. Deleting a
+ * category is the case that needs it: the set of expenses to reassign is "every live
+ * expense pointing at this category", and reading that set before the transaction opens
+ * leaves a window in which a sync pull could add one more - which would then be left
+ * pointing at a category this operation has deleted, the exact state
+ * `docs/design/07-categories.md` §4 rule 6 puts the reassignment and the tombstone in one
+ * transaction to rule out.
+ *
+ * `plan` may return an empty list, which writes nothing and queues nothing.
+ */
+export async function applyLocalMutationPlan(
+  database: SqliteDatabase,
+  plan: (txn: SqliteExecutor) => Promise<readonly LocalMutation[]>,
+  options: LocalMutationOptions = {},
+): Promise<readonly QueuedMutation[]> {
+  const newMutationId = options.newMutationId ?? uuidv7;
+  const updatedAt = toTimestamp((options.clock ?? systemClock)());
+  let queued: QueuedMutation[] = [];
 
   await database.withExclusiveTransactionAsync(async (txn) => {
-    created = !(await rowExists(txn, spec.table, recordId));
+    // Reassigned on each attempt rather than appended to, so a caller that retries after a
+    // rollback cannot read the entries the failed attempt had queued.
+    queued = [];
 
-    if (created) {
-      const missing = spec.requiredOnCreate.filter((column) => !(column in fields));
-      if (missing.length > 0) {
-        throw new IncompleteLocalCreateError(mutation.entity, recordId, missing);
+    for (const mutation of await plan(txn)) {
+      const spec = entitySpec(mutation.entity);
+      const recordId = Uuid.parse(mutation.id);
+
+      // Validated against the wire contract before anything is written. A mutation the
+      // server would reject has no business being in the outbox: it would fail every
+      // push, forever. Throwing here rolls the whole batch back.
+      const fields = definedFields(spec.parseFields(mutation.fields));
+      const changed = Object.keys(fields);
+      if (changed.length === 0) {
+        throw new EmptyLocalMutationError(mutation.entity, recordId);
       }
-      await insertRow(txn, spec.table, recordId, updatedAt, spec.insertDefaults, fields);
-    } else {
-      await updateRow(txn, spec.table, recordId, updatedAt, changed, fields);
-    }
 
-    seq = await enqueue(txn, {
-      entity: mutation.entity,
-      recordId,
-      fields,
-      updatedAt,
-      clientMutationId,
-      queuedAt: updatedAt,
-    });
+      const created = !(await rowExists(txn, spec.table, recordId));
+      if (created) {
+        const missing = spec.requiredOnCreate.filter((column) => !(column in fields));
+        if (missing.length > 0) {
+          throw new IncompleteLocalCreateError(mutation.entity, recordId, missing);
+        }
+        await insertRow(txn, spec.table, recordId, updatedAt, spec.insertDefaults, fields);
+      } else {
+        await updateRow(txn, spec.table, recordId, updatedAt, changed, fields);
+      }
+
+      // One idempotency key per mutation, minted once and both stored and returned, so a
+      // caller correlating a push result back to a record reads the same id the push
+      // carries.
+      const clientMutationId = newMutationId();
+      const seq = await enqueue(txn, {
+        entity: mutation.entity,
+        recordId,
+        fields,
+        updatedAt,
+        clientMutationId,
+        queuedAt: updatedAt,
+      });
+
+      queued.push({
+        seq,
+        entity: mutation.entity,
+        recordId,
+        clientMutationId,
+        updatedAt,
+        created,
+      });
+    }
   });
 
-  return { seq, entity: mutation.entity, recordId, clientMutationId, updatedAt, created };
+  return queued;
 }
 
 async function rowExists(txn: SqliteExecutor, table: string, id: string): Promise<boolean> {
