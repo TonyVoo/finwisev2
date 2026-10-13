@@ -117,9 +117,39 @@ CREATE TABLE meta (
 );
 `;
 
+/**
+ * The signed-in user's own row, written at signup and at login
+ * (`docs/design/03-auth.md` §1.2 rule 7 and §1.3 rule 4).
+ *
+ * It is here because the app has to work on a cold start with no network, and two things
+ * it renders on the first frame come from this row rather than from the session: the
+ * user's `currency`, which every amount in the app is formatted with, and their `email`,
+ * which Settings shows. Reading those from `GET /v1/me` would make a launch on a plane
+ * wait on a request that cannot succeed.
+ *
+ * `onlyRow` makes "there is at most one user" a schema invariant rather than a
+ * convention: the `CHECK` plus the primary key mean a second row cannot be inserted even
+ * by a future caller who forgot. The id is a column like any other, so a different user
+ * signing in is an update, not an insert.
+ *
+ * It is registered in `localStore.ts`'s wipe list, which is the part that matters for
+ * `TVO-16`: a table holding one account's email that survived a user change would be the
+ * same leak in a smaller place.
+ */
+const USER_PROFILE = `
+CREATE TABLE user (
+  onlyRow   INTEGER NOT NULL PRIMARY KEY CHECK (onlyRow = 1),
+  id        TEXT    NOT NULL,
+  email     TEXT    NOT NULL,
+  currency  TEXT    NOT NULL,
+  createdAt TEXT    NOT NULL
+);
+`;
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: 'initial-schema', up: INITIAL_SCHEMA },
   { version: 2, name: 'store-owner', up: STORE_OWNER },
+  { version: 3, name: 'user-profile', up: USER_PROFILE },
 ];
 
 /** Highest version `MIGRATIONS` can bring a database to. */

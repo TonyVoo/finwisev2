@@ -31,7 +31,13 @@ describe('migrate', () => {
     );
     // `meta` arrived in v2 and holds exactly one thing today: which user the rows belong
     // to (`src/db/localStore.ts`).
-    expect(tables.map((table) => table.name)).toEqual(['categories', 'expenses', 'meta', 'outbox']);
+    expect(tables.map((table) => table.name)).toEqual([
+      'categories',
+      'expenses',
+      'meta',
+      'outbox',
+      'user',
+    ]);
   });
 
   /**

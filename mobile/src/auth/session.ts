@@ -223,7 +223,13 @@ export function createSessionController(options: SessionControllerOptions): Sess
       // shown the previous user's expenses out of. Adopting first also means a failure
       // here leaves the user anonymous with their predecessor's data untouched, rather
       // than signed in over it.
-      await localStore.adopt(auth.user.id);
+      //
+      // The whole `user` is passed, not just the id, so the profile row lands in the same
+      // transaction as the wipe and the stamp (`docs/design/03-auth.md` §1.2 rule 7).
+      // That matters for the same reason the ordering does: the first screen behind the
+      // gate formats amounts with `user.currency`, and a store that is adopted but has no
+      // profile yet would render that frame with no currency at all.
+      await localStore.adopt(auth.user.id, auth.user);
       await persist(sessionFromTokenPair(auth, auth.user.id, clock()));
     },
 

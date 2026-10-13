@@ -1,3 +1,5 @@
+import type { User } from '@expense-tracker/shared';
+import { writeUser } from './user';
 import type { SqliteDatabase, SqliteExecutor } from './sqlite';
 
 /**
@@ -57,8 +59,19 @@ export interface LocalStore {
    * Call this *before* publishing an authenticated session, never after: between the two
    * there is a window in which the route guards would let a screen read rows belonging to
    * somebody else.
+   *
+   * @param profile the signed-in user, when the caller has it. Signup and login do
+   * (`AuthResponse` carries it) and pass it, so the `user` row lands in the **same
+   * transaction** as the wipe and the stamp - which is what `docs/design/03-auth.md` §1.2
+   * rule 7 asks for, and what stops a first frame rendering with an adopted store and no
+   * currency to format amounts with. A cold start does not have it: secure store holds
+   * only the id, so `initialize()` re-adopts without touching the row it is reading.
+   *
+   * Omitting it is not a missing guard - the wipe and the stamp are unconditional. It
+   * only means no profile is written, which surfaces immediately as a missing currency
+   * rather than as a silent cross-account read.
    */
-  adopt(userId: string): Promise<StoreAdoption>;
+  adopt(userId: string, profile?: User): Promise<StoreAdoption>;
   /**
    * Delete every row and leave the store unowned - what an explicit logout does
    * (`docs/design/04-expense-list.md` §Behaviour rule 14).
@@ -69,8 +82,12 @@ export interface LocalStore {
 /**
  * Tables a wipe empties, in an order that would hold even if foreign keys were on
  * (`outbox` references rows, rows reference nothing).
+ *
+ * `user` is in here for the same reason as the rest, in a smaller place: it holds the
+ * signed-in account's email and currency (`src/db/user.ts`), and a copy of one account's
+ * email that survived a user change would be the same leak this module exists to stop.
  */
-const DATA_TABLES = ['outbox', 'expenses', 'categories'] as const;
+const DATA_TABLES = ['outbox', 'expenses', 'categories', 'user'] as const;
 
 async function readOwner(executor: SqliteExecutor): Promise<string | null> {
   const row = await executor.getFirstAsync<{ value: string }>(
@@ -83,9 +100,13 @@ async function readOwner(executor: SqliteExecutor): Promise<string | null> {
 /** Whether the store holds any user data at all. One query, three cheap existence checks. */
 async function hasRows(executor: SqliteExecutor): Promise<boolean> {
   const row = await executor.getFirstAsync<{ present: number }>(
+    // `user` counts: a store with nobody's name on it that nonetheless holds an account's
+    // email and currency is not a fresh install, and treating it as one would hand that
+    // row to whoever signs in next.
     `SELECT (EXISTS (SELECT 1 FROM categories)
           OR EXISTS (SELECT 1 FROM expenses)
-          OR EXISTS (SELECT 1 FROM outbox)) AS present`,
+          OR EXISTS (SELECT 1 FROM outbox)
+          OR EXISTS (SELECT 1 FROM user)) AS present`,
     [],
   );
   return row?.present === 1;
@@ -105,7 +126,7 @@ export function createSqliteLocalStore(database: SqliteDatabase): LocalStore {
   return {
     readOwner: () => readOwner(database),
 
-    async adopt(userId: string): Promise<StoreAdoption> {
+    async adopt(userId: string, profile?: User): Promise<StoreAdoption> {
       let adoption: StoreAdoption = 'kept';
 
       // One transaction, so the wipe and the stamp cannot be interrupted half-done. A
@@ -113,7 +134,13 @@ export function createSqliteLocalStore(database: SqliteDatabase): LocalStore {
       // holds the old rows - the leak, with the guard against it already satisfied.
       await database.withExclusiveTransactionAsync(async (txn) => {
         const owner = await readOwner(txn);
-        if (owner === userId) return;
+        if (owner === userId) {
+          // Already ours, so nothing is wiped and nothing is re-stamped. The profile is
+          // still written: logging in again as the same user is how a changed email
+          // arrives, and the row is the app's offline copy of it.
+          if (profile !== undefined) await writeUser(txn, profile);
+          return;
+        }
 
         // An unowned store with rows in it is the one genuinely ambiguous case: a
         // database written before the owner was recorded, or one whose stamp was lost.
@@ -127,6 +154,10 @@ export function createSqliteLocalStore(database: SqliteDatabase): LocalStore {
              ON CONFLICT (key) DO UPDATE SET value = excluded.value`,
           [OWNER_KEY, userId],
         );
+
+        // After the wipe, never before: `user` is one of the tables a wipe empties, so
+        // writing the profile first would delete it.
+        if (profile !== undefined) await writeUser(txn, profile);
       });
 
       return adoption;
@@ -149,25 +180,50 @@ export function createSqliteLocalStore(database: SqliteDatabase): LocalStore {
  * the thing it stands in for, so `tests/db/localStore.test.ts` runs one behaviour table
  * against both implementations.
  */
+export interface MemoryLocalStore extends LocalStore {
+  /**
+   * The stored profile, or null.
+   *
+   * Not on {@link LocalStore}: the app reads the profile with `readUser` against the
+   * database, so an interface method would exist only for this fake. It is here so a test
+   * using the fake can still assert that a wipe took the profile with it.
+   */
+  readProfile(): User | null;
+}
+
 export function createMemoryLocalStore(
-  initial: { readonly owner?: string | null; readonly hasRows?: boolean } = {},
-): LocalStore {
+  initial: {
+    readonly owner?: string | null;
+    readonly hasRows?: boolean;
+    readonly profile?: User | null;
+  } = {},
+): MemoryLocalStore {
   let owner = initial.owner ?? null;
   let rows = initial.hasRows ?? false;
+  let profile = initial.profile ?? null;
 
   return {
     readOwner: async () => owner,
+    readProfile: () => profile,
 
-    async adopt(userId: string): Promise<StoreAdoption> {
-      if (owner === userId) return 'kept';
-      const adoption: StoreAdoption = owner === null && !rows ? 'claimed' : 'wiped';
+    async adopt(userId: string, nextProfile?: User): Promise<StoreAdoption> {
+      if (owner === userId) {
+        if (nextProfile !== undefined) profile = nextProfile;
+        return 'kept';
+      }
+
+      const adoption: StoreAdoption =
+        owner === null && !rows && profile === null ? 'claimed' : 'wiped';
       rows = false;
+      // The wipe takes the profile, exactly as `DATA_TABLES` does.
+      profile = nextProfile ?? null;
       owner = userId;
       return adoption;
     },
 
     async clear(): Promise<void> {
       rows = false;
+      profile = null;
       owner = null;
     },
   };
