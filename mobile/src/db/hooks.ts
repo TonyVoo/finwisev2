@@ -1,7 +1,26 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { LIMITS } from '@expense-tracker/shared';
 import { queryKeys } from '../query/keys';
+import { type MonthKey, monthRange } from '../lib/calendar';
 import { useDatabase } from './DatabaseProvider';
-import { type CategoryListItem, countPendingRecords, listLiveCategories } from './queries';
+import { readUserCurrency } from './user';
+import {
+  type CategoryListItem,
+  type CategoryWithCount,
+  type ExpenseDetail,
+  type ExpenseListItem,
+  anyExpensesExist,
+  coloursInUse,
+  countPendingRecords,
+  findExpense,
+  findFallbackCategory,
+  lastUsedCategoryId,
+  listLiveCategories,
+  listLiveCategoriesWithCounts,
+  listMonthExpenses,
+  monthTotalMinor,
+  monthsWithExpenses,
+} from './queries';
 
 /**
  * The shape every read in this app takes: a SQLite query behind a TanStack Query key.
@@ -11,8 +30,8 @@ import { type CategoryListItem, countPendingRecords, listLiveCategories } from '
  * resolves within a frame or two, and `docs/design/02-offline-and-sync.md` §1 forbids a
  * read spinner outright.
  *
- * Feature hooks land with their screens in later tasks. These two prove the pattern and
- * are what the scaffold's placeholder screens render.
+ * The first two prove the pattern; the rest, below, are what the expense and category
+ * screens read.
  */
 
 export function useLiveCategories(): UseQueryResult<readonly CategoryListItem[]> {
@@ -29,5 +48,147 @@ export function usePendingRecordCount(): UseQueryResult<number> {
   return useQuery({
     queryKey: queryKeys.outbox.pendingCount(),
     queryFn: () => countPendingRecords(database),
+  });
+}
+
+/**
+ * The reads the expense and category screens run on.
+ *
+ * Each is one SQLite query behind one key. Two conventions hold throughout and both come
+ * from the architecture rather than from taste:
+ *
+ * - **A month-scoped read takes the `MonthKey` and derives its own bounds.** The bounds
+ *   are the inclusive `YYYY-MM-DD` pair from `monthRange`, compared as text, so no
+ *   expense can change month because of where the device is
+ *   (`docs/design/05-month-switcher.md` rule 11).
+ * - **There is no `isError` branch at any call site.** A local read fails only if the SQL
+ *   is wrong, which is a crash and not a screen state (`02-offline-and-sync.md` §1).
+ */
+
+/** One page of the selected month, newest day first (`04-expense-list.md` state `default`). */
+export function useMonthExpenses(
+  month: MonthKey,
+  page: { readonly limit: number; readonly offset?: number } = {
+    limit: LIMITS.EXPENSE_LIST_DEFAULT_LIMIT,
+  },
+): UseQueryResult<readonly ExpenseListItem[]> {
+  const database = useDatabase();
+  return useQuery({
+    queryKey: queryKeys.expenses.month(month),
+    queryFn: () => listMonthExpenses(database, monthRange(month), page),
+  });
+}
+
+/**
+ * The selected month's total, in minor units.
+ *
+ * Its own key and its own query, never a reduction over whatever `useMonthExpenses`
+ * returned: the page is windowed, so a sum over it would be wrong the moment a month
+ * exceeds one page (`04-expense-list.md` rule 3).
+ */
+export function useMonthTotal(month: MonthKey): UseQueryResult<number> {
+  const database = useDatabase();
+  return useQuery({
+    queryKey: queryKeys.expenses.monthTotal(month),
+    queryFn: () => monthTotalMinor(database, monthRange(month)),
+  });
+}
+
+/**
+ * Whether any expense exists in any month.
+ *
+ * What separates Home's two empty states: "first run" teaches a new user what the app is
+ * for, and "nothing in this month" offers navigation to one who already knows. It cannot
+ * be derived from the month's total, because a month of zero-amount expenses totals `0`
+ * and is not empty.
+ */
+export function useAnyExpensesExist(): UseQueryResult<boolean> {
+  const database = useDatabase();
+  return useQuery({
+    queryKey: queryKeys.expenses.anyExist(),
+    queryFn: () => anyExpensesExist(database),
+  });
+}
+
+/** Months holding at least one live expense - the picker grid's dots (rule 9). */
+export function useMonthsWithExpenses(): UseQueryResult<readonly string[]> {
+  const database = useDatabase();
+  return useQuery({
+    queryKey: queryKeys.expenses.months(),
+    queryFn: () => monthsWithExpenses(database),
+  });
+}
+
+/**
+ * One expense by id, for the form in edit mode.
+ *
+ * `null` is a real answer rather than an absence: a tombstoned row and a missing row both
+ * resolve to it, and both land on `Expense not found` - the row the user was offered to
+ * edit is gone either way (`06-expense-form.md` state `error` (b)).
+ */
+export function useExpense(id: string): UseQueryResult<ExpenseDetail | null> {
+  const database = useDatabase();
+  return useQuery({
+    queryKey: queryKeys.expenses.detail(id),
+    queryFn: () => findExpense(database, id),
+  });
+}
+
+/** The category list's rows: every live category with its all-time expense count. */
+export function useCategoriesWithCounts(): UseQueryResult<readonly CategoryWithCount[]> {
+  const database = useDatabase();
+  return useQuery({
+    queryKey: queryKeys.categories.withCounts(),
+    queryFn: () => listLiveCategoriesWithCounts(database),
+  });
+}
+
+/**
+ * The live `isDefault` category.
+ *
+ * Resolved by the flag and never by matching the name `Uncategorized`: renaming it is
+ * permitted, so the row may be called anything (`07-categories.md` §3 rule 2). `null`
+ * means the invariant is broken, which only a buggy peer can do; the repair lives in the
+ * delete path, not here.
+ */
+export function useFallbackCategory(): UseQueryResult<CategoryListItem | null> {
+  const database = useDatabase();
+  return useQuery({
+    queryKey: queryKeys.categories.fallback(),
+    queryFn: () => findFallbackCategory(database),
+  });
+}
+
+/** The category to preselect in add mode, or null on the very first expense (rule 1). */
+export function useLastUsedCategoryId(): UseQueryResult<string | null> {
+  const database = useDatabase();
+  return useQuery({
+    queryKey: queryKeys.categories.lastUsed(),
+    queryFn: () => lastUsedCategoryId(database),
+  });
+}
+
+/**
+ * The currency every amount is formatted in, chosen once at signup.
+ *
+ * `undefined` while the read is in flight and `null` when there is no user row. Both mean
+ * "do not format an amount yet": a screen that defaulted to `USD` would render a dollar
+ * sign in front of a euro figure for a frame, which is worse than rendering the skeleton
+ * it already has for this case.
+ */
+export function useUserCurrency(): UseQueryResult<string | null> {
+  const database = useDatabase();
+  return useQuery({
+    queryKey: queryKeys.user.currency(),
+    queryFn: () => readUserCurrency(database),
+  });
+}
+
+/** Colours a live category already wears, for the picker's `In use` labels (§2 rule 5). */
+export function useColoursInUse(): UseQueryResult<readonly string[]> {
+  const database = useDatabase();
+  return useQuery({
+    queryKey: queryKeys.categories.coloursInUse(),
+    queryFn: () => coloursInUse(database),
   });
 }

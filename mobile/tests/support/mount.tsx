@@ -8,6 +8,7 @@ import type { SessionController, SessionSnapshot } from '@/auth/session';
 import { type AppContainer, createAppContainer } from '@/bootstrap/container';
 import type { Transport, TransportRequest, TransportResponse } from '@/api/transport';
 import { migrate } from '@/db/migrations';
+import type { Clock } from '@/lib/clock';
 import { createTestDatabase, type TestDatabase } from './sqlite';
 import { SAFE_AREA_METRICS } from './safeArea';
 
@@ -38,19 +39,41 @@ export interface MountedScreen {
 }
 
 export interface MountScreenOptions {
-  readonly transport: Transport;
+  /**
+   * The network, for the two auth screens that use it.
+   *
+   * Optional, and the default is a transport that **fails the test if it is called**. The
+   * expense and category screens are specified to read and write local SQLite and nothing
+   * else (`TVO-11`: "no network in this task"), so a request escaping one of them is a
+   * defect in the screen - and one that would otherwise show up as a passing test here and
+   * a broken promise on a plane.
+   */
+  readonly transport?: Transport;
+  /** Pins "today", so a dated assertion does not depend on the day the suite runs. */
+  readonly clock?: Clock;
+  /** Rows to put in the database before the first render. */
+  readonly seed?: (database: TestDatabase) => Promise<void>;
 }
+
+const NO_NETWORK_EXPECTED: Transport = async (request) => {
+  throw new Error(
+    `This screen is specified to work offline and must not reach the network, but it ` +
+      `requested ${request.method} ${request.path}`,
+  );
+};
 
 export async function mountScreen(
   element: ReactElement,
-  { transport }: MountScreenOptions,
+  { transport = NO_NETWORK_EXPECTED, clock, seed }: MountScreenOptions = {},
 ): Promise<MountedScreen> {
   const database = createTestDatabase();
   await migrate(database);
+  if (seed !== undefined) await seed(database);
 
   const requests: TransportRequest[] = [];
   const container = await createAppContainer({
     database,
+    clock,
     transport: async (request) => {
       requests.push(request);
       return transport(request);

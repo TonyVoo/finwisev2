@@ -11,15 +11,46 @@
  * sync pull needs after writing rows it cannot cheaply map back to screens.
  */
 export const queryKeys = {
+  /** Everything read out of SQLite, i.e. the whole cache. See `localWrite.ts`. */
+  local: () => ['local'] as const,
+
   categories: {
     all: () => ['local', 'categories'] as const,
     live: () => ['local', 'categories', 'live'] as const,
+    /** The category list's rows, which carry an all-time expense count each. */
+    withCounts: () => ['local', 'categories', 'withCounts'] as const,
+    /** The live `isDefault` row - the reassignment target and the add-mode fallback. */
+    fallback: () => ['local', 'categories', 'fallback'] as const,
+    /** The category to preselect in add mode (`06-expense-form.md` rule 1). */
+    lastUsed: () => ['local', 'categories', 'lastUsed'] as const,
+    /** Colours worn by a live category, for the picker's `In use` labels. */
+    coloursInUse: () => ['local', 'categories', 'coloursInUse'] as const,
   },
+
   expenses: {
     all: () => ['local', 'expenses'] as const,
     /** @param month `YYYY-MM`, the bucket monthly totals group on. */
     month: (month: string) => ['local', 'expenses', 'month', month] as const,
+    /**
+     * A month's total, keyed separately from its page.
+     *
+     * The total is computed in SQLite over the whole month and the page is windowed, so
+     * they are two different reads and must not share a key - `04-expense-list.md` rule 3
+     * is explicit that the total is never derived from the rendered page.
+     */
+    monthTotal: (month: string) => ['local', 'expenses', 'monthTotal', month] as const,
+    detail: (id: string) => ['local', 'expenses', 'detail', id] as const,
+    /** Whether any expense exists at all - which of Home's two empty states applies. */
+    anyExist: () => ['local', 'expenses', 'anyExist'] as const,
+    /** Months holding at least one expense, for the picker grid's dots. */
+    months: () => ['local', 'expenses', 'months'] as const,
   },
+
+  user: {
+    /** The currency every amount on every screen is formatted in. */
+    currency: () => ['local', 'user', 'currency'] as const,
+  },
+
   outbox: {
     pendingCount: () => ['local', 'outbox', 'pendingCount'] as const,
   },
