@@ -109,7 +109,7 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
 
   const isEdit = expenseId !== undefined;
 
-  const stored = useExpense(expenseId ?? '');
+  const stored = useExpense(expenseId ?? null);
   const categories = useCategoriesWithCounts();
   const fallback = useFallbackCategory();
   const lastUsed = useLastUsedCategoryId();

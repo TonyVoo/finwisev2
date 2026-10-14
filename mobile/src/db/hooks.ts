@@ -125,12 +125,17 @@ export function useMonthsWithExpenses(): UseQueryResult<readonly string[]> {
  * `null` is a real answer rather than an absence: a tombstoned row and a missing row both
  * resolve to it, and both land on `Expense not found` - the row the user was offered to
  * edit is gone either way (`06-expense-form.md` state `error` (b)).
+ *
+ * Pass `null` in add mode, which disables the query rather than reading for an id that
+ * does not exist. The form would ignore the result either way, so running it would be a
+ * SQLite round trip and a cache entry per Add, keyed on the empty string.
  */
-export function useExpense(id: string): UseQueryResult<ExpenseDetail | null> {
+export function useExpense(id: string | null): UseQueryResult<ExpenseDetail | null> {
   const database = useDatabase();
   return useQuery({
-    queryKey: queryKeys.expenses.detail(id),
-    queryFn: () => findExpense(database, id),
+    queryKey: queryKeys.expenses.detail(id ?? ''),
+    queryFn: () => findExpense(database, id ?? ''),
+    enabled: id !== null,
   });
 }
 
