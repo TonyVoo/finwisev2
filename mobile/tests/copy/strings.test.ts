@@ -26,18 +26,22 @@ import {
  * It checks *presence*, not placement. Which screen shows a string, and in which slot,
  * is the screen specs' business and is pinned by the screen tests.
  *
- * ### The one string that is not in the deck
+ * ### The strings that are not in the deck
  *
- * `signup.loginInstead` (`Log in instead`) is specified in `03-auth.md` §1.2 rule 4 and
- * has no row in the deck's §1 table. That is a gap in the deck rather than an invented
- * string, so the sources below include the auth spec and the last case names it
- * explicitly — if the deck gains the row later, that case is where it gets noticed.
+ * ### The strings that are not in the deck
+ *
+ * `signup.loginInstead` (`Log in instead`, `03-auth.md` §1.2 rule 4) and `form.noteDone`
+ * (`Done`, `06-expense-form.md` rule 10) are specified in their screen specs and have no
+ * row in the deck's §1 table. Those are gaps in the deck rather than invented strings, so
+ * the sources below include both specs and one case names them explicitly — if the deck
+ * gains either row, that case is where it gets noticed.
  */
 
 const DESIGN_DIR = join(__dirname, '..', '..', '..', 'docs', 'design');
 
 const COPY_DECK = readFileSync(join(DESIGN_DIR, '09-copy-deck.md'), 'utf8');
 const AUTH_SPEC = readFileSync(join(DESIGN_DIR, '03-auth.md'), 'utf8');
+const FORM_SPEC = readFileSync(join(DESIGN_DIR, '06-expense-form.md'), 'utf8');
 
 /** Every leaf string in a nested constant, keyed by its dotted path. */
 function flatten(value: unknown, path: string[] = []): Array<[string, string]> {
@@ -70,18 +74,35 @@ describe('copy strings are transcribed from the design docs', () => {
   });
 
   it.each(ALL_STRINGS)('%s is written in the design docs', (_key, text) => {
-    expect(`${COPY_DECK}\n${AUTH_SPEC}`).toContain(text);
+    expect([COPY_DECK, AUTH_SPEC, FORM_SPEC].join('\n')).toContain(text);
   });
 
-  it('sources every string except one from the copy deck itself', () => {
+  it('sources every string but the four screen-spec ones from the deck itself', () => {
     const missingFromDeck = ALL_STRINGS.filter(([, text]) => !COPY_DECK.includes(text)).map(
       ([key]) => key,
     );
 
-    // `Log in instead` lives in the screen spec's rule 4 and has no deck row. Listed
-    // here rather than skipped, so a second string going the same way fails loudly
-    // instead of joining a silent exception list.
-    expect(missingFromDeck).toEqual(['signup.loginInstead']);
+    // Four strings live in a screen spec and have no deck row:
+    //
+    // - `signup.loginInstead` (`Log in instead`, `03-auth.md` §1.2 rule 4), and
+    // - `form.noteDone` plus all three `form.notFound` strings, from
+    //   `06-expense-form.md` rule 10 and state `error` (b). The deck's §6 table covers
+    //   empty states and has no row for an error state. Note that `form.notFound.body`
+    //   belongs here too even though the deck contains a *similar* sentence:
+    //   `conflict.deleted` is `This expense was deleted on another device.`, which is
+    //   about a row that changed under the user rather than one that is missing.
+    //
+    // All are gaps in the deck rather than invented strings, and they are listed here
+    // rather than skipped so a *new* one fails loudly instead of joining a silent
+    // exception list. If the deck gains any of these rows, this case is where it shows.
+    // Listed in `COPY` declaration order, which is the order `flatten` walks.
+    expect(missingFromDeck).toEqual([
+      'signup.loginInstead',
+      'form.noteDone',
+      'form.notFound.headline',
+      'form.notFound.body',
+      'form.notFound.action',
+    ]);
   });
 
   it('leaves no placeholder unfilled in a formatted string', () => {

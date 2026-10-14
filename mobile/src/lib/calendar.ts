@@ -178,6 +178,17 @@ export function monthLabel(key: MonthKey, locale?: string): string {
   return formatDate(`${key}-01`, { month: 'long', year: 'numeric' }, locale);
 }
 
+/**
+ * `MMMM`, e.g. `October` - the month's name with no year.
+ *
+ * Needed because one deck string interpolates the two separately:
+ * `Expense saved to {Month} {Year}.` ({@link monthLabel} renders them together, which is
+ * what the switcher bar wants).
+ */
+export function monthName(key: MonthKey, locale?: string): string {
+  return formatDate(`${key}-01`, { month: 'long' }, locale);
+}
+
 /** `MMM`, e.g. `Oct` - a cell in the month picker grid. */
 export function monthShortLabel(key: MonthKey, locale?: string): string {
   return formatDate(`${key}-01`, { month: 'short' }, locale);

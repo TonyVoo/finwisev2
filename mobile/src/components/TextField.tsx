@@ -60,6 +60,15 @@ export interface TextFieldProps {
   readonly returnKeyType?: TextInputProps['returnKeyType'];
   readonly onSubmitEditing?: () => void;
   readonly editable?: boolean;
+  /**
+   * Hard cap on the input's length.
+   *
+   * Used where a limit is enforced by refusing the keystroke rather than by showing an
+   * error - the category name's 64 and the note's 500. Both specs make the same point:
+   * "no error is needed for a limit that cannot be exceeded"
+   * (`docs/design/07-categories.md` §2 rule 3, `06-expense-form.md` rule 10).
+   */
+  readonly maxLength?: number;
   readonly submitBehavior?: TextInputProps['submitBehavior'];
 }
 

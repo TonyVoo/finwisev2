@@ -62,6 +62,29 @@ export const COPY = {
     /** The date sheet's three quick options (`06-expense-form.md` rule 7). */
     date: { today: 'Today', yesterday: 'Yesterday', choose: 'Choose a date…' },
     keypad: { decimal: 'Decimal point', backspace: 'Delete last digit' },
+    /**
+     * The note sheet's dismiss button (`06-expense-form.md` rule 10).
+     *
+     * Specified in the screen spec and **absent from the copy deck's §1 table**, the same
+     * gap `signup.loginInstead` sits in. Named here rather than inlined in the component
+     * so `tests/copy/strings.test.ts` accounts for it explicitly: the deck is
+     * authoritative for wording, and a string that is nowhere in it should be visible as a
+     * gap rather than buried in a sheet.
+     */
+    noteDone: 'Done',
+    /**
+     * State `error` (b) - edit mode with an id that is absent or tombstoned.
+     *
+     * Specified in `06-expense-form.md` §States and, like {@link noteDone}, **not in the
+     * copy deck**: its §6 table covers empty states and has no row for this screen's error
+     * state. Transcribed from the screen spec and named here so the deck gap is visible in
+     * `tests/copy/strings.test.ts` rather than hidden in a component.
+     */
+    notFound: {
+      headline: 'Expense not found',
+      body: 'It may have been deleted on another device.',
+      action: 'Back to expenses',
+    },
   },
 
   picker: {

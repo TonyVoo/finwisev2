@@ -45,6 +45,14 @@ export interface RowProps {
   readonly lastInGroup?: boolean;
   readonly accessibilityLabel?: string;
   readonly accessibilityHint?: string;
+  /**
+   * Selection and availability, as state rather than as a glyph.
+   *
+   * The category picker's check mark and the month grid's fill are both purely visual
+   * cues, so the rows that carry them must also carry `selected`
+   * (`00-foundations.md` §8 rule 4).
+   */
+  readonly accessibilityState?: { readonly selected?: boolean; readonly disabled?: boolean };
   readonly accessibilityActions?: readonly { readonly name: string; readonly label: string }[];
   readonly onAccessibilityAction?: (event: {
     readonly nativeEvent: { readonly actionName: string };
@@ -61,6 +69,7 @@ export function Row({
   lastInGroup = false,
   accessibilityLabel,
   accessibilityHint,
+  accessibilityState,
   accessibilityActions,
   onAccessibilityAction,
   testID,
@@ -78,6 +87,7 @@ export function Row({
       accessibilityRole={interactive ? 'button' : undefined}
       accessibilityLabel={accessibilityLabel}
       accessibilityHint={accessibilityHint}
+      accessibilityState={accessibilityState}
       accessibilityActions={
         accessibilityActions === undefined ? undefined : [...accessibilityActions]
       }

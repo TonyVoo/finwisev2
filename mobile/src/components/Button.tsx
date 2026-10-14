@@ -32,6 +32,20 @@ export interface ButtonProps {
   readonly label: string;
   readonly onPress: (event: GestureResponderEvent) => void;
   readonly variant?: ButtonVariant;
+  /**
+   * Recolour a `ghost` button's label to `danger.default`.
+   *
+   * Two screen specs ask for exactly this pairing - a full-width ghost button whose label
+   * is destructive rather than primary: `Delete expense`
+   * (`docs/design/06-expense-form.md` element 9) and `Delete category`
+   * (`07-categories.md` §3). Neither is a `destructive` button, which is a filled red
+   * `danger.default` block; these sit at the bottom of a form as the quiet way out, and a
+   * filled red block there would compete with Save.
+   *
+   * It is a tone rather than a fifth variant because `00-foundations.md` §6 names four,
+   * and the only thing that changes is the label colour.
+   */
+  readonly tone?: 'default' | 'danger';
   /** Full width when this is a screen's main action (§6). */
   readonly fullWidth?: boolean;
   /**
@@ -94,12 +108,16 @@ export function Button({
   label,
   onPress,
   variant = 'primary',
+  tone = 'default',
   fullWidth = false,
   busy = false,
   disabledReason,
   testID,
 }: ButtonProps) {
-  const palette = VARIANTS[variant];
+  const base = VARIANTS[variant];
+  // Only the label moves. The fill, the pressed fill and the height stay the variant's,
+  // so a danger-toned ghost is still a ghost.
+  const palette = tone === 'danger' ? { ...base, label: color.danger.default } : base;
   const disabled = disabledReason !== undefined;
   // Busy ignores taps without reading as disabled: the request is in flight, which is not
   // the same thing as the action being unavailable, and it must not take the grey fill.
