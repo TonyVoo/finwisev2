@@ -9,6 +9,7 @@ import { type AppContainer, createAppContainer } from '@/bootstrap/container';
 import type { Transport, TransportRequest, TransportResponse } from '@/api/transport';
 import { migrate } from '@/db/migrations';
 import { createTestDatabase, type TestDatabase } from './sqlite';
+import { SAFE_AREA_METRICS } from './safeArea';
 
 /**
  * Mounts an auth screen over a real container.
@@ -28,12 +29,6 @@ import { createTestDatabase, type TestDatabase } from './sqlite';
  * Queries go through RNTL's global `screen`, as everywhere else in this suite; what is
  * returned here is the state a screen test needs to *assert on* rather than query.
  */
-
-/** iPhone-ish metrics. Any fixed value will do; the screens only read the insets. */
-const SAFE_AREA_METRICS = {
-  frame: { x: 0, y: 0, width: 390, height: 844 },
-  insets: { top: 47, left: 0, right: 0, bottom: 34 },
-};
 
 export interface MountedScreen {
   readonly container: AppContainer;
