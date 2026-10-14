@@ -5,6 +5,7 @@ import { createAuthorizedTransport } from '../api/authorize';
 import { type Transport, createTransport } from '../api/transport';
 import { type SessionController, createSessionController } from '../auth/session';
 import { type TokenStore, createSecureTokenStore } from '../auth/tokenStore';
+import { type Clock, systemClock } from '../lib/clock';
 import { createSqliteLocalStore } from '../db/localStore';
 import { openLocalDatabase } from '../db/open';
 import type { SqliteDatabase } from '../db/sqlite';
@@ -33,6 +34,16 @@ export interface AppContainer {
   /** Authenticated client. Every call carries a bearer token and refreshes on 401. */
   readonly api: ApiClient;
   readonly queryClient: QueryClient;
+  /**
+   * The wall clock every dated decision reads.
+   *
+   * Carried on the container so the whole tree agrees on "today" and a test can pin it.
+   * The screens need it for more than `updatedAt`: which day heading an expense falls
+   * under, whether Next on the month switcher is at the current month, and what the date
+   * sheet's `Today` means are all answers to this question (`docs/design/04-expense-list.md`
+   * rule 2, `05-month-switcher.md` rule 2).
+   */
+  readonly clock: Clock;
 }
 
 export interface AppContainerOptions {
@@ -41,6 +52,8 @@ export interface AppContainerOptions {
   readonly tokenStore?: TokenStore;
   readonly transport?: Transport;
   readonly queryClient?: QueryClient;
+  /** Pinnable so a dated assertion does not depend on the day the suite runs. */
+  readonly clock?: Clock;
 }
 
 export async function createAppContainer(options: AppContainerOptions = {}): Promise<AppContainer> {
@@ -72,5 +85,6 @@ export async function createAppContainer(options: AppContainerOptions = {}): Pro
     session,
     api,
     queryClient: options.queryClient ?? createQueryClient(),
+    clock: options.clock ?? systemClock,
   };
 }

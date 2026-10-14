@@ -2,6 +2,8 @@ import { type ReactNode, createContext, useContext } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { SessionProvider } from '../auth/SessionProvider';
 import { DatabaseProvider } from '../db/DatabaseProvider';
+import { MonthProvider } from '../month/MonthProvider';
+import { SnackbarProvider } from '../components/Snackbar';
 import type { ApiClient } from '../api/client';
 import type { AppContainer } from './container';
 
@@ -19,12 +21,29 @@ export interface AppProvidersProps {
   readonly children: ReactNode;
 }
 
+/**
+ * `MonthProvider` and `SnackbarProvider` sit here, above the router, for the same reason
+ * in both cases: a screen that owned either of them could not keep the guarantee the
+ * design asks of it.
+ *
+ * The month must be identical on both tabs (`docs/design/05-month-switcher.md` rule 7),
+ * and only one snackbar may be visible at a time with a new one replacing the current one
+ * (`00-foundations.md` §6) - a rule the expense list depends on when a second delete lands
+ * while the first one's Undo is still up. Per-screen state could satisfy neither.
+ *
+ * The snackbar is outermost of the two so it renders above everything, including the
+ * sheets and dialogs that can ask for one.
+ */
 export function AppProviders({ container, children }: AppProvidersProps) {
   return (
     <QueryClientProvider client={container.queryClient}>
       <SessionProvider controller={container.session}>
         <ApiContext.Provider value={container.api}>
-          <DatabaseProvider database={container.database}>{children}</DatabaseProvider>
+          <DatabaseProvider database={container.database}>
+            <SnackbarProvider>
+              <MonthProvider clock={container.clock}>{children}</MonthProvider>
+            </SnackbarProvider>
+          </DatabaseProvider>
         </ApiContext.Provider>
       </SessionProvider>
     </QueryClientProvider>
