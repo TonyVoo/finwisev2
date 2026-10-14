@@ -1,11 +1,16 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
+  CONFIRM_COPY,
   COPY,
+  EMPTY_COPY,
   GENERIC_ERROR,
   OFFLINE_COPY,
   SESSION_EXPIRED,
+  SNACK_COPY,
   VALIDATION_COPY,
+  categoryDeleteBody,
+  categoryDeleted,
 } from '@/copy/strings';
 
 /**
@@ -48,6 +53,13 @@ const ALL_STRINGS: Array<[string, string]> = [
   ...flatten(OFFLINE_COPY, ['offline']),
   ...flatten({ generic: GENERIC_ERROR }, ['error']),
   ...flatten({ expired: SESSION_EXPIRED }, ['session']),
+  // The templated strings are checked here too, braces and all. That is the reason they are
+  // stored as deck-shaped templates rather than assembled from fragments by their
+  // formatters: a sentence built out of pieces would put most of its wording beyond this
+  // check, and wording is the one thing the deck is authoritative for.
+  ...flatten(EMPTY_COPY, ['empty']),
+  ...flatten(CONFIRM_COPY, ['confirm']),
+  ...flatten(SNACK_COPY, ['snack']),
 ];
 
 describe('copy strings are transcribed from the design docs', () => {
@@ -70,6 +82,58 @@ describe('copy strings are transcribed from the design docs', () => {
     // here rather than skipped, so a second string going the same way fails loudly
     // instead of joining a silent exception list.
     expect(missingFromDeck).toEqual(['signup.loginInstead']);
+  });
+
+  it('leaves no placeholder unfilled in a formatted string', () => {
+    // A `{count}` that reached a user would be the formatter and its template having
+    // fallen out of step. `fill` throws on an unknown key, so this asserts the templates
+    // above name only placeholders their formatters actually pass.
+    const formatted = [
+      categoryDeleteBody(0, 'Uncategorized'),
+      categoryDeleteBody(1, 'Uncategorized'),
+      categoryDeleteBody(23, 'Uncategorized'),
+      categoryDeleted('Health', 0, 'Uncategorized'),
+      categoryDeleted('Health', 1, 'Uncategorized'),
+      categoryDeleted('Health', 23, 'Uncategorized'),
+    ];
+
+    for (const text of formatted) {
+      expect({ text, hasPlaceholder: /[{}]/.test(text) }).toEqual({ text, hasPlaceholder: false });
+    }
+  });
+
+  describe('the count-branching copy', () => {
+    // Deck §0: "Every string with a count has an explicit singular form — there is no
+    // `(s)` anywhere." These cases pin the boundaries, because an off-by-one in the
+    // branch is invisible until a user deletes a category holding exactly one expense.
+    it('promises the move in the plural, the singular, and not at all', () => {
+      expect(categoryDeleteBody(23, 'Uncategorized')).toBe(
+        "Its 23 expenses will move to Uncategorized. They won't be deleted.",
+      );
+      expect(categoryDeleteBody(1, 'Uncategorized')).toBe(
+        "Its 1 expense will move to Uncategorized. It won't be deleted.",
+      );
+      // No count and no promise about expenses: there are none to reassure anyone about.
+      expect(categoryDeleteBody(0, 'Uncategorized')).toBe('It has no expenses.');
+    });
+
+    it('reports what the delete actually did', () => {
+      expect(categoryDeleted('Health', 23, 'Uncategorized')).toBe(
+        'Health deleted. 23 expenses moved to Uncategorized.',
+      );
+      expect(categoryDeleted('Health', 1, 'Uncategorized')).toBe(
+        'Health deleted. 1 expense moved to Uncategorized.',
+      );
+      expect(categoryDeleted('Health', 0, 'Uncategorized')).toBe('Health deleted.');
+    });
+
+    it('interpolates the fallback name rather than hardcoding Uncategorized', () => {
+      // §4 rule 3: the user may have renamed the `isDefault` row, and both the dialog and
+      // the snackbar have to say what it is called now, not what it shipped as.
+      expect(categoryDeleteBody(2, 'Later')).toContain('will move to Later.');
+      expect(categoryDeleted('Health', 2, 'Later')).toContain('moved to Later.');
+      expect(categoryDeleteBody(2, 'Later')).not.toContain('Uncategorized');
+    });
   });
 
   it('keeps the two blocking-offline strings distinct', () => {
