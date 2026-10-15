@@ -48,6 +48,16 @@ export const COPY = {
     fab: 'Add expense',
   },
 
+  summary: {
+    title: 'Summary',
+    /**
+     * The expense count under the total, which has an explicit singular form - deck §0:
+     * "there is no `(s)` anywhere". Zero takes the plural, `0 expenses`, because the total
+     * block renders in the empty state too (`08-monthly-summary.md` state `empty`).
+     */
+    count: { many: '{count} expenses', one: '1 expense' },
+  },
+
   form: {
     title: { add: 'Add expense', edit: 'Edit expense' },
     field: {
@@ -199,6 +209,15 @@ export const EMPTY_COPY = {
     },
   },
   categoryPicker: { headline: 'No categories yet', action: 'Create a category' },
+  /**
+   * Summary, no expenses this month. No action, deliberately: the Expenses tab holds the
+   * add action, and a second entry point to it on a summary screen would compete with the
+   * first (`08-monthly-summary.md` state `empty`).
+   */
+  summary: {
+    headline: 'Nothing to summarise',
+    body: 'Add an expense this month and you will see where your money went.',
+  },
 } as const;
 
 /** §3 — the dialogs that guard something irreversible, and one that is not a dialog. */
@@ -283,6 +302,18 @@ export function emptyMonthHeadline(month: string): string {
 
 export function goToMonthAction(month: string): string {
   return fill(EMPTY_COPY.home.month.action, { CurrentMonth: month });
+}
+
+/**
+ * The Summary's expense count, in the singular at exactly one.
+ *
+ * Zero is the plural form (`0 expenses`), which is what the empty state shows beside
+ * `$0.00` - the figure is not hidden there, because "hiding it would make the number
+ * appear to pop into existence later" (`04-expense-list.md` state `empty`).
+ */
+export function summaryExpenseCount(count: number): string {
+  const { many, one } = COPY.summary.count;
+  return count === 1 ? one : fill(many, { count });
 }
 
 export function categoryDeleteTitle(name: string): string {
