@@ -15,4 +15,11 @@ module.exports = {
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
   collectCoverageFrom: ['src/**/*.{ts,tsx}'],
+  // Jest's 5s default is a cold-start budget, not a per-assertion one. The first `it()` in
+  // each screen suite pays for the whole jest-expo module graph, the RN renderer and the
+  // SQLite instance the rest of its suite reuses, so on a slow machine that one test
+  // exceeded 5s while every later test in the same file finished comfortably - six suites
+  // failing on their first case and nowhere else. Raised far enough that cold start is
+  // never the thing under test, and still low enough to catch a genuine hang.
+  testTimeout: 30000,
 };
