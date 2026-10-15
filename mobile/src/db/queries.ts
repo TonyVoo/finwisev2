@@ -329,6 +329,83 @@ export async function monthExpenseCount(
   return row?.n ?? 0;
 }
 
+/** One category's spend in a month: the row the Summary's total, chart and legend share. */
+export interface CategorySpend {
+  /**
+   * The category the spend is filed under, or null when neither the expense's own
+   * category nor the fallback is a live row - see the note on the query below.
+   */
+  readonly categoryId: string | null;
+  readonly name: string | null;
+  readonly color: string | null;
+  /** Minor units, summed by SQLite as an integer. */
+  readonly totalMinor: number;
+  /** Live expenses in the group, including any whose amount is zero. */
+  readonly expenseCount: number;
+}
+
+/**
+ * A month's spend per category, largest first - the Summary's single read
+ * (`docs/design/08-monthly-summary.md` §Behaviour rule 1).
+ *
+ * Rule 1's point is that the total, the chart, the legend and the count are "the same
+ * data, aggregated once", so they cannot disagree. This is that aggregate, and the three
+ * places it departs from the statement the spec prints are all in service of that:
+ *
+ * - **The join the legend needs is a `LEFT JOIN`, and an orphan is folded into the
+ *   fallback category** rather than dropped. Rule 1's statement selects no name and no
+ *   colour, so every legend has to join `categories`; joining *live* rows the way the rest
+ *   of this client does would silently remove an expense whose category is tombstoned -
+ *   a state an ordinary sync produces (`SYNC-43`) - and with it, its amount from this
+ *   screen's total while Home kept it. The two tabs would then show different totals for
+ *   the same month, which is `TVO-31` item 1 and the failure `05-month-switcher.md` rule 7
+ *   exists to prevent. Folding is the answer the schema already states for a dangling
+ *   `categoryId` ("renders as the fallback category", `migrations.ts`) and the one the
+ *   expense list already renders (`listModel.ts`, `rowCategoryName`), so Summary agreeing
+ *   with Home here also means it agrees with the rows Home draws.
+ *
+ *   The fold is in the `GROUP BY`, not after it: two groups mapping to one legend row is
+ *   rule 1's stated cost, and merging them in SQL is what keeps `Uncategorized` from
+ *   appearing twice.
+ * - **`ORDER BY totalMinor DESC, name COLLATE NOCASE`.** The `default` state requires
+ *   "ties broken by category name ascending so the order is stable between renders", and
+ *   ties are ordinary - two categories with one `$20.00` expense each. Without the second
+ *   key the order is a property of the query plan (`SUM-15`), so the legend reorders itself
+ *   for reasons the user cannot see. `COLLATE NOCASE` because the column's own BINARY
+ *   collation sorts every capital before every lowercase, which would file a user's `rent`
+ *   after `Transport` (`SUM-16`, the same defect as `TVO-19` one query along).
+ * - **A `null` group is still returned.** It means the expense's category is gone *and*
+ *   there is no live `isDefault` row to fold into - a broken invariant only a buggy peer
+ *   can produce. The amount is still money the user spent, so it is still counted and the
+ *   screen names it with the contract's seed name rather than dropping it.
+ */
+export async function monthCategorySpend(
+  database: SqliteDatabase,
+  range: DateRange,
+): Promise<readonly CategorySpend[]> {
+  return await database.getAllAsync<CategorySpend>(
+    `SELECT COALESCE(c.id, f.id)       AS categoryId,
+            COALESCE(c.name, f.name)   AS name,
+            COALESCE(c.color, f.color) AS color,
+            SUM(e.amountMinor)         AS totalMinor,
+            COUNT(*)                   AS expenseCount
+       FROM expenses e
+       LEFT JOIN categories c ON c.id = e.categoryId AND c.deletedAt IS NULL
+       -- The live fallback, as one row. ON 1 = 1 rather than a bare join so that a
+       -- database with no fallback at all keeps its expenses: a cross join to an empty
+       -- subquery returns nothing, and this screen's total would silently become zero.
+       LEFT JOIN (
+         SELECT id, name, color FROM categories
+          WHERE isDefault = 1 AND deletedAt IS NULL
+          ORDER BY id LIMIT 1
+       ) f ON 1 = 1
+      WHERE ${LIVE_IN_MONTH}
+      GROUP BY COALESCE(c.id, f.id)
+      ORDER BY totalMinor DESC, name COLLATE NOCASE`,
+    [range.from, range.to],
+  );
+}
+
 /**
  * Whether the user has any live expense at all, in any month.
  *

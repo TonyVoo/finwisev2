@@ -39,6 +39,15 @@ export const queryKeys = {
      * is explicit that the total is never derived from the rendered page.
      */
     monthTotal: (month: string) => ['local', 'expenses', 'monthTotal', month] as const,
+    /**
+     * A month's spend per category - the Summary's one read.
+     *
+     * Its own key rather than a selector over `monthTotal`, because it answers more than
+     * the total: the chart, the legend and the expense count all come off these rows, and
+     * `08-monthly-summary.md` rule 1 requires them to be the same aggregate so they cannot
+     * disagree with each other.
+     */
+    monthByCategory: (month: string) => ['local', 'expenses', 'monthByCategory', month] as const,
     detail: (id: string) => ['local', 'expenses', 'detail', id] as const,
     /** Whether any expense exists at all - which of Home's two empty states applies. */
     anyExist: () => ['local', 'expenses', 'anyExist'] as const,

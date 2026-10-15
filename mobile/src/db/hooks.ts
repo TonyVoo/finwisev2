@@ -6,6 +6,7 @@ import { useDatabase } from './DatabaseProvider';
 import { readUserCurrency } from './user';
 import {
   type CategoryListItem,
+  type CategorySpend,
   type CategoryWithCount,
   type ExpenseDetail,
   type ExpenseListItem,
@@ -18,6 +19,7 @@ import {
   listLiveCategories,
   listLiveCategoriesWithCounts,
   listMonthExpenses,
+  monthCategorySpend,
   monthTotalMinor,
   monthsWithExpenses,
 } from './queries';
@@ -91,6 +93,23 @@ export function useMonthTotal(month: MonthKey): UseQueryResult<number> {
   return useQuery({
     queryKey: queryKeys.expenses.monthTotal(month),
     queryFn: () => monthTotalMinor(database, monthRange(month)),
+  });
+}
+
+/**
+ * The selected month's spend per category, largest first - the Summary's one read.
+ *
+ * Everything on that screen is derived from these rows: the total is their sum, the count
+ * is the sum of their counts, and the chart is a picture of the legend they produce
+ * (`docs/design/08-monthly-summary.md` §Behaviour rule 1). Reading the total from
+ * {@link useMonthTotal} instead would be a second aggregate over the same table, and the
+ * two could then disagree on screen with nothing to say which was right.
+ */
+export function useMonthCategorySpend(month: MonthKey): UseQueryResult<readonly CategorySpend[]> {
+  const database = useDatabase();
+  return useQuery({
+    queryKey: queryKeys.expenses.monthByCategory(month),
+    queryFn: () => monthCategorySpend(database, monthRange(month)),
   });
 }
 
