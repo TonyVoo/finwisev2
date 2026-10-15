@@ -146,10 +146,42 @@ CREATE TABLE user (
 );
 `;
 
+/**
+ * Rows the server refused, so the `needs-attention` state survives the drain.
+ *
+ * A push that comes back `invalid` clears its outbox entry - retrying a mutation the
+ * server has already said no to is a battery and bandwidth leak with no path to
+ * success. But clearing it also erases the only evidence anything went wrong, and the
+ * row would silently revert to looking `synced` while the server has never stored it.
+ * `docs/design/02-offline-and-sync.md` §5.1 wants the opposite: the row keeps an
+ * `alert-circle` and a tappable way to fix it.
+ *
+ * It is a separate table rather than a column on `categories`/`expenses` because the
+ * rejection is a fact about a *push*, not about the row, and because a column would
+ * have to be cleared by every write path that could possibly repair it. Derived
+ * instead: a row is `needs-attention` when a rejection names it **and no outbox entry
+ * does**. Re-queueing the row therefore clears the flag by itself
+ * (§5.1, "saving re-queues the row and clears the flag"), with no second write to
+ * forget.
+ */
+const SYNC_REJECTIONS = `
+CREATE TABLE sync_rejections (
+  entity     TEXT NOT NULL CHECK (entity IN ('category', 'expense')),
+  recordId   TEXT NOT NULL,
+  -- One of SYNC_RECORD_ERROR_CODES. The expense form branches on it (§5.1).
+  code       TEXT NOT NULL,
+  message    TEXT NOT NULL,
+  rejectedAt TEXT NOT NULL,
+  -- One standing rejection per row: a later push replaces it or resolves it.
+  PRIMARY KEY (entity, recordId)
+);
+`;
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: 'initial-schema', up: INITIAL_SCHEMA },
   { version: 2, name: 'store-owner', up: STORE_OWNER },
   { version: 3, name: 'user-profile', up: USER_PROFILE },
+  { version: 4, name: 'sync-rejections', up: SYNC_REJECTIONS },
 ];
 
 /** Highest version `MIGRATIONS` can bring a database to. */

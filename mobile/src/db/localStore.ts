@@ -1,4 +1,5 @@
 import type { User } from '@expense-tracker/shared';
+import { META_KEYS, WIPED_META_KEYS, deleteMeta } from './meta';
 import { writeUser } from './user';
 import type { SqliteDatabase, SqliteExecutor } from './sqlite';
 
@@ -38,8 +39,8 @@ import type { SqliteDatabase, SqliteExecutor } from './sqlite';
  * reaching the next account. Pinned by `AUTH-12`.
  */
 
-/** Where the owner is recorded in `meta`. */
-export const OWNER_KEY = 'ownerUserId';
+/** Where the owner is recorded in `meta`. Declared with the other keys in `meta.ts`. */
+export const OWNER_KEY = META_KEYS.owner;
 
 /** What {@link LocalStore.adopt} did. Returned so a caller - or a test - can tell. */
 export type StoreAdoption =
@@ -86,8 +87,12 @@ export interface LocalStore {
  * `user` is in here for the same reason as the rest, in a smaller place: it holds the
  * signed-in account's email and currency (`src/db/user.ts`), and a copy of one account's
  * email that survived a user change would be the same leak this module exists to stop.
+ *
+ * `sync_rejections` likewise: it names rows by id and carries a server message about
+ * them, and a rejection outliving the rows it describes would put a `needs-attention`
+ * marker on the next account's store pointing at records that are not there.
  */
-const DATA_TABLES = ['outbox', 'expenses', 'categories', 'user'] as const;
+const DATA_TABLES = ['outbox', 'sync_rejections', 'expenses', 'categories', 'user'] as const;
 
 async function readOwner(executor: SqliteExecutor): Promise<string | null> {
   const row = await executor.getFirstAsync<{ value: string }>(
@@ -120,6 +125,12 @@ async function deleteAllRows(txn: SqliteExecutor): Promise<void> {
   for (const table of DATA_TABLES) {
     await txn.runAsync(`DELETE FROM ${table}`, []);
   }
+
+  // The sync watermark goes with the rows it describes. Left behind, the next user would
+  // ask the server for changes since a cursor that belongs to someone else's change feed
+  // and be told, correctly, that there is nothing new - so their store would stay empty
+  // and no error would ever be raised. `meta.ts` holds the list.
+  await deleteMeta(txn, WIPED_META_KEYS);
 }
 
 export function createSqliteLocalStore(database: SqliteDatabase): LocalStore {
