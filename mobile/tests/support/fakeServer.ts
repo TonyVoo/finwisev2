@@ -1,0 +1,271 @@
+import type {
+  Category,
+  Expense,
+  SyncChange,
+  SyncPullResponse,
+  SyncPushRequest,
+  SyncPushResponse,
+  SyncPushResult,
+} from '@expense-tracker/shared';
+import type { Transport, TransportRequest } from '@/api/transport';
+
+/**
+ * An in-memory `/v1/sync` that implements the protocol rather than canned answers.
+ *
+ * It exists for one case the other fixtures cannot express: **two clients converging
+ * through one server**. That needs a server with state - a revision sequence, stored rows,
+ * last-write-wins over `updatedAt`, remembered `clientMutationId`s - because convergence
+ * is a property of what the second client is told about the first client's writes.
+ *
+ * It is not the real backend and is not a substitute for it. What it is faithful to is
+ * `shared/src/sync.ts`, clause by clause:
+ *
+ * - **Revisions are server-assigned and monotonic**, bumped on every applied write, and
+ *   a pull returns rows with `revision > since` ordered by revision ascending.
+ * - **A push is an upsert with a merge.** Absent keys are left alone, which is what makes
+ *   two devices editing different fields of one row safe.
+ * - **`applied` only when the incoming `updatedAt` is strictly newer** than stored;
+ *   newer-or-equal stored means `conflict_server_wins`, and both carry the authoritative
+ *   row.
+ * - **A replayed `clientMutationId` returns the original result** with
+ *   `idempotentReplay: true` and applies nothing.
+ *
+ * Deliberately *not* implemented, because nothing here is about them: the 90-day horizon
+ * and `resyncRequired` (`tests/sync/pull.test.ts` drives those), auth, and the
+ * `isDefault` category rules.
+ */
+
+export const FAKE_SERVER_TIME = '2026-10-16T12:00:00.000Z';
+
+export interface FakeSyncServer {
+  /** A {@link Transport} answering `GET`/`POST /v1/sync` and nothing else. */
+  readonly transport: Transport;
+  /** Every request it answered, in order. */
+  readonly requests: TransportRequest[];
+  category(id: string): Category | undefined;
+  expense(id: string): Expense | undefined;
+  /** Rows the server holds, live and tombstoned, oldest revision first. */
+  snapshot(): ReadonlyArray<{ entity: 'category' | 'expense'; record: Category | Expense }>;
+}
+
+export interface FakeSyncServerOptions {
+  /**
+   * Changes per pull page. Small by default so a convergence case exercises paging
+   * rather than asserting over one page and calling it a pull.
+   */
+  readonly pageSize?: number;
+}
+
+export function createFakeSyncServer(options: FakeSyncServerOptions = {}): FakeSyncServer {
+  const pageSize = options.pageSize ?? 2;
+  const categories = new Map<string, Category>();
+  const expenses = new Map<string, Expense>();
+  const replays = new Map<string, SyncPushResult>();
+  const requests: TransportRequest[] = [];
+  let revision = 0;
+
+  function ordered(): SyncChange[] {
+    const rows: SyncChange[] = [
+      ...[...categories.values()].map((record) => ({ entity: 'category' as const, record })),
+      ...[...expenses.values()].map((record) => ({ entity: 'expense' as const, record })),
+    ];
+    return rows.sort((left, right) => left.record.revision - right.record.revision);
+  }
+
+  function pull(since: number): SyncPullResponse {
+    const pending = ordered().filter((change) => change.record.revision > since);
+    const page = pending.slice(0, pageSize);
+    const last = page.at(-1);
+
+    return {
+      changes: page,
+      nextCursor: last?.record.revision ?? since,
+      hasMore: pending.length > page.length,
+      resyncRequired: false,
+      serverTime: FAKE_SERVER_TIME,
+    };
+  }
+
+  function invalid(item: SyncPushRequest['changes'][number], message: string): SyncPushResult {
+    const base = {
+      clientMutationId: item.clientMutationId,
+      id: item.id,
+      status: 'invalid' as const,
+      idempotentReplay: false,
+      error: { code: 'validation_error' as const, message },
+    };
+    return item.entity === 'category'
+      ? { ...base, entity: 'category', record: categories.get(item.id) ?? null }
+      : { ...base, entity: 'expense', record: expenses.get(item.id) ?? null };
+  }
+
+  function applyCategory(
+    item: Extract<SyncPushRequest['changes'][number], { entity: 'category' }>,
+  ) {
+    const stored = categories.get(item.id);
+
+    if (stored === undefined) {
+      if (item.fields.name === undefined) {
+        return invalid(item, 'name is required to create a category');
+      }
+      revision += 1;
+      const created: Category = {
+        id: item.id,
+        name: item.fields.name,
+        color: item.fields.color ?? '#4f8a4f',
+        isDefault: false,
+        createdAt: item.updatedAt,
+        updatedAt: item.updatedAt,
+        deletedAt: item.fields.deletedAt ?? null,
+        revision,
+      };
+      categories.set(item.id, created);
+      return applied(item, { entity: 'category', record: created });
+    }
+
+    if (item.updatedAt <= stored.updatedAt) {
+      return conflict(item, { entity: 'category', record: stored });
+    }
+
+    revision += 1;
+    const merged: Category = {
+      ...stored,
+      name: item.fields.name ?? stored.name,
+      color: item.fields.color ?? stored.color,
+      deletedAt: item.fields.deletedAt === undefined ? stored.deletedAt : item.fields.deletedAt,
+      updatedAt: item.updatedAt,
+      revision,
+    };
+    categories.set(item.id, merged);
+    return applied(item, { entity: 'category', record: merged });
+  }
+
+  function applyExpense(item: Extract<SyncPushRequest['changes'][number], { entity: 'expense' }>) {
+    const stored = expenses.get(item.id);
+
+    if (stored === undefined) {
+      const { categoryId, amountMinor, date, currency } = item.fields;
+      if (categoryId === undefined || amountMinor === undefined || date === undefined) {
+        return invalid(item, 'categoryId, amountMinor and date are required to create an expense');
+      }
+      revision += 1;
+      const created: Expense = {
+        id: item.id,
+        categoryId,
+        amountMinor,
+        currency: currency ?? 'USD',
+        date,
+        note: item.fields.note ?? null,
+        createdAt: item.updatedAt,
+        updatedAt: item.updatedAt,
+        deletedAt: item.fields.deletedAt ?? null,
+        revision,
+      };
+      expenses.set(item.id, created);
+      return applied(item, { entity: 'expense', record: created });
+    }
+
+    if (item.updatedAt <= stored.updatedAt) {
+      return conflict(item, { entity: 'expense', record: stored });
+    }
+
+    revision += 1;
+    const merged: Expense = {
+      ...stored,
+      categoryId: item.fields.categoryId ?? stored.categoryId,
+      amountMinor: item.fields.amountMinor ?? stored.amountMinor,
+      currency: item.fields.currency ?? stored.currency,
+      date: item.fields.date ?? stored.date,
+      note: item.fields.note === undefined ? stored.note : item.fields.note,
+      deletedAt: item.fields.deletedAt === undefined ? stored.deletedAt : item.fields.deletedAt,
+      updatedAt: item.updatedAt,
+      revision,
+    };
+    expenses.set(item.id, merged);
+    return applied(item, { entity: 'expense', record: merged });
+  }
+
+  function applied(
+    item: SyncPushRequest['changes'][number],
+    change: { entity: 'category'; record: Category } | { entity: 'expense'; record: Expense },
+  ): SyncPushResult {
+    return {
+      ...change,
+      clientMutationId: item.clientMutationId,
+      id: item.id,
+      status: 'applied',
+      idempotentReplay: false,
+      error: null,
+    };
+  }
+
+  function conflict(
+    item: SyncPushRequest['changes'][number],
+    change: { entity: 'category'; record: Category } | { entity: 'expense'; record: Expense },
+  ): SyncPushResult {
+    return {
+      ...change,
+      clientMutationId: item.clientMutationId,
+      id: item.id,
+      status: 'conflict_server_wins',
+      idempotentReplay: false,
+      error: null,
+    };
+  }
+
+  function push(body: SyncPushRequest): SyncPushResponse {
+    // Categories before expenses, as the contract says the server sorts internally - so a
+    // client that sent them the other way round still gets a usable answer.
+    const items = [...body.changes].sort((left, right) =>
+      left.entity === right.entity ? 0 : left.entity === 'category' ? -1 : 1,
+    );
+
+    const byMutation = new Map<string, SyncPushResult>();
+    for (const item of items) {
+      const replayed = replays.get(item.clientMutationId);
+      if (replayed !== undefined) {
+        byMutation.set(item.clientMutationId, { ...replayed, idempotentReplay: true });
+        continue;
+      }
+
+      const result = item.entity === 'category' ? applyCategory(item) : applyExpense(item);
+      replays.set(item.clientMutationId, result);
+      byMutation.set(item.clientMutationId, result);
+    }
+
+    // One result per request item, in the order the items were *sent* - not the order the
+    // server applied them in.
+    return {
+      results: body.changes.map((item) => {
+        const result = byMutation.get(item.clientMutationId);
+        if (result === undefined) throw new Error(`no result for ${item.clientMutationId}`);
+        return result;
+      }),
+      serverRevision: revision,
+      serverTime: FAKE_SERVER_TIME,
+    };
+  }
+
+  const transport: Transport = async (request) => {
+    requests.push(request);
+
+    if (request.path !== '/v1/sync') {
+      throw new Error(`The fake sync server was asked for ${request.method} ${request.path}`);
+    }
+
+    if (request.method === 'get') {
+      const since = Number(request.query?.since ?? 0);
+      return { status: 200, body: pull(Number.isFinite(since) ? since : 0), requestId: 'req-fake' };
+    }
+
+    return { status: 200, body: push(request.body as SyncPushRequest), requestId: 'req-fake' };
+  };
+
+  return {
+    transport,
+    requests,
+    category: (id) => categories.get(id),
+    expense: (id) => expenses.get(id),
+    snapshot: () => ordered().map((change) => ({ entity: change.entity, record: change.record })),
+  };
+}
