@@ -89,7 +89,15 @@ function pillLabel(): string | null {
   return pill === null ? null : (pill.props.accessibilityLabel as string);
 }
 
-/** The gesture, on the scrollable the screen gave its refresh props to. */
+/**
+ * The gesture, fired on the scrollable itself.
+ *
+ * Not on a `RefreshControl`: under this preset a `RefreshControl` element renders as an
+ * `RCTRefreshControl` host node with **empty props** - no `testID` and no `onRefresh` - so
+ * a control passed through the `refreshControl` prop is unreachable from a query. The
+ * screens therefore hand the list `refreshing` and `onRefresh` directly, which lands both
+ * on the scroll view's own host node where the gesture can be driven.
+ */
 async function pull(testID: string): Promise<void> {
   await act(async () => {
     fireEvent(screen.getByTestId(testID), 'refresh');
