@@ -13,6 +13,13 @@ module.exports = {
     // and the pattern would match any character before `js` - including the `c` of
     // zod's internal `./v4/classic/external.cjs`, which then fails to resolve.
     '^(\\.{1,2}/.*)\\.js$': '$1',
+    // The chart renderer, which cannot run here. `victory-native` ships TypeScript source
+    // and draws through a Skia canvas behind a native module, so under jest it is both
+    // untransformed and unrenderable - and making it work would mean a second jest project
+    // with `canvaskit-wasm` in it, to assert on pixels nothing asserts on. The stub keeps
+    // the data the screen hands the chart observable; see its own note for what that does
+    // and does not cover.
+    '^victory-native$': '<rootDir>/tests/support/victoryNative.tsx',
   },
   collectCoverageFrom: ['src/**/*.{ts,tsx}'],
   // Jest's 5s default is a cold-start budget, not a per-assertion one. The first `it()` in
