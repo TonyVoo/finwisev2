@@ -71,6 +71,17 @@ afterEach(() => {
 });
 
 describe('the Catching up overlay', () => {
+  /**
+   * It is rendered by `app/(app)/_layout.tsx`, which the route-guard suite mounts with a
+   * session and nothing else. Throwing there would make the auth gate untestable in
+   * isolation, and an overlay with no engine behind it has nothing to report.
+   */
+  it('renders nothing in a tree with no engine in it', async () => {
+    await render(<ResyncOverlay />);
+
+    expect(screen.queryByTestId('resync-overlay')).toBeNull();
+  });
+
   it('is absent in every ordinary state, including an ordinary sync', async () => {
     const stub = stubEngine();
     await mountOverlay(stub.engine);

@@ -3,7 +3,7 @@ import { AccessibilityInfo, Animated, Easing, StyleSheet, Text, View } from 'rea
 import Feather from '@expo/vector-icons/Feather';
 import { SYNC_COPY } from '../copy/strings';
 import { color, radius, space, type } from '../theme/tokens';
-import { useSyncStatus } from './SyncProvider';
+import { useOptionalSyncStatus } from './SyncProvider';
 
 /**
  * `Catching up` - the 90-day takeover, `docs/design/02-offline-and-sync.md` §5.3.
@@ -27,11 +27,12 @@ import { useSyncStatus } from './SyncProvider';
  */
 
 export function ResyncOverlay() {
-  const status = useSyncStatus();
+  const status = useOptionalSyncStatus();
 
   // Mounted only while the wipe-and-refill is running, so nothing below it is asked to
-  // read a database that is mid-rebuild.
-  if (!status.resyncing) return null;
+  // read a database that is mid-rebuild. `null` is a tree with no engine in it - see
+  // `useOptionalSyncStatus` - where there is by definition no resync to report.
+  if (status === null || !status.resyncing) return null;
 
   return <CatchingUp pages={status.resyncProgress?.pages ?? 0} />;
 }

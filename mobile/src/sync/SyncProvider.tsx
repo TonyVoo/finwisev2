@@ -107,6 +107,22 @@ export function useSyncStatus(): SyncStatus {
   return useSync().status;
 }
 
+/**
+ * The status, or `null` where there is no engine mounted.
+ *
+ * For the one consumer that sits in a layout rather than on a screen: the resync overlay
+ * is rendered by `app/(app)/_layout.tsx`, and that layout is also mounted on its own by
+ * the route-guard suite, which has a session and deliberately nothing else. A layout that
+ * threw without a sync provider would make the gate untestable in isolation - and an
+ * overlay with no engine behind it has nothing to say anyway.
+ *
+ * This is not a general escape hatch. {@link useSync} still throws, which is what keeps a
+ * screen that forgot the provider loud rather than quietly sync-less: the pill uses it.
+ */
+export function useOptionalSyncStatus(): SyncStatus | null {
+  return useContext(SyncContext)?.status ?? null;
+}
+
 export interface SyncTriggers {
   /**
    * A local write has been committed and the reads have been invalidated.
