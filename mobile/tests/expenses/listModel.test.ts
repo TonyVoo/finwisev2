@@ -56,6 +56,7 @@ function item(overrides: Partial<ExpenseListItem> = {}): ExpenseListItem {
     date: TODAY,
     note: null,
     pending: false,
+    needsAttention: false,
     ...overrides,
   };
 }

@@ -102,6 +102,10 @@ export function expenseRowLabel(
     ...(item.note === null || item.note.trim().length === 0 ? [] : [item.note]),
     dayLabel(item.date, today, locale),
     ...(item.pending ? ['not synced yet'] : []),
+    // Deck §8: the row's composed label ends with `, could not sync` when the server
+    // refused it. Appended rather than substituted, because the amount and the day are
+    // still what the row is about.
+    ...(item.needsAttention ? ['could not sync'] : []),
   ];
 
   return parts.join(', ');

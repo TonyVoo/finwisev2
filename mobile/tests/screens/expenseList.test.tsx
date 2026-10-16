@@ -7,6 +7,7 @@ import { writeUser } from '@/db/user';
 import type { SqliteDatabase } from '@/db/sqlite';
 import ExpenseListScreen from '../../app/(app)/(tabs)/index';
 import { resetRouter, routerRecord } from '../support/router';
+import { recordRejection } from '@/sync/rejections';
 import { mountScreen, type MountedScreen } from '../support/mount';
 import {
   categoryId,
@@ -283,6 +284,44 @@ describe('the expense list', () => {
       await waitFor(() => expect(pendingGlyphs()).toHaveLength(1));
       const row = screen.getByTestId(`expense-row-${expenseId(1)}`);
       expect(row.props.accessibilityLabel).toContain('not synced yet');
+    });
+  });
+
+  describe('a row the server refused', () => {
+    /**
+     * `02-offline-and-sync.md` §5.1. The contrast with the case above is the whole point:
+     * a queued change is warning-coloured because nothing is wrong, and a refused one is
+     * red because the user has to do something. The pill does *not* enter its error state
+     * for this - a per-record rejection is a per-record problem.
+     */
+    it('replaces its subtitle with what to do, and says so in its label', async () => {
+      await mountHome(async (database) => {
+        await seedOctober(database);
+        await recordRejection(database, {
+          entity: 'expense',
+          recordId: expenseId(1),
+          code: 'unknown_category',
+          message: 'unknown category',
+          rejectedAt: '2026-10-16T09:00:00.000Z',
+        });
+      });
+
+      expect(screen.getByTestId(`expense-needs-attention-${expenseId(1)}`)).toHaveTextContent(
+        "Couldn't sync — tap to fix",
+      );
+      // The note it replaced is gone: the row has one subtitle line and this is the
+      // urgent half.
+      expect(screen.queryByText('Milk, eggs')).toBeNull();
+
+      const row = screen.getByTestId(`expense-row-${expenseId(1)}`);
+      expect(row.props.accessibilityLabel).toContain('could not sync');
+      // Still tappable, and still the way in to fix it - §5.1 opens Edit from here.
+      // Hidden from the accessibility tree for the same reason the clock is: the label
+      // above already says it in words.
+      expect(
+        screen.getByTestId('needs-attention-glyph', { includeHiddenElements: true }),
+      ).toBeTruthy();
+      expect(pendingGlyphs()).toHaveLength(0);
     });
   });
 

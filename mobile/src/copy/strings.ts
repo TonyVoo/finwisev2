@@ -343,6 +343,11 @@ export const SYNC_COPY = {
     lastSyncedNever: 'Not synced yet',
   },
   /**
+   * §5.1 - a row the server refused. It replaces the row's subtitle, so it has to say
+   * both what happened and what to do about it in five words.
+   */
+  row: { needsAttention: "Couldn't sync — tap to fix" },
+  /**
    * §5.3. The copy never says "resync", "cursor", "horizon" or "wiped": the user's mental
    * model is "my expenses", and the mechanism is not their problem.
    */

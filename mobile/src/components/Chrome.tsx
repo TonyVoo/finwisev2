@@ -180,6 +180,27 @@ export function PendingGlyph() {
   );
 }
 
+/**
+ * The `needs-attention` glyph: `alert-circle`, 14, `danger.default` (§5.1).
+ *
+ * The one place in the row where `danger` is right, and the contrast with
+ * {@link PendingGlyph} is the design: a queued change is warning-coloured because nothing
+ * is wrong, and a refused one is red because the server has said no and the user has to
+ * do something. Decorative, because the row appends `, could not sync` to its own label.
+ */
+export function NeedsAttentionGlyph() {
+  return (
+    <Feather
+      name="alert-circle"
+      size={size.syncGlyph}
+      color={color.danger.default}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      testID="needs-attention-glyph"
+    />
+  );
+}
+
 const styles = StyleSheet.create({
   appBar: {
     backgroundColor: color.bg.surface,

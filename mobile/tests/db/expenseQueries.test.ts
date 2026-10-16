@@ -14,6 +14,7 @@ import {
   monthsWithExpenses,
 } from '@/db/queries';
 import { applyLocalMutation } from '@/db/write';
+import { recordRejection } from '@/sync/rejections';
 import { monthRange } from '@/lib/calendar';
 import { createTestDatabase, type TestDatabase } from '../support/sqlite';
 
@@ -126,8 +127,38 @@ describe('expense and category reads', () => {
           date: '2026-10-09',
           note: 'Milk, eggs',
           pending: false,
+          needsAttention: false,
         },
       ]);
+    });
+
+    /**
+     * §5.1. The marker is derived from a rejection *and* an empty outbox, so the two
+     * cases that matter are a refused row and one the user has since re-saved.
+     */
+    it('marks a row the server refused, and unmarks it once it is queued again', async () => {
+      await pullExpenses({ id: ids.e1, categoryId: ids.groceries, amountMinor: 1250 });
+      await recordRejection(database, {
+        entity: 'expense',
+        recordId: ids.e1,
+        code: 'unknown_category',
+        message: 'refused',
+        rejectedAt: AT,
+      });
+
+      const [refused] = await listMonthExpenses(database, OCTOBER);
+      expect(refused).toMatchObject({ pending: false, needsAttention: true });
+
+      // Saving the repair re-queues the record, and a queued record is pending rather
+      // than refused - nothing had to clear a flag.
+      await applyLocalMutation(database, {
+        entity: 'expense',
+        id: ids.e1,
+        fields: { categoryId: ids.groceries },
+      });
+
+      const [requeued] = await listMonthExpenses(database, OCTOBER);
+      expect(requeued).toMatchObject({ pending: true, needsAttention: false });
     });
 
     /** `SUM-02`: the bounds are inclusive and compared as strings. */
@@ -308,7 +339,13 @@ describe('expense and category reads', () => {
         { id: ids.e1, categoryId: ids.groceries, amountMinor: 100, date: '2026-10-31' },
         { id: ids.e2, categoryId: ids.groceries, amountMinor: 100, date: '2025-12-01' },
         { id: ids.e3, categoryId: ids.groceries, amountMinor: 100, date: '2026-10-01' },
-        { id: ids.e4, categoryId: ids.groceries, amountMinor: 100, date: '2026-02-28', deletedAt: AT },
+        {
+          id: ids.e4,
+          categoryId: ids.groceries,
+          amountMinor: 100,
+          date: '2026-02-28',
+          deletedAt: AT,
+        },
       );
 
       expect(await monthsWithExpenses(database)).toEqual(['2025-12', '2026-10']);

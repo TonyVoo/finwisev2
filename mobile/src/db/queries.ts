@@ -236,6 +236,16 @@ export interface ExpenseListItem {
   readonly date: string;
   readonly note: string | null;
   readonly pending: boolean;
+  /**
+   * The server refused this row and nothing is queued for it any more
+   * (`02-offline-and-sync.md` §5.1).
+   *
+   * Derived from `sync_rejections` and the outbox together, never stored on the row: the
+   * marker clears itself when the user saves a repair, because that re-queues the record
+   * and a queued record is `pending` rather than refused. Nothing has to remember to
+   * clear a flag.
+   */
+  readonly needsAttention: boolean;
 }
 
 /** `WHERE` shared by a month's page and its total, so the two cannot disagree. */
@@ -261,7 +271,12 @@ export async function listMonthExpenses(
   range: DateRange,
   page: { readonly limit: number; readonly offset?: number } = { limit: 50 },
 ): Promise<readonly ExpenseListItem[]> {
-  const rows = await database.getAllAsync<Omit<ExpenseListItem, 'pending'> & { pending: number }>(
+  const rows = await database.getAllAsync<
+    Omit<ExpenseListItem, 'pending' | 'needsAttention'> & {
+      pending: number;
+      rejected: number;
+    }
+  >(
     `SELECT e.id,
             e.categoryId,
             e.amountMinor,
@@ -278,7 +293,11 @@ export async function listMonthExpenses(
               ORDER BY f.id LIMIT 1) AS fallbackColor,
             EXISTS (
               SELECT 1 FROM outbox o WHERE o.entity = 'expense' AND o.recordId = e.id
-            ) AS pending
+            ) AS pending,
+            EXISTS (
+              SELECT 1 FROM sync_rejections r
+               WHERE r.entity = 'expense' AND r.recordId = e.id
+            ) AS rejected
        FROM expenses e
        LEFT JOIN categories c ON c.id = e.categoryId AND c.deletedAt IS NULL
       WHERE ${LIVE_IN_MONTH}
@@ -287,7 +306,13 @@ export async function listMonthExpenses(
     [range.from, range.to, page.limit, page.offset ?? 0],
   );
 
-  return rows.map((row) => ({ ...row, pending: row.pending === 1 }));
+  return rows.map(({ pending, rejected, ...row }) => ({
+    ...row,
+    pending: pending === 1,
+    // Refused *and* not queued. A row the user has just re-saved is queued again, and the
+    // design is explicit that saving the repair clears the marker (§5.1).
+    needsAttention: rejected === 1 && pending !== 1,
+  }));
 }
 
 /**

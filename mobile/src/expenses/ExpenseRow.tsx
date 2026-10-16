@@ -1,8 +1,8 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { PendingGlyph } from '../components/Chrome';
+import { NeedsAttentionGlyph, PendingGlyph } from '../components/Chrome';
 import { Row, RowSubtitle, RowTitle, Swatch } from '../components/Row';
 import { SwipeToDelete } from '../components/SwipeToDelete';
-import { COPY } from '../copy/strings';
+import { COPY, SYNC_COPY } from '../copy/strings';
 import type { CalendarDate } from '../lib/calendar';
 import { formatMoney } from '../lib/money';
 import { color, space, type } from '../theme/tokens';
@@ -61,7 +61,9 @@ export function ExpenseRow({ item, today, onPress, onDelete, lastInGroup }: Expe
         }}
         trailing={
           <View style={styles.trailing}>
-            {item.pending ? <PendingGlyph /> : null}
+            {/* Mutually exclusive by construction: `needsAttention` means the server
+                refused the row *and* nothing is queued for it (`db/queries.ts`). */}
+            {item.needsAttention ? <NeedsAttentionGlyph /> : item.pending ? <PendingGlyph /> : null}
             <Text
               testID={`${EXPENSE_AMOUNT_TEST_ID_PREFIX}-${item.id}`}
               style={styles.amount}
@@ -75,9 +77,18 @@ export function ExpenseRow({ item, today, onPress, onDelete, lastInGroup }: Expe
         }
       >
         <RowTitle>{rowCategoryName(item)}</RowTitle>
-        {/* Omitted entirely when there is no note, rather than rendered as an empty line -
-            `''` and `null` would otherwise look different (`mutations.ts`, `normaliseNote`). */}
-        {item.note === null || item.note.trim().length === 0 ? null : (
+        {item.needsAttention ? (
+          // §5.1: the subtitle is *replaced*, not appended to. The note is the less
+          // urgent of the two and the row only has one subtitle line.
+          <Text style={styles.needsAttention} testID={`expense-needs-attention-${item.id}`}>
+            {SYNC_COPY.row.needsAttention}
+          </Text>
+        ) : item.note === null ||
+          item.note.trim().length ===
+            0 ? // Omitted entirely when there is no note, rather than rendered as an empty line
+        // - `''` and `null` would otherwise look different (`mutations.ts`,
+        // `normaliseNote`).
+        null : (
           <RowSubtitle>{item.note}</RowSubtitle>
         )}
       </Row>
@@ -95,5 +106,9 @@ const styles = StyleSheet.create({
     ...type.bodyStrong,
     color: color.text.primary,
     fontVariant: ['tabular-nums'],
+  },
+  needsAttention: {
+    ...type.footnote,
+    color: color.danger.default,
   },
 });
