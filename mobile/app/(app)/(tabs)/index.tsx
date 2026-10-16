@@ -16,6 +16,7 @@ import { useFirstPaintSkeleton } from '@/expenses/useFirstPaint';
 import { monthLabel } from '@/lib/calendar';
 import { MonthSwitcher } from '@/month/MonthSwitcher';
 import { SyncIndicator } from '@/sync/SyncIndicator';
+import { usePullToRefresh } from '@/sync/usePullToRefresh';
 import { useSelectedMonth } from '@/month/MonthProvider';
 import { color, size, space, type } from '@/theme/tokens';
 
@@ -45,6 +46,8 @@ import { color, size, space, type } from '@/theme/tokens';
  *   That falls out of the snackbar being a single app-level slot rather than per-row state.
  */
 
+export const HOME_LIST_TEST_ID = 'home-list';
+
 /** The FAB's height plus the two `space.4` gaps the spec puts around it (§Elements). */
 const FAB_CLEARANCE = size.fab + space[4] + space[4];
 
@@ -56,6 +59,7 @@ export default function ExpenseListScreen() {
   const { month, currentMonth, today, isCurrent, goToCurrent } = useSelectedMonth();
 
   const [scrolled, setScrolled] = useState(false);
+  const pullToRefresh = usePullToRefresh();
 
   const expenses = useMonthExpenses(month);
   const total = useMonthTotal(month);
@@ -131,11 +135,16 @@ export default function ExpenseListScreen() {
       />
 
       <SectionList
+        testID={HOME_LIST_TEST_ID}
         sections={showSkeleton ? [] : sections}
         keyExtractor={(item) => item.id}
         stickySectionHeadersEnabled={false}
         onScroll={(event) => setScrolled(event.nativeEvent.contentOffset.y > 0)}
         scrollEventThrottle={16}
+        // A sync, not a reload: the rows are already current (rule 12). The spinner is
+        // tied to the sync attempt and stops immediately when there is no network, where
+        // the pill - not this list - carries the explanation.
+        {...pullToRefresh}
         // Deep enough that the last row can always be scrolled clear of the FAB
         // (§Elements, FAB position).
         contentContainerStyle={{ paddingBottom: FAB_CLEARANCE + insets.bottom }}

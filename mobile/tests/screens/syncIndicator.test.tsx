@@ -1,6 +1,7 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
 import type { SyncPushRequest } from '@expense-tracker/shared';
 import ExpenseListScreen from '../../app/(app)/(tabs)/index';
+import SummaryScreen from '../../app/(app)/(tabs)/summary';
 import { updateExpense } from '@/db/mutations';
 import type { SqliteDatabase } from '@/db/sqlite';
 import type { Transport } from '@/api/transport';
@@ -106,6 +107,51 @@ describe('the pill on Home', () => {
       transport: ACCEPTING_SERVER,
     });
     await waitFor(() => expect(pillLabel()).not.toBeNull());
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('sync-pill'));
+    });
+
+    expect(screen.getByText('Offline')).toBeTruthy();
+    await waitFor(() =>
+      expect(screen.getByTestId('sync-sheet-waiting')).toHaveTextContent('1 change waiting'),
+    );
+  });
+});
+
+/**
+ * The second of the two screens §3 puts the pill on - and the reason it is tested twice
+ * rather than once: the pill is wired per screen, so a tab that forgot it would be a pill
+ * that silently does not exist on half the app while every unit test of it still passed.
+ */
+describe('the pill on Summary', () => {
+  it('is absent entirely when there is nothing to report', async () => {
+    await mountScreen(<SummaryScreen />, {
+      clock: () => NOW,
+      startSync: true,
+      transport: ACCEPTING_SERVER,
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('sync-pill-empty', { includeHiddenElements: true }),
+      ).not.toBeNull(),
+    );
+    expect(screen.queryByTestId('sync-pill')).toBeNull();
+  });
+
+  it('reports a queued change, and opens the same sheet Home does', async () => {
+    await mountScreen(<SummaryScreen />, {
+      clock: () => NOW,
+      seed: seedOneQueuedEdit,
+      startSync: true,
+      reachability: createMemoryReachability(false),
+      transport: ACCEPTING_SERVER,
+    });
+
+    await waitFor(() =>
+      expect(pillLabel()).toBe('Offline, 1 change waiting to sync. Double tap for details.'),
+    );
 
     await act(async () => {
       fireEvent.press(screen.getByTestId('sync-pill'));

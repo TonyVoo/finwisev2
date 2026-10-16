@@ -13,21 +13,32 @@ import type { SyncEngine, SyncStatus } from './engine';
 /**
  * Mounts the sync engine into the tree, and owns every trigger that starts a sync.
  *
- * ### The four triggers, and where each one comes from
+ * ### The six triggers, and where each one comes from
  *
- * | Trigger        | Source                                                            |
- * | -------------- | ----------------------------------------------------------------- |
- * | `app-open`     | `engine.start()` here, plus `AppState` returning to `active`       |
- * | `connectivity` | netinfo, inside the engine (`engine.ts`, `onReachabilityChange`)   |
- * | `local-write`  | `useLocalWrite`, through {@link useSyncTriggers}                   |
- * | `background`   | `expo-background-task`, through `background.ts`                   |
+ * | Trigger           | Source                                                          |
+ * | ----------------- | --------------------------------------------------------------- |
+ * | `app-open`        | `engine.start()` here, plus `AppState` returning to `active`     |
+ * | `connectivity`    | netinfo, inside the engine (`engine.ts`, `onReachabilityChange`) |
+ * | `local-write`     | `useLocalWrite`, through {@link useSyncTriggers}                 |
+ * | `background`      | `expo-background-task`, through `background.ts`                  |
+ * | `pull-to-refresh` | Home and Summary, through `usePullToRefresh`                     |
+ * | `manual`          | `Try again` in the sync sheet, through `SyncIndicator`           |
  *
  * They are deliberately not one subscription each to the same thing: `app-open` is a
  * lifecycle event, `connectivity` is a radio event, and `local-write` is a user action,
  * and an app that only had the first two would leave a change made in a tunnel sitting in
- * the outbox until the user quit and came back. The engine's single-flight guard is what
- * makes having four of them safe - a trigger that arrives mid-sync is remembered and runs
- * one more pass at the end rather than starting a second drain.
+ * the outbox until the user quit and came back.
+ *
+ * The four `SYNC-37` names as the **foreground** set - `app-open`, `connectivity`,
+ * `local-write` and `pull-to-refresh` - have to be sufficient on their own: background
+ * execution can be switched off at the OS level, and nothing may be lost when it is.
+ * `pull-to-refresh` is the redundant one of the four, since it only does what the other
+ * three would have done anyway - which is why it is allowed to be skipped offline rather
+ * than forcing an attempt the way `manual` does.
+ *
+ * The engine's single-flight guard is what makes having six of them safe - a trigger that
+ * arrives mid-sync is remembered and runs one more pass at the end rather than starting a
+ * second drain.
  *
  * ### Why `enabled` exists, and why it defaults to true
  *

@@ -12,7 +12,11 @@ import { CategoryDonut } from '@/summary/CategoryDonut';
 import { SpendLegend } from '@/summary/SpendLegend';
 import { SummaryEmpty, SummarySkeleton } from '@/summary/SummaryStates';
 import { summariseMonth } from '@/summary/summaryModel';
+import { SyncIndicator } from '@/sync/SyncIndicator';
+import { usePullToRefresh } from '@/sync/usePullToRefresh';
 import { color } from '@/theme/tokens';
+
+export const SUMMARY_SCROLL_TEST_ID = 'summary-scroll';
 
 /**
  * The monthly summary: `docs/design/08-monthly-summary.md`.
@@ -44,17 +48,25 @@ import { color } from '@/theme/tokens';
  *   write (`db/localWrite.ts`), so adding an expense on the other tab and switching here
  *   shows it immediately - rule 10, re-run on change rather than on a timer or on focus.
  *
- * Two pieces of the spec are not here yet, both because they depend on work that has not
- * landed: the sync pill in the app bar (element 3) and pull-to-refresh (rule 12), which are
- * the sync engine's, and the legend's drill-down to a filtered Expenses tab (rule 8), which
- * needs a category filter the list screen does not have. Home is in the same position for
- * the first two. Nothing is stubbed in their place.
+ * ### What sync is allowed to do to this screen
+ *
+ * Two things, and nothing else. The pill (element 3) reports connectivity in the app bar,
+ * exactly as it does on Home - this is one of the two screens `02-offline-and-sync.md` §3
+ * puts it on. And a pull triggers a sync (rule 12), which may bring rows in from another
+ * device and so change the figures; it does not re-read anything, because the reads are
+ * already current. Neither can take the numbers away: a transport failure lives in the
+ * pill, and stale-but-real figures beat an error screen.
+ *
+ * One piece of the spec is still not here: the legend's drill-down to a filtered Expenses
+ * tab (rule 8), which needs a category filter the list screen does not have. Nothing is
+ * stubbed in its place.
  */
 export default function SummaryScreen() {
   const router = useRouter();
   const { month, isCurrent } = useSelectedMonth();
 
   const [scrolled, setScrolled] = useState(false);
+  const pullToRefresh = usePullToRefresh();
 
   const spend = useMonthCategorySpend(month);
   const currency = useUserCurrency();
@@ -73,14 +85,20 @@ export default function SummaryScreen() {
 
   return (
     <View style={styles.screen}>
-      <AppBar title={COPY.summary.title} elevated={scrolled} />
+      {/* The pill, in the same trailing slot as on Home (§3): the one place this screen
+          mentions connectivity, and the only thing it knows about sync. */}
+      <AppBar title={COPY.summary.title} elevated={scrolled} trailing={<SyncIndicator />} />
 
       {/* Pinned, exactly as on Home, and reading the same shared selection. */}
       <MonthSwitcher onOpenPicker={() => router.push('/(app)/month-picker')} />
 
       <ScrollView
+        testID={SUMMARY_SCROLL_TEST_ID}
         onScroll={(event) => setScrolled(event.nativeEvent.contentOffset.y > 0)}
         scrollEventThrottle={16}
+        // Rule 12, as on Home. The figures do not change as a result unless the sync
+        // brings in rows from another device.
+        {...pullToRefresh}
         contentContainerStyle={styles.content}
       >
         {/* Renders in every state, including `empty`, where it is `$0.00` and `0 expenses`.
