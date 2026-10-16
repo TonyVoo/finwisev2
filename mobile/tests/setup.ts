@@ -33,3 +33,13 @@ jest.mock('expo-secure-store', () => {
     AFTER_FIRST_UNLOCK: 'afterFirstUnlock',
   };
 });
+
+// netinfo is a native module too, and the package ships its own jest mock: a connected
+// `cellular` state, a `fetch` that resolves it and an `addEventListener` that records the
+// listener without ever calling it. That is the right default here - a suite that is about
+// connectivity builds a `createMemoryReachability` instead and says what it wants, rather
+// than reaching through to a mock nothing in the test can see.
+jest.mock('@react-native-community/netinfo', () =>
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require('@react-native-community/netinfo/jest/netinfo-mock.js'),
+);

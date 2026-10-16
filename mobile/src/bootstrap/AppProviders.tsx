@@ -4,6 +4,7 @@ import { SessionProvider } from '../auth/SessionProvider';
 import { DatabaseProvider } from '../db/DatabaseProvider';
 import { MonthProvider } from '../month/MonthProvider';
 import { SnackbarProvider } from '../components/Snackbar';
+import { SyncProvider } from '../sync/SyncProvider';
 import type { ApiClient } from '../api/client';
 import type { AppContainer } from './container';
 
@@ -18,6 +19,12 @@ const ApiContext = createContext<ApiClient | null>(null);
 
 export interface AppProvidersProps {
   readonly container: AppContainer;
+  /**
+   * Whether the sync triggers are wired. See `sync/SyncProvider.tsx` - the app leaves it
+   * alone, and the screen suites pass `false` because their screens are specified to
+   * touch no network at all.
+   */
+  readonly startSync?: boolean;
   readonly children: ReactNode;
 }
 
@@ -34,15 +41,20 @@ export interface AppProvidersProps {
  * The snackbar is outermost of the two so it renders above everything, including the
  * sheets and dialogs that can ask for one.
  */
-export function AppProviders({ container, children }: AppProvidersProps) {
+export function AppProviders({ container, startSync = true, children }: AppProvidersProps) {
   return (
     <QueryClientProvider client={container.queryClient}>
       <SessionProvider controller={container.session}>
         <ApiContext.Provider value={container.api}>
           <DatabaseProvider database={container.database}>
-            <SnackbarProvider>
-              <MonthProvider clock={container.clock}>{children}</MonthProvider>
-            </SnackbarProvider>
+            {/* Inside `DatabaseProvider` and above the screens: the engine reads the same
+                database the screens do, and `useLocalWrite` reaches up to it to trigger a
+                sync once a write has settled. */}
+            <SyncProvider engine={container.sync} enabled={startSync}>
+              <SnackbarProvider>
+                <MonthProvider clock={container.clock}>{children}</MonthProvider>
+              </SnackbarProvider>
+            </SyncProvider>
           </DatabaseProvider>
         </ApiContext.Provider>
       </SessionProvider>

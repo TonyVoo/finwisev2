@@ -10,6 +10,9 @@ import { createSqliteLocalStore } from '../db/localStore';
 import { openLocalDatabase } from '../db/open';
 import type { SqliteDatabase } from '../db/sqlite';
 import { createQueryClient } from '../query/client';
+import { queryKeys } from '../query/keys';
+import { type SyncEngine, createSyncEngine } from '../sync/engine';
+import { type Reachability, createNetInfoReachability } from '../sync/reachability';
 
 /**
  * Builds the app's long-lived objects and wires them together.
@@ -44,6 +47,14 @@ export interface AppContainer {
    * rule 2, `05-month-switcher.md` rule 2).
    */
   readonly clock: Clock;
+  /**
+   * The sync engine, built here and never anywhere else.
+   *
+   * One per app, for the reason `engine.ts` gives: the single-flight guard is per engine,
+   * so two engines are two concurrent drains over one outbox. `SyncProvider` mounts this
+   * one and the background task borrows it.
+   */
+  readonly sync: SyncEngine;
 }
 
 export interface AppContainerOptions {
@@ -54,6 +65,12 @@ export interface AppContainerOptions {
   readonly queryClient?: QueryClient;
   /** Pinnable so a dated assertion does not depend on the day the suite runs. */
   readonly clock?: Clock;
+  /**
+   * Overridable because netinfo is a native module, and because a test that wants to be
+   * offline should say so rather than unplugging something
+   * (`createMemoryReachability` in `sync/reachability.ts`).
+   */
+  readonly reachability?: Reachability;
 }
 
 export async function createAppContainer(options: AppContainerOptions = {}): Promise<AppContainer> {
@@ -80,11 +97,27 @@ export async function createAppContainer(options: AppContainerOptions = {}): Pro
 
   await session.initialize();
 
+  const queryClient = options.queryClient ?? createQueryClient();
+  const clock = options.clock ?? systemClock;
+
   return {
     database,
     session,
     api,
-    queryClient: options.queryClient ?? createQueryClient(),
-    clock: options.clock ?? systemClock,
+    queryClient,
+    clock,
+    sync: createSyncEngine({
+      database,
+      api,
+      reachability: options.reachability ?? createNetInfoReachability(),
+      clock,
+      // A sync that wrote rows has to invalidate the reads, for the same reason a local
+      // write does: every query in this app is configured `staleTime: Infinity` and
+      // nothing re-reads unless something invalidates (`db/localWrite.ts`). Without this
+      // a pull would land rows in SQLite that no screen showed until the next user edit.
+      onLocalDataChanged: () => {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.local() });
+      },
+    }),
   };
 }

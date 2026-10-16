@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../query/keys';
+import { useSyncTriggers } from '../sync/SyncProvider';
 import { useDatabase } from './DatabaseProvider';
 import type { SqliteDatabase } from './sqlite';
 
@@ -54,13 +55,19 @@ export type LocalWrite<T> = (database: SqliteDatabase) => Promise<T>;
 export function useLocalWrite(): <T>(write: LocalWrite<T>) => Promise<T> {
   const database = useDatabase();
   const queryClient = useQueryClient();
+  const { onLocalWrite } = useSyncTriggers();
 
   return useCallback(
     async <T>(write: LocalWrite<T>): Promise<T> => {
       const result = await write(database);
       await queryClient.invalidateQueries({ queryKey: queryKeys.local() });
+      // Last, and not awaited: "after a local write settles" is a sync trigger, and the
+      // write is settled once SQLite has it and the screens have been told. The push
+      // itself is the engine's problem and the caller must never wait on it - a save that
+      // awaited the server would be a save that fails on a plane.
+      onLocalWrite();
       return result;
     },
-    [database, queryClient],
+    [database, onLocalWrite, queryClient],
   );
 }

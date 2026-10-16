@@ -83,7 +83,15 @@ export async function mountScreen(
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
-        <AppProviders container={container}>{children}</AppProviders>
+        {/* `startSync: false`, and it is the one deviation from the app's own wiring here.
+            These screens are specified to read and write local SQLite and nothing else,
+            which is what `NO_NETWORK_EXPECTED` enforces - and a sync engine starting on
+            mount would put a `POST /v1/sync` on the wire in every suite, failing them all
+            for a reason none of them is about. `tests/sync/` drives the engine and its
+            triggers directly instead. */}
+        <AppProviders container={container} startSync={false}>
+          {children}
+        </AppProviders>
       </SafeAreaProvider>
     );
   }
