@@ -1,3 +1,4 @@
+import { DEFAULT_FONT_SCALE, setFontScale } from './support/fontScale';
 import '@testing-library/react-native';
 
 // Jest only defaults `NODE_ENV` to `test` when it is unset, so a shell that exports
@@ -43,3 +44,14 @@ jest.mock('@react-native-community/netinfo', () =>
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   require('@react-native-community/netinfo/jest/netinfo-mock.js'),
 );
+
+// The text scale every case starts from. The preset's own window reports `fontScale: 2`,
+// which is a user with the accessibility text slider near its maximum - so without this,
+// the three components that branch on it would only ever be rendered in their large-text
+// layout and never in the ordinary one. `tests/support/fontScale.ts` has the full note.
+//
+// `beforeEach` rather than once, so a case that raises the scale cannot leak it into the
+// next one.
+beforeEach(() => {
+  setFontScale(DEFAULT_FONT_SCALE);
+});
