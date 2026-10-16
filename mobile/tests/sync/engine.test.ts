@@ -168,6 +168,23 @@ describe('reachability', () => {
     expect(api.pushes).toHaveLength(1);
   });
 
+  /**
+   * A pull is a user action too, but it is not the exception. Rule 12 of
+   * `docs/design/04-expense-list.md` says an offline pull stops immediately and shows no
+   * error, which is this skip; `manual` exists for `Try again`, which only appears in the
+   * state where the app did reach a server.
+   */
+  it('skips a pull-to-refresh on an unreachable device', async () => {
+    reachability.set(false);
+    await queueOne();
+
+    const result = await createEngine().sync('pull-to-refresh');
+
+    expect(result.status).toBe('skipped');
+    expect(api.pushes).toHaveLength(0);
+    expect(api.pulls).toHaveLength(0);
+  });
+
   it('syncs when connectivity comes back', async () => {
     reachability.set(false);
     const engine = createEngine();

@@ -48,6 +48,16 @@ export type SyncTrigger =
   | 'local-write'
   /** `expo-background-task` woke us. Best-effort; may never fire. */
   | 'background'
+  /**
+   * The user pulled a list down on Home or Summary.
+   *
+   * Deliberately not `manual`, even though a finger started it. Rule 12 of
+   * `docs/design/04-expense-list.md` says the spinner "stops immediately" when offline and
+   * does not show an error, which is exactly the unreachable skip below - whereas `manual`
+   * exists to bypass that skip. A pull is the user asking for a sync, not asserting that
+   * there is a network.
+   */
+  | 'pull-to-refresh'
   /** The user tapped `Try again` in the sync sheet. */
   | 'manual';
 
