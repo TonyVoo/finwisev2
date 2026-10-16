@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { SkeletonBlock } from '../components/Chrome';
-import { COPY } from '../copy/strings';
+import { COPY, summaryExpenseCount } from '../copy/strings';
 import { formatMoney } from '../lib/money';
 import { color, space, type } from '../theme/tokens';
 
@@ -24,19 +24,35 @@ import { color, space, type } from '../theme/tokens';
  * The label changes with the month and the figure does not: `Total this month` only while
  * the current month is selected, `Total` otherwise. A month in the past labelled "this
  * month" would be a plain lie about which number the user is reading.
+ *
+ * **Both tabs render this same component** - the copy deck lists `home.total.current` as
+ * belonging to "Home, Summary" - and the Summary adds the expense count beneath the figure
+ * (`08-monthly-summary.md` elements 5-7). Sharing it is what keeps the two screens' money
+ * typography, their skeleton and their live region identical; the figures themselves agree
+ * because they are the same aggregate, not because of anything here.
  */
 
 export const MONTH_TOTAL_TEST_ID = 'month-total';
 export const MONTH_TOTAL_SKELETON_TEST_ID = 'month-total-skeleton';
+export const MONTH_TOTAL_COUNT_TEST_ID = 'month-total-count';
 
 export interface MonthTotalProps {
   /** In minor units. `undefined` while the first SQLite read is in flight. */
   readonly totalMinor: number | undefined;
   readonly currency: string;
   readonly isCurrentMonth: boolean;
+  /**
+   * How many expenses the figure is made of - the Summary's third line (element 7 of
+   * `08-monthly-summary.md`), and the deck's `, {count} expenses` appended to this block's
+   * composed label.
+   *
+   * Omitted on Home, where the rows are right there to be counted and the spec has no line
+   * for it. Zero is a value and renders: the empty state shows `$0.00` with `0 expenses`.
+   */
+  readonly count?: number;
 }
 
-export function MonthTotal({ totalMinor, currency, isCurrentMonth }: MonthTotalProps) {
+export function MonthTotal({ totalMinor, currency, isCurrentMonth, count }: MonthTotalProps) {
   const label = isCurrentMonth ? COPY.home.total.current : COPY.home.total.other;
 
   if (totalMinor === undefined) {
@@ -51,18 +67,26 @@ export function MonthTotal({ totalMinor, currency, isCurrentMonth }: MonthTotalP
   }
 
   const formatted = formatMoney(totalMinor, currency);
+  const counted = count === undefined ? null : summaryExpenseCount(count);
 
   return (
     <View
       testID={MONTH_TOTAL_TEST_ID}
       style={styles.block}
-      // One element: the caption and the figure are meaningless apart.
+      // One element: the caption, the figure and the count are meaningless apart.
       accessible
-      accessibilityLabel={`${label}, ${formatted}`}
+      accessibilityLabel={
+        counted === null ? `${label}, ${formatted}` : `${label}, ${formatted}, ${counted}`
+      }
       accessibilityLiveRegion="polite"
     >
       <Text style={styles.label}>{label}</Text>
       <Text style={styles.amount}>{formatted}</Text>
+      {counted === null ? null : (
+        <Text testID={MONTH_TOTAL_COUNT_TEST_ID} style={styles.count}>
+          {counted}
+        </Text>
+      )}
     </View>
   );
 }
@@ -83,5 +107,9 @@ const styles = StyleSheet.create({
     ...type.display,
     color: color.text.primary,
     fontVariant: ['tabular-nums'],
+  },
+  count: {
+    ...type.footnote,
+    color: color.text.tertiary,
   },
 });
