@@ -1,3 +1,4 @@
+import type { SyncEntity } from '@expense-tracker/shared';
 import type { CategoryRow } from './entities';
 import type { SqliteDatabase } from './sqlite';
 
@@ -300,10 +301,7 @@ export async function listMonthExpenses(
  * No join to `categories`: an expense whose category is tombstoned is still money the user
  * spent, so it still counts here (`SUM-17`).
  */
-export async function monthTotalMinor(
-  database: SqliteDatabase,
-  range: DateRange,
-): Promise<number> {
+export async function monthTotalMinor(database: SqliteDatabase, range: DateRange): Promise<number> {
   const row = await database.getFirstAsync<{ total: number | null }>(
     `SELECT SUM(e.amountMinor) AS total FROM expenses e WHERE ${LIVE_IN_MONTH}`,
     [range.from, range.to],
@@ -492,4 +490,85 @@ export async function lastUsedCategoryId(database: SqliteDatabase): Promise<stri
     [],
   );
   return row?.categoryId ?? null;
+}
+
+/** What a queued change did to its record, as the sync sheet labels it (§4). */
+export type PendingOperation = 'added' | 'edited' | 'deleted';
+
+/** One row of the sync sheet's `{n} changes waiting` list. */
+export interface PendingChange {
+  readonly entity: SyncEntity;
+  readonly recordId: string;
+  /** The expense's category name, or the category's own name. */
+  readonly label: string;
+  /** Minor units, or null for a category - a category has no amount to show. */
+  readonly amountMinor: number | null;
+  readonly operation: PendingOperation;
+}
+
+/**
+ * The records with undrained outbox entries, oldest first
+ * (`docs/design/02-offline-and-sync.md` §4, pending section).
+ *
+ * One row per *record*, not per entry, matching the count the pill shows (§3 rule 5):
+ * three edits to one expense are one line reading `1 pending`, so they must be one line
+ * here too.
+ *
+ * ### Where `Added` / `Edited` / `Deleted` comes from
+ *
+ * The outbox stores mutated fields, not an operation, so the label is derived from the
+ * local row and the derivation is deliberate:
+ *
+ * - **`deletedAt` set → `Deleted`**, whatever else is queued for it. It is the outcome the
+ *   user is waiting on. §4 rule 4 requires the category and amount to come from the
+ *   tombstoned row rather than leaving a column of blanks, which is why the join does not
+ *   filter on `deletedAt IS NULL`.
+ * - **`revision = 0` → `Added`.** Revision is server-assigned, so zero means the server
+ *   has never acknowledged this row: from the user's side the queued change *is* its
+ *   creation.
+ * - **anything else → `Edited`.**
+ *
+ * A pending category is listed with its name and no amount. The deck's item format has
+ * three columns and assumes an expense; a category mutation has no amount to put in the
+ * middle one, and omitting the record entirely would make this list disagree with the
+ * header count above it.
+ */
+export async function listPendingChanges(
+  database: SqliteDatabase,
+): Promise<readonly PendingChange[]> {
+  const rows = await database.getAllAsync<{
+    entity: SyncEntity;
+    recordId: string;
+    amountMinor: number | null;
+    expenseCategory: string | null;
+    categoryName: string | null;
+    deletedAt: string | null;
+    revision: number | null;
+  }>(
+    `SELECT o.entity                            AS entity,
+            o.recordId                          AS recordId,
+            e.amountMinor                       AS amountMinor,
+            ec.name                             AS expenseCategory,
+            c.name                              AS categoryName,
+            COALESCE(e.deletedAt, c.deletedAt)  AS deletedAt,
+            COALESCE(e.revision, c.revision)    AS revision
+       FROM outbox o
+       LEFT JOIN expenses e ON o.entity = 'expense' AND e.id = o.recordId
+       LEFT JOIN categories ec ON ec.id = e.categoryId
+       LEFT JOIN categories c ON o.entity = 'category' AND c.id = o.recordId
+      GROUP BY o.entity, o.recordId
+      ORDER BY MIN(o.seq)`,
+    [],
+  );
+
+  return rows.map((row) => ({
+    entity: row.entity,
+    recordId: row.recordId,
+    // A row the outbox references but the store no longer holds cannot happen through any
+    // write path in the app - both are written in one transaction - so the fallback is a
+    // guard against a corrupted store rather than a state to design copy for.
+    label: (row.entity === 'expense' ? row.expenseCategory : row.categoryName) ?? '',
+    amountMinor: row.entity === 'expense' ? row.amountMinor : null,
+    operation: row.deletedAt !== null ? 'deleted' : (row.revision ?? 0) === 0 ? 'added' : 'edited',
+  }));
 }

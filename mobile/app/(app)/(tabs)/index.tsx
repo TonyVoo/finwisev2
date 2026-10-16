@@ -15,6 +15,7 @@ import { MonthTotal } from '@/expenses/MonthTotal';
 import { useFirstPaintSkeleton } from '@/expenses/useFirstPaint';
 import { monthLabel } from '@/lib/calendar';
 import { MonthSwitcher } from '@/month/MonthSwitcher';
+import { SyncIndicator } from '@/sync/SyncIndicator';
 import { useSelectedMonth } from '@/month/MonthProvider';
 import { color, size, space, type } from '@/theme/tokens';
 
@@ -104,12 +105,18 @@ export default function ExpenseListScreen() {
         // `elevation.1` only once the list has scrolled past 0 (element 1).
         elevated={scrolled}
         trailing={
-          <IconButton
-            icon="settings"
-            label={COPY.settings.title}
-            onPress={() => router.push('/(app)/settings')}
-            testID="home-settings"
-          />
+          <>
+            {/* The pill leads the gear, as `02-offline-and-sync.md` §3 draws it: trailing
+                in the bar, and in a fixed-width slot so the title never shifts when sync
+                state changes. */}
+            <SyncIndicator />
+            <IconButton
+              icon="settings"
+              label={COPY.settings.title}
+              onPress={() => router.push('/(app)/settings')}
+              testID="home-settings"
+            />
+          </>
         }
       />
 

@@ -8,6 +8,7 @@ import type { SessionController, SessionSnapshot } from '@/auth/session';
 import { type AppContainer, createAppContainer } from '@/bootstrap/container';
 import type { Transport, TransportRequest, TransportResponse } from '@/api/transport';
 import { migrate } from '@/db/migrations';
+import type { Reachability } from '@/sync/reachability';
 import type { Clock } from '@/lib/clock';
 import { createTestDatabase, type TestDatabase } from './sqlite';
 import { SAFE_AREA_METRICS } from './safeArea';
@@ -53,6 +54,16 @@ export interface MountScreenOptions {
   readonly clock?: Clock;
   /** Rows to put in the database before the first render. */
   readonly seed?: (database: TestDatabase) => Promise<void>;
+  /**
+   * Wire the sync triggers, for the handful of cases that are *about* sync.
+   *
+   * Off by default, which is the deviation from the app's own wiring noted below. A case
+   * that turns it on has to supply a `transport`, because the engine will reach for one
+   * on mount.
+   */
+  readonly startSync?: boolean;
+  /** What netinfo would say. Defaults to reachable, as the engine's own default does. */
+  readonly reachability?: Reachability;
 }
 
 const NO_NETWORK_EXPECTED: Transport = async (request) => {
@@ -64,7 +75,13 @@ const NO_NETWORK_EXPECTED: Transport = async (request) => {
 
 export async function mountScreen(
   element: ReactElement,
-  { transport = NO_NETWORK_EXPECTED, clock, seed }: MountScreenOptions = {},
+  {
+    transport = NO_NETWORK_EXPECTED,
+    clock,
+    seed,
+    startSync = false,
+    reachability,
+  }: MountScreenOptions = {},
 ): Promise<MountedScreen> {
   const database = createTestDatabase();
   await migrate(database);
@@ -74,6 +91,7 @@ export async function mountScreen(
   const container = await createAppContainer({
     database,
     clock,
+    reachability,
     transport: async (request) => {
       requests.push(request);
       return transport(request);
@@ -83,13 +101,12 @@ export async function mountScreen(
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
-        {/* `startSync: false`, and it is the one deviation from the app's own wiring here.
-            These screens are specified to read and write local SQLite and nothing else,
-            which is what `NO_NETWORK_EXPECTED` enforces - and a sync engine starting on
-            mount would put a `POST /v1/sync` on the wire in every suite, failing them all
-            for a reason none of them is about. `tests/sync/` drives the engine and its
-            triggers directly instead. */}
-        <AppProviders container={container} startSync={false}>
+        {/* Off unless a case asks for it, and that default is the one deviation from the
+            app's own wiring here. These screens are specified to read and write local
+            SQLite and nothing else, which is what `NO_NETWORK_EXPECTED` enforces - and an
+            engine starting on mount would put a `POST /v1/sync` on the wire in every
+            suite, failing them all for a reason none of them is about. */}
+        <AppProviders container={container} startSync={startSync}>
           {children}
         </AppProviders>
       </SafeAreaProvider>

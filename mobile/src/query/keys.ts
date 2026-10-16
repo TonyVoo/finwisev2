@@ -62,5 +62,7 @@ export const queryKeys = {
 
   outbox: {
     pendingCount: () => ['local', 'outbox', 'pendingCount'] as const,
+    /** The queued changes the sync sheet lists, one per record (§4). */
+    pendingChanges: () => ['local', 'outbox', 'pendingChanges'] as const,
   },
 } as const;

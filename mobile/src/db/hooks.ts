@@ -10,6 +10,7 @@ import {
   type CategoryWithCount,
   type ExpenseDetail,
   type ExpenseListItem,
+  type PendingChange,
   anyExpensesExist,
   coloursInUse,
   countPendingRecords,
@@ -19,6 +20,7 @@ import {
   listLiveCategories,
   listLiveCategoriesWithCounts,
   listMonthExpenses,
+  listPendingChanges,
   monthCategorySpend,
   monthTotalMinor,
   monthsWithExpenses,
@@ -50,6 +52,21 @@ export function usePendingRecordCount(): UseQueryResult<number> {
   return useQuery({
     queryKey: queryKeys.outbox.pendingCount(),
     queryFn: () => countPendingRecords(database),
+  });
+}
+
+/**
+ * The queued changes the sync sheet lists (§4, pending section).
+ *
+ * Its own key rather than a selector over the count: the sheet is the only thing that
+ * reads it, and it is the only read in the app that deliberately includes tombstoned rows
+ * (§4 rule 4 - a `Deleted` line still shows what was deleted).
+ */
+export function usePendingChanges(): UseQueryResult<readonly PendingChange[]> {
+  const database = useDatabase();
+  return useQuery({
+    queryKey: queryKeys.outbox.pendingChanges(),
+    queryFn: () => listPendingChanges(database),
   });
 }
 
