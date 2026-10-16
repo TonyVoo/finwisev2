@@ -29,13 +29,16 @@ describe('migrate', () => {
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
       [],
     );
-    // `meta` arrived in v2 and holds exactly one thing today: which user the rows belong
-    // to (`src/db/localStore.ts`).
+    // `meta` arrived in v2 and now holds three things: which user the rows belong to
+    // (`src/db/localStore.ts`) and the two sync watermarks (`src/sync/cursor.ts`).
+    // `sync_rejections` arrived in v4 and is what keeps a row the server refused visible
+    // after its outbox entry is retired (`src/sync/rejections.ts`).
     expect(tables.map((table) => table.name)).toEqual([
       'categories',
       'expenses',
       'meta',
       'outbox',
+      'sync_rejections',
       'user',
     ]);
   });
