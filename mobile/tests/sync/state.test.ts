@@ -1,4 +1,9 @@
-import { type SyncInputs, isPillTappable, syncPillState } from '@/sync/state';
+import {
+  type SyncInputs,
+  type SyncPillState,
+  isPillTappable,
+  syncPillState,
+} from '@/sync/state';
 
 /**
  * `docs/design/02-offline-and-sync.md` §3's table, as a table.
@@ -47,7 +52,10 @@ describe('the six pill states', () => {
 
 describe('tappability', () => {
   it('opens the sheet from states 3 to 6 only', () => {
-    expect(['pending', 'offline', 'offline-pending', 'error'].every(isPillTappable)).toBe(true);
-    expect(['idle', 'syncing'].some(isPillTappable)).toBe(false);
+    const tappable: readonly SyncPillState[] = ['pending', 'offline', 'offline-pending', 'error'];
+    const inert: readonly SyncPillState[] = ['idle', 'syncing'];
+
+    expect(tappable.every(isPillTappable)).toBe(true);
+    expect(inert.some(isPillTappable)).toBe(false);
   });
 });

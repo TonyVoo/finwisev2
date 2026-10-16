@@ -12,6 +12,11 @@
  * on sentences and none on labels or buttons.
  */
 
+// Type-only, and the one import this module has. The sync strings branch on which row of
+// `02-offline-and-sync.md` §3 applies, so the formatters below take that state rather
+// than a handful of booleans a caller could combine into a row the design does not have.
+import type { SyncPillState } from '../sync/state';
+
 /** §1 — screen titles, labels and actions. */
 export const COPY = {
   app: { name: 'Expense Tracker' },
@@ -121,6 +126,8 @@ export const COPY = {
     undo: 'Undo',
     view: 'View',
     delete: 'Delete',
+    /** The sync sheet's retry, which exists in the error state only (§4 rule 1). */
+    tryAgain: 'Try again',
   },
 
   settings: {
@@ -270,6 +277,95 @@ export const SNACK_COPY = {
 } as const;
 
 /**
+ * §4 - the sync pill, the sync sheet and the resync takeover.
+ *
+ * Three things about this table are specification rather than wording, and all three are
+ * easy to lose in a paraphrase:
+ *
+ * - **The pill label and the accessibility label are different strings**, not the same
+ *   string read twice. `02-offline-and-sync.md` §3 rule 6 requires the full sentence for a
+ *   screen reader - `"Offline, 3 changes waiting to sync. Double tap for details."` - where
+ *   the pill shows `Offline · 3 pending`. A terse label read aloud is close to meaningless.
+ * - **Every string says where the data is.** "saved on this device" appears in three of
+ *   them, because the one question a sync indicator raises is whether the user's work is
+ *   at risk, and the answer is no.
+ * - **The idle state has no copy at all.** Not `Synced`, not a tick (§3 rule 1), so there
+ *   is deliberately nothing here to render in it.
+ *
+ * The singular forms are separate entries rather than a pluralisation rule: §3 rule 5
+ * names `1 pending`, never `1 pendings`, and the sheet and a11y variants need `1 change`
+ * against `{count} changes`.
+ */
+export const SYNC_COPY = {
+  pill: {
+    syncing: 'Syncing…',
+    pending: '{n} pending',
+    offline: 'Offline',
+    offlinePending: 'Offline · {n} pending',
+    error: 'Sync failed',
+  },
+  a11y: {
+    syncing: 'Syncing your changes.',
+    pendingMany: '{n} changes waiting to sync. Double tap for details.',
+    pendingOne: '1 change waiting to sync. Double tap for details.',
+    offline: 'Offline. Your changes are saved on this device. Double tap for details.',
+    offlinePendingMany: 'Offline, {n} changes waiting to sync. Double tap for details.',
+    /**
+     * Not in the deck's table, which gives only the plural. Spelled out rather than
+     * generated so the singular cannot read `1 changes` - the same rule §3 rule 5 states
+     * for the pill, applied to the sentence the deck only wrote once.
+     */
+    offlinePendingOne: 'Offline, 1 change waiting to sync. Double tap for details.',
+    error: 'Sync failed. Double tap for details.',
+  },
+  sheet: {
+    title: 'Sync',
+    syncing: { headline: 'Syncing', body: 'Bringing your expenses up to date.' },
+    pending: {
+      headline: 'Waiting to sync',
+      body: 'Your changes are saved on this device and will sync in a moment.',
+    },
+    offline: {
+      headline: 'Offline',
+      body: 'Your changes are saved on this device and will sync automatically when you are back online.',
+    },
+    error: {
+      headline: 'Sync failed',
+      body: 'We could not reach the server. Your changes are safe on this device.',
+    },
+    waitingMany: '{count} changes waiting',
+    waitingOne: '1 change waiting',
+    waitingMore: 'and {count} more',
+    added: 'Added',
+    edited: 'Edited',
+    deleted: 'Deleted',
+    lastSynced: 'Last synced {relative}',
+    lastSyncedNever: 'Not synced yet',
+  },
+  /**
+   * §5.3. The copy never says "resync", "cursor", "horizon" or "wiped": the user's mental
+   * model is "my expenses", and the mechanism is not their problem.
+   */
+  resync: {
+    title: 'Catching up',
+    body: 'You have not used the app in a while, so we are refreshing your expenses from scratch. This only takes a moment.',
+  },
+} as const;
+
+/** §5 - the relative times `sync.lastSynced` is built from. */
+export const RELATIVE_TIME_COPY = {
+  justNow: 'just now',
+  minutesAgo: '{n} minutes ago',
+  minuteAgo: '1 minute ago',
+  hoursAgo: '{n} hours ago',
+  hourAgo: '1 hour ago',
+  daysAgo: '{n} days ago',
+  dayAgo: '1 day ago',
+  /** `≥ 7 days`, rendered as an absolute date: `on 3 Oct 2026`. */
+  onDate: 'on {date}',
+} as const;
+
+/**
  * Fill a `{placeholder}` template from the deck.
  *
  * The templates above are stored **exactly as the deck writes them**, interpolation braces
@@ -355,4 +451,84 @@ export function categoryDeleted(name: string, count: number, fallbackName: strin
   if (count === 0) return fill(deletedNone, { name });
   if (count === 1) return fill(deletedOne, { name, fallbackName });
   return fill(deletedMany, { name, count, fallbackName });
+}
+
+/**
+ * The pill's two labels for one state (§3 rule 6).
+ *
+ * `null` in either position is state 1, which renders nothing at all - not an empty pill,
+ * so there is no label to return for it either.
+ */
+export function syncPillLabel(state: SyncPillState, pendingRecords: number): string | null {
+  switch (state) {
+    case 'idle':
+      return null;
+    case 'syncing':
+      return SYNC_COPY.pill.syncing;
+    case 'pending':
+      return fill(SYNC_COPY.pill.pending, { n: pendingRecords });
+    case 'offline':
+      return SYNC_COPY.pill.offline;
+    case 'offline-pending':
+      return fill(SYNC_COPY.pill.offlinePending, { n: pendingRecords });
+    case 'error':
+      return SYNC_COPY.pill.error;
+  }
+}
+
+export function syncPillA11yLabel(state: SyncPillState, pendingRecords: number): string | null {
+  const { a11y } = SYNC_COPY;
+  switch (state) {
+    case 'idle':
+      return null;
+    case 'syncing':
+      return a11y.syncing;
+    case 'pending':
+      return pendingRecords === 1 ? a11y.pendingOne : fill(a11y.pendingMany, { n: pendingRecords });
+    case 'offline':
+      return a11y.offline;
+    case 'offline-pending':
+      return pendingRecords === 1
+        ? a11y.offlinePendingOne
+        : fill(a11y.offlinePendingMany, { n: pendingRecords });
+    case 'error':
+      return a11y.error;
+  }
+}
+
+/** The sheet's headline and body for a state. The idle state cannot open the sheet (§4 rule 5). */
+export function syncSheetCopy(state: SyncPillState): {
+  readonly headline: string;
+  readonly body: string;
+} {
+  const { sheet } = SYNC_COPY;
+  switch (state) {
+    case 'syncing':
+      return sheet.syncing;
+    case 'error':
+      return sheet.error;
+    case 'offline':
+    case 'offline-pending':
+      return sheet.offline;
+    // `pending`, and `idle` only if something ever opens the sheet without a pill: the
+    // reassuring copy is the right thing to read in both.
+    default:
+      return sheet.pending;
+  }
+}
+
+/** `{n} changes waiting`, omitted by the caller at zero (§4, pending section header). */
+export function syncWaitingHeader(count: number): string {
+  const { waitingMany, waitingOne } = SYNC_COPY.sheet;
+  return count === 1 ? waitingOne : fill(waitingMany, { count });
+}
+
+/** The sheet lists at most five pending items and counts the rest (§4, pending item). */
+export function syncWaitingMore(count: number): string {
+  return fill(SYNC_COPY.sheet.waitingMore, { count });
+}
+
+export function lastSyncedLabel(relative: string | null): string {
+  const { lastSynced, lastSyncedNever } = SYNC_COPY.sheet;
+  return relative === null ? lastSyncedNever : fill(lastSynced, { relative });
 }

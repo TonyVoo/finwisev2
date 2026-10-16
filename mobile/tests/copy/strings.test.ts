@@ -6,8 +6,10 @@ import {
   EMPTY_COPY,
   GENERIC_ERROR,
   OFFLINE_COPY,
+  RELATIVE_TIME_COPY,
   SESSION_EXPIRED,
   SNACK_COPY,
+  SYNC_COPY,
   VALIDATION_COPY,
   categoryDeleteBody,
   categoryDeleted,
@@ -25,8 +27,6 @@ import {
  *
  * It checks *presence*, not placement. Which screen shows a string, and in which slot,
  * is the screen specs' business and is pinned by the screen tests.
- *
- * ### The strings that are not in the deck
  *
  * ### The strings that are not in the deck
  *
@@ -64,7 +64,26 @@ const ALL_STRINGS: Array<[string, string]> = [
   ...flatten(EMPTY_COPY, ['empty']),
   ...flatten(CONFIRM_COPY, ['confirm']),
   ...flatten(SNACK_COPY, ['snack']),
+  ...flatten(SYNC_COPY, ['sync']),
+  ...flatten(RELATIVE_TIME_COPY, ['relative']),
 ];
+
+/**
+ * The two strings no design doc contains verbatim, and why each is allowed to.
+ *
+ * Both are sync strings, and both are listed rather than skipped so a *third* one fails
+ * loudly instead of joining a silent exception list. Raised with the Designer as deck
+ * gaps rather than written into the deck here: the deck is authoritative for wording, and
+ * an app that invents a sentence and then amends the deck to match is precisely the drift
+ * this suite exists to catch.
+ *
+ * - `sync.a11y.offlinePendingOne` - §4's table gives the offline-and-pending sentence
+ *   only in the plural, and reading `1 changes waiting to sync` aloud is the failure §3
+ *   rule 5 forbids for the pill label.
+ * - `relative.onDate` - §5 writes this row as a format, `on {d MMM yyyy}`, rather than as
+ *   a template a formatter can fill. The wording either side of the date is the deck's.
+ */
+const NOT_IN_ANY_DOC = new Set(['sync.a11y.offlinePendingOne', 'relative.onDate']);
 
 describe('copy strings are transcribed from the design docs', () => {
   it('found strings to check', () => {
@@ -73,11 +92,21 @@ describe('copy strings are transcribed from the design docs', () => {
     expect(ALL_STRINGS.length).toBeGreaterThanOrEqual(25);
   });
 
-  it.each(ALL_STRINGS)('%s is written in the design docs', (_key, text) => {
-    expect([COPY_DECK, AUTH_SPEC, FORM_SPEC].join('\n')).toContain(text);
+  it.each(ALL_STRINGS.filter(([key]) => !NOT_IN_ANY_DOC.has(key)))(
+    '%s is written in the design docs',
+    (_key, text) => {
+      expect([COPY_DECK, AUTH_SPEC, FORM_SPEC].join('\n')).toContain(text);
+    },
+  );
+
+  it('keeps the list of strings no doc contains down to the two known gaps', () => {
+    // An intersection rather than a literal list, so a renamed key cannot quietly leave
+    // an exception in place for a string that no longer exists.
+    const excepted = ALL_STRINGS.map(([key]) => key).filter((key) => NOT_IN_ANY_DOC.has(key));
+    expect(excepted).toEqual(['sync.a11y.offlinePendingOne', 'relative.onDate']);
   });
 
-  it('sources every string but the four screen-spec ones from the deck itself', () => {
+  it('sources every string but the screen-spec and sync gaps from the deck itself', () => {
     const missingFromDeck = ALL_STRINGS.filter(([, text]) => !COPY_DECK.includes(text)).map(
       ([key]) => key,
     );
@@ -102,6 +131,13 @@ describe('copy strings are transcribed from the design docs', () => {
       'form.notFound.headline',
       'form.notFound.body',
       'form.notFound.action',
+      // The deck's §4 table gives the offline-and-pending sentence only in the plural, so
+      // the singular is spelled out in `strings.ts` rather than generated - `1 changes
+      // waiting to sync` is exactly the failure §3 rule 5 forbids for the pill label.
+      'sync.a11y.offlinePendingOne',
+      // §5 writes this row as a *format*, `on {d MMM yyyy}`, not as a template with a
+      // placeholder the code can fill. The wording either side of the date is the deck's.
+      'relative.onDate',
     ]);
   });
 
