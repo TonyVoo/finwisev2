@@ -1,5 +1,7 @@
+import { StyleSheet, View } from 'react-native';
 import { Redirect, Stack } from 'expo-router';
 import { useSession } from '@/auth/SessionProvider';
+import { ResyncOverlay } from '@/sync/ResyncOverlay';
 
 /**
  * The auth gate.
@@ -21,10 +23,25 @@ export default function AppLayout() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(tabs)" />
-      {/* Jumping further than a step at a time, per docs/design/05-month-switcher.md. */}
-      <Stack.Screen name="month-picker" options={{ presentation: 'modal' }} />
-    </Stack>
+    <View style={styles.root}>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        {/* Jumping further than a step at a time, per docs/design/05-month-switcher.md. */}
+        <Stack.Screen name="month-picker" options={{ presentation: 'modal' }} />
+      </Stack>
+
+      {/* Over the stack and the tab bar both, and only while a resync is wiping the local
+          store - the one full-screen blocking state in the app
+          (`02-offline-and-sync.md` §5.3). It sits here rather than on a screen because it
+          has to cover the tab bar too, and because the screens below it cannot read a
+          database that is being rebuilt. */}
+      <ResyncOverlay />
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+});
