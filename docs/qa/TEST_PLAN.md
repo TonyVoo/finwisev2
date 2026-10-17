@@ -1921,6 +1921,22 @@ row.
   `amountMinor: 1250`, `currency: "USD"`, the correct `date` string, `note: "Milk"`, and
   `deletedAt: null`. On the device the `clock` glyph has gone with a cross-fade and **no success
   toast** was shown. The pill passed through state 5 → 2 → 1.
+- **Result (17 Oct, Pixel 9 emulator / API 36 / Expo Go, against a live API + Postgres) — PASS on
+  the load-bearing half.** Ran as a variant: `$7.77 / Bills / today / no note`, airplane mode on
+  and the `adb reverse` tunnel removed so the host was genuinely unreachable. Save never waited on
+  the network. The pill read *"Offline, 1 change waiting to sync"* and the row *"Bills, $7.77,
+  Today, not synced yet"*. **A direct Postgres query confirmed the server did not have the row**,
+  so the write was genuinely held, not quietly sent. After reconnecting, the row arrived with
+  `amountMinor: 777`, the correct `date`, `note: null`, `deletedAt: null`, and the pill cleared.
+  Two deviations from the case as written, both deliberate: the fixture was not `F-FRESH` (a live
+  account with two existing expenses), and step 5 was a direct database read rather than
+  `GET /v1/sync?since=0`, so **the client-minted-UUIDv7 clause is still unverified** — the id was
+  not compared against the local row.
+- **Caveat worth re-testing.** On reconnect the pill first went to **`Sync failed`**, not straight
+  to clear, and had not recovered ~20 s later; a pull-to-refresh then synced it. This is
+  confounded — the tunnel was restored ~8 s *after* the radio came back, so the first attempt
+  genuinely had no route. What it does not establish is whether the engine retries on its own
+  after a failure once connectivity is real. Worth isolating before `SYNC-05` is trusted.
 
 ### SYNC-02 — Edit offline, reconnect, the edit reached the server
 
@@ -1947,6 +1963,12 @@ row.
   `includeDeleted` list. It was a **soft** delete; a hard delete cannot cross this protocol. The
   deleted-but-unsynced row was absent from the local list in step 1 too, exactly as a synced
   delete would be.
+- **Result (17 Oct, same rig) — PASS, but run _online_, so it is not yet evidence for this case.**
+  Swipe-to-delete on the `$7.77` row revealed the `trash-2` action, the row left the list, and the
+  month total returned from `$217.77` to `$210.00`. After a sync the server row carried
+  `deletedAt: "2026-10-17T06:28:58.407Z"` with the row still present — **a soft delete, as the
+  protocol requires**. The offline half (airplane mode during step 1) was not exercised, so this
+  records the delete-and-tombstone path only.
 
 ### SYNC-04 — [SUPERSEDED TITLE] Editing a pending row queues a second entry
 
@@ -5025,6 +5047,40 @@ to be limited "per email and per source address" — but no threshold or window 
 `API-09` can assert the response **shape** but not that any limit is actually enforced, so a
 server with no rate limiting at all would pass. Numbers would also let the app's own retry
 back-off be tuned against something real rather than guessed.
+
+---
+
+### GAP 23 — Both tab bar icons are missing, and 1183 green mobile tests do not notice — **OPEN**
+
+Found by running the app, not by reading it. `00-foundations.md` §5 specifies both tabs by name:
+
+| Purpose     | Icon        | Default size |
+| ----------- | ----------- | ------------ |
+| List tab    | `list`      | 24           |
+| Summary tab | `pie-chart` | 24           |
+
+`mobile/app/(app)/(tabs)/_layout.tsx` sets only `title` on each `Tabs.Screen`. **`tabBarIcon`
+appears nowhere in `mobile/`** — confirmed by grep over `.ts`/`.tsx`. React Navigation therefore
+renders its own placeholder, which on the emulator is a crossed-box tofu glyph above both labels;
+the accessibility tree reads it as `"⏷, Expenses"` and `"⏷, Summary"`.
+
+It is not a font-loading failure: every other Feather glyph on the same screen renders correctly
+(`settings` in the app bar, `plus` in the FAB, `chevron-left`/`chevron-right` in the month
+switcher, `trash-2` in the swipe action, `cloud-off` in the Offline pill).
+
+**Severity: low, but it is the first thing a user sees** — it is on every screen of the app, and a
+placeholder glyph reads as "this build is broken" in a way a missing icon would not. The fix is
+two `tabBarIcon` props against an already-specified icon table.
+
+**Why it matters beyond the icons.** The mobile suite is at **1183 passing tests** and none of
+them notices. That is the `CAT-01`/`SYNC-51` shape again — the tabs are rendered by
+`expo-router`'s `Tabs`, which the suite mocks (`mobile/__mocks__/expo-router.ts`), so no unit
+case can observe what the real navigator draws. This one is only reachable from a running app,
+which is the argument for the device rows in §12 carrying their own weight rather than being a
+formality after a green suite.
+
+**Re-test with:** launch the app and read the tab bar; the accessibility labels should be
+`"Expenses"` and `"Summary"` with no placeholder glyph. Not assertable in the current unit suite.
 
 ---
 
