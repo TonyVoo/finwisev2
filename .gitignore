@@ -28,3 +28,8 @@ pnpm-debug.log*
 
 # Local agent/editor overrides
 .claude/settings.local.json
+
+# QA scratch: device screenshots and throwaway probe scripts. Evidence for a run,
+# never part of the tree - see docs/qa/TEST_PLAN.md section 2.
+.qa-shots/
+.qa-tmp/
