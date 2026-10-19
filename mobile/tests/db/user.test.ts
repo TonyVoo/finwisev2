@@ -1,6 +1,6 @@
 import type { AuthResponse, User } from '@expense-tracker/shared';
 import { type SessionController, createSessionController } from '@/auth/session';
-import { createMemoryTokenStore } from '@/auth/tokenStore';
+import { createMemoryTokenStore } from '@/auth/sessionRecord';
 import { createMemoryLocalStore, createSqliteLocalStore } from '@/db/localStore';
 import { migrate } from '@/db/migrations';
 import { readUser, readUserCurrency, writeUser } from '@/db/user';

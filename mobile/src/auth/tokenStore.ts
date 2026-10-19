@@ -1,5 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
-import type { TokenPair } from '@expense-tracker/shared';
+import type { StoredSession, TokenStore } from './sessionRecord';
 
 /**
  * Where the session lives between app launches.
@@ -17,6 +17,13 @@ import type { TokenPair } from '@expense-tracker/shared';
  * - **One key per value, not one blob.** Android's secure store warns and degrades above
  *   roughly 2 KB per value; a JWT plus a refresh token plus metadata gets close enough to
  *   that to be worth not finding out in the field.
+ *
+ * This file is the only `expo-secure-store` import in the repo, and that is deliberate:
+ * the import resolves to `react-native/index.js`, which vite and tsx cannot parse, so
+ * importing anything from here at all confines the importer to a React Native runtime.
+ * The session *shape* - `StoredSession`, `TokenStore`, `sessionFromTokenPair` and the
+ * in-memory store - therefore lives in `./sessionRecord`, which `session.ts` imports
+ * instead (`TVO-33`). Only the wiring in `bootstrap/container.ts` reaches for this file.
  */
 
 const ACCESS_KEY = 'expenseTracker.accessToken';
@@ -35,49 +42,6 @@ const USER_KEY = 'expenseTracker.userId';
 const SECURE_STORE_OPTIONS: SecureStore.SecureStoreOptions = {
   keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK,
 };
-
-/** The persisted session. Expiries are absolute, so a cold start can reason about them. */
-export interface StoredSession {
-  /**
-   * Who this session belongs to. Load-bearing: it is what lets a cold start decide
-   * whether the local database it is about to read belongs to this user
-   * (`src/db/localStore.ts`).
-   */
-  readonly userId: string;
-  readonly accessToken: string;
-  /** Epoch milliseconds. Derived once from `accessTokenExpiresIn` at issue time. */
-  readonly accessTokenExpiresAt: number;
-  readonly refreshToken: string;
-  /** Epoch milliseconds. Roughly 60 days out. */
-  readonly refreshTokenExpiresAt: number;
-}
-
-export interface TokenStore {
-  read(): Promise<StoredSession | null>;
-  write(session: StoredSession): Promise<void>;
-  clear(): Promise<void>;
-}
-
-/**
- * Turn a freshly issued pair into the stored shape, resolving the relative expiry.
- *
- * `userId` is passed separately because the two sources of a pair differ: signup and
- * login return it beside the tokens in `AuthResponse`, while a refresh returns a bare
- * rotated pair and the owner carries over from the session being refreshed.
- */
-export function sessionFromTokenPair(
-  pair: TokenPair,
-  userId: string,
-  issuedAt: Date,
-): StoredSession {
-  return {
-    userId,
-    accessToken: pair.accessToken,
-    accessTokenExpiresAt: issuedAt.getTime() + pair.accessTokenExpiresIn * 1000,
-    refreshToken: pair.refreshToken,
-    refreshTokenExpiresAt: Date.parse(pair.refreshTokenExpiresAt),
-  };
-}
 
 interface StoredToken {
   readonly token: string;
@@ -166,20 +130,6 @@ export function createSecureTokenStore(): TokenStore {
         SecureStore.deleteItemAsync(REFRESH_KEY, SECURE_STORE_OPTIONS),
         SecureStore.deleteItemAsync(USER_KEY, SECURE_STORE_OPTIONS),
       ]);
-    },
-  };
-}
-
-/** An in-memory {@link TokenStore}, for tests and for the web preview target. */
-export function createMemoryTokenStore(initial: StoredSession | null = null): TokenStore {
-  let current = initial;
-  return {
-    read: async () => current,
-    write: async (session) => {
-      current = session;
-    },
-    clear: async () => {
-      current = null;
     },
   };
 }

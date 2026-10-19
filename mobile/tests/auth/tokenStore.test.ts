@@ -1,6 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
 import type { TokenPair } from '@expense-tracker/shared';
-import { createSecureTokenStore, sessionFromTokenPair } from '@/auth/tokenStore';
+import { sessionFromTokenPair } from '@/auth/sessionRecord';
+import { createSecureTokenStore } from '@/auth/tokenStore';
 
 const ISSUED_AT = new Date('2026-10-08T10:00:00.000Z');
 const USER_ID = '0192f5a0-0000-7000-8000-00000000a001';

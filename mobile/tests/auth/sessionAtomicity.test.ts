@@ -1,11 +1,8 @@
 import * as SecureStore from 'expo-secure-store';
 import type { AuthResponse, TokenPair } from '@expense-tracker/shared';
 import { createSessionController } from '@/auth/session';
-import {
-  createMemoryTokenStore,
-  createSecureTokenStore,
-  sessionFromTokenPair,
-} from '@/auth/tokenStore';
+import { createMemoryTokenStore, sessionFromTokenPair } from '@/auth/sessionRecord';
+import { createSecureTokenStore } from '@/auth/tokenStore';
 import { createSqliteLocalStore } from '@/db/localStore';
 import { migrate } from '@/db/migrations';
 import { countPendingRecords, listLiveCategories } from '@/db/queries';

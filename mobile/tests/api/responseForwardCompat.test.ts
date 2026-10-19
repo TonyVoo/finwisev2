@@ -2,7 +2,7 @@ import { createApiClient } from '@/api/client';
 import { ApiRequestError, ResponseShapeError } from '@/api/errors';
 import type { Transport } from '@/api/transport';
 import { createSessionController } from '@/auth/session';
-import { createMemoryTokenStore } from '@/auth/tokenStore';
+import { createMemoryTokenStore } from '@/auth/sessionRecord';
 import { createMemoryLocalStore } from '@/db/localStore';
 
 /**

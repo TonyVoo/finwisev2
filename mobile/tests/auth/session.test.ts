@@ -1,7 +1,7 @@
 import type { AuthResponse, TokenPair } from '@expense-tracker/shared';
 import { ApiRequestError, NetworkUnavailableError } from '@/api/errors';
 import { createSessionController } from '@/auth/session';
-import { createMemoryTokenStore, sessionFromTokenPair } from '@/auth/tokenStore';
+import { createMemoryTokenStore, sessionFromTokenPair } from '@/auth/sessionRecord';
 import { createMemoryLocalStore } from '@/db/localStore';
 
 const ISSUED_AT = new Date('2026-10-08T10:00:00.000Z');

@@ -1,5 +1,3 @@
-import type { SQLiteDatabase } from 'expo-sqlite';
-
 /**
  * The narrow slice of `expo-sqlite` the app actually uses.
  *
@@ -9,9 +7,18 @@ import type { SQLiteDatabase } from 'expo-sqlite';
  *    can be unit-tested against a real SQLite engine (`node:sqlite`) in jest, where no
  *    native module exists. These are the parts most worth testing and the ones hardest
  *    to test on a device.
- * 2. It is a written-down contract. `asSqliteDatabase` below is the compile-time proof
- *    that `expo-sqlite` still satisfies it, so an upgrade that changes one of these
- *    signatures fails `pnpm typecheck` rather than at runtime on a phone.
+ * 2. It is a written-down contract. `asSqliteDatabase` in `./open.ts` is the
+ *    compile-time proof that `expo-sqlite` still satisfies it, so an upgrade that
+ *    changes one of these signatures fails `pnpm typecheck` rather than at runtime on a
+ *    phone.
+ *
+ * The proof lives there rather than here so that this module imports nothing at all.
+ * `import type { SQLiteDatabase } from 'expo-sqlite'` is erased at runtime but still
+ * *resolved* by `tsc`, which pulls `expo-modules-core` -> `react-native` ->
+ * `@types/jsdom` into the program of whoever imports this file - and that is what made
+ * the backend fail its own typecheck in two untouched files once a backend test reached
+ * `db/localStore.ts` for `createMemoryLocalStore` (`TVO-33`, same leak as `TVO-23`).
+ * `open.ts` already imports `expo-sqlite` as a value, so the proof costs nothing there.
  */
 
 export type SqliteBindValue = string | number | null | boolean | Uint8Array;
@@ -41,12 +48,4 @@ export interface SqliteDatabase extends SqliteExecutor {
    * let our row write commit while its outbox entry does not.
    */
   withExclusiveTransactionAsync(task: (txn: SqliteExecutor) => Promise<void>): Promise<void>;
-}
-
-/**
- * Narrow a real `expo-sqlite` handle to the port. The assignment is the assertion: this
- * stops compiling the moment the two disagree.
- */
-export function asSqliteDatabase(database: SQLiteDatabase): SqliteDatabase {
-  return database;
 }

@@ -1,6 +1,6 @@
 import type { AuthResponse } from '@expense-tracker/shared';
 import type { Transport, TransportRequest, TransportResponse } from '@/api/transport';
-import { type StoredSession, createMemoryTokenStore } from '@/auth/tokenStore';
+import { type StoredSession, createMemoryTokenStore } from '@/auth/sessionRecord';
 import { createAppContainer } from '@/bootstrap/container';
 import { OWNER_KEY } from '@/db/localStore';
 import { migrate } from '@/db/migrations';

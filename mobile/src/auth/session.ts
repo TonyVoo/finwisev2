@@ -2,7 +2,7 @@ import type { AuthResponse, ErrorCode, TokenPair } from '@expense-tracker/shared
 import { ApiRequestError } from '../api/errors';
 import type { LocalStore } from '../db/localStore';
 import { type Clock, systemClock } from '../lib/clock';
-import { type StoredSession, type TokenStore, sessionFromTokenPair } from './tokenStore';
+import { type StoredSession, type TokenStore, sessionFromTokenPair } from './sessionRecord';
 
 /**
  * Owns the session: what is stored, when it is refreshed, and when it is gone.

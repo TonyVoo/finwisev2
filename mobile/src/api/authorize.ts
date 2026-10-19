@@ -9,12 +9,17 @@ import type { Transport } from './transport';
  * that keeps the session module off the API client - plus one that is measurable:
  * importing the type, even with `import type`, is erased at runtime but still resolved
  * by `tsc`, which puts `auth/session.ts` into the importing package's program. From
- * there it reaches `auth/tokenStore.ts`, `expo-secure-store`, `expo-modules-core`,
+ * there it reached `auth/tokenStore.ts`, `expo-secure-store`, `expo-modules-core`,
  * `react-native` and `@types/jsdom`, which references `lib.dom`; with the DOM globals
- * loaded the backend fails its own typecheck in two files nobody touched (`TVO-23`).
+ * loaded the backend failed its own typecheck in two files nobody touched (`TVO-23`).
  * Declaring the two methods instead is what lets
  * `backend/tests/integration.mobileClient.test.ts` drive the real interceptor against
  * the real server, which is where `API-19` lives.
+ *
+ * `TVO-33` has since cut that chain at the other end as well - `session.ts` now reaches
+ * only `auth/sessionRecord.ts`, so it loads outside Expo too - but the direction of this
+ * dependency is worth keeping regardless: the interceptor is the lower layer, and it
+ * should not know what supplies its tokens.
  */
 export interface TokenSource {
   /** The current access token, or null when there is no session. */

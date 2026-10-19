@@ -1,7 +1,7 @@
 import type { AuthResponse, TokenPair } from '@expense-tracker/shared';
 import { ApiRequestError } from '@/api/errors';
 import { createSessionController } from '@/auth/session';
-import { createMemoryTokenStore, sessionFromTokenPair } from '@/auth/tokenStore';
+import { createMemoryTokenStore, sessionFromTokenPair } from '@/auth/sessionRecord';
 import { createSqliteLocalStore } from '@/db/localStore';
 import { migrate } from '@/db/migrations';
 import { applyLocalMutation } from '@/db/write';

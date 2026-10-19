@@ -2,7 +2,7 @@ import type { AuthResponse, TokenPair } from '@expense-tracker/shared';
 import { createAuthorizedTransport } from '@/api/authorize';
 import type { Transport, TransportRequest } from '@/api/transport';
 import { type SessionController, createSessionController } from '@/auth/session';
-import { createMemoryTokenStore, sessionFromTokenPair } from '@/auth/tokenStore';
+import { createMemoryTokenStore, sessionFromTokenPair } from '@/auth/sessionRecord';
 import { createMemoryLocalStore } from '@/db/localStore';
 
 /**
