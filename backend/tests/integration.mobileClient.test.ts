@@ -65,7 +65,7 @@ import { TEST_PASSWORD, uniqueEmail } from './support/api.ts';
  * first line was `import * as SecureStore from 'expo-secure-store'`, and Vite cannot
  * parse `react-native/index.js`. `TVO-33` moved the session shape and the in-memory
  * store into `auth/sessionRecord.ts`, which imports nothing but `shared/`, leaving
- * `expo-secure-store` behind the one implementation that needs it. So `API-20` now
+ * `expo-secure-store` behind the one implementation that needs it. So `API-26` now
  * constructs the real controller against the real server and pins the rule that could
  * not be checked here before: two concurrent 401s produce exactly one rotation of a
  * refresh token the server really does revoke.
@@ -515,7 +515,7 @@ describe("API-19 — the 401 interceptor's own round trip against a real server"
   });
 });
 
-describe('API-20 — the real SessionController against a real server', () => {
+describe('API-26 — the real SessionController against a real server', () => {
   it('serves two concurrent 401s with one refresh, and the token it did not spend is dead', async () => {
     /*
      * The barrier. Both requests must be parked on the *same* in-flight refresh for this
