@@ -1,5 +1,30 @@
-import type { SessionController } from '../auth/session';
 import type { Transport } from './transport';
+
+/**
+ * The two session members the interceptor calls, declared here rather than imported.
+ *
+ * `SessionController` in `auth/session.ts` satisfies this structurally, so the only
+ * thing this changes is which direction the dependency points. It is the mirror of the
+ * reason `SessionControllerOptions.refreshTokens` is injected rather than imported -
+ * that keeps the session module off the API client - plus one that is measurable:
+ * importing the type, even with `import type`, is erased at runtime but still resolved
+ * by `tsc`, which puts `auth/session.ts` into the importing package's program. From
+ * there it reaches `auth/tokenStore.ts`, `expo-secure-store`, `expo-modules-core`,
+ * `react-native` and `@types/jsdom`, which references `lib.dom`; with the DOM globals
+ * loaded the backend fails its own typecheck in two files nobody touched (`TVO-23`).
+ * Declaring the two methods instead is what lets
+ * `backend/tests/integration.mobileClient.test.ts` drive the real interceptor against
+ * the real server, which is where `API-19` lives.
+ */
+export interface TokenSource {
+  /** The current access token, or null when there is no session. */
+  getAccessToken(): Promise<string | null>;
+  /**
+   * Obtain an access token newer than `staleAccessToken`, refreshing at most once across
+   * all concurrent callers. Returns null when the session is gone.
+   */
+  ensureFreshAccessToken(staleAccessToken: string | null): Promise<string | null>;
+}
 
 /**
  * The 401 interceptor: attach the access token, and refresh once if it has expired.
@@ -21,10 +46,7 @@ import type { Transport } from './transport';
  * 4. **Never swallow the 401.** When the session is gone, the original response is
  *    returned so the caller still sees a failure rather than an empty success.
  */
-export function createAuthorizedTransport(
-  transport: Transport,
-  session: SessionController,
-): Transport {
+export function createAuthorizedTransport(transport: Transport, session: TokenSource): Transport {
   return async function send(request) {
     // Signup, login, refresh and health take no token. Sending one would be harmless but
     // pointless, and a 401 from them is about the credentials in the body - refreshing
