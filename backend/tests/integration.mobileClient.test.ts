@@ -1,4 +1,4 @@
-import type { AuthResponse, Expense } from '@expense-tracker/shared';
+import { DEFAULT_CATEGORIES, type AuthResponse, type Expense } from '@expense-tracker/shared';
 import { createServer, type Server } from 'node:http';
 import { v7 as uuidv7 } from 'uuid';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -6,6 +6,9 @@ import { createAuthorizedTransport, type TokenSource } from '../../mobile/src/ap
 import { type ApiClient, createApiClient } from '../../mobile/src/api/client.ts';
 import { ApiRequestError, NetworkUnavailableError } from '../../mobile/src/api/errors.ts';
 import { createTransport, type Transport } from '../../mobile/src/api/transport.ts';
+import { createSessionController } from '../../mobile/src/auth/session.ts';
+import { createMemoryTokenStore } from '../../mobile/src/auth/sessionRecord.ts';
+import { createMemoryLocalStore } from '../../mobile/src/db/localStore.ts';
 import { signAccessToken } from '../src/auth/accessToken.ts';
 import { hashRefreshToken } from '../src/auth/refreshToken.ts';
 import { createApp } from '../src/app.ts';
@@ -56,13 +59,21 @@ import { TEST_PASSWORD, uniqueEmail } from './support/api.ts';
  * client below and `API-19` asserts its choreography against a server that really
  * answers `401 token_expired`.
  *
- * What is still faked is one layer further up: the `SessionController` that supplies the
- * tokens. That one cannot be *loaded* here rather than merely typed — it imports
- * `sessionFromTokenPair` from `auth/tokenStore.ts`, whose first line is
- * `import * as SecureStore from 'expo-secure-store'`, and Vite cannot parse
- * `react-native/index.js`. So the two `TokenSource`s below stand in for it: its
- * single-flight refresh and its storage rules stay covered by the 19 scripted cases in
- * `mobile/tests/api/authorize.test.ts` and the mobile session suite.
+ * One layer further up — the `SessionController` that supplies the tokens — used to be
+ * faked here too, and for a second reason: it could be *typed* after `TVO-23` but not
+ * *loaded*, because it imports `sessionFromTokenPair` from `auth/tokenStore.ts`, whose
+ * first line was `import * as SecureStore from 'expo-secure-store'`, and Vite cannot
+ * parse `react-native/index.js`. `TVO-33` moved the session shape and the in-memory
+ * store into `auth/sessionRecord.ts`, which imports nothing but `shared/`, leaving
+ * `expo-secure-store` behind the one implementation that needs it. So `API-20` now
+ * constructs the real controller against the real server and pins the rule that could
+ * not be checked here before: two concurrent 401s produce exactly one rotation of a
+ * refresh token the server really does revoke.
+ *
+ * The lighter `TokenSource`s below are still used where a case is about the interceptor
+ * rather than the controller, and the controller's remaining rules — its storage
+ * ordering, its offline behaviour, its forced clear — stay covered by the scripted cases
+ * in `mobile/tests/api/authorize.test.ts` and the mobile session suite.
  */
 
 let server: Server;
@@ -501,6 +512,127 @@ describe("API-19 — the 401 interceptor's own round trip against a real server"
       { method: 'POST', url: '/v1/auth/refresh', status: 200 },
       { method: 'GET', url: '/v1/me', status: 200 },
     ]);
+  });
+});
+
+describe('API-20 — the real SessionController against a real server', () => {
+  it('serves two concurrent 401s with one refresh, and the token it did not spend is dead', async () => {
+    /*
+     * The barrier. Both requests must be parked on the *same* in-flight refresh for this
+     * case to be about `inFlightRefresh` at all, and without a gate that is a race:
+     * `ensureFreshAccessToken` has two ways to answer with one refresh, and which one
+     * runs depends on whether the second 401 lands before the rotation commits. The
+     * other way - the staleness early return at `session.accessToken !== stale` - is
+     * already covered by `refreshingSession` and by the scripted mobile cases.
+     *
+     * So the refresh is held until two 401s have come back. Then the second caller
+     * provably arrives while the first rotation is still open, which is the one ordering
+     * where a controller without single-flight sends a second rotation. If only one 401
+     * ever happens this times out, and that is the right failure: it would mean one of
+     * the two requests never reached the interceptor.
+     */
+    let bothUnauthorized!: () => void;
+    const parked = new Promise<void>((resolve) => {
+      bothUnauthorized = resolve;
+    });
+    let unauthorized = 0;
+
+    const fetchImpl: typeof fetch = async (input, init) => {
+      const response = await fetch(input, init);
+      trips.push({
+        method: init?.method ?? 'GET',
+        url: String(input).slice(baseUrl.length),
+        status: response.status,
+      });
+      if (response.status === 401 && ++unauthorized === 2) bothUnauthorized();
+      return response;
+    };
+
+    const transport = createTransport({ baseUrl, fetchImpl });
+    const anonymous = createApiClient({ transport });
+    const auth = await anonymous.signup({
+      email: uniqueEmail('controller'),
+      password: TEST_PASSWORD,
+    });
+
+    /*
+     * The real controller, wired the way `bootstrap/container.ts` wires it: an in-memory
+     * token store, an in-memory local store, and `refreshTokens` pointed at the
+     * *unauthenticated* client so a refresh cannot recurse into the interceptor that
+     * triggered it. Loadable here at all only since `TVO-33` moved the session shape out
+     * of `auth/tokenStore.ts` and away from `expo-secure-store`.
+     */
+    const tokenStore = createMemoryTokenStore();
+    const controller = createSessionController({
+      tokenStore,
+      localStore: createMemoryLocalStore(),
+      refreshTokens: async (refreshToken) => {
+        await parked;
+        return anonymous.refresh({ refreshToken });
+      },
+    });
+
+    /*
+     * Signed in with a real session whose access token is genuinely expired - signed by
+     * the server with a negative TTL, as in `API-19`, so the server answers
+     * `token_expired` rather than `token_invalid`. The refresh token is the real one from
+     * signup, which is what makes the rotation below a real single-use rotation.
+     */
+    const expired = await signAccessToken(auth.user.id, -60);
+    await controller.signIn({ ...auth, accessToken: expired.token });
+    expect(controller.getSnapshot()).toEqual({ status: 'authenticated', expired: false });
+
+    const client = createApiClient({
+      // The controller passed straight in as the `TokenSource`: it satisfies the
+      // interface structurally, which is the whole of what `TVO-23` bought.
+      transport: createAuthorizedTransport(transport, controller),
+    });
+
+    trips = [];
+    const [me, categories] = await Promise.all([client.getMe(), client.listCategories()]);
+
+    // Both requests resolved, for the right user - not one served and one logged out.
+    // Two different endpoints on purpose: the retry is driven per request, so two calls
+    // to the same route could hide a reply being replayed to the wrong caller.
+    expect(me.user.id).toBe(auth.user.id);
+    expect(categories.data).toHaveLength(DEFAULT_CATEGORIES.length);
+
+    /*
+     * Five trips, and the shape rather than the sequence because the two authorized
+     * requests race by construction: two 401s, one refresh, two retries. The assertion
+     * that carries the case is the middle one - a second `POST /v1/auth/refresh` is a
+     * second rotation of a single-use token, which is the bug `inFlightRefresh` exists
+     * to prevent and which no test has ever been able to rule out against a server that
+     * really revokes.
+     */
+    expect(trips).toHaveLength(5);
+    expect(trips.filter((trip) => trip.status === 401)).toHaveLength(2);
+    expect(trips.filter((trip) => trip.url === '/v1/auth/refresh')).toEqual([
+      { method: 'POST', url: '/v1/auth/refresh', status: 200 },
+    ]);
+    expect(trips.filter((trip) => trip.status === 200 && trip.url !== '/v1/auth/refresh')).toEqual([
+      { method: 'GET', url: '/v1/me', status: 200 },
+      { method: 'GET', url: '/v1/categories', status: 200 },
+    ]);
+
+    /*
+     * And the proof that one refresh was not merely tidier but necessary. The session the
+     * controller now holds is the rotated one, and the token it arrived with is revoked
+     * server-side - so had the second 401 rotated as well, it would have presented this
+     * dead token, taken `token_invalid`, and `UNRECOVERABLE_CODES` would have dropped the
+     * session and sent the user to the login screen. Read back through the real endpoint,
+     * which is the client's own view of it.
+     */
+    const stored = await tokenStore.read();
+    expect(stored?.refreshToken).not.toBe(auth.refreshToken);
+    expect(stored?.userId).toBe(auth.user.id);
+    await expect(anonymous.refresh({ refreshToken: auth.refreshToken })).rejects.toMatchObject({
+      status: 401,
+      code: 'token_invalid',
+    });
+
+    // Still signed in, and never flagged `expired` - the banner on Welcome stayed down.
+    expect(controller.getSnapshot()).toEqual({ status: 'authenticated', expired: false });
   });
 });
 
