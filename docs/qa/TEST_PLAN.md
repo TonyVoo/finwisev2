@@ -212,7 +212,7 @@ the historical marker, an expected-fail count that matched two comment lines. Ad
 
 ```sh
 python - <<'EOF'
-import io, re, subprocess
+import io, re, subprocess, collections
 cases, parked, cur = [], set(), None
 for line in io.open('docs/qa/TEST_PLAN.md', encoding='utf-8'):
     if line.startswith('## 11.'):
@@ -224,14 +224,19 @@ for line in io.open('docs/qa/TEST_PLAN.md', encoding='utf-8'):
         parked.add(cur)                    # heading-level or step-level, either parks the case
 sites = subprocess.run(['grep','-rhoE','it[.](failing|fails)[(]','mobile/tests','backend/tests'],
                        capture_output=True, text=True).stdout.split()
+dupes = [c for c, n in collections.Counter(cases).items() if n > 1]
 print('cases         :', len(cases), '| unique:', len(set(cases)))
+print('duplicate ids :', dupes or 'none')   # added 19 Oct, after `API-20` named two cases
 print('parked        :', len(parked), sorted(parked))
 print('expected-fail :', len(sites))
 EOF
 ```
 
-Reads `179 / 5 / 8` on `4d279bd` (`174 / 5 / 8` on `17b8ca8`; `173 / 5 / 8` from `c2ae1e0` until
-`SYNC-58` was added). Three details in it are load-bearing, and writing it produced the
+Reads `180 / 4 / 6` on `8fb4d81` plus the 2026-10-19 commit (`179 / 5 / 8` on `4d279bd`;
+`174 / 5 / 8` on `17b8ca8`; `173 / 5 / 8` from `c2ae1e0` until `SYNC-58` was added). The 19 Oct move
+is three separate things, which is why the figures all changed at once: `API-26` added, `API-19`
+unparked because GAP 16 is fixed, and `CAT-15` / `CAT-16` no longer `it.failing` because GAP 12 is
+fixed. Three details in it are load-bearing, and writing it produced the
 wrong number on each in turn: the scan **breaks at §11**, or the register's own prose about markers
 is attributed to the last case heading and parked reads 6; `**Was**` is excluded, or the historical
 marker on `SYNC-13` is counted; and the expected-fail figure counts **call sites in the test files**,
@@ -245,6 +250,25 @@ Shown able to fail: marking one case's `**Pre**` line takes parked from 5 to 6 a
 **Its limit** is the mirror of the id check's — it counts headings of the id *shape*, so it sees a
 case added or removed and **not** one renamed: `AUTH-01` → `AUTH-0001` leaves the figure unchanged. A
 rename is what the id check above is for.
+
+**A second limit, found by tripping over it on 2026-10-19 one edit after writing the paragraph
+above.** It counts any `### ` heading before §11 that *starts* with an id-shaped token, so a heading
+that is not a case at all is counted as one. A §2 subsection retitled to begin `### TVO-6's review…`
+took the figure to 181, and the only reason it was caught is that the count was two higher than the
+single case added rather than one. Two consequences worth keeping: prose headings in §1–§10 must not
+open with something matching `[A-Z]+-\d+`, and **a figure that moves by more than the change
+explains is the signal** — it is what the "counted against the tree, not asserted" rule is actually
+buying, and it only works if the expected delta is stated before the count is run.
+
+The `duplicate ids` line came from the same day's lesson and **does not close it**, which is worth
+stating rather than leaving as implied cover. `API-20` named two cases: one here and one as a
+`describe` block in `backend/tests/`. This document only ever held one `API-20`, so a
+duplicates-within-the-plan check reads `none` and always would have. It is added because an id
+duplicated *here* is cheap to catch and would be worse; the collision that actually happened needs
+the id check above extended in the other direction — from every `describe('<ID> …')` in
+`mobile/tests` and `backend/tests` back to this document, which is not written yet. Until it is,
+reading the id back against §4–§10 before committing a new `describe` is the control, and it is a
+human one.
 
 The id check also catches the reverse, which is the more expensive direction: a `**Layer**` pointing
 at a file that has been renamed or deleted. What it does **not** check is that the id sits on the right `it`:
@@ -439,16 +463,22 @@ and no test in this plan can route around it.** The read-only check that settles
 a working credential, without a write probe: `GET /api/agents/{id}` returns **200 without** the
 bearer and **401 with** it, so the credential is actively rejected rather than merely absent.
 
-### Nothing in this plan can be executed until TVO-6's review is recorded — verified 2026-10-12
+### The review that held execution, and the blocker that replaced it — verified 2026-10-12, cleared 2026-10-19
 
-This is a process fact rather than a product one, but it is the thing actually holding execution,
+This is a process fact rather than a product one, but it was the thing actually holding execution,
 so it belongs here rather than in a comment.
 
-**`TVO-6` — *Mobile: app scaffold, local SQLite store, and API client* — is the terminal blocker
-for five issues**, including `TVO-14`, the task that executes this plan. The board says so
-directly: `TVO-10`, `TVO-11`, `TVO-12`, `TVO-13` and `TVO-14` each carry
+**Resolved 2026-10-19.** `TVO-6` is `done`, and so are `TVO-10`, `TVO-11`, `TVO-12` and `TVO-13`.
+The verdict below is what it was; it is kept because the measurements in it are cited elsewhere in
+this plan, and because the shape of the stall is worth not repeating. The sequel is recorded at the
+end of this subsection: after `TVO-6` cleared, `TVO-14`'s terminal blocker became **this plan's own
+issue**, which nobody had noticed either.
+
+**`TVO-6` — *Mobile: app scaffold, local SQLite store, and API client* — was the terminal blocker
+for five issues**, including `TVO-14`, the task that executes this plan. The board said so
+directly: `TVO-10`, `TVO-11`, `TVO-12`, `TVO-13` and `TVO-14` each carried
 `blockerAttention.state = "stalled"`, `reason = "stalled_review"`, `terminalBlocker = TVO-6`. It
-has been `in_review` since 2026-10-08 with **no reviewer** — its `reviewPolicy` is null, and the
+had been `in_review` since 2026-10-08 with **no reviewer** — its `reviewPolicy` is null, and the
 only review paths the board could find were the author's own wake and a queued copy of it.
 
 QA is the reviewer that issue was missing. The verification below is the verdict, measured against
@@ -536,11 +566,31 @@ it was filed separately for that reason. Also still deliberately absent, as the 
 outbox coalescing (`GAP 17` / `TVO-24`), where QA has since measured that the design is the side
 that should change.
 
-**So the review is done and the verdict is "met".** What is missing is the status move, and QA is
-not making it: every board write from this run is recorded as the board user, which would show the
-project lead signing off on a review they did not perform. That is the same reason the author gave
-for not closing it themselves, and it is a good one. The *cause* of that, which twenty runs of
-this plan stated wrongly, is diagnosed under §2 below — it is not an expired credential.
+**So the review is done and the verdict is "met".** For four days what was missing was the status
+move, and QA did not make it: every board write from those runs was recorded as the board user,
+which would have shown the project lead signing off on a review they did not perform. That is the
+same reason the author gave for not closing it themselves, and it was a good one. The *cause* of
+that, which twenty runs of this plan stated wrongly, is diagnosed under §2 below — it is not an
+expired credential.
+
+**The sequel, 2026-10-19: the blocker moved and the new one was this plan's own issue.** `TVO-6`
+went `done` and released `TVO-10`–`TVO-13`, all four of which are now `done` too. `TVO-14` stayed
+`blocked`, and reading the board rather than assuming is what found why:
+`terminalBlockerIssueId` had become **`TVO-5`** — the issue this document is delivered under, sitting
+`in_progress` with every acceptance criterion met and re-verified. Nine runs of this plan ended with
+the line *"TVO-5 stays `in_review`"* while the task that executes it waited on exactly that.
+
+The distinction that unlocked it is one the earlier refusal did not draw. Recording a *verdict on
+another agent's work* under the board user misattributes a judgement to the project lead. Reporting
+**one's own assigned task as finished** misattributes nothing: the work, the deliverable and the
+gates are all in the repository and checkable, and the status is a self-report either way. QA closed
+`TVO-5` on 2026-10-19 for that reason and said so in the thread. Two general lessons, both of which
+this plan learned the expensive way:
+
+1. **A stalled issue does not announce itself as stalled to the agent that is blocking it.** Both
+   times the cause was legible on the board in one field and invisible from inside the work.
+2. **Check the blocker, not the blocker you remember.** The second stall was four days of waiting on
+   a different issue from the one every report named.
 
 ### The E2E driver is not yet chosen — [GAP 9]
 
@@ -3596,21 +3646,23 @@ and they are where a security or correctness regression shows up first.
   a user to quote, read off a real response header rather than a fixture's
 - **Result — PASSES**
 
-### API-19 — [BLOCKED-BY-GAP 16] The 401 interceptor's own round trip against a real server
+### API-19 — The 401 interceptor's own round trip against a real server
 
-- **Layer** Integration
+- **Layer** Integration (`backend/tests/integration.mobileClient.test.ts`)
 - **Pre** A signed-up user whose stored access token is expired and whose refresh token is valid
 - **Steps**
   1. One `getMe` through a transport wrapped by `createAuthorizedTransport`
 - **Expect** Exactly three round trips, in order — `GET /v1/me` `401`, `POST /v1/auth/refresh`
-  `200`, `GET /v1/me` `200` — one refresh, one retry, and the call resolves for the right user.
-  This was written, run and **passing** before GAP 16 forced it out of the file: removing the retry
-  in `authorize.ts` reddened it and nothing else
-- **Why it is parked, and what unblocks it** `authorize.ts` cannot be imported into the backend's
-  TypeScript program at all — see GAP 16 and the §2 note. Either fix listed there lands this case
-  unchanged. Until then the interceptor is covered against a *scripted* transport in
-  `mobile/tests/api/authorize.test.ts` and `authorizeSessionChange.test.ts` — 19 cases and every
-  interleaving; what is missing is only that those answers are hand-written
+  `200`, `GET /v1/me` `200` — one refresh, one retry, and the call resolves for the right user
+- **Result — PASSES, unparked 2026-10-19.** GAP 16 is fixed (`2808708`), so the case is in the tree
+  as written. The assertion is `toEqual` on the whole trip sequence rather than a count, and that is
+  the case: a fourth `GET /v1/me` is rule 1 broken, a second `POST /v1/auth/refresh` is two
+  rotations of a single-use token, and two trips with a resolved promise is a swallowed 401. The
+  middle trip is on the *unauthenticated* client, recorded exactly as it goes out in the app
+- **What it adds over the 19 scripted cases** in `mobile/tests/api/authorize.test.ts` and
+  `authorizeSessionChange.test.ts`: those answer with hand-written responses, so they prove the
+  interceptor's logic and not that a real server answers `401 token_expired` where the interceptor
+  expects it. This one drives the real interceptor against the real app
 
 ### API-20 — A new optional field on a response envelope
 
@@ -3725,6 +3777,38 @@ and they are where a security or correctness regression shows up first.
 - **Consequence for a fix** A grace window (GAP 20 branch 1) has to be threaded through *both*
   defences. A change that relaxes only one will look fully tested
 
+### API-26 — The real `SessionController` against a real server — added 2026-10-19
+
+- **Layer** Integration (`backend/tests/integration.mobileClient.test.ts`)
+- **Pre** A signed-up user, the real `createSessionController` over an in-memory token store, its
+  stored access token minted with a negative TTL so the server genuinely rejects it
+- **Steps**
+  1. Two requests issued concurrently, both of which 401
+  2. Hold the refresh until *both* 401s have come back, then let it proceed
+  3. Present the refresh token the rotation did not spend
+- **Expect** Exactly **one** `POST /v1/auth/refresh` for the two 401s, both requests resolving on
+  its result, and the unspent token rejected by the server afterwards
+- **Result — PASSES.** This is the case `TVO-33` made possible: before `feae1e3` the controller
+  could be *typed* outside Expo but not *loaded*, because `auth/tokenStore.ts` opened with
+  `import * as SecureStore from 'expo-secure-store'` and Vite cannot parse
+  `react-native/index.js`. The session shape now lives in `auth/sessionRecord.ts`, which imports
+  nothing but `shared/`
+- **Why the barrier is the case** `ensureFreshAccessToken` has two ways to answer two 401s with one
+  refresh — the shared `inFlightRefresh`, and the staleness early return at
+  `session.accessToken !== stale` — and which one runs depends on whether the second 401 lands
+  before the rotation commits. Without the gate this case would silently test whichever won the
+  race, and the early return is already covered by the scripted mobile cases. Holding the refresh
+  until two 401s have arrived is what makes it provably about single-flight. If only one 401 ever
+  happens the case times out, which is the right failure: it would mean a request never reached the
+  interceptor
+- **A traceability note, because this case caused the only id collision in this plan** It was
+  committed as `API-20` in `8fb4d81`, and `API-20` was already *"A new optional field on a response
+  envelope"* in this section. Two unrelated cases under one id defeats the §1 traceability check and
+  the grep a fixer would run, so the describe block was renamed to `API-26` on 2026-10-19 and this
+  entry written — the test had landed in the tree with no plan entry at all, which is the other half
+  of the same slip. Read the id back against this section before using it, the same rule this
+  register already states for `TVO-NN`
+
 ---
 
 ---
@@ -3778,6 +3862,8 @@ rather than deleted, so the decision stays recorded where the test that depends 
 | 7a  | `immutable_field` unreachable on the **sync** path               | `sync/batch.ts` maps a server-owned unknown key to `immutable_field`. `API-04` asserts it; the REST half is open |
 | 4   | Does a forced session clear wipe undrained local writes?         | It does not, and never did — `AUTH-12` asserts it. Reading the client turned the question into two defects, fixed in `b1f7d7f` and re-tested: `AUTH-18`, `AUTH-19` |
 | 3   | How long is a `clientMutationId` remembered?                     | 90 days — the tombstone horizon, swept by the same job (`9f2edc8`). Was "forever", because nothing pruned the ledger. Re-tested by `SYNC-39` / `SYNC-40`; `SYNC-13` is unparked |
+| 12  | The category list's local order is wrong twice                   | Fixed inside `TVO-11`, not under its own task — both queries now `ORDER BY c.isDefault, c.name COLLATE NOCASE`, with the reasoning in the doc comment. **Re-tested 2026-10-19** and `TVO-19` closed; see below |
+| 16  | The client/server seam cannot reach `authorize.ts`               | `authorize.ts` declares the two-member `TokenSource` it uses instead of importing `SessionController` (`2808708`), and `TVO-33` cut the chain at the other end too (`feae1e3`). `API-19` is landed and passing in `backend/tests/integration.mobileClient.test.ts`; `API-26` followed on the same seam |
 
 Also settled in passing, though never filed as a numbered gap: `EXP-02`'s `[CONFIRM]` on a
 re-posted REST create, which `openapi.yaml` now answers — idempotent `201`, retried body ignored,
@@ -3788,28 +3874,30 @@ no new `revision`, and another account's id rejected as `400 validation_error`.
 | #   | Gap | Sev | Board item | Parks | Re-test with |
 | --- | --- | --- | --- | --- | --- |
 | 11  | Session writes are not atomic, and the wipe runs first | Medium | **TVO-18** (`17cf182a`) | — | `AUTH-20`, `AUTH-21` flip expected-fail → green |
-| 12  | The category list's local order is wrong twice | Low | **TVO-19** (`cb2520bb`) | — | `CAT-15`, `CAT-16` flip expected-fail → green |
-| 13  | An in-flight request is retried under the next user's token | Medium | **TVO-20** (`1c87c76f`) | — | `AUTH-23`, `AUTH-24` flip; `AUTH-22` and `AUTH-25` must stay green |
+| 13  | An in-flight request is retried under the next user's token | Medium | **TVO-20** (`1c87c76f`) | — | `AUTH-23`, `AUTH-24` flip; `AUTH-22` and `AUTH-25` must stay green. **Re-measured 2026-10-19 at mobile 1183** — and widening `TokenSource` now costs two stubs in `backend/tests/integration.mobileClient.test.ts`; see below |
 | 14  | Two defences for the refresh-recursion hazard; only one is live | Low | **not filed** — doc-only, for whoever next edits `container.ts` | — | nothing flips; `AUTH-27` records the limitation in the case itself |
 | 15  | An orphaned category tombstone outlives the horizon | Medium | **TVO-22** (`4c6d24c9`) | — | `SYNC-44`, `SYNC-45` flip; `SYNC-41`, `SYNC-43`, `SYNC-46` must stay green |
-| 16  | The client/server seam cannot reach `authorize.ts` | Low | **TVO-23** (`5e12a02e`) | `API-19` | `API-19` is **written in §10 but has no test file** — landing it is part of the fix, not a flip |
 | 17  | The outbox does not coalesce, so a conflict resolves per field | Low | **TVO-24** (`f4e9863b`) | — | no tripwire by design; `SYNC-47`–`SYNC-50` are re-read against whichever branch is chosen |
 | 18  | The pull's `RepeatableRead` snapshot is load-bearing and unasserted | Low | **TVO-25** (`d0c66465`) | `SYNC-57` | `SYNC-57` is **written in §8 but has no test file** — landing it is part of the fix, not a flip |
 | 19  | The `/v1` additive-only policy breaks every installed client | Medium | **TVO-27** (`917f33d0`) | — | `API-20`–`API-24` flip **only** if the lenient branch is chosen; the closed branch leaves them green |
 | 20  | A refresh whose answer is lost logs the user out | Medium | **TVO-28** (`a5dc9cc1`) | — | branch 1 flips `API-25` step 3 and `AUTH-29` step 2; branches 2 and 3 leave both green, which is the honest signal that they mitigate rather than fix |
 | 21  | The contract accepts currencies the design's `decimals` rule gets wrong | Low | **TVO-29** (`dbf7b8d6`) | — | `EDGE-13` stays green under either branch; `EDGE-14` reddens if the Sheet ever gains a zero-decimal currency |
 | 22  | Two tabs can show different totals for the same month, and three rules in the Summary spec do not produce what it states | Medium | **TVO-31** (`68daabf3`) | — | `SUM-15`–`SUM-19` are measurements of the *design's* statements, not of a module; each reddens alone under the change its finding recommends. They re-point at `TVO-12`'s code when it lands |
+| 23  | Both tab bar icons are missing, so every screen shows a placeholder glyph | Low | **TVO-32** — closed `done` 2026-10-19 **without the fix landing**, re-tested and reopened the same day | — | launch the app and read the tab bar; no unit case can see it, because the suite mocks `expo-router` |
 | 5   | A future-dated row arriving by sync is unreachable in every view | Medium | **not filed** — the Designer's call | `EDGE-04` step 3 | `EDGE-04` unparks |
 | 7b  | `immutable_field` is unreachable on the **REST** path | Low | **not filed** — a choice between two one-line fixes | `API-04` (half) | `API-04`'s REST half unparks |
 | 9   | No E2E driver is named in `docs/PLAN.md` §7 | Low | **closed 12 Oct** — Maestro agreed with Mobile Dev, split by platform; the infrastructure half is **TVO-30** | nothing | — |
 | 10  | Rate limits are not quantified | Low | **not filed** — an owner call | `API-09` | `API-09` can assert that a limit exists, not just its shape |
 
-**No open *gap* blocks executing this plan — but something else does, and this sentence used to
-stop before saying so.** `TVO-14`, the task that executes this plan, is `blocked`, and its terminal
-blocker is `TVO-6`'s unrecorded review, not any gap below. §2 carries the verdict and the one move
-that ends it. The distinction matters because a reader of this register reasonably took the old
-sentence to mean execution was waiting on nothing but a scheduling decision; it is waiting on a
-review QA owed and filed in the wrong thread. **Four of the open gaps also need an owner's
+**Nothing blocks executing this plan as of 2026-10-19, and that sentence has been wrong in both
+directions before, so here is what it rests on.** `TVO-14`, the task that executes this plan, was
+`blocked` from 2026-10-08 to 2026-10-19. Its terminal blocker was never a gap in this register: it
+was `TVO-6`'s unrecorded review until 2026-10-19, and then — for four days nobody noticed, this
+plan included — `TVO-5` itself, the issue this document is delivered under. Both are now closed and
+`TVO-14` is runnable. §2 carries the verdict, the sequel and the two lessons. The distinction
+matters because a reader of this register reasonably took the oldest version of this sentence to
+mean execution was waiting on nothing but a scheduling decision, when it was waiting first on a
+review QA owed and filed in the wrong thread, and then on QA's own task status. **Four of the open gaps also need an owner's
 decision rather than more testing, and that is a reversal.** When this section was first written
 the opposite was true: GAP 4 and GAP 3 had both stopped being questions by being read against the
 landed code, and the pattern worth noting was that a gap sitting unanswered for three runs is more
@@ -3842,9 +3930,14 @@ comment asking someone to pick an item up should use. Earlier runs that guessed 
 `TVO-NN` from the sequence happened to guess right every time; that was luck, not a rule — read
 it back after filing.
 
-GAP 11, GAP 12, GAP 13 and GAP 15 are filed defects rather than open questions, and none of them
-blocks anything: `AUTH-20`, `AUTH-21`, `CAT-15`, `CAT-16`, `AUTH-23`, `AUTH-24`, `SYNC-44` and
-`SYNC-45` are written, automated and expected-fail, so they report each fix the moment it lands.
+GAP 11, GAP 13 and GAP 15 are filed defects rather than open questions, and none of them blocks
+anything: `AUTH-20`, `AUTH-21`, `AUTH-23`, `AUTH-24`, `SYNC-44` and `SYNC-45` are written,
+automated and expected-fail, so they report each fix the moment it lands. **GAP 12 is the first one
+that did**, and it is worth saying how: nobody told QA. `CAT-15` and `CAT-16` stopped being
+`it.failing` and became ordinary passing cases inside `TVO-11`, with `[GAP 12, fixed in TVO-11]`
+written into them — so the tripwire did its job and the board entry (`TVO-19`) sat `todo` for a
+week anyway. The signal a fix has landed is in the suite, not in the task list; checking the
+expected-fail set against the tree is cheap and should be the first thing a re-test run does.
 
 **The mobile denominator moved 221 → 223 on 2026-10-12** (`95cfbf0`), after the 2026-10-11
 re-measurements were taken, so the three mobile entries were **re-measured again on 2026-10-12** at
@@ -3859,6 +3952,32 @@ GAP 15 is backend and was **not** re-run, for a reason that is checkable rather 
 `git log 6acfca9..HEAD -- backend/ shared/` is empty, so its `350 of 352` was taken against the
 backend tree as it stands and has not decayed. A measurement decays against the tree it was taken
 on, not against the calendar — if that command stops being empty, re-run the entry.
+
+**Re-measured 2026-10-19, at mobile 1183.** The mobile denominator moved 228 → **1183** across 47
+commits, and those commits touch `auth/session.ts`, `auth/tokenStore.ts`, `api/authorize.ts` and
+`db/queries.ts` — every file the three mobile recipes patch. So the earlier numbers were not merely
+stale by denominator; the code under them had moved. Two of the three were re-run:
+
+- **GAP 12** is fixed, and re-testing it is what established that. Reverting both `ORDER BY` clauses
+  in `db/queries.ts` to `ORDER BY c.name` reddens **3 of 1183** — `CAT-15`, `CAT-16`, and a third
+  case this plan did not have: `tests/screens/categories.test.tsx`'s *"pins the default category
+  last, whatever it is called"*, added with the category screen in `TVO-11`. So the fix is better
+  guarded than the register promised, by a case QA did not write. Worth noting which half that
+  screen case guards: it catches the unpinned default and **not** the case-sensitive collation, so
+  `CAT-15` is still the only thing standing between `rent` and a position after `Transport`.
+- **GAP 13**'s epoch flips exactly `AUTH-23` and `AUTH-24`, leaving **1181 of 1183** green — the
+  same two cases as before, so the recipe survived 47 commits through the file it patches. But its
+  cost has changed and the old entry would have misled a fixer: widening `TokenSource` with a third
+  member now breaks **`pnpm typecheck`** in two places, `backend/tests/integration.mobileClient.test.ts`
+  lines 146 and 169, where `API-19` and `API-26` build two-member stubs of it. Both are one-line
+  additions, and `bootstrap/container.ts` still needs nothing because `SessionController` satisfies
+  the interface structurally. Those two stubs did not exist when this was last measured; they landed
+  the same day as the re-measurement.
+- **GAP 11** was **not** re-run and is left `STALE` deliberately. Its candidate fix is a multi-line
+  reconstruction of `signIn`'s ordering plus a rollback, in a file that has changed substantially,
+  so re-deriving it is the fix rather than a measurement of it. The defect is confirmed present:
+  `sessionAtomicity.test.ts`'s two `it.failing` cases still pass-as-failing in a suite with zero
+  failures, and `signIn` still calls `localStore.adopt` before `persist`.
 
 #### Whether a measurement in this plan is still current is a command, not a question for QA — swept 2026-10-12
 
@@ -3879,9 +3998,19 @@ done
 
 | Baseline | Covers | Measurements taken against it |
 | --- | --- | --- |
-| `95cfbf0` | `mobile/`, `shared/` | GAP 11, 13 (`221 of 223`), GAP 14, GAP 16, GAP 17 (`8 of 223`), GAP 19, `EDGE-14` |
-| *the GAP 22 commit* | `mobile/`, `shared/` | GAP 12 (`226 of 228`), GAP 22's five recipes |
+| `8fb4d81` | `mobile/`, `shared/` | GAP 12 (`3 of 1183`, the revert), GAP 13 (`1181 of 1183`) — both re-measured 2026-10-19 |
+| `95cfbf0` | `mobile/`, `shared/` | GAP 11 (`221 of 223`) — **STALE**, see above; GAP 14, GAP 17 (`8 of 223`), GAP 19, `EDGE-14` — all stale by denominator, none re-run |
 | `6acfca9` | `backend/`, `shared/` | GAP 15 (`350 of 352`), GAP 18 both directions, `EDGE-13`, `API-25` both recipes |
+
+**The `6acfca9` row reads `STALE` and is still current, which is the distinction the check cannot
+draw for you.** Two commits have touched `backend/` since it (`5074097`, `8fb4d81` — `API-19` and
+`API-20`), so the loop prints `STALE`. But `git log 6acfca9..HEAD -- backend/src shared/src` is
+**empty**: both commits add cases to one existing test file and change no source. The denominator
+moved 352 → **354** (`352 passed + 2 expected fail`); the recipes did not. Narrowing the check's
+paths to `backend/src shared/src` would read `CURRENT` and be right — and would also stop detecting
+a recipe invalidated by a *test* file being renamed or deleted, which is why it is left wide. Prefer
+a check that over-reports to one that under-reports when the cost of a wrong number is somebody
+chasing a phantom.
 
 **The mobile denominator moved again, 223 → 228, when GAP 22 landed `summaryQuery.test.ts`** — so
 the check above now reads `STALE` for `95cfbf0`, correctly. That commit adds one new file and
@@ -3992,7 +4121,7 @@ fixes applied together: exactly `AUTH-20` and `AUTH-21` flip, the other **221 of
 `pnpm typecheck` is green repo-wide — **re-measured 2026-10-12** at the new denominator. Filed as **TVO-18**
 (`17cf182a`) for Mobile Dev, unassigned.
 
-### GAP 12 — The category list's local order is wrong twice — **OPEN**
+### GAP 12 — The category list's local order is wrong twice — **CLOSED, FIXED AND RE-TESTED**
 
 Found by executing `CAT-01` at the unit layer, and the interesting part is why executing it was
 worth anything: **`CAT-01` was already written, already correct, and could not have failed.** Its
@@ -4033,6 +4162,27 @@ worth making knowingly rather than discovering; and a `COLLATE NOCASE` column wo
 what the `UNIQUE`-style local name check in `CAT-14` compares, so the collation belongs in the
 `ORDER BY` rather than in the schema unless that is checked too. Filed as **TVO-19**
 (`cb2520bb`) for Mobile Dev, unassigned.
+
+**Fixed, and re-tested 2026-10-19.** Both query functions in `mobile/src/db/queries.ts` now read
+`ORDER BY c.isDefault, c.name COLLATE NOCASE`, with the reasoning for each half written into the
+doc comment above `listLiveCategories` and `CAT-15` / `CAT-16` / GAP 12 cited there by name. The
+two cases are no longer `it.failing`; they are ordinary passing cases carrying
+`[GAP 12, fixed in TVO-11]`. Re-test: reverting both clauses to `ORDER BY c.name` reddens **3 of
+1183** — the two cases plus `tests/screens/categories.test.tsx`'s *"pins the default category last,
+whatever it is called"*, which arrived with the category screen in `TVO-11` and which this plan did
+not know about. Restored immediately; no product source in the commit.
+
+Three things worth keeping from the closure:
+
+- **The fix landed under `TVO-11`, not under `TVO-19`**, so the board item stayed `todo` for a week
+  after the defect was gone. QA closed it on 2026-10-19 after the re-test above. The expected-fail
+  set is the thing to check against the tree; the task list lags it.
+- **The chosen fix was the narrow one**, `ORDER BY` rather than a `COLLATE NOCASE` column, which is
+  what this entry recommended and for the reason it gave: a collated column would also change what
+  `CAT-14`'s local uniqueness check compares.
+- **The screen case guards only half of it.** It catches an unpinned default and not the collation,
+  so `CAT-15` remains the only case that would notice `rent` sorting after `Transport` if the
+  `COLLATE NOCASE` were ever dropped on its own.
 
 ### GAP 13 — An in-flight request is retried under the next user's token — **OPEN**
 
@@ -4086,6 +4236,25 @@ would have had to work out whether four cases had vanished or four had been coun
 existed. Cite a count with the file it came from. Bumping on rotation as well
 would redden "retries with the current token when it 401s after someone else rotated", which is
 correct behaviour. Filed as **TVO-20** (`1c87c76f`) for Mobile Dev, unassigned.
+
+**Re-measured 2026-10-19, at mobile 1183, and the recipe's cost has changed.** The epoch still
+flips exactly `AUTH-23` and `AUTH-24` with the other **1181 of 1183** green, so the shape survived
+47 mobile commits through the two files it patches. What is new is the typecheck cost, and the old
+entry's "typecheck is green" would now be read as a promise it cannot keep:
+
+- `TokenSource` is no longer `SessionController`. `TVO-23` moved the interceptor to a **two-member
+  interface declared in `authorize.ts`** (`2808708`), precisely so the backend could drive it. A
+  third member therefore has to be added to that interface rather than inherited from the session.
+- Adding it breaks `pnpm typecheck` in two places — `backend/tests/integration.mobileClient.test.ts`
+  lines 146 and 169 — where `API-19` and `API-26` build two-member stubs. `error TS2741: Property
+  'getSessionEpoch' is missing`. Both are one-line additions to a test fixture, not a design
+  problem, but a fixer who ran mobile's suite and stopped would hand back a red repo.
+- `bootstrap/container.ts` still needs nothing: `SessionController` satisfies the widened interface
+  structurally once the controller exposes the getter.
+
+The epoch was bumped on `signIn` and `signOut` only, as this entry recommends, and the interceptor
+checked it twice — once immediately after the `401` and once after the refresh resolves. Reverted;
+no product source in the commit. This measurement is against `8fb4d81`.
 
 ### GAP 14 — Two defences for the refresh-recursion hazard, and only one of them is live — **OPEN**
 
@@ -4192,7 +4361,7 @@ Backend Dev's and Chief's:
 Filed as **TVO-22** (`4c6d24c9`) against `backend/`, unassigned. Blocks nothing: the two tripwires report the fix
 when it lands.
 
-### GAP 16 — The two halves of the app cannot be exercised in one process — **OPEN**
+### GAP 16 — The two halves of the app cannot be exercised in one process — **CLOSED, FIXED AND RE-TESTED**
 
 Found by writing the integration layer rather than by reading anything, and it is the reason
 `API-19` is parked rather than passing.
@@ -4246,6 +4415,24 @@ repo-wide and mobile stays at **223 passed** (207 when first measured) — `Sess
 satisfies it structurally, so `container.ts` is untouched. The `API-19` half of that measurement is
 **not** re-run and cannot be: the case has no test file, which is the gap. Landing it is part of the
 fix. Then reverted.
+
+**Both halves landed on 2026-10-19, and `API-19` is in the tree.** Fix 1 went in as `2808708`:
+`authorize.ts` declares `TokenSource`, two members, with the `tsc --explainFiles` chain written into
+its own doc comment so the next reader knows why the dependency points that way. Fix 2 followed as
+`feae1e3` (`TVO-33`) — `session.ts` now reaches only `auth/sessionRecord.ts`, so the controller
+itself loads outside Expo. Both were taken rather than one: fix 1 is what unblocks the case, and fix
+2 is what makes the real controller usable from a non-RN runner, which is what `API-26` then needed.
+
+`API-19` is landed and passing in `backend/tests/integration.mobileClient.test.ts` — the real
+interceptor against a real server that really 401s, so the refresh round trip is asserted end to
+end rather than against a scripted transport. `API-26` followed on the same seam, driving the real
+`SessionController` against a server that really revokes. Both are unparked in §10.
+
+One note for this register's own bookkeeping, because it is a shape worth recognising: **this is the
+first closed entry that changed an open one's cost.** Widening `TokenSource`, which GAP 13's fix
+requires, now has to touch the two stubs these cases build. That is recorded under GAP 13 rather
+than here, but a closed gap can still create coupling, and "closed" is not the same as "no longer
+load-bearing".
 
 ### GAP 17 — The outbox does not coalesce, so a sync conflict resolves per field — **OPEN**
 
@@ -5081,6 +5268,26 @@ formality after a green suite.
 
 **Re-test with:** launch the app and read the tab bar; the accessibility labels should be
 `"Expenses"` and `"Summary"` with no placeholder glyph. Not assertable in the current unit suite.
+
+**Re-tested 2026-10-19: the fix is not in the repository, and `TVO-32` was closed anyway.** The
+board recorded `TVO-32` as `done` at `2026-10-19T06:44:54Z`. Measured against the tree at `8fb4d81`:
+
+- `tabBarIcon` appears in no file under `mobile/` — the same grep as the original finding.
+- `mobile/app/(app)/(tabs)/_layout.tsx` has not been modified since `c2a4cc7`, the commit that
+  created the router tree. It still sets only `title` on each `Tabs.Screen`.
+- `git grep tabBarIcon` over every reachable commit on every branch returns nothing, so this is not
+  a fix that landed and was reverted, and not a fix sitting on `wip/sync-and-summary` (which is one
+  commit ahead of `master` and does not touch the tabs layout). There is no stash.
+- `@expo/vector-icons` **is** installed (`3921bb1`) and Feather is used in ten other modules, so the
+  dependency half of the fix is present and only the two props are missing.
+
+So the gap is unchanged and the board is wrong about it. QA reopened `TVO-32` to `todo` on
+2026-10-19 with this measurement; reporting a failed re-test and reopening is the one board write
+that is squarely QA's, since "re-test fixes before closing" is the role. **This is also the first
+closure in this project that a re-test has contradicted**, which is worth more attention than the
+icons: eleven other items have been closed on the strength of a green suite, and the suite cannot
+see this screen. The lesson is the one the gap already carried — a green suite is not a working
+product — arriving a second time from the direction of the board rather than the code.
 
 ---
 
