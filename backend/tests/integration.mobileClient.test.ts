@@ -2,6 +2,7 @@ import type { AuthResponse, Expense } from '@expense-tracker/shared';
 import { createServer, type Server } from 'node:http';
 import { v7 as uuidv7 } from 'uuid';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { createAuthorizedTransport, type TokenSource } from '../../mobile/src/api/authorize.ts';
 import { type ApiClient, createApiClient } from '../../mobile/src/api/client.ts';
 import { ApiRequestError, NetworkUnavailableError } from '../../mobile/src/api/errors.ts';
 import { createTransport, type Transport } from '../../mobile/src/api/transport.ts';
@@ -43,18 +44,25 @@ import { TEST_PASSWORD, uniqueEmail } from './support/api.ts';
  * parse is the only thing left, which is why that path belongs in the mobile suite's
  * scripted-transport cases and not here.
  *
- * **What is faked, and why it is not `authorize.ts`.** Only the attachment of the access
- * token to a request (`withToken` below). The 401 interceptor that does that job in the
- * app — `api/authorize.ts` — cannot be reached from this file at all, and not for a
- * runtime reason: a *type-only* import of `SessionController` puts `auth/session.ts` in
- * this package's TypeScript program, which pulls `auth/tokenStore.ts`, `expo-secure-store`,
- * `expo-modules-core`, `react-native` and `@types/jsdom`, which references `lib.dom` —
- * and with the DOM globals loaded, `setTimeout` in `backend/src/server.ts` returns a
- * `number` with no `unref`, so the backend fails its own typecheck in two files nobody
- * touched. Filed as `GAP 16`; `API-19` is the case that lands when it is fixed.
+ * **What is faked, and what no longer is.** The 401 interceptor — `api/authorize.ts` —
+ * used to be unreachable from this file, and not for a runtime reason: a *type-only*
+ * import of `SessionController` put `auth/session.ts` in this package's TypeScript
+ * program, which pulled `auth/tokenStore.ts`, `expo-secure-store`, `expo-modules-core`,
+ * `react-native` and `@types/jsdom`, which references `lib.dom` — and with the DOM
+ * globals loaded, `setTimeout` in `backend/src/server.ts` returned a `number` with no
+ * `unref`, so the backend failed its own typecheck in two files nobody touched. Fixed in
+ * `TVO-23` by having the interceptor declare the two members it calls (`TokenSource`)
+ * instead of importing the whole session type, so the real interceptor now wraps every
+ * client below and `API-19` asserts its choreography against a server that really
+ * answers `401 token_expired`.
  *
- * So the interceptor's own choreography is **not** asserted here. What is asserted is
- * every part of the round trip either side of it.
+ * What is still faked is one layer further up: the `SessionController` that supplies the
+ * tokens. That one cannot be *loaded* here rather than merely typed — it imports
+ * `sessionFromTokenPair` from `auth/tokenStore.ts`, whose first line is
+ * `import * as SecureStore from 'expo-secure-store'`, and Vite cannot parse
+ * `react-native/index.js`. So the two `TokenSource`s below stand in for it: its
+ * single-flight refresh and its storage rules stay covered by the 19 scripted cases in
+ * `mobile/tests/api/authorize.test.ts` and the mobile session suite.
  */
 
 let server: Server;
@@ -116,15 +124,47 @@ function paramsOf(url: string): string[] {
 }
 
 /**
- * Attach a fixed access token to every request that needs one.
+ * A session holding one access token that it cannot replace.
  *
- * This is what `api/authorize.ts` does in the app, minus the 401 handling, and it is
- * here only because that module cannot be imported (see the note above). The transport
- * and the client either side of it are the real ones.
+ * Enough for every case that is not about the 401 handling: the real interceptor attaches
+ * this token, and on a 401 finds there is no fresher one and hands the original response
+ * back (rule 4, "never swallow the 401"). `API-15`'s expired-token leg is that branch
+ * running against a real `401 token_expired`.
  */
-function withToken(transport: Transport, token: () => string): Transport {
-  return (request) =>
-    request.requiresAuth ? transport({ ...request, accessToken: token() }) : transport(request);
+function fixedToken(token: () => string): TokenSource {
+  return {
+    getAccessToken: async () => token(),
+    ensureFreshAccessToken: async () => null,
+  };
+}
+
+/**
+ * A session that really refreshes: one replaceable access token, and the rotation
+ * performed by the same server the request went to.
+ *
+ * Stands in for `createSessionController` only because that cannot be loaded here (see
+ * the note at the top). It keeps the two properties the interceptor's contract leans on:
+ * the refresh goes out on the **unauthenticated** transport, so it cannot recurse into
+ * the interceptor that triggered it, and a caller whose stale token has already been
+ * replaced gets the current one rather than a second rotation — the refresh token is
+ * single-use, so rotating twice would revoke the pair.
+ */
+function refreshingSession(
+  anonymous: ApiClient,
+  initial: { readonly access: string; readonly refresh: string },
+): TokenSource {
+  let access = initial.access;
+  let refresh = initial.refresh;
+  return {
+    getAccessToken: async () => access,
+    ensureFreshAccessToken: async (stale) => {
+      if (stale !== access) return access;
+      const pair = await anonymous.refresh({ refreshToken: refresh });
+      access = pair.accessToken;
+      refresh = pair.refreshToken;
+      return access;
+    },
+  };
 }
 
 /** A signed-up user, plus a client whose requests carry their token. */
@@ -137,7 +177,10 @@ async function signedIn(): Promise<{
   const anonymous = createApiClient({ transport });
   const auth = await anonymous.signup({ email: uniqueEmail('seam'), password: TEST_PASSWORD });
   const client = createApiClient({
-    transport: withToken(transport, () => auth.accessToken),
+    transport: createAuthorizedTransport(
+      transport,
+      fixedToken(() => auth.accessToken),
+    ),
   });
   return { auth, client, anonymous };
 }
@@ -226,7 +269,12 @@ describe('API-15 — a refresh through the client rotates the pair and spends th
     // and the server has to answer it `token_expired` rather than `token_invalid`,
     // because the client's reaction to the two differs — refresh versus log out.
     const expired = await signAccessToken(auth.user.id, -60);
-    const stale = createApiClient({ transport: withToken(transport, () => expired.token) });
+    const stale = createApiClient({
+      transport: createAuthorizedTransport(
+        transport,
+        fixedToken(() => expired.token),
+      ),
+    });
     await expect(stale.getMe()).rejects.toMatchObject({ status: 401, code: 'token_expired' });
 
     const rotated = await anonymous.refresh({ refreshToken: auth.refreshToken });
@@ -248,7 +296,12 @@ describe('API-15 — a refresh through the client rotates the pair and spends th
      */
     expect(typeof rotated.accessToken).toBe('string');
 
-    const fresh = createApiClient({ transport: withToken(transport, () => rotated.accessToken) });
+    const fresh = createApiClient({
+      transport: createAuthorizedTransport(
+        transport,
+        fixedToken(() => rotated.accessToken),
+      ),
+    });
     expect((await fresh.getMe()).user.id).toBe(auth.user.id);
 
     // Single-use: the refresh token the client arrived with is spent, so a client that
@@ -398,6 +451,56 @@ describe('API-18 — a 204 and a real error envelope, as the client sees them', 
     // The id is only here if the server set the header and the transport read it back off
     // a real response. It is what the contract tells a user to quote in a bug report.
     expect(apiError.requestId).not.toBeNull();
+  });
+});
+
+describe("API-19 — the 401 interceptor's own round trip against a real server", () => {
+  it('refreshes once, retries once, and resolves for the right user', async () => {
+    const transport = recordingTransport();
+    const anonymous = createApiClient({ transport });
+    const auth = await anonymous.signup({
+      email: uniqueEmail('intercept'),
+      password: TEST_PASSWORD,
+    });
+
+    /*
+     * The state a backgrounded app wakes in, and the reason the interceptor exists:
+     * access tokens live an hour and the app runs for days. The token is signed by the
+     * server itself with a negative TTL, so it is well-formed and genuinely expired
+     * rather than merely rejected, and the server has to answer it `token_expired`.
+     *
+     * It is also what keeps rule 3 out of the way: the rotated token differs from this
+     * one because their `exp` differs. `API-15` measured the case where it does not -
+     * two tokens minted for one user in the same second are byte-identical, since the
+     * access token is an HS256 JWT over an empty payload with no `jti`.
+     */
+    const expired = await signAccessToken(auth.user.id, -60);
+    const client = createApiClient({
+      transport: createAuthorizedTransport(
+        transport,
+        refreshingSession(anonymous, { access: expired.token, refresh: auth.refreshToken }),
+      ),
+    });
+
+    trips = [];
+    const me = await client.getMe();
+    expect(me.user.id).toBe(auth.user.id);
+
+    /*
+     * The whole case is in this one assertion, and it is why it is `toEqual` on the
+     * sequence rather than a count or a `some`. Three trips in this order is one refresh
+     * and one retry: a fourth `GET /v1/me` would be rule 1 broken (retry at most once),
+     * a second `POST /v1/auth/refresh` would be two rotations of a single-use token, and
+     * two trips with a resolved promise would mean a 401 was swallowed as a success.
+     *
+     * The refresh in the middle is on the unauthenticated client, so it is recorded here
+     * exactly as it goes out in the app - the interceptor does not wrap it.
+     */
+    expect(trips).toEqual([
+      { method: 'GET', url: '/v1/me', status: 401 },
+      { method: 'POST', url: '/v1/auth/refresh', status: 200 },
+      { method: 'GET', url: '/v1/me', status: 200 },
+    ]);
   });
 });
 
