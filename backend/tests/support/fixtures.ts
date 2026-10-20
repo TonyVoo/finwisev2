@@ -118,3 +118,85 @@ export async function changesSince(
     ...expenses.map((e) => ({ entity: 'expense' as const, id: e.id, revision: e.revision })),
   ].sort((a, b) => a.revision - b.revision);
 }
+
+/**
+ * `F-MONTH` from §3 of the test plan: 42 expenses in one month across all six seeded
+ * categories, plus 5 in the month before.
+ *
+ * The month is fixed rather than read from the clock. Every API-layer assertion here is
+ * about `date` as a calendar value, so a run on the 1st of a month would otherwise
+ * straddle `MONTH`/`PREVIOUS` and change the counts under the cases that assert them.
+ * The device cases are the ones that need a real "current month", and they do not use
+ * this helper.
+ *
+ * Asserts its own postconditions, per §3: a fixture that silently builds the wrong state
+ * turns every case using it into a false green.
+ */
+export const F_MONTH = {
+  /** The month the 42 live expenses are dated in. */
+  month: '2026-10',
+  previousMonth: '2026-09',
+  liveCount: 42,
+  previousCount: 5,
+} as const;
+
+export interface MonthFixture {
+  readonly user: TestUser;
+  /** The 42 expenses dated in `F_MONTH.month`, in creation order. */
+  readonly expenses: readonly Expense[];
+  /** The 5 expenses dated in `F_MONTH.previousMonth`. */
+  readonly previous: readonly Expense[];
+  /** Expenses of one category name, among `expenses`. */
+  byCategory(name: string): readonly Expense[];
+}
+
+export async function createMonth(
+  overrides: { currency?: string } = {},
+): Promise<MonthFixture> {
+  const user = await createUser(overrides);
+  const names = Object.keys(user.categories).sort();
+  if (names.length !== 6) throw new Error(`F-MONTH expected 6 seeded categories, got ${names.length}`);
+
+  const expenses: Expense[] = [];
+  for (let i = 0; i < F_MONTH.liveCount; i += 1) {
+    const name = names[i % names.length] as string;
+    expenses.push(
+      await createExpense(user, {
+        categoryId: user.categories[name]!.id,
+        amountMinor: 100 + i,
+        // Spread over the first 28 days so no run lands on a day the month lacks.
+        date: `${F_MONTH.month}-${String((i % 28) + 1).padStart(2, '0')}`,
+        note: `m-${i}`,
+      }),
+    );
+  }
+
+  const previous: Expense[] = [];
+  for (let i = 0; i < F_MONTH.previousCount; i += 1) {
+    previous.push(
+      await createExpense(user, {
+        categoryId: user.defaultCategory.id,
+        amountMinor: 500 + i,
+        date: `${F_MONTH.previousMonth}-${String(i + 1).padStart(2, '0')}`,
+        note: `p-${i}`,
+      }),
+    );
+  }
+
+  if (expenses.length !== F_MONTH.liveCount || previous.length !== F_MONTH.previousCount) {
+    throw new Error('F-MONTH built the wrong number of expenses');
+  }
+  const distinct = new Set(expenses.map((e) => e.categoryId));
+  if (distinct.size !== 6) throw new Error(`F-MONTH spread over ${distinct.size} categories, not 6`);
+
+  return {
+    user,
+    expenses,
+    previous,
+    byCategory: (name: string) => {
+      const category = user.categories[name];
+      if (!category) throw new Error(`F-MONTH has no category named ${name}`);
+      return expenses.filter((e) => e.categoryId === category.id);
+    },
+  };
+}
