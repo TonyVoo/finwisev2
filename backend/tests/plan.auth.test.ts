@@ -1,4 +1,5 @@
-import { ApiError, AuthResponse, LIMITS } from '@expense-tracker/shared';
+import { AuthResponse, LIMITS } from '@expense-tracker/shared';
+import type { ApiError } from '@expense-tracker/shared';
 import { describe, expect, it } from 'vitest';
 import { TEST_PASSWORD, api, uniqueEmail } from './support/api.ts';
 import { createUser } from './support/fixtures.ts';

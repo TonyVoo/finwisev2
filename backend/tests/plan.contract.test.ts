@@ -73,7 +73,9 @@ describe('API-01 — tenancy: another user’s row is 404, never 403', () => {
     // have been a case that cannot fail. Recorded against the case rather than dropped
     // silently; the mutations below are the tenancy assertion.
     expect(
-      API_ROUTES.some((route) => route.method === 'get' && route.path === '/v1/expenses/{id}'),
+      API_ROUTES.some(
+        (route) => route.method === 'get' && (route.path as string) === '/v1/expenses/{id}',
+      ),
     ).toBe(false);
 
     const attempts = [
@@ -294,7 +296,8 @@ describe('API-03 — unknown fields are rejected everywhere', () => {
     expect(outcome.status).toBe(400);
     expect(outcome.error?.code).toBe('validation_error');
     // The index is the only handle the client has on which row to fix.
-    const issues = outcome.error?.details?.issues ?? [];
+    const details = outcome.error?.details as { issues?: unknown[] } | undefined;
+    const issues = details?.issues ?? [];
     expect(
       JSON.stringify(issues) + String(outcome.error?.message),
       'the batch error named no index 1',

@@ -1,4 +1,5 @@
-import { ApiError, Expense, ExpenseResponse, LIMITS } from '@expense-tracker/shared';
+import { ExpenseResponse, LIMITS } from '@expense-tracker/shared';
+import type { ApiError, Expense } from '@expense-tracker/shared';
 import { describe, expect, it } from 'vitest';
 import { api } from './support/api.ts';
 import {
