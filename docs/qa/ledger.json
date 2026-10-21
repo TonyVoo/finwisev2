@@ -1,0 +1,1749 @@
+[
+ {
+  "id": "AUTH-01",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/plan.auth.test.ts"
+  ],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 Sign up creates an account and a usable session"
+ },
+ {
+  "id": "AUTH-02",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/plan.auth.test.ts"
+  ],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 Email is normalised, so case and whitespace do not create a second account"
+ },
+ {
+  "id": "AUTH-03",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/plan.auth.test.ts"
+  ],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 Signup defaults currency to USD when omitted"
+ },
+ {
+  "id": "AUTH-04",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/plan.auth.test.ts"
+  ],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 Password length is enforced at both bounds"
+ },
+ {
+  "id": "AUTH-05",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/plan.auth.test.ts"
+  ],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 Login does not reveal which half of the credential was wrong"
+ },
+ {
+  "id": "AUTH-06",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/plan.auth.test.ts"
+  ],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 Refresh rotates the pair and single-uses the old token"
+ },
+ {
+  "id": "AUTH-07",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/plan.auth.test.ts"
+  ],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 Logout is idempotent and forgiving"
+ },
+ {
+  "id": "AUTH-08",
+  "kind": "device",
+  "tests": [
+   "backend/tests/plan.auth.test.ts"
+  ],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 Session survives an app restart"
+ },
+ {
+  "id": "AUTH-09",
+  "kind": "device",
+  "tests": [],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 Being offline never logs the user out"
+ },
+ {
+  "id": "AUTH-10",
+  "kind": "auto",
+  "tests": [],
+  "result": false,
+  "layer": "E2E + Unit",
+  "title": "\u2014 An expired access token is refreshed transparently mid-action"
+ },
+ {
+  "id": "AUTH-11",
+  "kind": "device",
+  "tests": [],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 An expired refresh token ends the session, with the right copy"
+ },
+ {
+  "id": "AUTH-12",
+  "kind": "device",
+  "tests": [
+   "mobile/tests/api/responseForwardCompat.test.ts",
+   "mobile/tests/auth/session.test.ts",
+   "mobile/tests/auth/sessionAtomicity.test.ts",
+   "mobile/tests/auth/sessionTeardown.test.ts",
+   "mobile/tests/db/localStore.test.ts"
+  ],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 An expired refresh token with undrained local writes"
+ },
+ {
+  "id": "AUTH-13",
+  "kind": "device",
+  "tests": [],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 Welcome shows no session banner on a genuine cold first launch"
+ },
+ {
+  "id": "AUTH-14",
+  "kind": "device",
+  "tests": [],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 Signup is the only screen offline genuinely blocks"
+ },
+ {
+  "id": "AUTH-15",
+  "kind": "device",
+  "tests": [],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 `email_already_exists` offers the login path with the email carried over"
+ },
+ {
+  "id": "AUTH-16",
+  "kind": "device",
+  "tests": [],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 Login does not seed a second set of default categories"
+ },
+ {
+  "id": "AUTH-17",
+  "kind": "auto",
+  "tests": [],
+  "result": false,
+  "layer": "E2E + API",
+  "title": "\u2014 Signup seeds exactly six categories, exactly one of them default"
+ },
+ {
+  "id": "AUTH-18",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/auth/sessionTeardown.test.ts"
+  ],
+  "result": false,
+  "layer": "Unit + E2E",
+  "title": "\u2014 Logout wipes the local database, as the design says it does"
+ },
+ {
+  "id": "AUTH-19",
+  "kind": "device",
+  "tests": [
+   "mobile/tests/auth/sessionAtomicity.test.ts",
+   "mobile/tests/auth/sessionTeardown.test.ts",
+   "mobile/tests/db/localStore.test.ts"
+  ],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 A second user on the same device inherits the first user's data"
+ },
+ {
+  "id": "AUTH-20",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/auth/sessionAtomicity.test.ts"
+  ],
+  "result": false,
+  "layer": "Unit (`mobile/tests/auth/sessionAtomicity.test.ts`)",
+  "title": "\u2014 A sign-in that cannot store its tokens has already wiped the previous user's work"
+ },
+ {
+  "id": "AUTH-21",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/auth/sessionAtomicity.test.ts"
+  ],
+  "result": false,
+  "layer": "Unit (`mobile/tests/auth/sessionAtomicity.test.ts`)",
+  "title": "\u2014 A half-written session reads back as one user holding another user's tokens"
+ },
+ {
+  "id": "AUTH-22",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/api/authorizeSessionChange.test.ts"
+  ],
+  "result": true,
+  "layer": "Unit (`mobile/tests/api/authorizeSessionChange.test.ts`)",
+  "title": "\u2014 A request in flight when the user logs out surfaces its own 401"
+ },
+ {
+  "id": "AUTH-23",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/integration.mobileClient.test.ts",
+   "mobile/tests/api/authorizeSessionChange.test.ts"
+  ],
+  "result": false,
+  "layer": "Unit (`mobile/tests/api/authorizeSessionChange.test.ts`)",
+  "title": "\u2014 A request in flight when a second user logs in is retried under their token"
+ },
+ {
+  "id": "AUTH-24",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/integration.mobileClient.test.ts",
+   "mobile/tests/api/authorizeSessionChange.test.ts"
+  ],
+  "result": false,
+  "layer": "Unit (`mobile/tests/api/authorizeSessionChange.test.ts`)",
+  "title": "\u2014 The same defect, from the payload side"
+ },
+ {
+  "id": "AUTH-25",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/api/authorizeSessionChange.test.ts"
+  ],
+  "result": true,
+  "layer": "Unit (`mobile/tests/api/authorizeSessionChange.test.ts`)",
+  "title": "\u2014 Re-login as the same user never borrows a foreign token"
+ },
+ {
+  "id": "AUTH-26",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/bootstrap/container.test.ts"
+  ],
+  "result": true,
+  "layer": "Unit (`mobile/tests/bootstrap/container.test.ts`)",
+  "title": "\u2014 A session is never published over a database that has not been adopted"
+ },
+ {
+  "id": "AUTH-27",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/bootstrap/container.test.ts"
+  ],
+  "result": true,
+  "layer": "Unit (`mobile/tests/bootstrap/container.test.ts`)",
+  "title": "\u2014 The 401 round trip, through the real wiring rather than the parts"
+ },
+ {
+  "id": "AUTH-28",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/bootstrap/container.test.ts"
+  ],
+  "result": true,
+  "layer": "Unit (`mobile/tests/bootstrap/container.test.ts`)",
+  "title": "\u2014 A second account signing in wipes the first out of the open database"
+ },
+ {
+  "id": "AUTH-29",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/auth/session.test.ts"
+  ],
+  "result": true,
+  "layer": "Unit (`mobile/tests/auth/session.test.ts`) + Integration (`API-25` for the server half)",
+  "title": "\u2014 A refresh whose answer is lost logs the user out on the retry \u2014 [GAP 20]"
+ },
+ {
+  "id": "EXP-01",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/plan.expenses.test.ts"
+  ],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 Create an expense through the REST path"
+ },
+ {
+  "id": "EXP-02",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/plan.expenses.test.ts"
+  ],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 A client-minted id is accepted as-is"
+ },
+ {
+  "id": "EXP-03",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/plan.expenses.test.ts"
+  ],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 `currency` defaults to the user's currency and may not differ from it"
+ },
+ {
+  "id": "EXP-04",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/plan.expenses.test.ts"
+  ],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 An unknown category is rejected as `422 unknown_category`"
+ },
+ {
+  "id": "EXP-05",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/plan.expenses.test.ts"
+  ],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 PATCH is partial, and `note` can be cleared"
+ },
+ {
+  "id": "EXP-06",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/plan.expenses.test.ts"
+  ],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 Delete is soft, returns the tombstone, and is idempotent"
+ },
+ {
+  "id": "EXP-07",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/expenses.list.test.ts",
+   "backend/tests/plan.expenses.test.ts"
+  ],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 The expense list is keyset-paginated and stable under a concurrent write"
+ },
+ {
+  "id": "EXP-08",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/plan.expenses.test.ts"
+  ],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 `from`/`to` are inclusive bounds on the calendar date"
+ },
+ {
+  "id": "EXP-09",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/expenses.list.test.ts",
+   "backend/tests/plan.expenses.test.ts"
+  ],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 A tampered cursor is `invalid_cursor`, not a server error"
+ },
+ {
+  "id": "EXP-10",
+  "kind": "device",
+  "tests": [
+   "backend/tests/plan.expenses.test.ts",
+   "mobile/tests/db/mutations.test.ts"
+  ],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 Add an expense in the app: one transaction, instant total, no network wait"
+ },
+ {
+  "id": "EXP-11",
+  "kind": "device",
+  "tests": [
+   "mobile/tests/db/mutations.test.ts"
+  ],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 Edit requires an actual change, and says so"
+ },
+ {
+  "id": "EXP-12",
+  "kind": "device",
+  "tests": [
+   "mobile/tests/lib/amount.test.ts"
+  ],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 The keypad has no decimal key on a zero-decimal currency"
+ },
+ {
+  "id": "EXP-13",
+  "kind": "device",
+  "tests": [
+   "mobile/tests/db/mutations.test.ts"
+  ],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 Swipe to delete, then undo"
+ },
+ {
+  "id": "EXP-14",
+  "kind": "device",
+  "tests": [
+   "mobile/tests/db/mutations.test.ts"
+  ],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 Undo still works after the delete has already synced"
+ },
+ {
+  "id": "EXP-15",
+  "kind": "device",
+  "tests": [
+   "mobile/tests/db/mutations.test.ts"
+  ],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 Deleting a second expense while a snackbar is up"
+ },
+ {
+  "id": "EXP-16",
+  "kind": "device",
+  "tests": [],
+  "result": false,
+  "layer": "Manual",
+  "title": "\u2014 The row is a single accessibility element with a composed label"
+ },
+ {
+  "id": "CAT-01",
+  "kind": "device",
+  "tests": [
+   "mobile/tests/db/expenseQueries.test.ts",
+   "mobile/tests/db/queries.test.ts",
+   "mobile/tests/db/summaryQuery.test.ts",
+   "mobile/tests/screens/summaryPullControl.test.tsx"
+  ],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 The list is alphabetical with the default pinned last"
+ },
+ {
+  "id": "CAT-02",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/db/expenseQueries.test.ts"
+  ],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 Names are unique per user among live categories, case-insensitively"
+ },
+ {
+  "id": "CAT-03",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/db/mutations.test.ts"
+  ],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 A rename does not touch any expense"
+ },
+ {
+  "id": "CAT-04",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/db/expenseQueries.test.ts"
+  ],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 Renaming to its own current name is not a self-conflict"
+ },
+ {
+  "id": "CAT-05",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/db/mutations.test.ts"
+  ],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 Deleting a category reassigns its expenses rather than deleting them"
+ },
+ {
+  "id": "CAT-06",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/db/mutations.test.ts"
+  ],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 Reassigned expenses arrive on the next pull"
+ },
+ {
+  "id": "CAT-07",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/db/mutations.test.ts"
+  ],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 The default category cannot be deleted"
+ },
+ {
+  "id": "CAT-08",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/db/mutations.test.ts"
+  ],
+  "result": false,
+  "layer": "API + E2E",
+  "title": "\u2014 The default category can be renamed, and the fallback is still resolved correctly"
+ },
+ {
+  "id": "CAT-09",
+  "kind": "device",
+  "tests": [],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 The delete dialog states the exact, all-time, local count"
+ },
+ {
+  "id": "CAT-10",
+  "kind": "device",
+  "tests": [
+   "mobile/tests/db/mutations.test.ts"
+  ],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 Singular and zero variants of the delete dialog and its snackbar"
+ },
+ {
+  "id": "CAT-11",
+  "kind": "device",
+  "tests": [],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 Cancel, scrim and Android back all leave the category alone"
+ },
+ {
+  "id": "CAT-12",
+  "kind": "device",
+  "tests": [
+   "mobile/tests/db/mutations.test.ts"
+  ],
+  "result": false,
+  "layer": "E2E + Manual",
+  "title": "\u2014 The default category offers no delete affordance at all"
+ },
+ {
+  "id": "CAT-13",
+  "kind": "device",
+  "tests": [],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 Category create and rename work fully offline"
+ },
+ {
+  "id": "CAT-14",
+  "kind": "device",
+  "tests": [
+   "mobile/tests/db/expenseQueries.test.ts"
+  ],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 Local name uniqueness is enforced offline too"
+ },
+ {
+  "id": "CAT-15",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/db/queries.test.ts"
+  ],
+  "result": true,
+  "layer": "Unit (`mobile/tests/db/queries.test.ts`)",
+  "title": "\u2014 The order is case-insensitive, so a lowercase name is not exiled to the end"
+ },
+ {
+  "id": "CAT-16",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/db/queries.test.ts"
+  ],
+  "result": true,
+  "layer": "Unit (`mobile/tests/db/queries.test.ts`)",
+  "title": "\u2014 The default category is pinned last whatever it is called"
+ },
+ {
+  "id": "CAT-17",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/db/queries.test.ts"
+  ],
+  "result": true,
+  "layer": "Unit (`mobile/tests/db/queries.test.ts`)",
+  "title": "\u2014 `pending` is derived from the outbox, and only for the row the user edited"
+ },
+ {
+  "id": "CAT-18",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/query/invalidateWhileUnmounted.test.ts"
+  ],
+  "result": true,
+  "layer": "E2E + Unit (`mobile/tests/query/invalidateWhileUnmounted.test.ts`)",
+  "title": "\u2014 The category list's counts are the live counts, after a delete made elsewhere"
+ },
+ {
+  "id": "SUM-01",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/db/expenseQueries.test.ts"
+  ],
+  "result": false,
+  "layer": "Unit + E2E",
+  "title": "\u2014 The total is a SQL sum in minor units, not a sum over rendered rows"
+ },
+ {
+  "id": "SUM-02",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/db/expenseQueries.test.ts",
+   "mobile/tests/db/monthCategorySpend.test.ts",
+   "mobile/tests/lib/calendar.test.ts"
+  ],
+  "result": false,
+  "layer": "Unit + E2E",
+  "title": "\u2014 Month bounds are string comparisons and do not shift across timezones"
+ },
+ {
+  "id": "SUM-03",
+  "kind": "device",
+  "tests": [
+   "mobile/tests/lib/calendar.test.ts"
+  ],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 Expenses group under their calendar date, not their creation date"
+ },
+ {
+  "id": "SUM-04",
+  "kind": "device",
+  "tests": [],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 Saving into another month tells the user where it went"
+ },
+ {
+  "id": "SUM-05",
+  "kind": "device",
+  "tests": [],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 A month with no expenses"
+ },
+ {
+  "id": "SUM-06",
+  "kind": "device",
+  "tests": [],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 First-run empty is distinguishable from filtered-empty"
+ },
+ {
+  "id": "SUM-07",
+  "kind": "device",
+  "tests": [
+   "mobile/tests/db/monthCategorySpend.test.ts",
+   "mobile/tests/db/summaryQuery.test.ts"
+  ],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 The total, the chart, the legend and the count cannot disagree"
+ },
+ {
+  "id": "SUM-08",
+  "kind": "auto",
+  "tests": [],
+  "result": false,
+  "layer": "Unit",
+  "title": "\u2014 Percentages round for display only, and never read as 0%"
+ },
+ {
+  "id": "SUM-09",
+  "kind": "device",
+  "tests": [],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 A category with zero spend is absent from the chart and the legend"
+ },
+ {
+  "id": "SUM-10",
+  "kind": "device",
+  "tests": [],
+  "result": false,
+  "layer": "E2E + Manual",
+  "title": "\u2014 The legend drills down; the chart does not"
+ },
+ {
+  "id": "SUM-11",
+  "kind": "device",
+  "tests": [],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 The month is shared between the two tabs"
+ },
+ {
+  "id": "SUM-12",
+  "kind": "device",
+  "tests": [],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 The month resets to the current month on cold start but survives backgrounding"
+ },
+ {
+  "id": "SUM-13",
+  "kind": "device",
+  "tests": [],
+  "result": false,
+  "layer": "E2E + Manual",
+  "title": "\u2014 The switcher will not navigate into the future, and says why"
+ },
+ {
+  "id": "SUM-14",
+  "kind": "device",
+  "tests": [],
+  "result": false,
+  "layer": "E2E + Manual",
+  "title": "\u2014 The total updates optimistically and is announced"
+ },
+ {
+  "id": "SUM-15",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/db/monthCategorySpend.test.ts",
+   "mobile/tests/db/summaryQuery.test.ts"
+  ],
+  "result": true,
+  "layer": "Unit",
+  "title": "\u2014 A tie in the legend is not ordered by name, because the specified query cannot be"
+ },
+ {
+  "id": "SUM-16",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/db/monthCategorySpend.test.ts",
+   "mobile/tests/db/summaryQuery.test.ts"
+  ],
+  "result": false,
+  "layer": "Unit",
+  "title": "\u2014 The stated tiebreak, written the obvious way, is case-sensitive"
+ },
+ {
+  "id": "SUM-17",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/db/expenseQueries.test.ts",
+   "mobile/tests/db/summaryQuery.test.ts"
+  ],
+  "result": true,
+  "layer": "Unit + E2E",
+  "title": "\u2014 An expense under a tombstoned category is in Home's total and absent from the legend"
+ },
+ {
+  "id": "SUM-18",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/db/expenseQueries.test.ts",
+   "mobile/tests/db/monthCategorySpend.test.ts",
+   "mobile/tests/db/summaryQuery.test.ts",
+   "mobile/tests/screens/summary.test.tsx",
+   "mobile/tests/summary/summaryModel.test.ts"
+  ],
+  "result": true,
+  "layer": "Unit + E2E",
+  "title": "\u2014 A month whose expenses all cost nothing is neither empty nor chartable"
+ },
+ {
+  "id": "SUM-19",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/db/expenseQueries.test.ts",
+   "mobile/tests/db/monthCategorySpend.test.ts",
+   "mobile/tests/db/summaryQuery.test.ts"
+  ],
+  "result": true,
+  "layer": "Unit",
+  "title": "\u2014 The zero total is the client's coalesce, not SQL's"
+ },
+ {
+  "id": "SYNC-01",
+  "kind": "device",
+  "tests": [],
+  "result": true,
+  "layer": "E2E",
+  "title": "\u2014 Create offline, reconnect, the expense is on the server"
+ },
+ {
+  "id": "SYNC-02",
+  "kind": "device",
+  "tests": [],
+  "result": true,
+  "layer": "E2E",
+  "title": "\u2014 Edit offline, reconnect, the edit reached the server"
+ },
+ {
+  "id": "SYNC-03",
+  "kind": "device",
+  "tests": [],
+  "result": true,
+  "layer": "E2E",
+  "title": "\u2014 Delete offline, reconnect, the delete reached the server"
+ },
+ {
+  "id": "SYNC-04",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/sync.uncoalescedOutbox.test.ts",
+   "mobile/tests/db/mutations.test.ts",
+   "mobile/tests/db/queries.test.ts"
+  ],
+  "result": true,
+  "layer": "E2E + Unit",
+  "title": "\u2014 [SUPERSEDED TITLE] Editing a pending row queues a second entry"
+ },
+ {
+  "id": "SYNC-05",
+  "kind": "device",
+  "tests": [],
+  "result": true,
+  "layer": "E2E",
+  "title": "\u2014 A full offline session of mixed writes drains in one round trip"
+ },
+ {
+  "id": "SYNC-06",
+  "kind": "device",
+  "tests": [],
+  "result": true,
+  "layer": "E2E",
+  "title": "\u2014 Two devices edit the same expense offline; the newer `updatedAt` wins"
+ },
+ {
+  "id": "SYNC-07",
+  "kind": "auto",
+  "tests": [],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 The loser of a conflict is overwritten with the server row"
+ },
+ {
+  "id": "SYNC-08",
+  "kind": "auto",
+  "tests": [],
+  "result": false,
+  "layer": "API + Unit",
+  "title": "\u2014 An equal `updatedAt` is a conflict, not an apply"
+ },
+ {
+  "id": "SYNC-09",
+  "kind": "auto",
+  "tests": [],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 A byte-identical retry replays the original result"
+ },
+ {
+  "id": "SYNC-10",
+  "kind": "device",
+  "tests": [],
+  "result": true,
+  "layer": "E2E",
+  "title": "\u2014 A retry after a dropped response does not double-apply"
+ },
+ {
+  "id": "SYNC-11",
+  "kind": "auto",
+  "tests": [],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 A reused mutation id with a changed payload is rejected, loudly"
+ },
+ {
+  "id": "SYNC-12",
+  "kind": "auto",
+  "tests": [],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 Idempotency is scoped per user"
+ },
+ {
+  "id": "SYNC-13",
+  "kind": "auto",
+  "tests": [],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 How long a mutation id is remembered"
+ },
+ {
+  "id": "SYNC-39",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/sync.idempotency.test.ts"
+  ],
+  "result": false,
+  "layer": "API (automated: `backend/tests/sync.idempotency.test.ts`)",
+  "title": "\u2014 A ledger entry past the horizon is pruned, so `sync_mutations` has a ceiling"
+ },
+ {
+  "id": "SYNC-40",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/sync.idempotency.test.ts"
+  ],
+  "result": false,
+  "layer": "API (automated: `backend/tests/sync.idempotency.test.ts`)",
+  "title": "\u2014 The pruner job finds a user whose only stale rows are in the ledger"
+ },
+ {
+  "id": "SYNC-41",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/sync.categoryOrphan.test.ts"
+  ],
+  "result": false,
+  "layer": "API (automated: `backend/tests/sync.categoryOrphan.test.ts`)",
+  "title": "\u2014 A category delete and its reassignments in one batch converge in one round trip"
+ },
+ {
+  "id": "SYNC-42",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/sync.categoryOrphan.test.ts"
+  ],
+  "result": false,
+  "layer": "API (automated: `backend/tests/sync.categoryOrphan.test.ts`)",
+  "title": "\u2014 Every category in a batch is applied before any expense"
+ },
+ {
+  "id": "SYNC-43",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/sync.categoryOrphan.test.ts",
+   "mobile/tests/db/expenseQueries.test.ts"
+  ],
+  "result": false,
+  "layer": "API (automated: `backend/tests/sync.categoryOrphan.test.ts`)",
+  "title": "\u2014 The server serves an expense whose `categoryId` the client cannot resolve"
+ },
+ {
+  "id": "SYNC-44",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/sync.categoryOrphan.test.ts"
+  ],
+  "result": false,
+  "layer": "API (automated: `backend/tests/sync.categoryOrphan.test.ts`)",
+  "title": "\u2014 [EXPECTED FAIL] The orphaned category tombstone is never collected"
+ },
+ {
+  "id": "SYNC-45",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/sync.categoryOrphan.test.ts"
+  ],
+  "result": false,
+  "layer": "API (automated: `backend/tests/sync.categoryOrphan.test.ts`)",
+  "title": "\u2014 [EXPECTED FAIL] The scheduled prune cannot report a retained category"
+ },
+ {
+  "id": "SYNC-46",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/sync.categoryOrphan.test.ts"
+  ],
+  "result": false,
+  "layer": "API (automated: `backend/tests/sync.categoryOrphan.test.ts`)",
+  "title": "\u2014 The reassignment pushed late is still accepted, and the prune then converges"
+ },
+ {
+  "id": "SYNC-14",
+  "kind": "device",
+  "tests": [],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 A delete made offline is not resurrected by a later pull"
+ },
+ {
+  "id": "SYNC-15",
+  "kind": "device",
+  "tests": [],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 A tombstone pulled from a peer removes the row locally"
+ },
+ {
+  "id": "SYNC-16",
+  "kind": "auto",
+  "tests": [],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 A stale cursor triggers a resync rather than resurrecting rows"
+ },
+ {
+  "id": "SYNC-17",
+  "kind": "device",
+  "tests": [],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 The resync screen, and the precondition that protects local work"
+ },
+ {
+  "id": "SYNC-18",
+  "kind": "device",
+  "tests": [],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 A device hours ahead does not permanently win conflicts"
+ },
+ {
+  "id": "SYNC-19",
+  "kind": "auto",
+  "tests": [],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 A clamped push can legitimately come back as a conflict"
+ },
+ {
+  "id": "SYNC-20",
+  "kind": "auto",
+  "tests": [],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 A device hours behind is not silently ignored forever"
+ },
+ {
+  "id": "SYNC-21",
+  "kind": "device",
+  "tests": [],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 A category and an expense assigned to it, both created offline, sync together"
+ },
+ {
+  "id": "SYNC-22",
+  "kind": "auto",
+  "tests": [],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 The server sorts the batch itself, so client order cannot break it"
+ },
+ {
+  "id": "SYNC-23",
+  "kind": "device",
+  "tests": [],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 A category delete and its reassignments push in order"
+ },
+ {
+  "id": "SYNC-24",
+  "kind": "auto",
+  "tests": [],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 Batch size limit"
+ },
+ {
+  "id": "SYNC-25",
+  "kind": "device",
+  "tests": [],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 App killed mid-push: nothing lost, nothing duplicated"
+ },
+ {
+  "id": "SYNC-26",
+  "kind": "device",
+  "tests": [],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 App killed mid-pull: the cursor did not advance past uncommitted rows"
+ },
+ {
+  "id": "SYNC-27",
+  "kind": "device",
+  "tests": [],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 Killed while the Undo snackbar is up: the delete stands"
+ },
+ {
+  "id": "SYNC-28",
+  "kind": "auto",
+  "tests": [],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 One bad row does not fail the batch"
+ },
+ {
+  "id": "SYNC-29",
+  "kind": "auto",
+  "tests": [],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 An incomplete create is `invalid`, and a partial update is not"
+ },
+ {
+  "id": "SYNC-30",
+  "kind": "device",
+  "tests": [],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 A rejected row is flagged on the row, not on the app"
+ },
+ {
+  "id": "SYNC-31",
+  "kind": "auto",
+  "tests": [],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 `undelete` by setting `deletedAt` back to null"
+ },
+ {
+  "id": "SYNC-32",
+  "kind": "device",
+  "tests": [
+   "mobile/tests/sync/state.test.ts"
+  ],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 The pill's six states, and the silence of the steady state"
+ },
+ {
+  "id": "SYNC-58",
+  "kind": "device",
+  "tests": [
+   "mobile/tests/sync/SyncPill.test.tsx"
+  ],
+  "result": false,
+  "layer": "E2E (**Android** \u2014 needs `setAirplaneMode`; manual on iOS per GAP 9), plus a unit half",
+  "title": "\u2014 A failed push followed by going offline shows `Offline`, not `Sync failed`"
+ },
+ {
+  "id": "SYNC-33",
+  "kind": "device",
+  "tests": [],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 A sync faster than 800ms never renders the pill"
+ },
+ {
+  "id": "SYNC-34",
+  "kind": "device",
+  "tests": [],
+  "result": false,
+  "layer": "E2E + Manual",
+  "title": "\u2014 The detail sheet, and the retry that only exists when it can work"
+ },
+ {
+  "id": "SYNC-35",
+  "kind": "device",
+  "tests": [
+   "mobile/tests/screens/pullToRefresh.test.tsx"
+  ],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 Pull-to-refresh is a sync, not a reload, and never errors"
+ },
+ {
+  "id": "SYNC-36",
+  "kind": "device",
+  "tests": [],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 A row changing under an open Edit form does not change under the user's hands"
+ },
+ {
+  "id": "SYNC-37",
+  "kind": "device",
+  "tests": [],
+  "result": false,
+  "layer": "Manual",
+  "title": "\u2014 Background sync is an optimisation, never a correctness guarantee"
+ },
+ {
+  "id": "SYNC-38",
+  "kind": "auto",
+  "tests": [],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 Pull paging terminates and delivers every row exactly once"
+ },
+ {
+  "id": "SYNC-47",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/sync.uncoalescedOutbox.test.ts"
+  ],
+  "result": true,
+  "layer": "API (automated: `backend/tests/sync.uncoalescedOutbox.test.ts`)",
+  "title": "\u2014 Two entries for one row both apply, and the row ends at the later one"
+ },
+ {
+  "id": "SYNC-48",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/sync.uncoalescedOutbox.test.ts",
+   "mobile/tests/db/write.test.ts"
+  ],
+  "result": true,
+  "layer": "API (automated, same file)",
+  "title": "\u2014 A conflict resolves per field, leaving a row neither device ever had"
+ },
+ {
+  "id": "SYNC-49",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/sync.uncoalescedOutbox.test.ts",
+   "mobile/tests/db/write.test.ts"
+  ],
+  "result": true,
+  "layer": "API (automated, same file)",
+  "title": "\u2014 Two entries sharing one millisecond lose the second one's fields"
+ },
+ {
+  "id": "SYNC-50",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/sync.uncoalescedOutbox.test.ts"
+  ],
+  "result": true,
+  "layer": "API (automated, same file)",
+  "title": "\u2014 Convergence survives the split, but only if every result is written back"
+ },
+ {
+  "id": "SYNC-51",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/sync.pullConcurrency.test.ts",
+   "mobile/tests/screens/summaryPullControl.test.tsx"
+  ],
+  "result": true,
+  "layer": "API (automated: `backend/tests/sync.pullConcurrency.test.ts`)",
+  "title": "\u2014 A pull overlapping an uncommitted write sees neither the row nor its revision"
+ },
+ {
+  "id": "SYNC-52",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/sync.pullConcurrency.test.ts"
+  ],
+  "result": true,
+  "layer": "API (automated, same file)",
+  "title": "\u2014 A revision committed ahead of its row does not strand the row"
+ },
+ {
+  "id": "SYNC-53",
+  "kind": "auto",
+  "tests": [],
+  "result": true,
+  "layer": "API (automated, same file)",
+  "title": "\u2014 Concurrent writers for one account each get a distinct revision"
+ },
+ {
+  "id": "SYNC-54",
+  "kind": "auto",
+  "tests": [],
+  "result": true,
+  "layer": "API (automated, same file)",
+  "title": "\u2014 One account is not serialised behind another"
+ },
+ {
+  "id": "SYNC-55",
+  "kind": "auto",
+  "tests": [],
+  "result": true,
+  "layer": "API (automated, same file)",
+  "title": "\u2014 A client walking the cursor while writes commit receives every row exactly once"
+ },
+ {
+  "id": "SYNC-56",
+  "kind": "auto",
+  "tests": [],
+  "result": true,
+  "layer": "API (automated, same file)",
+  "title": "\u2014 A walk never hands over an expense before the category it references"
+ },
+ {
+  "id": "SYNC-57",
+  "kind": "auto",
+  "tests": [],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 [BLOCKED-BY-GAP 18] The pull reads both tables at the isolation level it claims"
+ },
+ {
+  "id": "SYNC-59",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/bootstrap/syncOnSignIn.test.ts"
+  ],
+  "result": true,
+  "layer": "E2E + Unit (`mobile/tests/bootstrap/syncOnSignIn.test.ts`)",
+  "title": "\u2014 Signing in syncs"
+ },
+ {
+  "id": "SYNC-60",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/bootstrap/syncOnSignIn.test.ts"
+  ],
+  "result": true,
+  "layer": "E2E + Unit (same file)",
+  "title": "\u2014 The pill does not report a failure that belongs to the previous session"
+ },
+ {
+  "id": "SYNC-61",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/screens/summaryPullControl.test.tsx"
+  ],
+  "result": true,
+  "layer": "E2E + Unit (`mobile/tests/screens/summaryPullControl.test.tsx`)",
+  "title": "\u2014 Pull-to-refresh on the Summary tab asks for a sync"
+ },
+ {
+  "id": "SYNC-62",
+  "kind": "device",
+  "tests": [],
+  "result": true,
+  "layer": "E2E (shares `mobile/tests/query/invalidateWhileUnmounted.test.ts` for the mechanism)",
+  "title": "\u2014 A row the sync pulled appears on a screen that was not mounted at the time"
+ },
+ {
+  "id": "EDGE-01",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/expenses.edgecases.test.ts"
+  ],
+  "result": true,
+  "layer": "E2E + API (steps 2 and 3 automated: `backend/tests/expenses.edgecases.test.ts`)",
+  "title": "\u2014 An amount of 0"
+ },
+ {
+  "id": "EDGE-02",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/expenses.edgecases.test.ts"
+  ],
+  "result": true,
+  "layer": "E2E + API (steps 2\u20135 automated: `backend/tests/expenses.edgecases.test.ts` and",
+  "title": "\u2014 Very large amounts"
+ },
+ {
+  "id": "EDGE-03",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/lib/currencyFormatting.test.ts"
+  ],
+  "result": false,
+  "layer": "Unit + E2E",
+  "title": "\u2014 Decimal and rounding behaviour"
+ },
+ {
+  "id": "EDGE-04",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/expenses.edgecases.test.ts"
+  ],
+  "result": true,
+  "layer": "E2E + API (step 2 and the server half of step 3 automated:",
+  "title": "\u2014 An expense dated in the future"
+ },
+ {
+  "id": "EDGE-05",
+  "kind": "device",
+  "tests": [],
+  "result": false,
+  "layer": "",
+  "title": "\u2014 A month with no expenses"
+ },
+ {
+  "id": "EDGE-06",
+  "kind": "auto",
+  "tests": [],
+  "result": false,
+  "layer": "E2E + API",
+  "title": "\u2014 A category deleted while it has expenses"
+ },
+ {
+  "id": "EDGE-07",
+  "kind": "auto",
+  "tests": [],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 An expired access token mid-action"
+ },
+ {
+  "id": "EDGE-08",
+  "kind": "device",
+  "tests": [
+   "mobile/tests/auth/sessionTeardown.test.ts"
+  ],
+  "result": false,
+  "layer": "",
+  "title": "\u2014 An expired refresh token"
+ },
+ {
+  "id": "EDGE-09",
+  "kind": "auto",
+  "tests": [],
+  "result": false,
+  "layer": "E2E + API",
+  "title": "\u2014 A note at and past its limit, and whitespace-only"
+ },
+ {
+  "id": "EDGE-10",
+  "kind": "auto",
+  "tests": [],
+  "result": false,
+  "layer": "E2E + API",
+  "title": "\u2014 A category name at its bounds"
+ },
+ {
+  "id": "EDGE-11",
+  "kind": "device",
+  "tests": [],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 A date at a month boundary entered in a shifted timezone"
+ },
+ {
+  "id": "EDGE-12",
+  "kind": "device",
+  "tests": [
+   "mobile/tests/lib/currencyFormatting.test.ts"
+  ],
+  "result": false,
+  "layer": "E2E",
+  "title": "\u2014 Zero-decimal currency end to end"
+ },
+ {
+  "id": "EDGE-13",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/currency.test.ts"
+  ],
+  "result": true,
+  "layer": "API",
+  "title": "\u2014 An account currency the signup Sheet never offers \u2014 [GAP 21] \u2014 executed 2026-10-11"
+ },
+ {
+  "id": "EDGE-14",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/currency.test.ts",
+   "mobile/tests/lib/currencyFormatting.test.ts"
+  ],
+  "result": true,
+  "layer": "Unit",
+  "title": "\u2014 Fraction digits come from the currency; the rendered string comes from the locale \u2014 executed 2026-10-11"
+ },
+ {
+  "id": "EDGE-15",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/lib/calendar.test.ts",
+   "mobile/tests/lib/currencyFormatting.test.ts"
+  ],
+  "result": true,
+  "layer": "Unit",
+  "title": "\u2014 This plan's money literals are `en-US` literals \u2014 executed 2026-10-11"
+ },
+ {
+  "id": "API-01",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/plan.contract.test.ts",
+   "backend/tests/plan.expenses.test.ts"
+  ],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 Tenancy: another user's row is `404`, never `403`"
+ },
+ {
+  "id": "API-02",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/plan.contract.test.ts"
+  ],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 No endpoint accepts a `userId`"
+ },
+ {
+  "id": "API-03",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/plan.auth.test.ts",
+   "backend/tests/plan.contract.test.ts"
+  ],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 Unknown fields are rejected everywhere"
+ },
+ {
+  "id": "API-04",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/plan.contract.test.ts"
+  ],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 Server-owned fields cannot be set by the client"
+ },
+ {
+  "id": "API-05",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/plan.contract.test.ts"
+  ],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 The error envelope is the only non-2xx shape"
+ },
+ {
+  "id": "API-06",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/plan.contract.test.ts"
+  ],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 `Content-Type` is enforced on requests with a body"
+ },
+ {
+  "id": "API-07",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/plan.contract.test.ts"
+  ],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 Auth is required on exactly the right operations"
+ },
+ {
+  "id": "API-08",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/plan.contract.test.ts"
+  ],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 Health reports the database as part of liveness"
+ },
+ {
+  "id": "API-09",
+  "kind": "auto",
+  "tests": [],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 Rate limiting"
+ },
+ {
+  "id": "API-10",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/plan.contract.test.ts"
+  ],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 `GET /v1/sync` query validation"
+ },
+ {
+  "id": "API-11",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/plan.contract.test.ts"
+  ],
+  "result": false,
+  "layer": "API",
+  "title": "\u2014 `GET /v1/expenses` query validation"
+ },
+ {
+  "id": "API-12",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/api/client.test.ts"
+  ],
+  "result": true,
+  "layer": "Unit (`mobile/tests/api/client.test.ts`)",
+  "title": "\u2014 Every client method reaches for the route named after it"
+ },
+ {
+  "id": "API-13",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/integration.mobileClient.test.ts"
+  ],
+  "result": true,
+  "layer": "Integration (`backend/tests/integration.mobileClient.test.ts`)",
+  "title": "\u2014 `X-Request-Id` is on an error response too, and the client reads it"
+ },
+ {
+  "id": "API-14",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/integration.mobileClient.test.ts"
+  ],
+  "result": true,
+  "layer": "Integration",
+  "title": "\u2014 The client and the server agree across the whole REST surface"
+ },
+ {
+  "id": "API-15",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/integration.mobileClient.test.ts"
+  ],
+  "result": true,
+  "layer": "Integration",
+  "title": "\u2014 A refresh through the client rotates the pair and spends the old one"
+ },
+ {
+  "id": "API-16",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/integration.mobileClient.test.ts"
+  ],
+  "result": true,
+  "layer": "Integration",
+  "title": "\u2014 Query parameters and a real keyset cursor survive the URL"
+ },
+ {
+  "id": "API-17",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/integration.mobileClient.test.ts"
+  ],
+  "result": true,
+  "layer": "Integration",
+  "title": "\u2014 A push batch and a pull page, built and parsed by the client"
+ },
+ {
+  "id": "API-18",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/integration.mobileClient.test.ts"
+  ],
+  "result": true,
+  "layer": "Integration",
+  "title": "\u2014 A 204 and a real error envelope, as the client sees them"
+ },
+ {
+  "id": "API-19",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/integration.mobileClient.test.ts"
+  ],
+  "result": true,
+  "layer": "Integration (`backend/tests/integration.mobileClient.test.ts`)",
+  "title": "\u2014 The 401 interceptor's own round trip against a real server"
+ },
+ {
+  "id": "API-20",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/api/responseForwardCompat.test.ts"
+  ],
+  "result": true,
+  "layer": "Unit (`mobile/tests/api/responseForwardCompat.test.ts`)",
+  "title": "\u2014 A new optional field on a response envelope"
+ },
+ {
+  "id": "API-21",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/api/responseForwardCompat.test.ts"
+  ],
+  "result": true,
+  "layer": "Unit (`mobile/tests/api/responseForwardCompat.test.ts`)",
+  "title": "\u2014 A new field inside a row, and the path the error names"
+ },
+ {
+  "id": "API-22",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/api/responseForwardCompat.test.ts"
+  ],
+  "result": true,
+  "layer": "Unit (`mobile/tests/api/responseForwardCompat.test.ts`)",
+  "title": "\u2014 The same field on the sync pull, which is the one that matters"
+ },
+ {
+  "id": "API-23",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/api/responseForwardCompat.test.ts"
+  ],
+  "result": true,
+  "layer": "Unit (`mobile/tests/api/responseForwardCompat.test.ts`)",
+  "title": "\u2014 The same field on a push result"
+ },
+ {
+  "id": "API-24",
+  "kind": "auto",
+  "tests": [
+   "mobile/tests/api/responseForwardCompat.test.ts"
+  ],
+  "result": true,
+  "layer": "Unit (`mobile/tests/api/responseForwardCompat.test.ts`)",
+  "title": "\u2014 What it costs: the session survives, and the local database is untouched"
+ },
+ {
+  "id": "API-25",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/integration.mobileClient.test.ts",
+   "mobile/tests/auth/session.test.ts"
+  ],
+  "result": true,
+  "layer": "Integration (`backend/tests/integration.mobileClient.test.ts`)",
+  "title": "\u2014 A refresh the server completed and the client never saw \u2014 [GAP 20]"
+ },
+ {
+  "id": "API-26",
+  "kind": "auto",
+  "tests": [
+   "backend/tests/integration.mobileClient.test.ts"
+  ],
+  "result": true,
+  "layer": "Integration (`backend/tests/integration.mobileClient.test.ts`)",
+  "title": "\u2014 The real `SessionController` against a real server \u2014 added 2026-10-19"
+ }
+]

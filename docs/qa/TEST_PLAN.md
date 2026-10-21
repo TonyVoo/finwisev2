@@ -684,6 +684,77 @@ an HTTP admin API — toxiproxy — **is** controllable from inside a flow. The 
 needs for `SYNC-07` and `SYNC-08` is the one that happens to be driveable; the two that are not are
 the device-level ones.
 
+### Two ways to "background and return", and one of them invents a defect — measured 2026-10-21
+
+The §12 rows are driven over `adb`, and the obvious way to bring the app back to the foreground is
+the same deep link that launched it:
+
+```sh
+adb shell am start -a android.intent.action.VIEW -d "exp://localhost:8081" host.exp.exponent
+```
+
+**That is not a foregrounding.** Under Expo Go it can start a *second* JS root while the first is
+still resident, so the engine that answers the pull belongs to one tree and the screen being read
+belongs to another. Measured consequence, which cost an hour: three rows were pushed server-side,
+the device pulled them (the cursor advanced from 7 to 10, so they were applied), and Home kept
+showing the old total indefinitely — a textbook "sync writes rows no screen shows", filed in my
+notes as a P1 before it was checked. Repeating it the way a user does — `KEYCODE_HOME`, then
+`am start -n host.exp.exponent/.experience.ExperienceActivity` — the row appeared immediately,
+every time.
+
+So the rule for this plan:
+
+| Want | Use | Not |
+| --- | --- | --- |
+| Background and return (`app-open`) | `KEYCODE_HOME`, then `am start -n …/.experience.ExperienceActivity` | the `exp://` deep link |
+| A genuine cold start | `am force-stop`, then either | a JS reload from the dev menu |
+
+`GAP 25` is a real defect of almost exactly the shape the deep link faked, which is the
+uncomfortable part: the bad mechanism produced a *true-looking* symptom of a bug that does exist,
+and the only thing separating them was re-running it a second way. Same family as the `killApp`
+and iOS `setAirplaneMode` traps above — a step that does not do what its name says, failing silently
+— except that this one errs toward **inventing** a defect rather than hiding one, and a filed P1
+that is not real costs a developer more than an unfiled P3.
+
+### Driving the screens by accessibility tree rather than by screenshot — added 2026-10-21
+
+Every §8 E2E case asserts on screen copy — "the pill reads `Offline · 1 pending`", "the row shows
+the `clock` glyph". A screenshot cannot be asserted on; a tester looks at it and decides, which is
+how `EDGE-03` and `EDGE-12` gave two testers two verdicts (§2, Locales). `docs/qa/scripts/ui.mjs`
+reads `uiautomator dump` instead, so a verdict comes out of the same strings the accessibility
+layer serves — which §13's accessibility items are about anyway, so the composed labels get
+exercised by every case that runs rather than only by the four that name them. It takes
+`QA_SERIAL`, because `F-TWO-DEV` needs each device addressed separately.
+
+Two things it caught for free, neither of which a screenshot would have settled: the `clock` glyph
+is really composed into the row's one label (`Transport, $18.00, seed A, Yesterday, not synced
+yet`, §13), and the tab bar's placeholder reads as the literal `⏷` (`GAP 23`), which in a terminal
+is indistinguishable from a real icon.
+
+### A dropped **response**, and counting round trips — added 2026-10-21
+
+`docs/qa/scripts/proxy.mjs` is the second mechanism in the table above, now written. It forwards
+the request, reads the server's answer, and then destroys the socket rather than replying, so the
+push is applied and the client never hears — the only shape that exercises idempotency, and the
+reason `SYNC-10` cannot be run under aeroplane mode. Armed over its own HTTP admin surface
+(`POST /__qa/drop`), which is deliberate: §2 notes that Maestro's `evalScript` can make HTTP calls
+but cannot shell out, so the one mechanism a flow can drive is this one.
+
+It also **counts and records bodies**, which `SYNC-05` needs and the API log cannot give: the
+backend logs failures only, so a two-push drain and a one-push drain look identical in it, and
+"exactly one `POST /v1/sync`" is the whole assertion. Point the device at it by tunnelling
+`adb reverse tcp:3000 tcp:3001`.
+
+### Aeroplane mode has to take the `adb reverse` tunnel with it — added 2026-10-21
+
+`adb reverse` tunnels the host's port over the adb transport, which is not the device's radio, so
+**it survives aeroplane mode**. A case that toggled the radio and left the tunnel up would have
+netinfo reporting unreachable while the server stayed reachable: the write syncs immediately, the
+"reconnect and confirm it arrived" assertion is satisfied, and nothing was tested. That is the
+vacuous-pass shape this section records for iOS `setAirplaneMode` and for `killApp`, reached by a
+different route. `docs/qa/scripts/offline.sh` does both halves, and restores the tunnel *before*
+the radio on the way back — which is what the 17 Oct `SYNC-01` caveat turned out to be about.
+
 ### Controlling the clocks
 
 Two clocks matter, and they are tested separately:
@@ -1693,6 +1764,34 @@ validation_error`, and the body names no owner — the id is the global primary 
 
 ---
 
+### CAT-18 — The category list's counts are the live counts, after a delete made elsewhere
+
+- **Layer** E2E + Unit (`mobile/tests/query/invalidateWhileUnmounted.test.ts`)
+- **Pre** `F-MONTH`, signed in, Home in front. One category holds a known number of live expenses
+- **Steps**
+  1. On Home, swipe-delete one of that category's expenses and let the snackbar time out
+  2. Open Settings › Categories
+  3. Read the category's count, and open its delete dialog
+- **Expect** Both numbers are the live count — one lower than before step 1. `07-categories.md` §1
+  rule 1: "Counts are live, local and all-time", over `WHERE deletedAt IS NULL`.
+- **Result (21 Oct, Pixel 9 emulator / API 36 / Expo Go) — FAIL on the row, PASS on the dialog.
+  Filed as `TVO-37`, P3, Mobile Dev.** With seven live Groceries expenses the row read
+  `Groceries, 8 expenses` while the dialog, on the same screen seconds later, read
+  `Its 7 expenses will move to Uncategorized.` Two different numbers for one category, both on
+  screen in the same interaction.
+- **Cause, and it is not the SQL.** `listLiveCategoriesWithCounts` filters `deletedAt IS NULL`
+  correctly. `query/client.ts` sets `staleTime: Infinity` and `refetchOnMount: false` on the stated
+  reasoning that "the code that causes the event invalidates the key" — which holds only for
+  queries mounted when the event happens. `invalidateQueries` refetches **active** observers and
+  merely marks inactive ones; `refetchOnMount: false` then declines to act on the mark. The delete
+  happened while Categories was unmounted, so its row survived into the next visit. The dialog is
+  right because `settings/categories.tsx` calls `countCategoryExpenses` against SQLite when it
+  opens, rather than reading the cached row.
+- **Why P3 and not higher, stated because the instinct is to rate it higher.** The number the user
+  is asked to *act* on is computed fresh, so no expense is reassigned on a stale count. This is a
+  wrong number on a screen, not a wrong decision about data. Its more serious sibling is `SYNC-62`,
+  which is the same mechanism with a sync pull on the other end of it.
+
 ## 7. Monthly totals and chart
 
 ### SUM-01 — The total is a SQL sum in minor units, not a sum over rendered rows
@@ -1987,6 +2086,23 @@ row.
   confounded — the tunnel was restored ~8 s *after* the radio came back, so the first attempt
   genuinely had no route. What it does not establish is whether the engine retries on its own
   after a failure once connectivity is real. Worth isolating before `SYNC-05` is trusted.
+- **Caveat resolved, 21 Oct — it was the confounder it was flagged as, and the thing underneath it
+  is real.** Re-run on the same rig with the two halves of the transition ordered deliberately: the
+  `adb reverse` tunnel is restored *before* the radio comes back
+  (`docs/qa/scripts/offline.sh off`), so the first attempt after reconnection has a route. The
+  engine then syncs **on its own, within a second**, with no gesture — `SYNC-02`, `SYNC-03` and
+  `SYNC-05` all drained that way. So `connectivity` is a real trigger and the 17 Oct `Sync failed`
+  was caused by the 8-second gap, exactly as suspected. `SYNC-05` can be trusted, and it passes.
+- **What the caveat was pointing at underneath, which is a defect.** The question it asked —
+  "whether the engine retries on its own after a failure once connectivity is real" — has the answer
+  **no**. `engine.ts` has six triggers (`app-open`, `connectivity`, `local-write`, `background`,
+  `pull-to-refresh`, `manual`) and no timer among them, and `connectivity` fires on a reachability
+  *change*. A sync that fails while netinfo still says reachable — a server hiccup, a 500, a dropped
+  response — is therefore never retried until the user backgrounds the app, writes something, pulls
+  to refresh, or taps `Try again`. For the failure state the design anticipates that is defensible,
+  and `02-offline-and-sync.md` §4 rule 1 is explicit that `Try again` exists for exactly it. For the
+  state **`SYNC-59`** describes — a failure caused by there being no session yet — it is not, because
+  the user has done nothing wrong and there is nothing for them to try again.
 
 ### SYNC-02 — Edit offline, reconnect, the edit reached the server
 
@@ -2000,6 +2116,17 @@ row.
 - **Expect** The server row has `amountMinor: 1800` and the `Transport` `categoryId`, with an
   advanced `revision`, and its `updatedAt` equals the client's edit time (clamped only if skewed).
   The expense's `id` and `createdAt` are unchanged.
+- **Result (21 Oct, Pixel 9 emulator / API 36 / Expo Go, live API + Postgres) — PASS, every
+  clause.** `seed A` edited from `$12.50`/`Groceries` to `$18.00`/`Transport` with the radio off
+  **and the `adb reverse` tunnel removed**, so the host was genuinely unreachable rather than
+  merely unreported (see the note on `offline.sh` in §2). The pill read `Offline · 1 pending` and
+  the row's accessibility label composed to `Transport, $18.00, seed A, Yesterday, not synced yet`.
+  On reconnect the push fired within a second of the radio returning — the `connectivity` trigger —
+  carrying only the two fields that changed, `{"categoryId": "…bcaed2a2b219", "amountMinor": 1800}`,
+  rather than the whole row: the merge upsert `ExpenseSyncFields` documents. Server afterwards:
+  `amountMinor: 1800`, the `Transport` id, `revision` 8 → 13, `updatedAt 2026-10-21T06:39:56.456Z`
+  (the client's edit time, unclamped), `id` and `createdAt` unchanged. The pill went to state 1 and
+  rendered nothing.
 
 ### SYNC-03 — Delete offline, reconnect, the delete reached the server
 
@@ -2019,6 +2146,14 @@ row.
   `deletedAt: "2026-10-17T06:28:58.407Z"` with the row still present — **a soft delete, as the
   protocol requires**. The offline half (airplane mode during step 1) was not exercised, so this
   records the delete-and-tombstone path only.
+- **Result, the offline half (21 Oct, same rig) — PASS, so this case is now complete.** The 17 Oct
+  result above ran online and said so; this is the half it was missing. Swipe-deleted with the
+  radio off and the tunnel removed: the month total dropped by exactly the row's amount, the
+  snackbar read `Expense deleted.` with `Undo`, and once the snackbar timed out the pill read
+  `Offline · 1 pending`. On reconnect the push carried `{"deletedAt": "2026-10-21T06:41:18.925Z"}`
+  and nothing else. `GET /v1/expenses` does not list the row; `GET /v1/expenses?includeDeleted=true`
+  lists it with that `deletedAt`. A soft delete, as the protocol requires, and the row was absent
+  from the local list from the moment of the swipe.
 
 ### SYNC-04 — [SUPERSEDED TITLE] Editing a pending row queues a second entry
 
@@ -2057,6 +2192,20 @@ row.
   ahead of every `expense` item. Every result is `applied`. The pill goes idle and every `clock`
   glyph clears. `docs/PLAN.md` §Non-functional targets requires a day's changes to sync in a
   single round trip, so two or more pushes here is a fail even though the data would be correct.
+- **Result (21 Oct, same rig, traffic read off the logging proxy) — PASS, every clause.** Nine
+  changes made with the radio off, in the case's own mix: create category `Travel`, rename `Health`
+  to `Wellness`, add four expenses, edit two existing ones, delete one. The pill counted up to
+  `Offline · 9 pending` — distinct records, consistent with `SYNC-04`. On reconnect the proxy
+  recorded **two** requests in total: one `POST /v1/sync`, and the pull that follows every push.
+  That push body carried **nine** items in the order
+  `category,category,expense,expense,expense,expense,expense,expense,expense` — every category item
+  ahead of every expense item — and all nine results were `applied`. Afterwards no row on the device
+  carried `not synced yet`, and the device's eight visible rows matched the server's eight exactly,
+  amount for amount, with the deleted row absent from both.
+- **Why the proxy and not the API log.** The backend logs failures only, so a two-push drain and a
+  one-push drain are indistinguishable in it — and "two or more pushes here is a fail even though
+  the data would be correct" is the whole point of this case. `docs/qa/scripts/proxy.mjs` sits in
+  the path and counts.
 
 ### 8.2 The same row edited on two devices
 
@@ -2081,6 +2230,26 @@ authoritative server row, including on conflict".
   on `D1` is **not** notified: there is no toast, no banner and no dialog about the overwrite.
   Both devices show identical values at the end. Divergence between the two devices is the
   failure, and so is any user-facing conflict notice.
+- **Result (21 Oct, two devices, real aeroplane mode on both) — PASS, every clause.** `D1` is the
+  Pixel 9 emulator above; `D2` is a second AVD (`QA_D2`, same API 36 image, its own data partition)
+  with Expo Go side-loaded and logged into the same account — a genuine second device, which is what
+  §12 row 5 exists to supply and what this case could not be run without. Both held `E1` at `$10.00`
+  and both were put in aeroplane mode with their API tunnels removed, independently
+  (`QA_SERIAL=… sh docs/qa/scripts/offline.sh on`).
+  - `D1` edited to `$11.00`; its `updatedAt` came out as `2026-10-21T07:10:31.740Z`.
+  - `D2` edited to `$22.00` and the note to `D2` about two minutes later, so `D2`'s `updatedAt` is
+    strictly newer. The ten-minute gap the case specifies was not needed and was not faked; what
+    the expectation turns on is "strictly newer", and the real device clocks supplied that.
+  - **Step 3** — `D1` reconnected: push `applied`, server held `1100` at `revision` 29.
+  - **Step 4** — `D2` reconnected: push `applied` too, *not* `conflict_server_wins`, and the server
+    held `2200` with note `D2` at `revision` 30.
+  - **Step 5** — `D1` pulled: its local copy was **overwritten**. `$11.00` is gone and `D1` reads
+    `Groceries, $22.00, D2, Today`. Both devices ended on a month total of `$212.31`.
+  - **The user was not notified.** `D1`'s whole accessibility tree after the pull returns zero
+    matches for `conflict`, `overwrit`, `changed elsewhere`, `replaced`, `updated on another` and
+    `discard`. That is the case's requirement rather than an omission to be fixed later: a
+    last-write-wins protocol that explained itself would be promising the user a choice it does not
+    have.
 
 ### SYNC-07 — The loser of a conflict is overwritten with the server row
 
@@ -2139,6 +2308,21 @@ common offline-sync bug", so these cases get the proxy harness from §2 rather t
   id, with the same `revision` the first (unheard) call assigned. Two expenses, or one expense at
   a bumped revision, is a P1. This case is the reason the proxy exists: aeroplane mode produces a
   request the server never saw, which does not exercise idempotency at all.
+- **Result (21 Oct, same rig, through `docs/qa/scripts/proxy.mjs`) — PASS, every clause.** The
+  proxy was written for this case: it forwards the request, reads the response, and then destroys
+  the socket instead of answering, so the server applies the push and the client never hears. The
+  precondition was confirmed rather than assumed — with the response dropped the server held the
+  `$7.77` row at `revision` 24 while the device still showed it as `not synced yet` under a
+  `Sync failed` pill. On the retry:
+  - the **same** `clientMutationId` (`01a15d37-46da-73c5-8e2a-3abdd0794d5d`) was sent;
+  - the server answered `applied` with `idempotentReplay: true`;
+  - at `revision` **24** — the revision the first, unheard call assigned, not a bumped one;
+  - and `GET /v1/expenses` holds exactly **one** row at that amount.
+- **One deviation, and it belongs to `SYNC-61` rather than here.** Step 3 says "let the client
+  retry". It does not retry on its own. The engine has no timed retry, and `connectivity` fires on a
+  reachability *change*, which removing a proxy is not — so nothing happens until some other trigger
+  does. The retry above was driven by a pull-to-refresh on Home. This is the same mechanism behind
+  the 17 Oct `SYNC-01` caveat; see the note there, now resolved.
 
 ### SYNC-11 — A reused mutation id with a changed payload is rejected, loudly
 
@@ -3067,6 +3251,113 @@ See **GAP 18** for the one mechanism here that no black-box case can guard.
 
 ---
 
+### 8.12 Signing in, and screens the sync wrote behind — found on a device, 21 Oct
+
+Three cases that no existing section covered, because every §8 case above starts from a signed-in,
+foregrounded, synced device. Two of the three are what a *returning* user meets on a new phone, and
+they are the worst-looking failures this plan has produced: a correct build, a healthy server, and
+an empty account under a red pill.
+
+### SYNC-59 — Signing in syncs
+
+- **Layer** E2E + Unit (`mobile/tests/bootstrap/syncOnSignIn.test.ts`)
+- **Pre** The app installed and launched **logged out**, with the account holding expenses on the
+  server. The device is online throughout and the server is healthy
+- **Steps**
+  1. Launch the app and let it settle on Welcome
+  2. Log in with valid credentials
+  3. Wait on Home, touching nothing, and capture the HTTP traffic
+- **Expect** The account's expenses appear and the month total is the server's. A `GET /v1/sync`
+  is issued **after** the login, since the only sync before it had no session to run under.
+- **Result (21 Oct, two devices, live API + Postgres) — FAIL. Filed as `TVO-36`, P2, Mobile Dev.**
+  No sync is issued after login, ever. The traffic on the second device reads, in order:
+  `GET /v1/sync?since=0 → 401`, then `POST /v1/auth/login → 200`, **then nothing**. Home sat on
+  `$0.00` / `No expenses yet` with the server holding seven expenses. It is still there minutes
+  later, and only `app-open` (backgrounding and returning), a pull-to-refresh or `Try again`
+  recovers it — all three of which require the user to guess.
+- **Cause, which is a wiring question rather than a logic one.** `bootstrap/AppProviders.tsx`
+  mounts `SyncProvider` **above** the auth gate, so `engine.start()` runs on launch; its pull goes
+  out with no bearer token and takes the `401`. Nothing in `engine.ts` or `SyncProvider.tsx`
+  subscribes to `SessionController`, and `SyncTrigger` has no member for a session arriving — the
+  six are `app-open`, `connectivity`, `local-write`, `background`, `pull-to-refresh` and `manual`.
+- **Severity.** Not in the P1 list: nothing is lost, and the rows are on the server and arrive the
+  moment anything prods the engine. It is a P2 in §8, which exit criterion 3 says is the bar this
+  section is held to, and it is the first screen a returning user sees.
+
+### SYNC-60 — The pill does not report a failure that belongs to the previous session
+
+- **Layer** E2E + Unit (same file)
+- **Pre** As `SYNC-59`
+- **Steps** As `SYNC-59`, reading the pill rather than the list
+- **Expect** After a successful login the pill is in state 1 and renders nothing. State 6 is "last
+  sync attempt failed **while online**" (`02-offline-and-sync.md` §3), and the attempt that failed
+  belonged to a session that did not exist.
+- **Result (21 Oct, both devices) — FAIL, same cause and same task.** The pill reads
+  `Sync failed. Double tap for details.` on the first frame of Home after a correct login, because
+  `lastAttemptFailed` was set by the anonymous `401` and nothing clears it. The sheet behind it
+  offers `Try again`, which is the one control that does fix it — so the app is telling a user
+  whose setup is perfect that something is broken, and offering them the remedy for a problem they
+  do not have.
+- **Why this is filed beside `SYNC-59` rather than inside it.** They have one cause and will have
+  one fix, but they fail independently: clearing the flag without syncing leaves a blank month with
+  no explanation at all, which is worse. Two cases keep a half-fix visible.
+
+### SYNC-61 — Pull-to-refresh on the Summary tab asks for a sync
+
+- **Layer** E2E + Unit (`mobile/tests/screens/summaryPullControl.test.tsx`)
+- **Pre** Signed in, online, Summary tab in front, a row waiting on the server
+- **Steps**
+  1. Swipe down on the Summary tab
+  2. Capture the HTTP traffic
+- **Expect** One `GET /v1/sync`, exactly as the same gesture produces on Home.
+  `08-monthly-summary.md` rule 12 adopts `04-expense-list.md` rule 12 unchanged.
+- **Result (21 Oct, through the logging proxy) — FAIL. Filed as `TVO-38`, P2, Mobile Dev.**
+  **Zero** requests, across four gesture variants (different start heights, distances and
+  durations). Switching to Home and repeating the first variant produced a request immediately, so
+  the gesture reaches the screen and the screen does not ask for a sync.
+- **Cause.** `usePullToRefresh` returns `{ refreshing, onRefresh }`, which are **`VirtualizedList`**
+  props: a `SectionList` reads them and builds a `RefreshControl` itself. A plain `ScrollView` has
+  neither prop and takes a built control through `refreshControl`. Home spreads them onto a
+  `SectionList` and works; `summary.tsx` spreads the same two onto a `ScrollView`, where React
+  Native ignores them.
+- **Why three green cases in `pullToRefresh.test.tsx` do not see it.** They drive the gesture as
+  `fireEvent(node, 'refresh')`, which calls the `onRefresh` prop directly. Whether anything would
+  ever call it is the question, and firing it yourself cannot ask it. That file's own comment
+  records why the shape was chosen — a `RefreshControl` renders as an `RCTRefreshControl` with empty
+  props under this preset and is unreachable from a query — and the choice was reasonable; what it
+  cost is this defect, because the shape that made the test convenient is the shape that does not
+  work on a `ScrollView`. Same family as `CAT-01` and `SYNC-51`.
+- **Why it is a P2 and not cosmetic.** With `CAT-18` open, Summary is a screen that can be stale
+  *and* has no way to be refreshed: the tab's only remaining triggers are `app-open`,
+  `connectivity` and `local-write`, and a user reading their chart is doing none of them.
+
+### SYNC-62 — A row the sync pulled appears on a screen that was not mounted at the time
+
+- **Layer** E2E (shares `mobile/tests/query/invalidateWhileUnmounted.test.ts` for the mechanism)
+- **Pre** Two devices on one account, both signed in and synced. `D1` is on Settings › Categories
+  or the Summary tab — anything but Home
+- **Steps**
+  1. On `D2` (or the server), add an expense in the month `D1` is showing
+  2. Let `D1` sync — `app-open`, `connectivity` or a pull-to-refresh on the screen it is on
+  3. Navigate `D1` back to Home
+- **Expect** The new row is on Home and in the month total.
+- **Result (21 Oct, two devices) — FAIL, and it does not heal. Filed under `TVO-37` as the
+  severity-carrying half, raised to P2.** `D1` sat on Settings › Categories while its sync pulled
+  `E1`. Back on Home, `D1` read `$122.42` and had no `E1` row; `D2` read `$132.42` and had it. **A
+  pull-to-refresh on `D1` did not fix it**, and could not: `D1`'s cursor had already advanced past
+  the row, so the pull returned `{"changes": []}` and nothing invalidated. The row sat in `D1`'s
+  SQLite, unreachable by any gesture, until the app was **force-stopped and relaunched** — after
+  which it appeared immediately and the totals agreed.
+- **Why this one is a P2 in §8.** It is the same stale-cache mechanism as `CAT-18`, but the data
+  is the user's own expenses rather than a count, the window is permanent rather than until the
+  next invalidation, and **no user-reachable control recovers it**. "Expenses I added on my other
+  phone are missing, and pull-to-refresh does nothing" is indistinguishable from a sync that is
+  broken, which the sync is not. `SYNC-61` makes it worse on the Summary tab specifically, where
+  the gesture does not even fire.
+- **What is *not* claimed.** Nothing is lost. The row is on the server, it is in local SQLite, and
+  a restart shows it. This is a presentation failure with a data-shaped symptom, and the fix is in
+  `query/client.ts` rather than anywhere in `sync/`.
+
 ## 9. The named edge cases
 
 These are the cases the task singles out. Each one is here because it has a plausible wrong
@@ -3883,11 +4174,21 @@ no new `revision`, and another account's id rejected as `400 validation_error`.
 | 20  | A refresh whose answer is lost logs the user out | Medium | **TVO-28** (`a5dc9cc1`) | — | branch 1 flips `API-25` step 3 and `AUTH-29` step 2; branches 2 and 3 leave both green, which is the honest signal that they mitigate rather than fix |
 | 21  | The contract accepts currencies the design's `decimals` rule gets wrong | Low | **TVO-29** (`dbf7b8d6`) | — | `EDGE-13` stays green under either branch; `EDGE-14` reddens if the Sheet ever gains a zero-decimal currency |
 | 22  | Two tabs can show different totals for the same month, and three rules in the Summary spec do not produce what it states | Medium | **TVO-31** (`68daabf3`) | — | `SUM-15`–`SUM-19` are measurements of the *design's* statements, not of a module; each reddens alone under the change its finding recommends. They re-point at `TVO-12`'s code when it lands |
-| 23  | Both tab bar icons are missing, so every screen shows a placeholder glyph | Low | **TVO-32** — closed `done` 2026-10-19 **without the fix landing**, re-tested and reopened the same day | — | launch the app and read the tab bar; no unit case can see it, because the suite mocks `expo-router` |
+| 23  | Both tab bar icons are missing, so every screen shows a placeholder glyph | Low | **TVO-32** — closed `done` **twice** without the fix landing (19 Oct, 20 Oct); re-tested and reopened both times | — | launch the app and read the tab bar; no unit case can see it, because the suite mocks `expo-router` |
+| 24  | There is no `Log out` in Settings, so six `AUTH` cases and six §13 items cannot run | Medium | **TVO-39** — newly filed 21 Oct | `AUTH-12`, `AUTH-18`–`AUTH-21`, `AUTH-23`, `AUTH-24` | log out from Settings and run the six; this is the device half of `TVO-16` |
+| 25  | A screen unmounted when the data changed keeps showing the old data | Medium | **TVO-37** — newly filed 21 Oct | — | `CAT-18` and `SYNC-62` flip; measured green under `refetchOnMount: 'always'` |
+| 26  | Signing in does not sync, and the pill reports the anonymous failure | Medium | **TVO-36** — newly filed 21 Oct | — | `SYNC-59`, `SYNC-60` flip expected-fail → green |
+| 27  | Pull-to-refresh is inert on the Summary tab | Medium | **TVO-38** — newly filed 21 Oct | — | `SYNC-61` flips; the Home half of that case must stay green |
 | 5   | A future-dated row arriving by sync is unreachable in every view | Medium | **not filed** — the Designer's call | `EDGE-04` step 3 | `EDGE-04` unparks |
 | 7b  | `immutable_field` is unreachable on the **REST** path | Low | **not filed** — a choice between two one-line fixes | `API-04` (half) | `API-04`'s REST half unparks |
 | 9   | No E2E driver is named in `docs/PLAN.md` §7 | Low | **closed 12 Oct** — Maestro agreed with Mobile Dev, split by platform; the infrastructure half is **TVO-30** | nothing | — |
 | 10  | Rate limits are not quantified | Low | **not filed** — an owner call | `API-09` | `API-09` can assert that a limit exists, not just its shape |
+
+**Four gaps were added on 2026-10-21, all four found by running the app rather than reading it, and
+one of them parks cases rather than merely describing a defect.** GAP 24 is the one that parks:
+there is no `Log out` affordance, so six `AUTH` cases and six items of §13 have no way to reach
+their own precondition on a device. GAPs 25, 26 and 27 are defects with tripwires already landed.
+None of the four is visible from the unit suite, which is at 1190 green with all four open.
 
 **Nothing blocks executing this plan as of 2026-10-19, and that sentence has been wrong in both
 directions before, so here is what it rests on.** `TVO-14`, the task that executes this plan, was
@@ -4860,6 +5161,105 @@ reddens `SUM-17` alone, a coalesced `SUM()` reddens `SUM-19` alone, an `amountMi
 reddens `SUM-18` alone, and a name-ordered tiebreak reddens `SUM-15` alone, each leaving the other
 four green. Measured at mobile **228** — `4d279bd` plus this commit's one new file.
 
+### GAP 24 — There is no Log out, so a third of the auth plan cannot be run on a device — **OPEN**
+
+Found by running the app on 21 Oct, not by reading it. Settings renders two rows — `Currency` and
+`Categories` — and nothing else. `04-expense-list.md` §Behaviour rule 14 specifies a **destructive
+`Log out` button** there, gated by a dialog whose body varies with the outbox, and
+`09-copy-deck.md` carries all five of its strings (`settings.logout`, `logout.title`,
+`logout.body.clean`, `logout.body.pending`, `logout.confirm`). `design/README.md` names Log out as
+in scope. It is not built.
+
+**It is a known omission, and that is the part worth reporting.** `settings/index.tsx` says so in
+its own doc comment: Log out is "deliberately left out rather than half-built" because rule 14
+makes it a four-step operation — revoke, clear secure store, **wipe the local database**, replace
+the stack — and "a version that skipped the wipe would leave one user's expenses in another user's
+database". That reasoning is right, and it was raised on `TVO-11`, which belonged to the expense
+and category screens. The session work it was deferred to (`TVO-6`, `TVO-33`) is `done`, and the
+button never came back. Nobody filed it, so it has been invisible on the board since 8 October.
+`session.signOut()` exists and is unit-tested; only the affordance is missing.
+
+**What it costs this plan, which is more than one button.** Every case below needs a logout the
+user can actually perform, and none of them can be executed on a device:
+
+| Case | What it is about |
+| --- | --- |
+| `AUTH-12` | An expired refresh token keeps the outbox, and the same user's re-login drains it |
+| `AUTH-18` | Log out with a non-empty outbox does what the dialog promised |
+| `AUTH-19` | Logging in as a *different* account shows an empty month, not the predecessor's rows |
+| `AUTH-20`, `AUTH-21` | A sign-in that fails at the last step leaves the previous user's rows alone |
+| `AUTH-23`, `AUTH-24` | An account switch with a request in flight (`GAP 13` / `TVO-20`) |
+
+Six items of §13's regression checklist are the same six. This is the device half of **`TVO-16`**,
+the cross-account data leak that was severe enough to get its own issue — so the one area of this
+app with a known history of leaking data between accounts is the area whose device cases cannot be
+run at all. The unit layer covers the controller well (`sessionAtomicity.test.ts`,
+`sessionTeardown.test.ts`, `container.test.ts`); what it cannot cover is the composition from a
+real tap, which is exactly where `TVO-16` lived.
+
+**Filed as `TVO-39`, P2, Mobile Dev.** Re-test by logging out from Settings and running the six
+cases above.
+
+### GAP 25 — A screen that was not mounted when the data changed keeps showing the old data — **OPEN**
+
+`query/client.ts` disables every refetch trigger — `staleTime: Infinity`, `refetchOnMount: false`,
+`refetchOnReconnect: false`, `refetchOnWindowFocus: false` — with a stated justification:
+"Freshness is an event (a write, a sync), and the code that causes the event invalidates the key."
+The justification is sound and the invalidations are all present and correct. The gap is in the
+word *invalidates*: `invalidateQueries` **refetches active observers and only marks inactive
+ones**, and `refetchOnMount: false` is precisely the setting that declines to act on the mark when
+the screen comes back. So the contract the comment describes holds for every screen that is
+on-screen when something happens, and for no screen that is not.
+
+Carried by `CAT-18` (a wrong count) and `SYNC-62` (a missing expense, permanently, with no
+user-reachable recovery). Both were measured on a device on 21 Oct, both reproduce, and both turn
+green under a one-word change — `refetchOnMount: 'always'` — which was injected, measured and
+reverted. `mobile/tests/query/invalidateWhileUnmounted.test.ts` pins the pair.
+
+**Why this was invisible to 1183 green tests.** A screen suite mounts one screen, does something to
+it, and asserts — which is the active case, and the active case works. Nothing in the suite
+unmounts a screen, changes the store, and mounts it again, because no screen owns that sequence:
+it belongs to navigation, and navigation is mocked (`mobile/__mocks__/expo-router.ts`). The case
+that catches it has no screen in it at all.
+
+**One thing the fix must not break.** `staleTime: Infinity` is right and should stay. The data
+really does only change on a write or a sync, and a time-based refetch over SQLite would be
+re-running the same SQL for nothing. What has to change is the response to an invalidation that
+arrived while nobody was listening — which is a different question from staleness, and is the one
+`refetchOnMount` answers.
+
+**Filed as `TVO-37`, P2 (carried by `SYNC-62`; `CAT-18` alone would be P3), Mobile Dev.**
+
+### GAP 26 — Signing in is not a sync trigger, and the pill keeps the anonymous failure — **OPEN**
+
+`SyncTrigger` has six members and none of them is "a session arrived". `SyncProvider` is mounted
+above the auth gate in `bootstrap/AppProviders.tsx`, so the one sync that does run goes out before
+there is a token, takes a `401`, and leaves `lastAttemptFailed` set. Nothing subscribes to
+`SessionController`.
+
+Carried by `SYNC-59` (no data) and `SYNC-60` (the pill), both measured on two devices on 21 Oct
+and both locked by `mobile/tests/bootstrap/syncOnSignIn.test.ts`. The fix can go either way — mount
+the provider under the gate, or give the engine a session subscription — so the cases assert the
+outcome rather than the mechanism, and a probe of the second option was shown to turn both green.
+
+**Filed as `TVO-36`, P2, Mobile Dev.** Full analysis under `SYNC-59`.
+
+### GAP 27 — The refresh props Summary passes are not the ones a `ScrollView` reads — **OPEN**
+
+`usePullToRefresh` returns `{ refreshing, onRefresh }` — `VirtualizedList` props. Home spreads
+them onto a `SectionList`, which builds the control itself. `summary.tsx` spreads them onto a
+`ScrollView`, which has neither prop and needs `refreshControl`. The gesture is inert on that tab.
+
+Measured through the logging proxy on 21 Oct: zero requests from four gesture variants on Summary,
+one request from the first variant on Home. Locked by
+`mobile/tests/screens/summaryPullControl.test.tsx`, which asserts each tab is handed props of the
+kind its own component type reads — the Home half as a control, so the rule is not one invented for
+a single screen.
+
+**Filed as `TVO-38`, P2, Mobile Dev.** Full analysis under `SYNC-61`, including why three green
+cases in `pullToRefresh.test.tsx` cannot see it.
+
+---
 ### GAP 1 — Who seeds the default categories, and the duplicate-six risk — **CLOSED**
 
 The contract's `POST /v1/auth/signup` says it "**seeds the default categories**", while an earlier
@@ -5289,6 +5689,28 @@ icons: eleven other items have been closed on the strength of a green suite, and
 see this screen. The lesson is the one the gap already carried — a green suite is not a working
 product — arriving a second time from the direction of the board rather than the code.
 
+**Re-tested 2026-10-21: still not fixed, and `TVO-32` has now been closed a second time.** The
+board records `TVO-32` as `done`, `updatedAt 2026-10-20T04:06:57Z` — after QA reopened it to
+`todo` on 19 Oct with the measurement above. Measured again against `97b83d2`:
+
+- On the device, both tabs still draw the crossed-box tofu glyph. The accessibility tree reads
+  `"⏷, Expenses"` and `"⏷, Summary"`, identical to the original finding.
+- `git grep tabBarIcon` over **every commit reachable from every ref** returns nothing. No branch,
+  no stash — `wip/sync-and-summary` does not touch it either.
+- `mobile/app/(app)/(tabs)/_layout.tsx` is unchanged since `c2a4cc7` (8 Oct), the commit that
+  created the router tree, and still sets only `title` on each `Tabs.Screen`.
+
+So this is the **second** closure of this issue contradicted by the same re-test, against a tree
+where the fix has never existed. QA has reopened it again.
+
+**The lesson is no longer about icons.** One contradicted closure is a mistake; two on the same
+issue, with a written measurement sitting in this document between them, is a process that is not
+reading its own evidence. Exit criterion 7 — "every bug filed under this plan has been re-tested
+against the fix before it was closed" — is the rule being broken, and it is being broken by
+whatever is moving the status rather than by the author. **The readiness report treats every
+`done` on this board as unverified unless this plan carries a re-test for it**, because the base
+rate of a closure meaning "fixed" is now measurably below one.
+
 ---
 
 ## 12. Device and OS matrix
@@ -5327,6 +5749,49 @@ Rules for the matrix:
 8. Accessibility passes run on row 1 with VoiceOver and row 3 with TalkBack. Dynamic type is
    checked at the default scale, at `fontScale 1.3` and at `fontScale 1.5`, which are the three
    breakpoints the specs name.
+
+### What this matrix actually got, 2026-10-21 — and the four rows that did not run
+
+Stated plainly because the acceptance criteria ask for the matrix "covered, or the gap stated
+explicitly", and the honest answer is **one row of five, and it is not one of the two the matrix
+calls primary.**
+
+| # | Row | Covered? | What ran |
+| --- | --- | --- | --- |
+| 1 | iPhone 16 / iOS current | **No** | Nothing. No iOS hardware or simulator on this machine |
+| 2 | iPhone SE 3 / iOS floor | **No** | Nothing |
+| 3 | Pixel 8 / Android current, **physical** | **Partly, and by a stand-in** | A Pixel 9 **emulator**, API 36, Expo Go. Row 3's point is that it is physical; this is not |
+| 4 | Low-end Android / SDK floor | **No** | Nothing. Cold-start and slow-SQLite targets are unmeasured |
+| 5 | iPad, as the second device | **Substituted, and the substitution worked** | A second Android AVD (`QA_D2`), same image, own data partition, Expo Go side-loaded. `F-TWO-DEV` and `SYNC-06` ran on it |
+
+**What the substitution on row 5 does and does not buy.** It is a genuine second device — its own
+database, its own session, its own radio to switch off — so every protocol claim in `SYNC-06` was
+tested for real: two offline edits, two pushes, a conflict resolved by `updatedAt`, convergence, no
+user notice. What it is not is a *tablet*, so the hardcoded-width half of row 5's purpose is
+untested, and it is not iOS.
+
+**What the gap means for the cases that passed.** `SYNC-01`–`SYNC-06` and `SYNC-10` are now
+evidence about Android 16 on an emulator. Three things they therefore do **not** cover, each named
+rather than left implied:
+
+1. **No real radio.** Emulator aeroplane mode makes netinfo report unreachable and makes sockets
+   fail, which is what these cases need — but it is an instant, clean transition. A phone in a lift
+   gives a flapping one: reachable, unreachable, reachable in seconds. Rule 4 of this matrix exists
+   for that and remains unexercised.
+2. **No iOS at all.** `GAP 9` already records that `setAirplaneMode` is an Android-only Maestro
+   command and that iOS offline cases are manual on physical hardware. Nothing in this run changes
+   that; it makes it more pressing, because every offline result now on record came from the one
+   platform where the mechanism works.
+3. **No background-execution evidence.** Rule 7 wants row 4 at Restricted battery optimisation and
+   row 2 with Background App Refresh off. `SYNC-37` is unrun.
+
+**Not stated as a blocker, and why.** The sync protocol is platform-independent — the server is the
+same server, the wire bodies are the same bodies, and the client logic under test is JavaScript
+running on Hermes on both platforms. A `SYNC-06` convergence failure would almost certainly have
+shown here too. What is genuinely platform-shaped is everything in §9 and §13 about **layout,
+locale and type scale** (`Intl` on Hermes is backed by the OS — §2, Locales), the cold-start target,
+and background execution. Those are the ones this run says nothing about, and they are what
+`TVO-30` is for.
 
 ---
 
