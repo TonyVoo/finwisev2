@@ -40,7 +40,7 @@ import { categoryId, expenseId, seedCategory, seedExpense } from '../support/see
  * component type reads**. The Home case is the control: it is the same assertion, it is
  * satisfied today, and it is what keeps this from being a rule invented for one screen.
  *
- * `it.failing` until `TVO-35` lands.
+ * `it.failing` until `TVO-37` lands.
  */
 
 const GROCERIES = categoryId(1);

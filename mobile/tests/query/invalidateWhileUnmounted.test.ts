@@ -39,7 +39,7 @@ import { queryKeys } from '@/query/keys';
  * move to Uncategorized" - is computed fresh, and no expense is reassigned on a stale
  * count. This is a wrong number on a screen, not a wrong decision about data.
  *
- * `it.failing` until `TVO-34` lands.
+ * `it.failing` until `TVO-36` lands.
  */
 
 const KEY = queryKeys.categories.withCounts();

@@ -30,7 +30,7 @@ import { type TestDatabase, createTestDatabase } from '../support/sqlite';
  * (mount the provider under the gate, or subscribe the engine to the session); a test that
  * pinned one would reject the other.
  *
- * Both are `it.failing` until `TVO-28` lands, per the plan's convention for a case that
+ * Both are `it.failing` until `TVO-34` lands, per the plan's convention for a case that
  * asserts the fixed behaviour before the fix.
  */
 
