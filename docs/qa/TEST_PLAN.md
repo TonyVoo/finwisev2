@@ -4211,7 +4211,7 @@ no new `revision`, and another account's id rejected as `400 validation_error`.
 | #   | Gap | Sev | Board item | Parks | Re-test with |
 | --- | --- | --- | --- | --- | --- |
 | 11  | Session writes are not atomic, and the wipe runs first | Medium | **TVO-18** (`17cf182a`) | — | `AUTH-20`, `AUTH-21` flip expected-fail → green |
-| 13  | An in-flight request is retried under the next user's token | Medium | **TVO-20** (`1c87c76f`) | — | `AUTH-23`, `AUTH-24` flip; `AUTH-22` and `AUTH-25` must stay green. **Re-measured 2026-10-19 at mobile 1183** — and widening `TokenSource` now costs two stubs in `backend/tests/integration.mobileClient.test.ts`; see below |
+| 13  | An in-flight request is retried under the next user’s token | **P1 (raised 22 Oct)** | **TVO-20** (`1c87c76f`) | — | `AUTH-23`, `AUTH-24` flip; `AUTH-22` and `AUTH-25` must stay green. **Re-measured 2026-10-19 at mobile 1183** — and widening `TokenSource` now costs two stubs in `backend/tests/integration.mobileClient.test.ts`; see below |
 | 14  | Two defences for the refresh-recursion hazard; only one is live | Low | **not filed** — doc-only, for whoever next edits `container.ts` | — | nothing flips; `AUTH-27` records the limitation in the case itself |
 | 15  | An orphaned category tombstone outlives the horizon | Medium | **TVO-22** (`4c6d24c9`) | — | `SYNC-44`, `SYNC-45` flip; `SYNC-41`, `SYNC-43`, `SYNC-46` must stay green |
 | 17  | The outbox does not coalesce, so a conflict resolves per field | Low | **TVO-24** (`f4e9863b`) | — | no tripwire by design; `SYNC-47`–`SYNC-50` are re-read against whichever branch is chosen |
@@ -4566,6 +4566,20 @@ write** as P1, and that is this gap's outcome, not a worst case. The Medium is a
 reachability today, when nothing issues an authorized write; it is not a judgement that the app
 could ship with this open. Once `TVO-11` or `TVO-13` lands, `AUTH-24` is a P1 and criterion 2
 cannot be met with it red.
+
+> **That condition has now triggered — raised to P1 on 2026-10-22.** `TVO-11` and `TVO-13` are both
+> `done`, and the latency this gap's Medium rested on is gone. Traced on this tree: the engine
+> drains the outbox through `sync/push.ts`, which holds `Pick<ApiClient, 'pushSync'>`;
+> `api/client.ts:138` routes `pushSync` through `send`, which is "usually the authorized transport"
+> (line 70) — i.e. `authorize.ts`, where `grep -n epoch` still returns **nothing**. So the
+> authorized write the escalation was waiting for exists, on exactly the path that lacks the guard.
+> `AUTH-24` is still `it.failing` in `tests/api/authorizeSessionChange.test.ts`, so the defect is
+> still present rather than fixed-but-unflipped.
+>
+> **`TVO-20` is therefore a P1, and exit criterion 2 cannot be met while it is open.** This is a
+> re-grading of a known gap under the plan's own stated trigger, not a new finding — but it is the
+> one that decides the go/no-go independently of `GAP 28`, so it should not be read as bookkeeping.
+> The fix is unchanged and already measured: the session epoch described below.
 
 The fix is a session **epoch**, bumped on `signIn` and `signOut` and **not** on a rotation,
 captured in `authorize.ts` before the send and re-checked after the `401`; if it changed, return the
