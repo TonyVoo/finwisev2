@@ -463,6 +463,52 @@ and no test in this plan can route around it.** The read-only check that settles
 a working credential, without a write probe: `GET /api/agents/{id}` returns **200 without** the
 bearer and **401 with** it, so the credential is actively rejected rather than merely absent.
 
+### Four of this plan's own issue references were wrong, because they were written before the write — corrected 2026-10-22
+
+Worth recording next to the credential note above, because it is the failure that note's conditions
+actually produce. The 21 Oct run found four gaps on a device, wrote `**Filed as TVO-36**` …
+`**TVO-39**` into §11 and into four `**Result**` lines by **predicting** the ids the board would
+assign, and then hit its session limit after filing **one** of the four. The result was a document
+asserting four filings where one existed, and naming the one that did exist by the wrong id.
+
+The ids the board actually assigned, with the predictions they replaced:
+
+| Gap | Predicted | Actual | Filed |
+| --- | --- | --- | --- |
+| 24 — no `Log out` | `TVO-39` | **`TVO-35`** | 22 Oct |
+| 25 — stale unmounted screen | `TVO-37` | **`TVO-36`** | 22 Oct |
+| 26 — no sync on sign-in | `TVO-36` | **`TVO-34`** | 21 Oct, the one that landed |
+| 27 — inert pull on Summary | `TVO-38` | **`TVO-37`** | 22 Oct |
+
+**The remapping is not a `sed`.** Three of the four predictions collide with another gap's real id —
+predicted `TVO-36` is gap 26 while real `TVO-36` is gap 25, and predicted `TVO-37` is gap 25 while
+real `TVO-37` is gap 27 — so a sequential replace would have aliased two gaps onto one issue and
+produced a *plausible* document that was still wrong. It was done as one simultaneous pass over all
+twelve references, after reading the context of each to confirm which gap it belonged to.
+
+**The correction missed the test files, and the 22 Oct run found that too.** The remap above was
+applied to this document only. Three regression tests carried the same predicted ids in the comment
+that says which issue they turn on — the handle a fixer's first grep actually uses:
+
+| File | Said | Should say |
+| --- | --- | --- |
+| `mobile/tests/bootstrap/syncOnSignIn.test.ts` | `TVO-28` | **`TVO-34`** |
+| `mobile/tests/query/invalidateWhileUnmounted.test.ts` | `TVO-34` | **`TVO-36`** |
+| `mobile/tests/screens/summaryPullControl.test.tsx` | `TVO-35` | **`TVO-37`** |
+
+`TVO-28` is a real but unrelated issue (the lost-refresh logout), so that reference was not merely
+dangling — it pointed at someone else's work. Fixed 22 Oct, per-file rather than by pattern, for
+the aliasing reason above. **Every `TVO-nn` in the tree was then cross-checked against the board**:
+the only remaining `TVO-38`/`TVO-39` mentions are the three in the prediction table above, which
+are quoting the mistake on purpose.
+
+**The rule this adds**: an id is written into this document *after* the create call returns it, never
+before. A reference to a task that does not exist is worse than no reference, because it reads as
+done work and survives into a readiness report — and under the credential note above, a QA run
+cannot assume its board writes landed, which is exactly why the id has to come back from the server
+rather than from the author. The same applies to a *status* write: see `GAP 23`, where two reopens
+this plan records were never acknowledged by the board.
+
 ### The review that held execution, and the blocker that replaced it — verified 2026-10-12, cleared 2026-10-19
 
 This is a process fact rather than a product one, but it was the thing actually holding execution,
@@ -1775,7 +1821,7 @@ validation_error`, and the body names no owner — the id is the global primary 
 - **Expect** Both numbers are the live count — one lower than before step 1. `07-categories.md` §1
   rule 1: "Counts are live, local and all-time", over `WHERE deletedAt IS NULL`.
 - **Result (21 Oct, Pixel 9 emulator / API 36 / Expo Go) — FAIL on the row, PASS on the dialog.
-  Filed as `TVO-37`, P3, Mobile Dev.** With seven live Groceries expenses the row read
+  Filed as `TVO-36`, P3, Mobile Dev.** With seven live Groceries expenses the row read
   `Groceries, 8 expenses` while the dialog, on the same screen seconds later, read
   `Its 7 expenses will move to Uncategorized.` Two different numbers for one category, both on
   screen in the same interaction.
@@ -3269,7 +3315,7 @@ an empty account under a red pill.
   3. Wait on Home, touching nothing, and capture the HTTP traffic
 - **Expect** The account's expenses appear and the month total is the server's. A `GET /v1/sync`
   is issued **after** the login, since the only sync before it had no session to run under.
-- **Result (21 Oct, two devices, live API + Postgres) — FAIL. Filed as `TVO-36`, P2, Mobile Dev.**
+- **Result (21 Oct, two devices, live API + Postgres) — FAIL. Filed as `TVO-34`, P2, Mobile Dev.**
   No sync is issued after login, ever. The traffic on the second device reads, in order:
   `GET /v1/sync?since=0 → 401`, then `POST /v1/auth/login → 200`, **then nothing**. Home sat on
   `$0.00` / `No expenses yet` with the server holding seven expenses. It is still there minutes
@@ -3311,7 +3357,7 @@ an empty account under a red pill.
   2. Capture the HTTP traffic
 - **Expect** One `GET /v1/sync`, exactly as the same gesture produces on Home.
   `08-monthly-summary.md` rule 12 adopts `04-expense-list.md` rule 12 unchanged.
-- **Result (21 Oct, through the logging proxy) — FAIL. Filed as `TVO-38`, P2, Mobile Dev.**
+- **Result (21 Oct, through the logging proxy) — FAIL. Filed as `TVO-37`, P2, Mobile Dev.**
   **Zero** requests, across four gesture variants (different start heights, distances and
   durations). Switching to Home and repeating the first variant produced a request immediately, so
   the gesture reaches the screen and the screen does not ask for a sync.
@@ -3341,7 +3387,7 @@ an empty account under a red pill.
   2. Let `D1` sync — `app-open`, `connectivity` or a pull-to-refresh on the screen it is on
   3. Navigate `D1` back to Home
 - **Expect** The new row is on Home and in the month total.
-- **Result (21 Oct, two devices) — FAIL, and it does not heal. Filed under `TVO-37` as the
+- **Result (21 Oct, two devices) — FAIL, and it does not heal. Filed under `TVO-36` as the
   severity-carrying half, raised to P2.** `D1` sat on Settings › Categories while its sync pulled
   `E1`. Back on Home, `D1` read `$122.42` and had no `E1` row; `D2` read `$132.42` and had it. **A
   pull-to-refresh on `D1` did not fix it**, and could not: `D1`'s cursor had already advanced past
@@ -4175,10 +4221,11 @@ no new `revision`, and another account's id rejected as `400 validation_error`.
 | 21  | The contract accepts currencies the design's `decimals` rule gets wrong | Low | **TVO-29** (`dbf7b8d6`) | — | `EDGE-13` stays green under either branch; `EDGE-14` reddens if the Sheet ever gains a zero-decimal currency |
 | 22  | Two tabs can show different totals for the same month, and three rules in the Summary spec do not produce what it states | Medium | **TVO-31** (`68daabf3`) | — | `SUM-15`–`SUM-19` are measurements of the *design's* statements, not of a module; each reddens alone under the change its finding recommends. They re-point at `TVO-12`'s code when it lands |
 | 23  | Both tab bar icons are missing, so every screen shows a placeholder glyph | Low | **TVO-32** — closed `done` **twice** without the fix landing (19 Oct, 20 Oct); re-tested and reopened both times | — | launch the app and read the tab bar; no unit case can see it, because the suite mocks `expo-router` |
-| 24  | There is no `Log out` in Settings, so six `AUTH` cases and six §13 items cannot run | Medium | **TVO-39** — newly filed 21 Oct | `AUTH-12`, `AUTH-18`–`AUTH-21`, `AUTH-23`, `AUTH-24` | log out from Settings and run the six; this is the device half of `TVO-16` |
-| 25  | A screen unmounted when the data changed keeps showing the old data | Medium | **TVO-37** — newly filed 21 Oct | — | `CAT-18` and `SYNC-62` flip; measured green under `refetchOnMount: 'always'` |
-| 26  | Signing in does not sync, and the pill reports the anonymous failure | Medium | **TVO-36** — newly filed 21 Oct | — | `SYNC-59`, `SYNC-60` flip expected-fail → green |
-| 27  | Pull-to-refresh is inert on the Summary tab | Medium | **TVO-38** — newly filed 21 Oct | — | `SYNC-61` flips; the Home half of that case must stay green |
+| 24  | There is no `Log out` in Settings, so six `AUTH` cases and six §13 items cannot run | Medium | **TVO-35** — found 21 Oct, filed 22 Oct | `AUTH-12`, `AUTH-18`–`AUTH-21`, `AUTH-23`, `AUTH-24` | log out from Settings and run the six; this is the device half of `TVO-16` |
+| 25  | A screen unmounted when the data changed keeps showing the old data | Medium | **TVO-36** — found 21 Oct, filed 22 Oct | — | `CAT-18` and `SYNC-62` flip; measured green under `refetchOnMount: 'always'` |
+| 26  | Signing in does not sync, and the pill reports the anonymous failure | Medium | **TVO-34** — filed 21 Oct | — | `SYNC-59`, `SYNC-60` flip expected-fail → green |
+| 27  | Pull-to-refresh is inert on the Summary tab | Medium | **TVO-37** — found 21 Oct, filed 22 Oct | — | `SYNC-61` flips; the Home half of that case must stay green |
+| 28  | **Mobile Dev's workspace is a different repository**, so no mobile fix can reach the product | **P1 — process** | **not filed as a bug** — operator-side; raised to Chief on `TVO-14` 22 Oct | every mobile fix, incl. gaps 23–27 | `git cat-file -t <the commit the dev names>` in this repo must succeed; today it does not |
 | 5   | A future-dated row arriving by sync is unreachable in every view | Medium | **not filed** — the Designer's call | `EDGE-04` step 3 | `EDGE-04` unparks |
 | 7b  | `immutable_field` is unreachable on the **REST** path | Low | **not filed** — a choice between two one-line fixes | `API-04` (half) | `API-04`'s REST half unparks |
 | 9   | No E2E driver is named in `docs/PLAN.md` §7 | Low | **closed 12 Oct** — Maestro agreed with Mobile Dev, split by platform; the infrastructure half is **TVO-30** | nothing | — |
@@ -5197,7 +5244,7 @@ run at all. The unit layer covers the controller well (`sessionAtomicity.test.ts
 `sessionTeardown.test.ts`, `container.test.ts`); what it cannot cover is the composition from a
 real tap, which is exactly where `TVO-16` lived.
 
-**Filed as `TVO-39`, P2, Mobile Dev.** Re-test by logging out from Settings and running the six
+**Filed as `TVO-35`, P2, Mobile Dev.** Re-test by logging out from Settings and running the six
 cases above.
 
 ### GAP 25 — A screen that was not mounted when the data changed keeps showing the old data — **OPEN**
@@ -5228,7 +5275,7 @@ re-running the same SQL for nothing. What has to change is the response to an in
 arrived while nobody was listening — which is a different question from staleness, and is the one
 `refetchOnMount` answers.
 
-**Filed as `TVO-37`, P2 (carried by `SYNC-62`; `CAT-18` alone would be P3), Mobile Dev.**
+**Filed as `TVO-36`, P2 (carried by `SYNC-62`; `CAT-18` alone would be P3), Mobile Dev.**
 
 ### GAP 26 — Signing in is not a sync trigger, and the pill keeps the anonymous failure — **OPEN**
 
@@ -5242,7 +5289,7 @@ and both locked by `mobile/tests/bootstrap/syncOnSignIn.test.ts`. The fix can go
 the provider under the gate, or give the engine a session subscription — so the cases assert the
 outcome rather than the mechanism, and a probe of the second option was shown to turn both green.
 
-**Filed as `TVO-36`, P2, Mobile Dev.** Full analysis under `SYNC-59`.
+**Filed as `TVO-34`, P2, Mobile Dev.** Full analysis under `SYNC-59`.
 
 ### GAP 27 — The refresh props Summary passes are not the ones a `ScrollView` reads — **OPEN**
 
@@ -5256,8 +5303,48 @@ one request from the first variant on Home. Locked by
 kind its own component type reads — the Home half as a control, so the rule is not one invented for
 a single screen.
 
-**Filed as `TVO-38`, P2, Mobile Dev.** Full analysis under `SYNC-61`, including why three green
+**Filed as `TVO-37`, P2, Mobile Dev.** Full analysis under `SYNC-61`, including why three green
 cases in `pullToRefresh.test.tsx` cannot see it.
+
+### GAP 28 — Mobile Dev's workspace is a different repository, so no mobile fix can reach the product — **OPEN, and it blocks the MVP**
+
+This is the finding of the 22 Oct run, and it subsumes gaps 23–27: every one of them is "fixed"
+somewhere that the product is not. It also explains `TVO-32`'s three closures, which until now read
+as a dev closing an issue without doing the work.
+
+**The two trees share no history.** Measured both directions on 22 Oct:
+
+| | This repo (QA, Chief, backend) | Mobile Dev's workspace |
+| --- | --- | --- |
+| `HEAD` | `b7b1a2e` | `6db8e07` |
+| commits | 152 | 5 |
+| tracked files | 331 (200 under `mobile/`) | 37 |
+| `mobile/app/` | 15 screens | absent |
+| `mobile/tests/` | 76 suites, 1190 tests | absent (`npx jest` → 3 suites, 15 tests) |
+| `docs/` | the plan, the contract, nine design docs | absent entirely |
+
+The commits each side names are *not valid objects* on the other: `git cat-file -t 6db8e07`,
+`dd4ef3d` and `f2e4c25` all fail here, and Mobile Dev reports `8c2bd86` — which is this repo's
+`HEAD~3` — failing there. Two independent comments from Mobile Dev (on `TVO-35` and `TVO-36`,
+22 Oct 03:52–03:53) state this from its own side, with its own greps.
+
+**What it produces.** `TVO-37` was closed `done` at 22 Oct 08:46 citing commit `dd4ef3d`, and
+`TVO-32` at 08:46. Neither commit exists here; `listProps`/`refreshControl` — the API the `TVO-37`
+comment describes — appears in no file in this tree, and `tabBarIcon` still appears nowhere. So the
+board says *done* and the product is unchanged, which is exit criterion 7 failing silently. The
+dev's work is real; it is just not reachable.
+
+**One claim of the dev's is wrong, and it matters for the re-test.** Its `TVO-37` comment corrects
+the report to say "Home was not a `SectionList` … both tabs were `ScrollView` shells, so the
+gesture was inert on **both** tabs". In this tree `mobile/app/(app)/(tabs)/index.tsx:2` imports
+`SectionList` and line 137 renders one, while `summary.tsx:2` imports `ScrollView` and line 95
+renders one — so the original measurement (one request from Home, zero from Summary) was right, and
+the asymmetry it rests on is still there. The correction describes the dev's tree, not this one.
+Whoever lands the fix should not delete the Home half of `summaryPullControl.test.tsx` on the
+strength of it.
+
+**Not filed as a bug**, because no code change in any repo fixes it — it is a workspace-wiring
+question for the operator. Raised to Chief on `TVO-14`.
 
 ---
 ### GAP 1 — Who seeds the default categories, and the duplicate-six risk — **CLOSED**

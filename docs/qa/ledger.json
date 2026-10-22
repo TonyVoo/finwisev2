@@ -335,7 +335,8 @@
   "id": "EXP-06",
   "kind": "auto",
   "tests": [
-   "backend/tests/plan.expenses.test.ts"
+   "backend/tests/plan.expenses.test.ts",
+   "backend/tests/plan.sync.test.ts"
   ],
   "result": false,
   "layer": "API",
@@ -418,6 +419,7 @@
   "id": "EXP-14",
   "kind": "device",
   "tests": [
+   "backend/tests/plan.sync.test.ts",
    "mobile/tests/db/mutations.test.ts"
   ],
   "result": false,
@@ -449,7 +451,8 @@
    "mobile/tests/db/expenseQueries.test.ts",
    "mobile/tests/db/queries.test.ts",
    "mobile/tests/db/summaryQuery.test.ts",
-   "mobile/tests/screens/summaryPullControl.test.tsx"
+   "mobile/tests/screens/summaryPullControl.test.tsx",
+   "qa-tmp/head/summaryPullControl.test.tsx"
   ],
   "result": false,
   "layer": "E2E",
@@ -856,7 +859,9 @@
  {
   "id": "SYNC-07",
   "kind": "auto",
-  "tests": [],
+  "tests": [
+   "backend/tests/plan.sync.test.ts"
+  ],
   "result": false,
   "layer": "API",
   "title": "\u2014 The loser of a conflict is overwritten with the server row"
@@ -864,7 +869,9 @@
  {
   "id": "SYNC-08",
   "kind": "auto",
-  "tests": [],
+  "tests": [
+   "backend/tests/plan.sync.test.ts"
+  ],
   "result": false,
   "layer": "API + Unit",
   "title": "\u2014 An equal `updatedAt` is a conflict, not an apply"
@@ -872,7 +879,9 @@
  {
   "id": "SYNC-09",
   "kind": "auto",
-  "tests": [],
+  "tests": [
+   "backend/tests/plan.sync.test.ts"
+  ],
   "result": false,
   "layer": "API",
   "title": "\u2014 A byte-identical retry replays the original result"
@@ -888,7 +897,9 @@
  {
   "id": "SYNC-11",
   "kind": "auto",
-  "tests": [],
+  "tests": [
+   "backend/tests/plan.sync.test.ts"
+  ],
   "result": false,
   "layer": "API",
   "title": "\u2014 A reused mutation id with a changed payload is rejected, loudly"
@@ -896,7 +907,9 @@
  {
   "id": "SYNC-12",
   "kind": "auto",
-  "tests": [],
+  "tests": [
+   "backend/tests/plan.sync.test.ts"
+  ],
   "result": false,
   "layer": "API",
   "title": "\u2014 Idempotency is scoped per user"
@@ -904,7 +917,9 @@
  {
   "id": "SYNC-13",
   "kind": "auto",
-  "tests": [],
+  "tests": [
+   "backend/tests/plan.sync.test.ts"
+  ],
   "result": false,
   "layer": "API",
   "title": "\u2014 How long a mutation id is remembered"
@@ -1009,7 +1024,9 @@
  {
   "id": "SYNC-16",
   "kind": "auto",
-  "tests": [],
+  "tests": [
+   "backend/tests/plan.sync.test.ts"
+  ],
   "result": false,
   "layer": "API",
   "title": "\u2014 A stale cursor triggers a resync rather than resurrecting rows"
@@ -1033,7 +1050,9 @@
  {
   "id": "SYNC-19",
   "kind": "auto",
-  "tests": [],
+  "tests": [
+   "backend/tests/plan.sync.test.ts"
+  ],
   "result": false,
   "layer": "API",
   "title": "\u2014 A clamped push can legitimately come back as a conflict"
@@ -1041,7 +1060,9 @@
  {
   "id": "SYNC-20",
   "kind": "auto",
-  "tests": [],
+  "tests": [
+   "backend/tests/plan.sync.test.ts"
+  ],
   "result": false,
   "layer": "API",
   "title": "\u2014 A device hours behind is not silently ignored forever"
@@ -1057,7 +1078,9 @@
  {
   "id": "SYNC-22",
   "kind": "auto",
-  "tests": [],
+  "tests": [
+   "backend/tests/plan.sync.test.ts"
+  ],
   "result": false,
   "layer": "API",
   "title": "\u2014 The server sorts the batch itself, so client order cannot break it"
@@ -1073,7 +1096,9 @@
  {
   "id": "SYNC-24",
   "kind": "auto",
-  "tests": [],
+  "tests": [
+   "backend/tests/plan.sync.test.ts"
+  ],
   "result": false,
   "layer": "API",
   "title": "\u2014 Batch size limit"
@@ -1105,7 +1130,9 @@
  {
   "id": "SYNC-28",
   "kind": "auto",
-  "tests": [],
+  "tests": [
+   "backend/tests/plan.sync.test.ts"
+  ],
   "result": false,
   "layer": "API",
   "title": "\u2014 One bad row does not fail the batch"
@@ -1113,7 +1140,9 @@
  {
   "id": "SYNC-29",
   "kind": "auto",
-  "tests": [],
+  "tests": [
+   "backend/tests/plan.sync.test.ts"
+  ],
   "result": false,
   "layer": "API",
   "title": "\u2014 An incomplete create is `invalid`, and a partial update is not"
@@ -1129,7 +1158,9 @@
  {
   "id": "SYNC-31",
   "kind": "auto",
-  "tests": [],
+  "tests": [
+   "backend/tests/plan.sync.test.ts"
+  ],
   "result": false,
   "layer": "API",
   "title": "\u2014 `undelete` by setting `deletedAt` back to null"
@@ -1199,7 +1230,9 @@
  {
   "id": "SYNC-38",
   "kind": "auto",
-  "tests": [],
+  "tests": [
+   "backend/tests/plan.sync.test.ts"
+  ],
   "result": false,
   "layer": "API",
   "title": "\u2014 Pull paging terminates and delivers every row exactly once"
@@ -1251,7 +1284,8 @@
   "kind": "auto",
   "tests": [
    "backend/tests/sync.pullConcurrency.test.ts",
-   "mobile/tests/screens/summaryPullControl.test.tsx"
+   "mobile/tests/screens/summaryPullControl.test.tsx",
+   "qa-tmp/head/summaryPullControl.test.tsx"
   ],
   "result": true,
   "layer": "API (automated: `backend/tests/sync.pullConcurrency.test.ts`)",
@@ -1311,7 +1345,8 @@
   "id": "SYNC-59",
   "kind": "auto",
   "tests": [
-   "mobile/tests/bootstrap/syncOnSignIn.test.ts"
+   "mobile/tests/bootstrap/syncOnSignIn.test.ts",
+   "qa-tmp/head/syncOnSignIn.test.ts"
   ],
   "result": true,
   "layer": "E2E + Unit (`mobile/tests/bootstrap/syncOnSignIn.test.ts`)",
@@ -1321,7 +1356,8 @@
   "id": "SYNC-60",
   "kind": "auto",
   "tests": [
-   "mobile/tests/bootstrap/syncOnSignIn.test.ts"
+   "mobile/tests/bootstrap/syncOnSignIn.test.ts",
+   "qa-tmp/head/syncOnSignIn.test.ts"
   ],
   "result": true,
   "layer": "E2E + Unit (same file)",
@@ -1331,7 +1367,8 @@
   "id": "SYNC-61",
   "kind": "auto",
   "tests": [
-   "mobile/tests/screens/summaryPullControl.test.tsx"
+   "mobile/tests/screens/summaryPullControl.test.tsx",
+   "qa-tmp/head/summaryPullControl.test.tsx"
   ],
   "result": true,
   "layer": "E2E + Unit (`mobile/tests/screens/summaryPullControl.test.tsx`)",
