@@ -40,7 +40,9 @@ import { categoryId, expenseId, seedCategory, seedExpense } from '../support/see
  * component type reads**. The Home case is the control: it is the same assertion, it is
  * satisfied today, and it is what keeps this from being a rule invented for one screen.
  *
- * `it.failing` until `TVO-37` lands.
+ * Fixed by `TVO-37`: `usePullToRefresh` now returns both shapes - `listProps` for a
+ * `VirtualizedList`, a built `refreshControl` for a `ScrollView` - and each tab takes the
+ * one its own component reads. Both cases enforce rather than record from here.
  */
 
 const GROCERIES = categoryId(1);
@@ -78,9 +80,10 @@ describe('the refresh props each tab hands its scrollable', () => {
 
   /**
    * `SYNC-61`. Summary's scrollable is a `ScrollView`, so the only prop that reaches
-   * React Native is `refreshControl`. Today it has none, and the gesture is inert.
+   * React Native is `refreshControl`. It had none, and the gesture was inert; it is handed
+   * a built control now, and this is what keeps it one.
    */
-  it.failing('are the ones a ScrollView reads, on Summary', async () => {
+  it('are the ones a ScrollView reads, on Summary', async () => {
     await mountScreen(<SummaryScreen />, { clock: () => NOW, seed: seedOneExpense });
 
     expect(screen.getByTestId(SUMMARY_SCROLL_TEST_ID).props.refreshControl).toBeDefined();

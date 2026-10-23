@@ -86,7 +86,8 @@ function stubEngine(): StubEngine {
 
 /** The spinner, and the gesture that starts it. */
 function Consumer() {
-  const { refreshing, onRefresh } = usePullToRefresh();
+  const { listProps } = usePullToRefresh();
+  const { refreshing, onRefresh } = listProps;
 
   return (
     <Text testID="refresh" onPress={onRefresh}>

@@ -98,7 +98,11 @@ export default function SummaryScreen() {
         scrollEventThrottle={16}
         // Rule 12, as on Home. The figures do not change as a result unless the sync
         // brings in rows from another device.
-        {...pullToRefresh}
+        //
+        // `TVO-37`: a built control, not the two list props. This is a plain `ScrollView`,
+        // which has no `refreshing`/`onRefresh` - spreading them here dropped both on the
+        // floor and left the gesture inert on this tab.
+        {...pullToRefresh.listProps}
         contentContainerStyle={styles.content}
       >
         {/* Renders in every state, including `empty`, where it is `$0.00` and `0 expenses`.

@@ -144,7 +144,11 @@ export default function ExpenseListScreen() {
         // A sync, not a reload: the rows are already current (rule 12). The spinner is
         // tied to the sync attempt and stops immediately when there is no network, where
         // the pill - not this list - carries the explanation.
-        {...pullToRefresh}
+        //
+        // `listProps` because this is a `SectionList`, which reads `refreshing`/`onRefresh`
+        // and builds its own control. Summary is a `ScrollView` and takes the built
+        // control instead - see `usePullToRefresh`.
+        {...pullToRefresh.listProps}
         // Deep enough that the last row can always be scrolled clear of the FAB
         // (§Elements, FAB position).
         contentContainerStyle={{ paddingBottom: FAB_CLEARANCE + insets.bottom }}

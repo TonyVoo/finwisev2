@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactElement } from 'react';
+import { RefreshControl, type RefreshControlProps } from 'react-native';
 import { useSync } from './SyncProvider';
 
 /**
@@ -23,17 +25,42 @@ import { useSync } from './SyncProvider';
  *   next tick and the pill carries the whole explanation (§3 state 4). There is no banner,
  *   no toast and no blanked list, and the rows stay exactly as they were.
  *
- * Returned as the two props a scrollable takes rather than as a `RefreshControl` element,
- * so the list builds its own and the spec's silence on how the spinner should *look* is
- * not filled in with an invention.
+ * ### Why this returns two shapes rather than one
+ *
+ * `TVO-37`/`SYNC-61`. Because React Native has two refresh contracts and the choice of
+ * which one applies is made by the *component*, not by this hook:
+ *
+ * - a `VirtualizedList` (`FlatList`, `SectionList`) takes `refreshing` and `onRefresh` and
+ *   builds its own `RefreshControl`;
+ * - a plain `ScrollView` takes a **built control** through `refreshControl`, and has
+ *   neither of those props.
+ *
+ * This hook used to return only the first pair, and both tabs spread it. Home's
+ * `SectionList` read it and worked; Summary's `ScrollView` silently dropped both props on
+ * the floor and the gesture was inert there - no spinner, no sync, zero requests on the
+ * wire. Neither shape is correct on its own, so both are returned under names that say
+ * where each one goes, and the mismatch that caused the defect no longer type-checks into
+ * place.
+ *
+ * The control is built here rather than left to each screen so the spec's silence on how
+ * the spinner should *look* is answered in exactly one place - the platform default -
+ * rather than invented twice.
  */
 
-export interface PullToRefreshProps {
+/** What a `VirtualizedList` takes: it builds the control itself. */
+export interface PullToRefreshListProps {
   readonly refreshing: boolean;
   readonly onRefresh: () => void;
 }
 
-export function usePullToRefresh(): PullToRefreshProps {
+export interface PullToRefresh {
+  /** Spread onto a `FlatList` or `SectionList`. */
+  readonly listProps: PullToRefreshListProps;
+  /** Passed to a plain `ScrollView` as its `refreshControl`. */
+  readonly refreshControl: ReactElement<RefreshControlProps>;
+}
+
+export function usePullToRefresh(): PullToRefresh {
   const { engine, enabled } = useSync();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -57,12 +84,22 @@ export function usePullToRefresh(): PullToRefreshProps {
     setRefreshing(true);
     // `sync` never rejects (`engine.ts`), so this cannot leave the spinner stuck - but
     // `finally` rather than `then` so that stays true if that ever changes.
-    void engine
-      .sync('pull-to-refresh')
-      .finally(() => {
-        if (mounted.current) setRefreshing(false);
-      });
+    void engine.sync('pull-to-refresh').finally(() => {
+      if (mounted.current) setRefreshing(false);
+    });
   }, [enabled, engine]);
 
-  return { refreshing, onRefresh };
+  const listProps = useMemo<PullToRefreshListProps>(
+    () => ({ refreshing, onRefresh }),
+    [refreshing, onRefresh],
+  );
+
+  // Rebuilt when `refreshing` flips, which is what drives the spinner on a `ScrollView`:
+  // the element carries the flag, so a stale element would freeze the spinner on.
+  const refreshControl = useMemo(
+    () => <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />,
+    [refreshing, onRefresh],
+  );
+
+  return { listProps, refreshControl };
 }

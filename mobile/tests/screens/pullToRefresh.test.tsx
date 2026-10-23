@@ -1,3 +1,5 @@
+import type { ReactElement } from 'react';
+import type { RefreshControlProps } from 'react-native';
 import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
 import type { SyncPushRequest } from '@expense-tracker/shared';
 import ExpenseListScreen, { HOME_LIST_TEST_ID } from '../../app/(app)/(tabs)/index';
@@ -8,6 +10,7 @@ import type { SqliteDatabase } from '@/db/sqlite';
 import { writeUser } from '@/db/user';
 import { MONTH_TOTAL_TEST_ID } from '@/expenses/MonthTotal';
 import { createMemoryReachability } from '@/sync/reachability';
+import type { PullToRefreshListProps } from '@/sync/usePullToRefresh';
 import { mountScreen, ok } from '../support/mount';
 import { categoryId, expenseId, seedCategory, seedExpense } from '../support/seed';
 import { applied, pullPage, pushResponse, serverExpense } from '../support/sync';
@@ -90,22 +93,50 @@ function pillLabel(): string | null {
 }
 
 /**
- * The gesture, fired on the scrollable itself.
+ * The refresh contract the scrollable actually exposes, whichever of the two it is.
  *
- * Not on a `RefreshControl`: under this preset a `RefreshControl` element renders as an
- * `RCTRefreshControl` host node with **empty props** - no `testID` and no `onRefresh` - so
- * a control passed through the `refreshControl` prop is unreachable from a query. The
- * screens therefore hand the list `refreshing` and `onRefresh` directly, which lands both
- * on the scroll view's own host node where the gesture can be driven.
+ * `TVO-37`. React Native has two, and the component picks: a `VirtualizedList` carries
+ * `refreshing`/`onRefresh` on its own host node, while a plain `ScrollView` carries a
+ * built `RefreshControl` element under `refreshControl` and has neither prop. Home is a
+ * `SectionList` and Summary is a `ScrollView`, so this suite has to read both.
+ *
+ * A control still cannot be reached by a *query* - under this preset it renders as an
+ * `RCTRefreshControl` host node with empty props, no `testID` and no `onRefresh`. It is
+ * reachable as a **prop value**, which is what this does. That is the part worth saying
+ * out loud: this helper used to fire `refresh` on the scrollable itself, and it passed on
+ * Summary only because the screen was handing a `ScrollView` the two props it does not
+ * read. The props were dropped on the floor by React Native and the gesture was inert on
+ * the device, but they stayed visible on the host node where `fireEvent` could find them -
+ * so the suite drove a handler that nothing on a real device would ever call.
+ */
+function refreshContract(testID: string): PullToRefreshListProps {
+  const node = screen.getByTestId(testID);
+  const control = node.props.refreshControl as ReactElement<RefreshControlProps> | undefined;
+
+  return control === undefined
+    ? (node.props as PullToRefreshListProps)
+    : (control.props as PullToRefreshListProps);
+}
+
+/**
+ * The gesture. Fired on the host node where there is one to fire on, so Home keeps going
+ * through the event path it always did; invoked on the control where the handler lives
+ * only there, which is the only thing a `ScrollView` offers.
  */
 async function pull(testID: string): Promise<void> {
+  const node = screen.getByTestId(testID);
+
   await act(async () => {
-    fireEvent(screen.getByTestId(testID), 'refresh');
+    if (typeof node.props.onRefresh === 'function') {
+      fireEvent(node, 'refresh');
+      return;
+    }
+    refreshContract(testID).onRefresh();
   });
 }
 
 function spinning(testID: string): boolean {
-  return screen.getByTestId(testID).props.refreshing as boolean;
+  return refreshContract(testID).refreshing;
 }
 
 describe('a pull on Home', () => {
