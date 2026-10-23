@@ -121,6 +121,43 @@ describe('a month with spend in it', () => {
     expect(summary.entries[1]?.share).toBeCloseTo(49 / 100049, 12);
   });
 
+  /**
+   * `SUM-08` from §7 of `docs/qa/TEST_PLAN.md`, on the fixture the case names.
+   *
+   * The three cases above each isolate one of its clauses; the plan asks for all of them
+   * at once on one row set, because what it is really checking is that they do not fight:
+   * an implementation that forced the labels to sum to 100 would still pass every
+   * individual case above and fail this one.
+   */
+  it('SUM-08 — labels, angles and the <1% floor together on one month', () => {
+    const summary = summariseMonth([
+      spend('A', 5000),
+      spend('B', 3000),
+      spend('C', 1900),
+      spend('D', 99),
+      spend('E', 1),
+    ]);
+
+    expect(summary.totalMinor).toBe(10000);
+    expect(summary.entries.map((entry) => entry.percentLabel)).toEqual([
+      '50%',
+      '30%',
+      '19%',
+      // `round(99 * 100 / 10000)` is `round(0.99)` = 1. A real 1%, not the floor below.
+      '1%',
+      // One minor unit: non-zero, rounds to 0, and must never read as `0%`.
+      '<1%',
+    ]);
+
+    // Angles come from the exact ratio, not the rounded label - so `E` is 1/10000 of the
+    // circle rather than the 0 its label would imply, and `D` is 0.0099 rather than 0.01.
+    expect(summary.entries.map((entry) => entry.share)).toEqual([0.5, 0.3, 0.19, 0.0099, 0.0001]);
+
+    // Nothing was adjusted to make the labels add up, and nothing needs to be: no "100%"
+    // is displayed anywhere, so a legend that reads 50/30/19/1/<1 contradicts nothing.
+    expect(summary.entries.reduce((sum, entry) => sum + (entry.share ?? 0), 0)).toBeCloseTo(1, 12);
+  });
+
   it('rounds a half up, so 0.5% is not <1%', () => {
     const summary = summariseMonth([spend('Housing', 199000), spend('Sweets', 1000)]);
 
