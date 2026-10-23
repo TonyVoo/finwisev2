@@ -102,7 +102,7 @@ export default function SummaryScreen() {
         // `TVO-37`: a built control, not the two list props. This is a plain `ScrollView`,
         // which has no `refreshing`/`onRefresh` - spreading them here dropped both on the
         // floor and left the gesture inert on this tab.
-        {...pullToRefresh.listProps}
+        refreshControl={pullToRefresh.refreshControl}
         contentContainerStyle={styles.content}
       >
         {/* Renders in every state, including `empty`, where it is `$0.00` and `0 expenses`.
