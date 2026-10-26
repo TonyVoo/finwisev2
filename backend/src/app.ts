@@ -6,6 +6,7 @@ import { requestId } from './middleware/requestId.ts';
 import { requireAuth } from './middleware/requireAuth.ts';
 import { authRouter } from './routes/auth.ts';
 import { categoriesRouter } from './routes/categories.ts';
+import { docsRouter } from './routes/docs.ts';
 import { expensesRouter } from './routes/expenses.ts';
 import { healthRouter } from './routes/health.ts';
 import { meRouter } from './routes/me.ts';
@@ -51,6 +52,9 @@ export function createApp(): Express {
   app.use(requireJsonContentType);
   app.use(parseJsonBody);
   app.use(jsonBodyErrors);
+
+  // API docs for local development; deliberately absent in production (a plain 404).
+  if (!getConfig().isProduction) app.use(docsRouter);
 
   // Public: liveness and the credential endpoints.
   app.use('/v1', healthRouter);

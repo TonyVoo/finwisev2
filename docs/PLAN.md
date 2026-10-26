@@ -290,3 +290,21 @@ executes it after. Each task carries its own acceptance criteria.
   format costs both sides a rewrite.
 - Contract changes after Wave 0 go through Chief, so the other side finds out before it
   breaks.
+
+---
+
+## 8. Features built after the MVP plan
+
+The plan above scoped these out. They were built later at the owner's request, each as its
+own commit, and the sections above describe the MVP as originally planned:
+
+- CSV export and expense search
+- Change password and delete account
+- One-time "review your categories" prompt after signup
+- Monthly budget per category (one amount per category; no per-month overrides or rollover)
+- Recurring expenses (weekly/monthly; devices generate the expenses offline, ids are
+  deterministic so devices converge)
+- Swagger UI at `/docs` outside production
+
+Copy for these lives in `docs/design/09-copy-deck.md` §9 and was written by the developer,
+not the Designer, so it deserves a design review.
