@@ -12,7 +12,8 @@ import { QueryClient } from '@tanstack/react-query';
  *
  * So Query is used for what it is still the right tool for - deduping reads across
  * components, sharing one result, and re-rendering on invalidation - with every
- * time-based and focus-based behaviour switched off.
+ * time-based and focus-based behaviour switched off. The one trigger kept on is mount,
+ * for the reason given on `refetchOnMount` below.
  */
 export function createQueryClient(): QueryClient {
   return new QueryClient({
@@ -24,7 +25,13 @@ export function createQueryClient(): QueryClient {
         // Nothing goes stale on a clock. Freshness is an event (a write, a sync), and
         // the code that causes the event invalidates the key.
         staleTime: Infinity,
-        refetchOnMount: false,
+        // `'always'`, not `false` (`TVO-36`, `CAT-18`). `invalidateQueries` re-runs only
+        // *active* queries and merely marks inactive ones stale; `false` here declined to
+        // act on the mark, so a screen unmounted when a write or a pull landed served its
+        // old cache on return - Categories read `Groceries, 8 expenses` beside a Home that
+        // showed seven. The read is a local SQLite query, so re-running it on mount costs
+        // a few milliseconds, and the cache still paints first: no loading state.
+        refetchOnMount: 'always',
         refetchOnReconnect: false,
         refetchOnWindowFocus: false,
       },

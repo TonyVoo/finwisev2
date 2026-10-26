@@ -39,7 +39,7 @@ import { queryKeys } from '@/query/keys';
  * move to Uncategorized" - is computed fresh, and no expense is reassigned on a stale
  * count. This is a wrong number on a screen, not a wrong decision about data.
  *
- * `it.failing` until `TVO-36` lands.
+ * Fixed by `TVO-36`: the client now refetches on mount (`refetchOnMount: 'always'`).
  */
 
 const KEY = queryKeys.categories.withCounts();
@@ -85,7 +85,7 @@ describe('a query invalidated while nothing is observing it', () => {
    * `CAT-18`. The same invalidation, with the screen unmounted across it - which is what
    * navigating away from Settings, deleting an expense on Home, and navigating back does.
    */
-  it.failing('is refetched when the screen is mounted again', async () => {
+  it('is refetched when the screen is mounted again', async () => {
     const client = createQueryClient();
     let live = 8;
     let reads = 0;
