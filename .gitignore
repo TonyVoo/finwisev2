@@ -33,3 +33,9 @@ pnpm-debug.log*
 # never part of the tree - see docs/qa/TEST_PLAN.md section 2.
 .qa-shots/
 .qa-tmp/
+
+# Agent/editor skill folders that the Prisma CLI's "install agent skills" prompt drops into backend/
+backend/.agents/
+backend/.claude/
+backend/.windsurf/
+backend/skills-lock.json
