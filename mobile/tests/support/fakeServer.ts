@@ -114,6 +114,7 @@ export function createFakeSyncServer(options: FakeSyncServerOptions = {}): FakeS
         name: item.fields.name,
         color: item.fields.color ?? '#4f8a4f',
         isDefault: false,
+        monthlyBudgetMinor: item.fields.monthlyBudgetMinor ?? null,
         createdAt: item.updatedAt,
         updatedAt: item.updatedAt,
         deletedAt: item.fields.deletedAt ?? null,
@@ -132,6 +133,10 @@ export function createFakeSyncServer(options: FakeSyncServerOptions = {}): FakeS
       ...stored,
       name: item.fields.name ?? stored.name,
       color: item.fields.color ?? stored.color,
+      monthlyBudgetMinor:
+        item.fields.monthlyBudgetMinor === undefined
+          ? stored.monthlyBudgetMinor
+          : item.fields.monthlyBudgetMinor,
       deletedAt: item.fields.deletedAt === undefined ? stored.deletedAt : item.fields.deletedAt,
       updatedAt: item.updatedAt,
       revision,

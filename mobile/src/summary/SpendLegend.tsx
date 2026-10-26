@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { formatMoney } from '../lib/money';
 import { color, radius, space, type } from '../theme/tokens';
-import { legendRowLabel, type SpendEntry } from './summaryModel';
+import { budgetLabel, legendRowLabel, type SpendEntry } from './summaryModel';
 
 /**
  * The legend: `docs/design/08-monthly-summary.md` elements 11-15.
@@ -95,38 +95,59 @@ function LegendRow({
   return (
     <View
       testID={`${LEGEND_ROW_TEST_ID_PREFIX}-${id}`}
-      style={[styles.row, stacked ? styles.rowStacked : null, first ? null : styles.separator]}
+      style={[styles.row, first ? null : styles.separator]}
       accessible
       accessibilityLabel={legendRowLabel(entry, currency)}
     >
-      <View style={styles.leading}>
-        <View
-          testID={`${LEGEND_SWATCH_TEST_ID_PREFIX}-${id}`}
-          style={[styles.swatch, { backgroundColor: entry.color }]}
-          // The name is right beside it in text, so announcing the swatch would be
-          // announcing the same thing twice - and "image" is all it could say.
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-        />
-        <Text style={styles.name} numberOfLines={1}>
-          {entry.name}
-        </Text>
+      <View style={[styles.main, stacked ? styles.rowStacked : null]}>
+        <View style={styles.leading}>
+          <View
+            testID={`${LEGEND_SWATCH_TEST_ID_PREFIX}-${id}`}
+            style={[styles.swatch, { backgroundColor: entry.color }]}
+            // The name is right beside it in text, so announcing the swatch would be
+            // announcing the same thing twice - and "image" is all it could say.
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          />
+          <Text style={styles.name} numberOfLines={1}>
+            {entry.name}
+          </Text>
+        </View>
+
+        <View style={[styles.figures, stacked ? styles.figuresStacked : null]}>
+          {/* Never truncated: a clipped amount is worse than a taller row
+            (`04-expense-list.md` §Accessibility rule 4). */}
+          <Text style={styles.amount} numberOfLines={1}>
+            {formatMoney(entry.totalMinor, currency)}
+          </Text>
+          {/* Absent only when the month sums to zero, where there is no share to state. The
+            column is dropped rather than filled with a dash, which would read as a value. */}
+          {entry.percentLabel === null ? null : (
+            <Text style={styles.percent} numberOfLines={1}>
+              {entry.percentLabel}
+            </Text>
+          )}
+        </View>
       </View>
 
-      <View style={[styles.figures, stacked ? styles.figuresStacked : null]}>
-        {/* Never truncated: a clipped amount is worse than a taller row
-            (`04-expense-list.md` §Accessibility rule 4). */}
-        <Text style={styles.amount} numberOfLines={1}>
-          {formatMoney(entry.totalMinor, currency)}
-        </Text>
-        {/* Absent only when the month sums to zero, where there is no share to state. The
-            column is dropped rather than filled with a dash, which would read as a value. */}
-        {entry.percentLabel === null ? null : (
-          <Text style={styles.percent} numberOfLines={1}>
-            {entry.percentLabel}
+      {/* Only on a category that has a budget. The words carry the state; the bar and the
+          red are reinforcement, so the row still reads in greyscale (§Accessibility rule 4). */}
+      {entry.budget === null ? null : (
+        <View style={styles.budget} testID={`legend-budget-${id}`}>
+          <View style={styles.track}>
+            <View
+              style={[
+                styles.fill,
+                { width: `${Math.round(entry.budget.fill * 100)}%` },
+                entry.budget.over ? styles.fillOver : null,
+              ]}
+            />
+          </View>
+          <Text style={[styles.budgetText, entry.budget.over ? styles.budgetOver : null]}>
+            {budgetLabel(entry.budget, currency)}
           </Text>
-        )}
-      </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -138,11 +159,40 @@ const styles = StyleSheet.create({
   row: {
     // A floor rather than a height: the row grows with the font scale (element 11).
     minHeight: ROW_MIN_HEIGHT,
-    flexDirection: 'row',
-    alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: space[4],
     paddingVertical: space[2],
+    gap: space[2],
+  },
+  main: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: space[4],
+  },
+  budget: {
+    width: '100%',
+    gap: space[1],
+  },
+  track: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: color.border.hairline,
+    overflow: 'hidden',
+  },
+  fill: {
+    height: 4,
+    backgroundColor: color.text.secondary,
+  },
+  fillOver: {
+    backgroundColor: color.danger.default,
+  },
+  budgetText: {
+    ...type.callout,
+    color: color.text.secondary,
+    fontVariant: ['tabular-nums'],
+  },
+  budgetOver: {
+    color: color.danger.default,
   },
   rowStacked: {
     flexDirection: 'column',

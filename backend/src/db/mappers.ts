@@ -34,6 +34,7 @@ export function toWireCategory(row: CategoryRow): WireCategory {
     name: row.name,
     color: row.color,
     isDefault: row.isDefault,
+    monthlyBudgetMinor: row.monthlyBudgetMinor === null ? null : Number(row.monthlyBudgetMinor),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     deletedAt: row.deletedAt?.toISOString() ?? null,

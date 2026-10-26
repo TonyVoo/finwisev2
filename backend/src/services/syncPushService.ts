@@ -125,6 +125,7 @@ async function applyCategoryItem(
         // Not settable through any write path. The default is seeded at signup, there is
         // exactly one, and it is the target every category delete reassigns to.
         isDefault: false,
+        monthlyBudgetMinor: fields.monthlyBudgetMinor ?? null,
         createdAt: now,
         updatedAt: incomingUpdatedAt,
         deletedAt: fields.deletedAt === undefined ? null : toDate(fields.deletedAt),
@@ -153,6 +154,9 @@ async function applyCategoryItem(
     data: {
       ...(fields.name === undefined ? {} : { name: fields.name }),
       ...(fields.color === undefined ? {} : { color: fields.color }),
+      ...(fields.monthlyBudgetMinor === undefined
+        ? {}
+        : { monthlyBudgetMinor: fields.monthlyBudgetMinor }),
       deletedAt,
       updatedAt: incomingUpdatedAt,
       revision,

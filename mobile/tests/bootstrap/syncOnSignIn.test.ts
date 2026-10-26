@@ -67,6 +67,7 @@ const PAGE = {
         name: 'Groceries',
         color: '#2F8044',
         isDefault: false,
+        monthlyBudgetMinor: null,
         createdAt: '2026-10-21T06:00:00.000Z',
         updatedAt: '2026-10-21T06:00:00.000Z',
         deletedAt: null,

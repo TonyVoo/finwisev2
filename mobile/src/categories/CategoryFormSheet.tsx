@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { LIMITS } from '@expense-tracker/shared';
+import { currencyDecimals } from '../lib/money';
+import { budgetInputText, parseBudgetInput } from './budgetInput';
 import { Button } from '../components/Button';
 import { Sheet } from '../components/Sheet';
 import { TextField } from '../components/TextField';
@@ -35,10 +37,13 @@ import { ColourPicker, ReservedColour, firstUnusedColour } from './ColourPicker'
 export const CATEGORY_NAME_TEST_ID = 'category-name';
 export const CATEGORY_SUBMIT_TEST_ID = 'category-submit';
 export const CATEGORY_DELETE_TEST_ID = 'category-delete';
+export const CATEGORY_BUDGET_TEST_ID = 'category-budget';
 
 export interface CategoryDraft {
   readonly name: string;
   readonly color: string;
+  /** Minor units; null means no budget (and, on an edit, clears an existing one). */
+  readonly monthlyBudgetMinor: number | null;
 }
 
 /** The category being edited, or `null` to create a new one. */
@@ -47,9 +52,12 @@ export interface EditedCategory {
   readonly name: string;
   readonly color: string;
   readonly isDefault: boolean;
+  readonly monthlyBudgetMinor: number | null;
 }
 
 export interface CategoryFormSheetProps {
+  /** The account currency, which decides how many decimals the budget field accepts. */
+  readonly currency: string;
   readonly visible: boolean;
   readonly onClose: () => void;
   readonly editing: EditedCategory | null;
@@ -62,6 +70,7 @@ export interface CategoryFormSheetProps {
 }
 
 export function CategoryFormSheet({
+  currency,
   visible,
   onClose,
   editing,
@@ -72,6 +81,9 @@ export function CategoryFormSheet({
 }: CategoryFormSheetProps) {
   const [name, setName] = useState('');
   const [colour, setColour] = useState('');
+  const [budgetText, setBudgetText] = useState('');
+  const [budgetError, setBudgetError] = useState<string | undefined>(undefined);
+  const decimals = currencyDecimals(currency);
   const [error, setError] = useState<string | undefined>(undefined);
   // Validation is quiet until the field has been blurred once (§2 rule 3).
   const [validateEagerly, setValidateEagerly] = useState(false);
@@ -98,19 +110,24 @@ export function CategoryFormSheet({
 
     setName(editing?.name ?? '');
     setColour(editing?.color ?? firstUnusedColour(coloursInUse));
+    setBudgetText(budgetInputText(editing?.monthlyBudgetMinor ?? null, decimals));
+    setBudgetError(undefined);
     setError(undefined);
     setValidateEagerly(false);
-  }, [visible, editing, coloursInUse]);
+  }, [visible, editing, coloursInUse, decimals]);
 
   const trimmed = name.trim();
   const isEdit = editing !== null;
   const colourIsReserved = editing?.isDefault === true;
 
   /** Whether anything differs from the stored row - edit mode's Save enablement (§3). */
+  const budget = parseBudgetInput(budgetText, decimals);
+  const budgetMinor = budget.kind === 'amount' ? budget.amountMinor : null;
   const changed =
     editing === null ||
     trimmed !== editing.name ||
-    colour.toLowerCase() !== editing.color.toLowerCase();
+    colour.toLowerCase() !== editing.color.toLowerCase() ||
+    (budget.kind !== 'invalid' && budgetMinor !== editing.monthlyBudgetMinor);
 
   const validate = useCallback(
     async (candidate: string): Promise<string | undefined> => {
@@ -135,12 +152,21 @@ export function CategoryFormSheet({
     void validate(name).then(setError);
   };
 
+  const budgetMessage = (input: ReturnType<typeof parseBudgetInput>): string | undefined => {
+    if (input.kind !== 'invalid') return undefined;
+    if (input.reason === 'zero') return VALIDATION_COPY.amount.zero;
+    if (input.reason === 'max') return VALIDATION_COPY.amount.max;
+    return VALIDATION_COPY.category.budgetFormat;
+  };
+
   const submit = () => {
     void validate(name).then(async (found) => {
       setValidateEagerly(true);
       setError(found);
-      if (found !== undefined) return;
-      await onSubmit({ name: trimmed, color: colour });
+      const budgetProblem = budgetMessage(budget);
+      setBudgetError(budgetProblem);
+      if (found !== undefined || budgetProblem !== undefined) return;
+      await onSubmit({ name: trimmed, color: colour, monthlyBudgetMinor: budgetMinor });
     });
   };
 
@@ -189,6 +215,24 @@ export function CategoryFormSheet({
         ) : (
           <ColourPicker selected={colour} onSelect={setColour} coloursInUse={coloursInUse} />
         )}
+
+        <TextField
+          testID={CATEGORY_BUDGET_TEST_ID}
+          label={COPY.category.field.budget}
+          placeholder={COPY.category.field.budgetPlaceholder}
+          value={budgetText}
+          onChangeText={(next) => {
+            setBudgetText(next);
+            // Quiet while typing; an error already on screen clears as soon as it is fixed.
+            if (budgetError !== undefined)
+              setBudgetError(budgetMessage(parseBudgetInput(next, decimals)));
+          }}
+          onBlur={() => setBudgetError(budgetMessage(budget))}
+          error={budgetError}
+          keyboardType="decimal-pad"
+          returnKeyType="done"
+          onSubmitEditing={submit}
+        />
 
         <Button
           testID={CATEGORY_SUBMIT_TEST_ID}

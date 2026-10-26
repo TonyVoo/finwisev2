@@ -26,6 +26,8 @@ export interface SpendEntry {
   readonly color: string;
   readonly totalMinor: number;
   readonly expenseCount: number;
+  /** Where the month stands against the category's budget; null when it has none. */
+  readonly budget: BudgetStatus | null;
   /**
    * The exact ratio of the month, for the slice angle - never the rounded percentage, so
    * the geometry stays true where the label is rounded (rule 3).
@@ -101,9 +103,44 @@ function toEntry(row: CategorySpend, totalMinor: number): SpendEntry {
     color: row.color ?? CATEGORY_RESERVED_COLOR,
     totalMinor: row.totalMinor,
     expenseCount: row.expenseCount,
+    budget: budgetStatus(row.totalMinor, row.monthlyBudgetMinor),
     share: totalMinor === 0 ? null : row.totalMinor / totalMinor,
     percentLabel: totalMinor === 0 ? null : percentLabel(row.totalMinor, totalMinor),
   };
+}
+
+/** A month's spend against one category's budget. All integers, formatted at the edge. */
+export interface BudgetStatus {
+  readonly budgetMinor: number;
+  readonly spentMinor: number;
+  /** Budget minus spend; negative once over. */
+  readonly remainingMinor: number;
+  readonly over: boolean;
+  /** Bar fill 0..1, clamped so an overspend fills the bar rather than overflowing it. */
+  readonly fill: number;
+}
+
+/**
+ * Null budget means none. Exactly at the limit is *not* over: spending the budget is what
+ * a budget is for, and warning at 100% would cry wolf on every month that goes to plan.
+ */
+export function budgetStatus(spentMinor: number, budgetMinor: number | null): BudgetStatus | null {
+  if (budgetMinor === null) return null;
+  return {
+    budgetMinor,
+    spentMinor,
+    remainingMinor: budgetMinor - spentMinor,
+    over: spentMinor > budgetMinor,
+    fill: Math.min(1, Math.max(0, spentMinor / budgetMinor)),
+  };
+}
+
+/** `$80.00 left of $400.00` / `$20.00 over $400.00`; read as written, so it is also the spoken form. */
+export function budgetLabel(status: BudgetStatus, currency: string, locale?: string): string {
+  const limit = formatMoney(status.budgetMinor, currency, locale);
+  return status.over
+    ? `${formatMoney(-status.remainingMinor, currency, locale)} over ${limit}`
+    : `${formatMoney(status.remainingMinor, currency, locale)} left of ${limit}`;
 }
 
 /**
@@ -144,6 +181,7 @@ const LESS_THAN_ONE_PERCENT = '<1%';
 export function legendRowLabel(entry: SpendEntry, currency: string, locale?: string): string {
   const parts = [entry.name, formatMoney(entry.totalMinor, currency, locale)];
   if (entry.percentLabel !== null) parts.push(spokenShare(entry.percentLabel));
+  if (entry.budget !== null) parts.push(budgetLabel(entry.budget, currency, locale));
   return parts.join(', ');
 }
 

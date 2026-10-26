@@ -18,6 +18,7 @@ const CATEGORY = {
   name: 'Groceries',
   color: '#2F8044',
   isDefault: false,
+  monthlyBudgetMinor: null,
   createdAt: '2026-10-08T10:00:00.000Z',
   updatedAt: '2026-10-08T10:00:00.000Z',
   deletedAt: null,

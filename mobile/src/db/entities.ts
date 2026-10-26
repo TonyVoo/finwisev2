@@ -18,6 +18,8 @@ export interface CategoryRow {
   readonly color: string;
   /** SQLite has no boolean type; migration 1 constrains this to 0 or 1. */
   readonly isDefault: 0 | 1;
+  /** Monthly limit in minor units; null means no budget (migration 5). */
+  readonly monthlyBudgetMinor: number | null;
   /** Server-assigned. Null until the row has been round-tripped through sync. */
   readonly createdAt: string | null;
   readonly updatedAt: string;
@@ -76,9 +78,15 @@ export interface EntitySpec {
 const CATEGORY_SPEC: EntitySpec = {
   entity: 'category',
   table: 'categories',
-  mutableColumns: ['name', 'color', 'deletedAt'],
+  mutableColumns: ['name', 'color', 'monthlyBudgetMinor', 'deletedAt'],
   requiredOnCreate: ['name', 'color'],
-  insertDefaults: { isDefault: 0, createdAt: null, deletedAt: null, revision: 0 },
+  insertDefaults: {
+    isDefault: 0,
+    monthlyBudgetMinor: null,
+    createdAt: null,
+    deletedAt: null,
+    revision: 0,
+  },
   parseFields: (fields) => CategorySyncFields.parse(fields),
 };
 

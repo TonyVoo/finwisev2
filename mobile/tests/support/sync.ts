@@ -43,6 +43,7 @@ export function serverCategory(overrides: Partial<Category> & { id: string }): C
     name: 'Groceries',
     color: '#4f8a4f',
     isDefault: false,
+    monthlyBudgetMinor: null,
     createdAt: '2026-10-01T00:00:00.000Z',
     updatedAt: '2026-10-01T00:00:00.000Z',
     deletedAt: null,

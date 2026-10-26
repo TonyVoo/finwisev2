@@ -170,6 +170,7 @@ describe('a month of spend, grouped by category', () => {
         categoryId: ids.housing,
         name: 'Housing',
         color: '#2F6FD0',
+        monthlyBudgetMinor: null,
         totalMinor: 52000,
         expenseCount: 1,
       },
@@ -301,6 +302,7 @@ describe('a month of spend, grouped by category', () => {
         categoryId: ids.housing,
         name: 'Housing',
         color: '#2F8044',
+        monthlyBudgetMinor: null,
         totalMinor: 52000,
         expenseCount: 1,
       },
@@ -361,6 +363,7 @@ describe('a month of spend, grouped by category', () => {
         categoryId: ids.uncategorized,
         name: 'Uncategorized',
         color: '#6B7280',
+        monthlyBudgetMinor: null,
         totalMinor: 1230,
         expenseCount: 3,
       },
@@ -381,7 +384,14 @@ describe('a month of spend, grouped by category', () => {
     const rows = await october();
 
     expect(rows).toEqual([
-      { categoryId: null, name: null, color: null, totalMinor: 31250, expenseCount: 1 },
+      {
+        categoryId: null,
+        name: null,
+        color: null,
+        monthlyBudgetMinor: null,
+        totalMinor: 31250,
+        expenseCount: 1,
+      },
     ]);
     expect(sumOf(rows)).toBe(31250);
     expect(await monthTotalMinor(database, OCTOBER)).toBe(31250);
@@ -411,10 +421,7 @@ describe('a month of spend, grouped by category', () => {
 
   /** `SUM-16`: the same tiebreak against the uncollated column would file `rent` last. */
   it('breaks that tie case-insensitively', async () => {
-    await pullCategories(
-      { id: ids.transport, name: 'Transport' },
-      { id: ids.rent, name: 'rent' },
-    );
+    await pullCategories({ id: ids.transport, name: 'Transport' }, { id: ids.rent, name: 'rent' });
     await pullExpenses(
       { id: 'e1', categoryId: ids.transport, amountMinor: 2000 },
       { id: 'e2', categoryId: ids.rent, amountMinor: 2000 },

@@ -133,7 +133,13 @@ export const COPY = {
   category: {
     new: { title: 'New category' },
     edit: { title: 'Edit category' },
-    field: { name: 'Name', namePlaceholder: 'e.g. Coffee', colour: 'Colour' },
+    field: {
+      name: 'Name',
+      namePlaceholder: 'e.g. Coffee',
+      colour: 'Colour',
+      budget: 'Monthly budget (optional)',
+      budgetPlaceholder: 'No budget',
+    },
     colour: { reserved: 'This colour is reserved.', inUse: 'In use' },
     create: 'Create',
     save: 'Save',
@@ -226,6 +232,7 @@ export const VALIDATION_COPY = {
     empty: 'Enter a name.',
     /** Interpolated by {@link categoryNameTaken}; `{name}` is the name as typed. */
     duplicate: 'You already have a category called "{name}".',
+    budgetFormat: 'Enter an amount like 40 or 40.50.',
   },
   /**
    * The three amount messages, and they are not interchangeable: `zero` is guidance on a

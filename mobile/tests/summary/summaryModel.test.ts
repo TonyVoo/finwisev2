@@ -1,6 +1,6 @@
 import { UNCATEGORIZED_NAME } from '@expense-tracker/shared';
 import type { CategorySpend } from '@/db/queries';
-import { legendRowLabel, summariseMonth } from '@/summary/summaryModel';
+import { budgetLabel, budgetStatus, legendRowLabel, summariseMonth } from '@/summary/summaryModel';
 import { CATEGORY_RESERVED_COLOR, categoryColor } from '@/theme/tokens';
 
 /**
@@ -28,6 +28,7 @@ function spend(
     // Null together with the name: both come off the same `COALESCE`, so a row with no
     // live category and no fallback has neither.
     color: name === null ? null : categoryColor.green,
+    monthlyBudgetMinor: null,
     totalMinor,
     expenseCount: 1,
     ...overrides,
@@ -267,5 +268,44 @@ describe('the legend row a screen reader hears', () => {
     expect(legendRowLabel(summary.entries[0]!, 'JPY', 'en-US')).toBe(
       'Housing, ¥52,000, 100 percent of the month',
     );
+  });
+});
+
+describe('budget status', () => {
+  it('is null for a category with no budget', () => {
+    expect(summariseMonth([spend('Food', 5000)]).entries[0]?.budget).toBeNull();
+  });
+
+  it('reports what is left, and fills the bar in proportion', () => {
+    const entry = summariseMonth([spend('Food', 3000, { monthlyBudgetMinor: 4000 })]).entries[0];
+    expect(entry?.budget).toEqual({
+      budgetMinor: 4000,
+      spentMinor: 3000,
+      remainingMinor: 1000,
+      over: false,
+      fill: 0.75,
+    });
+  });
+
+  it('is not over when spend exactly meets the budget', () => {
+    const budget = budgetStatus(4000, 4000);
+    expect(budget?.over).toBe(false);
+    expect(budget?.fill).toBe(1);
+  });
+
+  it('is over by one minor unit past the budget, and the bar stays within its track', () => {
+    const budget = budgetStatus(4001, 4000);
+    expect(budget).toMatchObject({ over: true, remainingMinor: -1, fill: 1 });
+    expect(budgetStatus(90000, 4000)?.fill).toBe(1);
+  });
+
+  it('words it as left-of or over, and speaks the same words in the row label', () => {
+    const under = budgetStatus(3000, 4000)!;
+    const over = budgetStatus(5000, 4000)!;
+    expect(budgetLabel(under, 'USD')).toBe('$10.00 left of $40.00');
+    expect(budgetLabel(over, 'USD')).toBe('$10.00 over $40.00');
+
+    const entry = summariseMonth([spend('Food', 5000, { monthlyBudgetMinor: 4000 })]).entries[0]!;
+    expect(legendRowLabel(entry, 'USD')).toContain('$10.00 over $40.00');
   });
 });

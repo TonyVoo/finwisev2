@@ -140,6 +140,7 @@ describe('applyLocalMutation', () => {
           name: 'Groceries',
           color: '#2F8044',
           isDefault: 0,
+          monthlyBudgetMinor: null,
           createdAt: null,
           updatedAt: '2026-10-08T10:30:00.000Z',
           deletedAt: null,

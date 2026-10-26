@@ -14,6 +14,7 @@ function category(overrides: Partial<CategoryWithCount> = {}): CategoryWithCount
     name: 'Groceries',
     color: '#2F8044',
     isDefault: false,
+    monthlyBudgetMinor: null,
     pending: false,
     expenseCount: 23,
     ...overrides,

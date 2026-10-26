@@ -310,8 +310,10 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
   }, [expenseId, localWrite, router, showSnackbar]);
 
   const onCreateCategory = useCallback(
-    async ({ name, color: hex }: CategoryDraft) => {
-      const queued = await localWrite((db) => createCategory(db, { name, color: hex }));
+    async ({ name, color: hex, monthlyBudgetMinor }: CategoryDraft) => {
+      const queued = await localWrite((db) =>
+        createCategory(db, { name, color: hex, monthlyBudgetMinor }),
+      );
       // Selected automatically, and **both** sheets dismiss: the user came here to pick a
       // category, not to manage them (rule 4).
       setDraft((current) =>
@@ -495,6 +497,9 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
       />
 
       <CategoryFormSheet
+        // Only decides how many decimals the budget field takes; the sheet cannot open
+        // before the form has its currency, so the fallback is never what the user sees.
+        currency={currencyCode ?? 'USD'}
         visible={overlay === 'newCategory'}
         onClose={() => setOverlay('category')}
         editing={null}

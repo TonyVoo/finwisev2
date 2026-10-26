@@ -571,6 +571,7 @@ paths:
                     name: Groceries
                     color: '#22c55e'
                     isDefault: false
+                    monthlyBudgetMinor: 40000
                     createdAt: '2026-10-06T12:34:56.789Z'
                     updatedAt: '2026-10-06T12:34:56.789Z'
                     deletedAt: null
@@ -579,6 +580,7 @@ paths:
                     name: Uncategorized
                     color: '#9ca3af'
                     isDefault: true
+                    monthlyBudgetMinor: null
                     createdAt: '2026-10-06T12:34:56.789Z'
                     updatedAt: '2026-10-06T12:34:56.789Z'
                     deletedAt: null
@@ -649,6 +651,7 @@ paths:
                   name: Coffee
                   color: '#f59e0b'
                   isDefault: false
+                  monthlyBudgetMinor: null
                   createdAt: '2026-10-06T13:00:00.000Z'
                   updatedAt: '2026-10-06T13:00:00.000Z'
                   deletedAt: null
@@ -789,6 +792,7 @@ paths:
                   name: Coffee
                   color: '#f59e0b'
                   isDefault: false
+                  monthlyBudgetMinor: null
                   createdAt: '2026-10-06T13:00:00.000Z'
                   updatedAt: '2026-10-06T14:00:00.000Z'
                   deletedAt: '2026-10-06T14:00:00.000Z'
@@ -1197,6 +1201,7 @@ paths:
                           name: Coffee
                           color: '#f59e0b'
                           isDefault: false
+                          monthlyBudgetMinor: null
                           createdAt: '2026-10-06T13:00:00.000Z'
                           updatedAt: '2026-10-06T13:00:00.000Z'
                           deletedAt: null
@@ -1431,6 +1436,7 @@ paths:
                           name: Coffee
                           color: '#f59e0b'
                           isDefault: false
+                          monthlyBudgetMinor: null
                           createdAt: '2026-10-06T13:00:00.000Z'
                           updatedAt: '2026-10-06T13:00:00.000Z'
                           deletedAt: null
@@ -1511,6 +1517,7 @@ paths:
                           name: Coffee
                           color: '#f59e0b'
                           isDefault: false
+                          monthlyBudgetMinor: null
                           createdAt: '2026-10-06T13:00:00.000Z'
                           updatedAt: '2026-10-06T13:00:00.000Z'
                           deletedAt: null
@@ -2148,6 +2155,16 @@ components:
         omitted, so the client never has to invent a default.
       examples: ['#22c55e']
 
+    MonthlyBudget:
+      type: integer
+      minimum: 1
+      maximum: 999999999999
+      description: |
+        A category's monthly spending limit in the currency minor unit (`1234` = 12.34 USD),
+        at least `1`. The same limit applies to every month. "No budget" is `null` on the
+        category, never `0`.
+      examples: [40000]
+
     Category:
       type: object
       description: |
@@ -2157,7 +2174,8 @@ components:
         **reassigns** its expenses to the user's `Uncategorized` default rather than
         cascading — losing spend history to a category cleanup would be a data-loss bug.
       additionalProperties: false
-      required: [id, name, color, isDefault, createdAt, updatedAt, deletedAt, revision]
+      required:
+        [id, name, color, isDefault, monthlyBudgetMinor, createdAt, updatedAt, deletedAt, revision]
       properties:
         id: { $ref: '#/components/schemas/Uuid' }
         name: { $ref: '#/components/schemas/CategoryName' }
@@ -2167,6 +2185,10 @@ components:
           description: |
             True for the seeded `Uncategorized` category, which always exists and cannot be
             deleted. Deleting any other category reassigns its expenses here.
+        monthlyBudgetMinor:
+          oneOf:
+            - { $ref: '#/components/schemas/MonthlyBudget' }
+            - { type: 'null' }
         createdAt: { $ref: '#/components/schemas/CreatedAt' }
         updatedAt: { $ref: '#/components/schemas/UpdatedAt' }
         deletedAt: { $ref: '#/components/schemas/DeletedAt' }
@@ -2184,6 +2206,7 @@ components:
             identity; omit it and the server mints one.
         name: { $ref: '#/components/schemas/CategoryName' }
         color: { $ref: '#/components/schemas/CategoryColor' }
+        monthlyBudgetMinor: { $ref: '#/components/schemas/MonthlyBudget' }
 
     CategoryUpdateRequest:
       type: object
@@ -2195,6 +2218,11 @@ components:
       properties:
         name: { $ref: '#/components/schemas/CategoryName' }
         color: { $ref: '#/components/schemas/CategoryColor' }
+        monthlyBudgetMinor:
+          oneOf:
+            - { $ref: '#/components/schemas/MonthlyBudget' }
+            - { type: 'null' }
+          description: Set a budget, or `null` to clear it. Absent leaves it unchanged.
 
     CategoryListResponse:
       type: object
@@ -2449,6 +2477,11 @@ components:
       properties:
         name: { $ref: '#/components/schemas/CategoryName' }
         color: { $ref: '#/components/schemas/CategoryColor' }
+        monthlyBudgetMinor:
+          oneOf:
+            - { $ref: '#/components/schemas/MonthlyBudget' }
+            - { type: 'null' }
+          description: Set a budget, or `null` to clear it. Absent leaves it unchanged.
         deletedAt: { $ref: '#/components/schemas/DeletedAt' }
 
     ExpenseSyncFields:

@@ -22,6 +22,22 @@ export const CategoryColor = z
   .regex(/^#[0-9a-fA-F]{6}$/, 'must be a #RRGGBB hex colour')
   .describe('Chart/list swatch as a #RRGGBB hex colour. The server assigns one when omitted.');
 
+/**
+ * A category's monthly spending limit, in the account currency's minor units.
+ *
+ * One number per category, the same every month: a budget is an attribute of the category,
+ * not a record of its own, so it rides the category's existing sync (last-write-wins,
+ * tombstones, outbox) instead of being a second synced entity. Strictly positive - "no
+ * budget" is `null`, never `0`, so an unset budget and a zero budget cannot be confused.
+ */
+export const MonthlyBudget = z
+  .int()
+  .min(1)
+  .max(LIMITS.AMOUNT_MINOR_MAX)
+  .describe(
+    'Monthly spending limit for this category in the currency minor unit (1234 = 12.34 USD), at least 1. `null` means no budget. The same limit applies to every month.',
+  );
+
 /** A category row as the server reports it. */
 export const Category = z.strictObject({
   ...SYNCABLE_SHAPE,
@@ -32,6 +48,7 @@ export const Category = z.strictObject({
     .describe(
       'True for the seeded `Uncategorized` category, which always exists and cannot be deleted. Deleting any other category reassigns its expenses here.',
     ),
+  monthlyBudgetMinor: MonthlyBudget.nullable(),
 });
 
 export const CategoryCreateRequest = z.strictObject({
@@ -40,12 +57,14 @@ export const CategoryCreateRequest = z.strictObject({
   ),
   name: CategoryName,
   color: CategoryColor.optional(),
+  monthlyBudgetMinor: MonthlyBudget.optional(),
 });
 
 export const CategoryUpdateRequest = z
   .strictObject({
     name: CategoryName.optional(),
     color: CategoryColor.optional(),
+    monthlyBudgetMinor: MonthlyBudget.nullable().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, { error: 'at least one field must be present' });
 
@@ -66,6 +85,7 @@ export const CategoryResponse = z.strictObject({
 
 export type CategoryName = z.infer<typeof CategoryName>;
 export type CategoryColor = z.infer<typeof CategoryColor>;
+export type MonthlyBudget = z.infer<typeof MonthlyBudget>;
 export type Category = z.infer<typeof Category>;
 export type CategoryCreateRequest = z.infer<typeof CategoryCreateRequest>;
 export type CategoryUpdateRequest = z.infer<typeof CategoryUpdateRequest>;

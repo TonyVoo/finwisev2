@@ -179,6 +179,8 @@ export async function restoreExpense(
 export interface NewCategory {
   readonly name: string;
   readonly color: string;
+  /** Monthly limit in minor units, or omitted / null for none. */
+  readonly monthlyBudgetMinor?: number | null;
 }
 
 /**
@@ -199,7 +201,15 @@ export async function createCategory(
     {
       entity: 'category',
       id: options.id ?? uuidv7(),
-      fields: { name: category.name.trim(), color: category.color },
+      fields: {
+        name: category.name.trim(),
+        color: category.color,
+        // A create carries the budget only when there is one: absent and null are the same
+        // thing on a new row, and the shorter push is the one the server logs less noise for.
+        ...(category.monthlyBudgetMinor === undefined || category.monthlyBudgetMinor === null
+          ? {}
+          : { monthlyBudgetMinor: category.monthlyBudgetMinor }),
+      },
     },
     options,
   );
@@ -215,7 +225,12 @@ export async function createCategory(
 export async function updateCategory(
   database: SqliteDatabase,
   id: string,
-  changes: { readonly name?: string; readonly color?: string },
+  changes: {
+    readonly name?: string;
+    readonly color?: string;
+    /** A number sets the budget, null clears it, undefined leaves it alone. */
+    readonly monthlyBudgetMinor?: number | null;
+  },
   options: LocalMutationOptions = {},
 ): Promise<QueuedMutation> {
   return await applyLocalMutation(
@@ -226,6 +241,9 @@ export async function updateCategory(
       fields: {
         ...(changes.name === undefined ? {} : { name: changes.name.trim() }),
         ...(changes.color === undefined ? {} : { color: changes.color }),
+        ...(changes.monthlyBudgetMinor === undefined
+          ? {}
+          : { monthlyBudgetMinor: changes.monthlyBudgetMinor }),
       },
     },
     options,
@@ -345,13 +363,11 @@ export async function deleteCategoryWithReassignment(
       // readable in the order the server will apply it.
       return [
         { entity: 'category', id: categoryId, fields: { deletedAt } },
-        ...toReassign.map(
-          (expense): LocalMutation => ({
-            entity: 'expense',
-            id: expense.id,
-            fields: { categoryId: fallback.id },
-          }),
-        ),
+        ...toReassign.map((expense): LocalMutation => ({
+          entity: 'expense',
+          id: expense.id,
+          fields: { categoryId: fallback.id },
+        })),
       ];
     },
     options,

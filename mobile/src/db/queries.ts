@@ -19,6 +19,8 @@ export interface CategoryListItem {
   readonly name: string;
   readonly color: string;
   readonly isDefault: boolean;
+  /** Monthly limit in minor units, or null for none. */
+  readonly monthlyBudgetMinor: number | null;
   /**
    * True while an undrained outbox entry references this row. The outbox is the single
    * source of truth for `pending` (`docs/design/02-offline-and-sync.md` §2), so it is
@@ -52,6 +54,7 @@ export async function listLiveCategories(
             c.name,
             c.color,
             c.isDefault,
+            c.monthlyBudgetMinor,
             EXISTS (
               SELECT 1 FROM outbox o WHERE o.entity = 'category' AND o.recordId = c.id
             ) AS pending
@@ -66,6 +69,7 @@ export async function listLiveCategories(
     name: row.name,
     color: row.color,
     isDefault: row.isDefault === 1,
+    monthlyBudgetMinor: row.monthlyBudgetMinor,
     pending: row.pending === 1,
   }));
 }
@@ -110,6 +114,7 @@ export async function listLiveCategoriesWithCounts(
             c.name,
             c.color,
             c.isDefault,
+            c.monthlyBudgetMinor,
             (
               SELECT COUNT(*) FROM expenses e
                WHERE e.categoryId = c.id AND e.deletedAt IS NULL
@@ -128,6 +133,7 @@ export async function listLiveCategoriesWithCounts(
     name: row.name,
     color: row.color,
     isDefault: row.isDefault === 1,
+    monthlyBudgetMinor: row.monthlyBudgetMinor,
     pending: row.pending === 1,
     expenseCount: row.expenseCount,
   }));
@@ -146,14 +152,21 @@ export async function findFallbackCategory(
   database: SqliteDatabase,
 ): Promise<CategoryListItem | null> {
   const row = await database.getFirstAsync<CategoryRow>(
-    `SELECT id, name, color, isDefault FROM categories
+    `SELECT id, name, color, isDefault, monthlyBudgetMinor FROM categories
       WHERE isDefault = 1 AND deletedAt IS NULL
       ORDER BY id
       LIMIT 1`,
     [],
   );
   if (row === null) return null;
-  return { id: row.id, name: row.name, color: row.color, isDefault: true, pending: false };
+  return {
+    id: row.id,
+    name: row.name,
+    color: row.color,
+    isDefault: true,
+    monthlyBudgetMinor: row.monthlyBudgetMinor,
+    pending: false,
+  };
 }
 
 /**
@@ -375,6 +388,11 @@ export interface CategorySpend {
   readonly categoryId: string | null;
   readonly name: string | null;
   readonly color: string | null;
+  /**
+   * The category's monthly limit, or null for none. Follows the same fold as the name: an
+   * orphaned expense reports the fallback's budget, because that is the row it is filed under.
+   */
+  readonly monthlyBudgetMinor: number | null;
   /** Minor units, summed by SQLite as an integer. */
   readonly totalMinor: number;
   /** Live expenses in the group, including any whose amount is zero. */
@@ -424,6 +442,10 @@ export async function monthCategorySpend(
     `SELECT COALESCE(c.id, f.id)       AS categoryId,
             COALESCE(c.name, f.name)   AS name,
             COALESCE(c.color, f.color) AS color,
+            -- CASE, not COALESCE: a live category with no budget must report null, not
+            -- borrow the fallback's.
+            CASE WHEN c.id IS NOT NULL THEN c.monthlyBudgetMinor
+                 ELSE f.monthlyBudgetMinor END AS monthlyBudgetMinor,
             SUM(e.amountMinor)         AS totalMinor,
             COUNT(*)                   AS expenseCount
        FROM expenses e
@@ -432,7 +454,7 @@ export async function monthCategorySpend(
        -- database with no fallback at all keeps its expenses: a cross join to an empty
        -- subquery returns nothing, and this screen's total would silently become zero.
        LEFT JOIN (
-         SELECT id, name, color FROM categories
+         SELECT id, name, color, monthlyBudgetMinor FROM categories
           WHERE isDefault = 1 AND deletedAt IS NULL
           ORDER BY id LIMIT 1
        ) f ON 1 = 1

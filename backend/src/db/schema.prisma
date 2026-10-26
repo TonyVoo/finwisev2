@@ -98,6 +98,11 @@ model Category {
   /// True for the seeded `Uncategorized`, which always exists and cannot be deleted.
   isDefault Boolean @default(false) @map("is_default")
 
+  /// Monthly spending limit in minor units, or NULL for none. A CHECK constraint (see the
+  /// `category_monthly_budget` migration) keeps it strictly positive, so "no budget" can
+  /// only ever be NULL. `bigint` for the same reason `expenses.amount_minor` is.
+  monthlyBudgetMinor BigInt? @map("monthly_budget_minor")
+
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime  @map("updated_at") @db.Timestamptz(3)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)

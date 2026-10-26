@@ -177,11 +177,22 @@ CREATE TABLE sync_rejections (
 );
 `;
 
+/**
+ * A category's monthly budget, in minor units. NULL means no budget; the contract forbids 0
+ * (`shared/src/category.ts`), so an unset and a zero budget cannot be confused. Added with
+ * `ALTER TABLE` because SQLite can add a nullable column in place - no table rebuild.
+ */
+const CATEGORY_BUDGET = `
+ALTER TABLE categories ADD COLUMN monthlyBudgetMinor INTEGER
+  CHECK (monthlyBudgetMinor IS NULL OR monthlyBudgetMinor >= 1);
+`;
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: 'initial-schema', up: INITIAL_SCHEMA },
   { version: 2, name: 'store-owner', up: STORE_OWNER },
   { version: 3, name: 'user-profile', up: USER_PROFILE },
   { version: 4, name: 'sync-rejections', up: SYNC_REJECTIONS },
+  { version: 5, name: 'category-budget', up: CATEGORY_BUDGET },
 ];
 
 /** Highest version `MIGRATIONS` can bring a database to. */

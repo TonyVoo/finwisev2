@@ -21,7 +21,12 @@ import {
   categoryDeleted,
   categoryUpdated,
 } from '@/copy/strings';
-import { useCategoriesWithCounts, useColoursInUse, useFallbackCategory } from '@/db/hooks';
+import {
+  useCategoriesWithCounts,
+  useColoursInUse,
+  useFallbackCategory,
+  useUserCurrency,
+} from '@/db/hooks';
 import { useDatabase } from '@/db/DatabaseProvider';
 import { useLocalWrite } from '@/db/localWrite';
 import {
@@ -75,6 +80,9 @@ export default function CategoriesScreen() {
   const localWrite = useLocalWrite();
 
   const categories = useCategoriesWithCounts();
+  // Decides the budget field's decimals only. Categories render before it resolves, and the
+  // sheet cannot be reached faster than a local read, so the fallback is never seen.
+  const currencyCode = useUserCurrency().data ?? 'USD';
   const fallback = useFallbackCategory();
   const coloursInUse = useColoursInUse();
 
@@ -134,16 +142,18 @@ export default function CategoriesScreen() {
   }, [pendingDelete, localWrite, showSnackbar, refuseDelete]);
 
   const submitSheet = useCallback(
-    async ({ name, color: hex }: CategoryDraft) => {
+    async ({ name, color: hex, monthlyBudgetMinor }: CategoryDraft) => {
       if (editing === null) {
-        await localWrite((db) => createCategory(db, { name, color: hex }));
+        await localWrite((db) => createCategory(db, { name, color: hex, monthlyBudgetMinor }));
         setSheetOpen(false);
         showSnackbar({ message: categoryCreated(name) });
         return;
       }
       // A rename is one UPDATE plus one outbox row. Expenses are untouched: they
       // reference `categoryId`, so a rename is invisible to them (§3 rule 5).
-      await localWrite((db) => updateCategory(db, editing.id, { name, color: hex }));
+      await localWrite((db) =>
+        updateCategory(db, editing.id, { name, color: hex, monthlyBudgetMinor }),
+      );
       setSheetOpen(false);
       showSnackbar({ message: categoryUpdated(name) });
     },
@@ -193,6 +203,7 @@ export default function CategoriesScreen() {
       />
 
       <CategoryFormSheet
+        currency={currencyCode}
         visible={sheetOpen}
         onClose={() => setSheetOpen(false)}
         editing={editing}

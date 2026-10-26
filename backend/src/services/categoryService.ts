@@ -173,6 +173,7 @@ export async function createCategory(
           // `isDefault` is not settable through any write path: the default is seeded at
           // signup and there is exactly one. See GAP 1 in `docs/qa/TEST_PLAN.md`.
           isDefault: false,
+          monthlyBudgetMinor: input.monthlyBudgetMinor ?? null,
           // Set explicitly rather than left to the column default, so that a freshly
           // created row reports `createdAt === updatedAt` to the millisecond.
           createdAt: now,
@@ -308,6 +309,10 @@ export async function updateCategory(
         data: {
           ...(patch.name === undefined ? {} : { name: patch.name }),
           ...(patch.color === undefined ? {} : { color: patch.color }),
+          // `null` clears the budget; absent leaves it alone.
+          ...(patch.monthlyBudgetMinor === undefined
+            ? {}
+            : { monthlyBudgetMinor: patch.monthlyBudgetMinor }),
           updatedAt: now,
           revision,
         },

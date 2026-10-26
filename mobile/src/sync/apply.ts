@@ -41,7 +41,17 @@ import { readOutboxFor } from './outbox';
  * being silently dropped on the way into SQLite.
  */
 export const SERVER_COLUMNS: Readonly<Record<SyncEntity, readonly string[]>> = {
-  category: ['id', 'name', 'color', 'isDefault', 'createdAt', 'updatedAt', 'deletedAt', 'revision'],
+  category: [
+    'id',
+    'name',
+    'color',
+    'isDefault',
+    'monthlyBudgetMinor',
+    'createdAt',
+    'updatedAt',
+    'deletedAt',
+    'revision',
+  ],
   expense: [
     'id',
     'categoryId',

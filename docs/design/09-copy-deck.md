@@ -379,3 +379,6 @@ them as proposals the Designer can reword; changing a row here means changing
 | `home.search.resultsMany`    | `{count} results`                                                    | Home, result summary       |
 | `home.search.empty.headline` | `No matches`                                                         | Home, empty search         |
 | `home.search.empty.body`     | `Nothing matches that search. Try different words or another category.` | Home, empty search      |
+| `category.field.budget`      | `Monthly budget (optional)`                                          | Category sheet, field label |
+| `category.field.budgetPlaceholder` | `No budget`                                                    | Category sheet, field placeholder |
+| `validation.category.budgetFormat` | `Enter an amount like 40 or 40.50.`                            | Category sheet, field error |

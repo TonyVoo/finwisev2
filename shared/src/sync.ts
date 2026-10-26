@@ -9,7 +9,7 @@ import {
   Timestamp,
   Uuid,
 } from './primitives.js';
-import { Category, CategoryColor, CategoryName } from './category.js';
+import { Category, CategoryColor, CategoryName, MonthlyBudget } from './category.js';
 import { Expense, ExpenseNoteInput } from './expense.js';
 
 /**
@@ -110,6 +110,7 @@ export const CategorySyncFields = z
   .strictObject({
     name: CategoryName.optional(),
     color: CategoryColor.optional(),
+    monthlyBudgetMinor: MonthlyBudget.nullable().optional(),
     deletedAt: Timestamp.nullable().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, { error: 'fields must not be empty' });

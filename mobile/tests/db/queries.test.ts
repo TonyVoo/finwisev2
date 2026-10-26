@@ -88,6 +88,7 @@ describe('queries', () => {
           name: 'Uncategorized',
           color: '#6B7280',
           isDefault: true,
+          monthlyBudgetMinor: null,
           pending: false,
         },
       ]);

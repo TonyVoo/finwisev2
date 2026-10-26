@@ -29,6 +29,7 @@ export interface SeededCategory {
   readonly name: string;
   readonly color?: string;
   readonly isDefault?: boolean;
+  readonly monthlyBudgetMinor?: number | null;
 }
 
 export async function seedCategory(
@@ -36,13 +37,14 @@ export async function seedCategory(
   category: SeededCategory,
 ): Promise<string> {
   await database.runAsync(
-    `INSERT INTO categories (id, name, color, isDefault, createdAt, updatedAt, deletedAt, revision)
-     VALUES (?, ?, ?, ?, '2026-10-01T00:00:00.000Z', '2026-10-01T00:00:00.000Z', NULL, 1)`,
+    `INSERT INTO categories (id, name, color, isDefault, monthlyBudgetMinor, createdAt, updatedAt, deletedAt, revision)
+     VALUES (?, ?, ?, ?, ?, '2026-10-01T00:00:00.000Z', '2026-10-01T00:00:00.000Z', NULL, 1)`,
     [
       category.id,
       category.name,
       category.color ?? categoryColor.green,
       category.isDefault === true ? 1 : 0,
+      category.monthlyBudgetMinor ?? null,
     ],
   );
   return category.id;
