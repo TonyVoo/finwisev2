@@ -145,6 +145,7 @@ function paramsOf(url: string): string[] {
 function fixedToken(token: () => string): TokenSource {
   return {
     getAccessToken: async () => token(),
+    getEpoch: () => 0,
     ensureFreshAccessToken: async () => null,
   };
 }
@@ -168,6 +169,7 @@ function refreshingSession(
   let refresh = initial.refresh;
   return {
     getAccessToken: async () => access,
+    getEpoch: () => 0,
     ensureFreshAccessToken: async (stale) => {
       if (stale !== access) return access;
       const pair = await anonymous.refresh({ refreshToken: refresh });

@@ -39,6 +39,7 @@ function createEngine(onLocalDataChanged?: () => void): SyncEngine {
     database,
     api,
     reachability,
+    session: { getEpoch: () => 0 },
     clock: () => AT,
     ...(onLocalDataChanged === undefined ? {} : { onLocalDataChanged }),
   });

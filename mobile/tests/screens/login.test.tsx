@@ -35,6 +35,13 @@ jest.mock('expo-router');
 
 const CREDENTIALS = { email: 'ada@example.com', password: 'correct-horse' };
 
+/**
+ * Auth requests only. A successful sign-in now starts a sync (`TVO-34`), so the pull that
+ * follows is expected traffic; what these cases pin is that the *form* sent one request.
+ */
+const authRequests = (requests: readonly { readonly path: string }[]) =>
+  requests.filter((request) => request.path.startsWith('/v1/auth/'));
+
 describe('the log in screen', () => {
   let mounted: MountedScreen;
 
@@ -192,7 +199,7 @@ describe('the log in screen', () => {
 
       // One account, one request. The button ignores taps while busy, and `useAuthForm`
       // guards the hardware keyboard's Go key, which does not go through the button.
-      expect(mounted.requests).toHaveLength(1);
+      expect(authRequests(mounted.requests)).toHaveLength(1);
     });
   });
 
@@ -210,7 +217,7 @@ describe('the log in screen', () => {
 
       expect(screen.queryByText(VALIDATION_COPY.email.invalid)).toBeNull();
       expect(screen.queryByText(VALIDATION_COPY.password.short)).toBeNull();
-      expect(mounted.requests).toHaveLength(1);
+      expect(authRequests(mounted.requests)).toHaveLength(1);
     });
   });
 

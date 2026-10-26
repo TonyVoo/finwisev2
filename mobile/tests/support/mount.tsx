@@ -136,6 +136,7 @@ export async function mountWithSession(
     subscribe: () => () => undefined,
     initialize: async () => snapshot,
     getAccessToken: async () => null,
+    getEpoch: () => 0,
     ensureFreshAccessToken: async () => null,
     signIn: async () => undefined,
     signOut: async () => undefined,

@@ -35,6 +35,16 @@ export interface SessionController {
   /** The current access token, or null when there is no session. */
   getAccessToken(): Promise<string | null>;
   /**
+   * Which session this is: a counter that moves whenever the session's *identity* does -
+   * every sign-in, every sign-out, every forced clear - and never on a token rotation.
+   *
+   * It exists so a request that outlives a session change can tell. Comparing tokens
+   * cannot: a rotation and an account switch both leave the stored token different from
+   * the one a request went out with, and only one of them is safe to retry under
+   * (`TVO-20`, `AUTH-23`/`AUTH-24`).
+   */
+  getEpoch(): number;
+  /**
    * Obtain an access token newer than `staleAccessToken`, refreshing at most once across
    * all concurrent callers. Returns null when the session is gone.
    */
@@ -90,13 +100,33 @@ export interface SessionControllerOptions {
    * the 401 interceptor that triggered it.
    */
   readonly refreshTokens: (refreshToken: string) => Promise<TokenPair>;
+  /**
+   * Tells the server to revoke a refresh token (`POST /v1/auth/logout`), called on an
+   * explicit logout only. Best-effort by rule 14 of `04-expense-list.md`: it is never
+   * awaited and its failure is swallowed, because a logout that waited on the network
+   * - or failed when offline - would be a logout that does not work on a plane. The
+   * cost of a missed revoke is a refresh token that lives out its 60 days on a device
+   * that has already forgotten it.
+   *
+   * Optional only so the many controllers built in tests need not supply one; the
+   * container always does (`bootstrap/container.ts`, pinned end to end by `tests/screens/settings.test.tsx`).
+   */
+  readonly revokeRefreshToken?: (refreshToken: string) => Promise<void>;
   readonly clock?: Clock;
 }
 
 export function createSessionController(options: SessionControllerOptions): SessionController {
-  const { tokenStore, localStore, refreshTokens, clock = systemClock } = options;
+  const {
+    tokenStore,
+    localStore,
+    refreshTokens,
+    revokeRefreshToken,
+    clock = systemClock,
+  } = options;
 
   let session: StoredSession | null = null;
+  /** See {@link SessionController.getEpoch}. Bumped before anything is published. */
+  let epoch = 0;
   let snapshot: SessionSnapshot = { status: 'loading', expired: false };
   const listeners = new Set<() => void>();
 
@@ -136,6 +166,11 @@ export function createSessionController(options: SessionControllerOptions): Sess
    * stops them reaching a different one. Pinned by `AUTH-12`.
    */
   async function discard(expired: boolean): Promise<void> {
+    // First, and synchronously: from this line on, nothing sent under the old session may
+    // be retried under whatever replaces it. If the clear below throws, the epoch has
+    // still moved, which fails closed - an in-flight request is surfaced rather than
+    // replayed.
+    epoch += 1;
     await tokenStore.clear();
     session = null;
     publish({ status: 'anonymous', expired });
@@ -144,9 +179,14 @@ export function createSessionController(options: SessionControllerOptions): Sess
   async function performRefresh(): Promise<string | null> {
     const current = session;
     if (current === null) return null;
+    const startedIn = epoch;
 
     try {
       const pair = await refreshTokens(current.refreshToken);
+      // The session this refresh was for is gone. Persisting its rotated pair now would
+      // overwrite whoever signed in while the request was away - user A's tokens
+      // installed over user B's session, with B's user id attached to neither.
+      if (epoch !== startedIn) return null;
       // A rotated pair carries no user; the owner is the one being refreshed. It cannot
       // have changed - a different user means a different sign-in, which goes through
       // `signIn`.
@@ -192,6 +232,8 @@ export function createSessionController(options: SessionControllerOptions): Sess
       return session?.accessToken ?? null;
     },
 
+    getEpoch: () => epoch,
+
     async ensureFreshAccessToken(staleAccessToken) {
       if (session === null) return null;
 
@@ -230,10 +272,19 @@ export function createSessionController(options: SessionControllerOptions): Sess
       // gate formats amounts with `user.currency`, and a store that is adopted but has no
       // profile yet would render that frame with no currency at all.
       await localStore.adopt(auth.user.id, auth.user);
+      // After `adopt`, so a failed adoption leaves the old session's requests retryable,
+      // and before `persist`, so every listener woken by the publish already sees it.
+      epoch += 1;
       await persist(sessionFromTokenPair(auth, auth.user.id, clock()));
     },
 
     async signOut() {
+      // The token has to be read before `discard` forgets it, and the request is fired
+      // rather than awaited - see `revokeRefreshToken`.
+      const refreshToken = session?.refreshToken;
+      if (refreshToken !== undefined && revokeRefreshToken !== undefined) {
+        void revokeRefreshToken(refreshToken).catch(() => undefined);
+      }
       // Tokens first, then the rows - the order `04-expense-list.md` rule 14 states, and
       // the one that degrades best: the user's contract with the Log out button is "I am
       // out", and a failed `DELETE` must not be what keeps them signed in. If the wipe

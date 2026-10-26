@@ -127,33 +127,30 @@ describe('the 401 interceptor when the session changes mid-request', () => {
     expect(refreshCalls).toBe(0);
   });
 
-  // AUTH-23. The defect. Expected-fail until GAP 13 is fixed.
+  // AUTH-23. The defect (TVO-20), fixed by the session epoch.
   //
   // Asserted as "no request after the first carries user B's token" rather than as one
   // preferred outcome, because two different fixes are both correct here: refusing to
   // retry at all, and retrying fail-closed without a token. Pinning either one
   // specifically would turn this red against a correct fix.
-  it.failing(
-    'does not retry user A’s request under user B’s token when B signs in mid-flight',
-    async () => {
-      const { seen } = await sendWhile(async (session) => {
-        await session.signOut();
-        await session.signIn(authResponse(USER_B, 'b'));
-      });
+  it('does not retry user A’s request under user B’s token when B signs in mid-flight', async () => {
+    const { seen } = await sendWhile(async (session) => {
+      await session.signOut();
+      await session.signIn(authResponse(USER_B, 'b'));
+    });
 
-      const underUserB = seen.slice(1).filter((request) => request.accessToken === 'access-b');
-      expect(underUserB).toEqual([]);
-    },
-  );
+    const underUserB = seen.slice(1).filter((request) => request.accessToken === 'access-b');
+    expect(underUserB).toEqual([]);
+  });
 
   // AUTH-24. The same defect seen from the payload side, which is what makes it a leak
   // rather than a nuisance: the retry replays the body built from user A's rows, so the
-  // server files one account's spending into another's. Expected-fail until GAP 13.
+  // server files one account's spending into another's. Fixed with AUTH-23 (TVO-20).
   //
   // Separate from AUTH-23 because it fails for a reason a reader needs stated on its
   // own. The local wipe that `signOut` performs cannot defend this: the batch was
   // serialised into the request before the wipe ran and is held in memory, not in SQLite.
-  it.failing('does not replay user A’s push body into user B’s account', async () => {
+  it('does not replay user A’s push body into user B’s account', async () => {
     const { seen } = await sendWhile(async (session) => {
       await session.signOut();
       await session.signIn(authResponse(USER_B, 'b'));
@@ -182,5 +179,33 @@ describe('the 401 interceptor when the session changes mid-request', () => {
         !['access-a', 'access-a-rotated', 'access-a-relogin'].includes(request.accessToken),
     );
     expect(foreign).toEqual([]);
+  });
+
+  // TVO-20, the refresh half. A refresh for user A that is still on the wire when B
+  // signs in must not persist A's rotated pair over B's session - the interceptor guard
+  // stops the replay, but the session itself would still have been overwritten.
+  it('does not install user A’s rotated tokens over user B’s session', async () => {
+    let releaseRefresh: () => void = () => undefined;
+    const refreshGate = new Promise<void>((resolve) => {
+      releaseRefresh = resolve;
+    });
+    const session = createSessionController({
+      tokenStore: createMemoryTokenStore(sessionFromTokenPair(tokenPair('a'), USER_A, ISSUED_AT)),
+      localStore: createMemoryLocalStore({ owner: USER_A }),
+      refreshTokens: async () => {
+        await refreshGate;
+        return tokenPair('a-rotated');
+      },
+      clock: () => ISSUED_AT,
+    });
+    await session.initialize();
+
+    const refreshing = session.ensureFreshAccessToken('access-a');
+    await session.signOut();
+    await session.signIn(authResponse(USER_B, 'b'));
+    releaseRefresh();
+
+    expect(await refreshing).toBeNull();
+    expect(await session.getAccessToken()).toBe('access-b');
   });
 });

@@ -92,6 +92,8 @@ export async function createAppContainer(options: AppContainerOptions = {}): Pro
     tokenStore: options.tokenStore ?? createSecureTokenStore(),
     localStore: createSqliteLocalStore(database),
     refreshTokens: (refreshToken) => publicApi.refresh({ refreshToken }),
+    // Unauthenticated client, like the refresh: the body carries the token being revoked.
+    revokeRefreshToken: (refreshToken) => publicApi.logout({ refreshToken }),
   });
 
   const api = createApiClient({ transport: createAuthorizedTransport(transport, session) });
@@ -101,24 +103,44 @@ export async function createAppContainer(options: AppContainerOptions = {}): Pro
   const queryClient = options.queryClient ?? createQueryClient();
   const clock = options.clock ?? systemClock;
 
-  return {
+  const sync = createSyncEngine({
     database,
-    session,
     api,
-    queryClient,
+    session,
+    reachability: options.reachability ?? createNetInfoReachability(),
     clock,
-    sync: createSyncEngine({
-      database,
-      api,
-      reachability: options.reachability ?? createNetInfoReachability(),
-      clock,
-      // A sync that wrote rows has to invalidate the reads, for the same reason a local
-      // write does: every query in this app is configured `staleTime: Infinity` and
-      // nothing re-reads unless something invalidates (`db/localWrite.ts`). Without this
-      // a pull would land rows in SQLite that no screen showed until the next user edit.
-      onLocalDataChanged: () => {
-        void queryClient.invalidateQueries({ queryKey: queryKeys.local() });
-      },
-    }),
-  };
+    // A sync that wrote rows has to invalidate the reads, for the same reason a local
+    // write does: every query in this app is configured `staleTime: Infinity` and
+    // nothing re-reads unless something invalidates (`db/localWrite.ts`). Without this
+    // a pull would land rows in SQLite that no screen showed until the next user edit.
+    onLocalDataChanged: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.local() });
+    },
+  });
+
+  // A session arriving is a sync trigger (`TVO-34`). `engine.start()` runs when the app
+  // mounts, which for a logged-out user is before there is a bearer token: that pull takes
+  // a 401 and sets the pill's failure flag, and nothing else would ever sync again until
+  // the user happened to background the app. Done here rather than in `SyncProvider`
+  // because the container is where the engine and the session are first both in hand, and
+  // the join works wherever the provider is mounted. Only the transition *into*
+  // `authenticated` counts - a token rotation or a sign-out is not a reason to sync.
+  let wasAuthenticated = session.getSnapshot().status === 'authenticated';
+  session.subscribe(() => {
+    const isAuthenticated = session.getSnapshot().status === 'authenticated';
+    if (isAuthenticated && !wasAuthenticated) void sync.sync('sign-in');
+    wasAuthenticated = isAuthenticated;
+  });
+
+  // Nothing the previous account read may be painted for the next one. Rows are wiped from
+  // SQLite on logout, but the query cache is a second copy, and the first frame of a new
+  // session would otherwise show it before any read re-runs. Dropped on the transition to
+  // `anonymous`, which covers an explicit logout and a forced clear alike.
+  session.subscribe(() => {
+    if (session.getSnapshot().status === 'anonymous') {
+      queryClient.removeQueries({ queryKey: queryKeys.local() });
+    }
+  });
+
+  return { database, session, api, queryClient, clock, sync };
 }

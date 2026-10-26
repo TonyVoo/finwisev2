@@ -25,6 +25,13 @@ export interface TokenSource {
   /** The current access token, or null when there is no session. */
   getAccessToken(): Promise<string | null>;
   /**
+   * Counter that moves when the session's identity changes (sign-in, sign-out, forced
+   * clear) and not on a token rotation. Required rather than optional: a guard against
+   * replaying one account's request into another is worthless if one forgotten
+   * implementation silently opts out of it.
+   */
+  getEpoch(): number;
+  /**
    * Obtain an access token newer than `staleAccessToken`, refreshing at most once across
    * all concurrent callers. Returns null when the session is gone.
    */
@@ -50,6 +57,13 @@ export interface TokenSource {
  *    value, replaying the request would just 401 again.
  * 4. **Never swallow the 401.** When the session is gone, the original response is
  *    returned so the caller still sees a failure rather than an empty success.
+ * 5. **Never retry across a session change** (`TVO-20`). The request's body was built
+ *    for the account that sent it. If anyone signed in or out while it was away, the
+ *    stored token belongs to a different session, and "the token changed, so retry"
+ *    (rule 3) would replay one account's payload into another's - the server files user
+ *    A's spending under user B. The epoch is read before the token and compared after
+ *    every await that follows, including the refresh, because a refresh that finds a
+ *    different stored token hands *that* token back as if it were a rotation.
  */
 export function createAuthorizedTransport(transport: Transport, session: TokenSource): Transport {
   return async function send(request) {
@@ -60,14 +74,18 @@ export function createAuthorizedTransport(transport: Transport, session: TokenSo
       return transport(request);
     }
 
+    const epoch = session.getEpoch();
     const accessToken = await session.getAccessToken();
     const response = await transport({ ...request, accessToken });
     if (response.status !== 401) {
       return response;
     }
+    if (session.getEpoch() !== epoch) {
+      return response;
+    }
 
     const refreshed = await session.ensureFreshAccessToken(accessToken);
-    if (refreshed === null || refreshed === accessToken) {
+    if (refreshed === null || refreshed === accessToken || session.getEpoch() !== epoch) {
       return response;
     }
 

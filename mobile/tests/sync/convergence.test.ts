@@ -43,6 +43,7 @@ function createDevice(server: FakeSyncServer, options: { readonly online?: boole
       database,
       api: createApiClient({ transport: server.transport }),
       reachability,
+      session: { getEpoch: () => 0 },
     }),
   };
 }

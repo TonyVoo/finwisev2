@@ -30,8 +30,8 @@ import { type TestDatabase, createTestDatabase } from '../support/sqlite';
  * (mount the provider under the gate, or subscribe the engine to the session); a test that
  * pinned one would reject the other.
  *
- * Both are `it.failing` until `TVO-34` lands, per the plan's convention for a case that
- * asserts the fixed behaviour before the fix.
+ * Both were `it.failing` until `TVO-34` landed (the container now syncs on the transition
+ * to `authenticated`) and are ordinary cases now.
  */
 
 const USER = '0192f5a0-0000-7000-8000-00000000a001';
@@ -164,7 +164,7 @@ describe('a session arriving after the engine has started', () => {
    * `SYNC-59`. The user's own data is the thing at stake: after signing in, Home reads
    * from SQLite and nothing has put the server's rows there.
    */
-  it.failing('pulls the account rows once the user signs in', async () => {
+  it('pulls the account rows once the user signs in', async () => {
     const { container, seen } = await launchedAnonymous();
     const before = pullsIn(seen).length;
 
@@ -187,7 +187,7 @@ describe('a session arriving after the engine has started', () => {
    * anonymous 401 showing tells a user whose app is working perfectly that it is broken,
    * and `Try again` is the only control that clears it.
    */
-  it.failing('does not leave the pill reporting the anonymous failure', async () => {
+  it('does not leave the pill reporting the anonymous failure', async () => {
     const { container } = await launchedAnonymous();
 
     await container.session.signIn(AUTH);

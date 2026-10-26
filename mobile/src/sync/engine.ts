@@ -5,6 +5,7 @@ import type { SqliteDatabase } from '../db/sqlite';
 import { readLastSyncedAt, writeLastSyncedAt } from './cursor';
 import { type PullOutcome, type PullProgress, pullChanges } from './pull';
 import { type PushOutcome, drainOutbox } from './push';
+import { type EpochSource, SessionChangedError, captureSession } from './sessionGuard';
 import type { Reachability } from './reachability';
 import type { SyncInputs } from './state';
 
@@ -59,7 +60,17 @@ export type SyncTrigger =
    */
   | 'pull-to-refresh'
   /** The user tapped `Try again` in the sync sheet. */
-  | 'manual';
+  | 'manual'
+  /**
+   * A session arrived: the user signed in or up (`TVO-34`).
+   *
+   * Its own member because it is the one lifecycle event the engine cannot see for itself.
+   * `app-open` fires at launch, when a logged-out user has no bearer token and the pull
+   * 401s; nothing else would run once they do sign in, leaving Home at `$0.00` under a
+   * `Sync failed` pill for an account that has data. Like `pull-to-refresh` it is skipped
+   * offline rather than forced, since a sign-in implies the network was just reached.
+   */
+  | 'sign-in';
 
 export interface SyncStatus extends SyncInputs {
   /** ISO-8601, or null when this install has never completed a sync. */
@@ -86,6 +97,13 @@ export interface SyncEngineDependencies {
   readonly database: SqliteDatabase;
   readonly api: Pick<ApiClient, 'pushSync' | 'pullSync'>;
   readonly reachability: Reachability;
+  /**
+   * The session, as far as a pass needs it: its epoch, captured at the start of every pass
+   * so that a pass spanning a log out and a second user's log in abandons itself instead
+   * of writing one account's data into the other (`sessionGuard.ts`, `TVO-20`). Required,
+   * not optional: a guard one forgotten argument away from absent is no guard.
+   */
+  readonly session: EpochSource;
   readonly clock?: Clock;
   /**
    * Called after a sync that changed local rows, so the caller can invalidate its
@@ -118,7 +136,7 @@ function changedLocalRows(push: PushOutcome | null, pull: PullOutcome | null): b
 }
 
 export function createSyncEngine(deps: SyncEngineDependencies): SyncEngine {
-  const { database, api, reachability, onLocalDataChanged } = deps;
+  const { database, api, reachability, session, onLocalDataChanged } = deps;
   const clock = deps.clock ?? systemClock;
 
   let status: SyncStatus = {
@@ -153,11 +171,15 @@ export function createSyncEngine(deps: SyncEngineDependencies): SyncEngine {
     let push: PushOutcome | null = null;
     let pull: PullOutcome | null = null;
 
+    // Once per pass, before the first read: everything below belongs to this session.
+    const guard = captureSession(session);
+
     try {
-      push = await drainOutbox({ database, api, clock });
+      push = await drainOutbox({ database, api, clock, guard });
       pull = await pullChanges({
         database,
         api,
+        guard,
         onProgress: (progress) =>
           publish({ resyncing: progress.resyncing, resyncProgress: progress }),
       });
@@ -167,6 +189,12 @@ export function createSyncEngine(deps: SyncEngineDependencies): SyncEngine {
       publish({ lastAttemptFailed: false, lastError: null, lastSyncedAt: at });
       return { status: 'completed', trigger, push, pull, error: null };
     } catch (error) {
+      // The user switched under the pass. Nothing was written and nothing failed: no pill,
+      // no error. If a new session has arrived, its own `sign-in` sync is queued behind
+      // this one by the single-flight guard and runs next.
+      if (error instanceof SessionChangedError) {
+        return { status: 'skipped', trigger, push, pull, error: null };
+      }
       // `lastAttemptFailed` is only true while the device believes it is online, which is
       // the literal condition for pill state 6 - "failed **while online**". Offline, the
       // failure carries no information the user needs and state 4 already says what is

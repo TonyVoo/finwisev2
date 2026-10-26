@@ -15,6 +15,7 @@ import {
   recordOutboxAttempt,
 } from './outbox';
 import { clearRejection, recordRejection } from './rejections';
+import { SessionChangedError, type SessionGuard } from './sessionGuard';
 
 /**
  * The drain: `POST /v1/sync` until the outbox is empty.
@@ -54,6 +55,12 @@ export interface PushDependencies {
   readonly database: SqliteDatabase;
   readonly api: Pick<ApiClient, 'pushSync'>;
   readonly clock: Clock;
+  /**
+   * Keeps the pass inside the session it began in (`sessionGuard.ts`). The engine always
+   * supplies one; it is optional here only so the drain's own unit cases, which have no
+   * session to speak of, need not invent one.
+   */
+  readonly guard?: SessionGuard;
 }
 
 export interface PushOutcome {
@@ -130,7 +137,7 @@ interface SentEntry {
  * which is what makes a dropped response a no-op rather than a double-apply.
  */
 export async function drainOutbox(deps: PushDependencies): Promise<PushOutcome> {
-  const { database, api, clock } = deps;
+  const { database, api, clock, guard } = deps;
   let outcome: PushOutcome = {
     batches: 0,
     applied: 0,
@@ -142,6 +149,10 @@ export async function drainOutbox(deps: PushDependencies): Promise<PushOutcome> 
   for (;;) {
     const entries = await readOutboxBatch(database);
     if (entries.length === 0) break;
+    // The rows just read belong to whoever was signed in when the pass began; if that is no
+    // longer anyone's session, nothing below - the retirements, the request, the
+    // write-backs - may touch the database or the wire.
+    guard?.assertCurrent();
 
     const prepared = entries.map(prepare);
     const sendable = prepared.filter((item) => item.kind === 'sendable');
@@ -152,6 +163,7 @@ export async function drainOutbox(deps: PushDependencies): Promise<PushOutcome> 
     if (unsendable.length > 0) {
       const rejectedAt = toTimestamp(clock());
       await database.withExclusiveTransactionAsync(async (txn) => {
+        guard?.assertCurrent();
         await deleteOutboxEntries(
           txn,
           unsendable.map((item) => item.entry.seq),
@@ -173,8 +185,14 @@ export async function drainOutbox(deps: PushDependencies): Promise<PushOutcome> 
 
     let response;
     try {
+      // Immediately before the call, with nothing awaited between: the interceptor reads the
+      // token synchronously on entry, so this and that read see the same session.
+      guard?.assertCurrent();
       response = await api.pushSync({ changes: sendable.map((item) => item.item) });
     } catch (error) {
+      // Not a failed attempt: the entries belong to a session that has gone, and recording
+      // an attempt against them would write into the next user's outbox.
+      if (error instanceof SessionChangedError) throw error;
       // `attempts` and `lastError` are diagnostics for the sync sheet, written on the way
       // past rather than swallowed: the entries stay queued, the same
       // `clientMutationId`s go out next time, and a response that was dropped rather than
@@ -187,6 +205,8 @@ export async function drainOutbox(deps: PushDependencies): Promise<PushOutcome> 
       throw error;
     }
     outcome = { ...outcome, batches: outcome.batches + 1 };
+    // The response answers a request user A made. If B is signed in now, it is not B's.
+    guard?.assertCurrent();
 
     // Rule 1: identity comes from the echoed id. Rule 3: order comes from our own index.
     const sent = new Map<string, SentEntry>(
@@ -208,6 +228,7 @@ export async function drainOutbox(deps: PushDependencies): Promise<PushOutcome> 
 
     const rejectedAt = toTimestamp(clock());
     await database.withExclusiveTransactionAsync(async (txn) => {
+      guard?.assertCurrent();
       // Retired before the write-backs, so `apply.ts` replays only the entries that are
       // genuinely still unsent when it decides what to put back over the server row.
       await deleteOutboxEntries(

@@ -36,6 +36,13 @@ jest.mock('expo-router');
 
 const VALID = { email: 'ada@example.com', password: 'correct-horse' };
 
+/**
+ * Auth requests only. A successful sign-in now starts a sync (`TVO-34`), so the pull that
+ * follows is expected traffic; what these cases pin is that the *form* sent one request.
+ */
+const authRequests = (requests: readonly { readonly path: string }[]) =>
+  requests.filter((request) => request.path.startsWith('/v1/auth/'));
+
 describe('the sign up screen', () => {
   let mounted: MountedScreen;
 
@@ -111,7 +118,7 @@ describe('the sign up screen', () => {
       await submitForm({ email: VALID.email, password: 'correct horse battery staple' });
 
       await authenticated();
-      expect(mounted.requests).toHaveLength(1);
+      expect(authRequests(mounted.requests)).toHaveLength(1);
     });
 
     it('rejects an address that does not parse, with the shared schema as the judge', async () => {

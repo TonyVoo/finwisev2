@@ -3,6 +3,7 @@ import type { SqliteDatabase, SqliteExecutor } from '../db/sqlite';
 import { applyServerRecord } from './apply';
 import { INITIAL_CURSOR, readSyncCursor, writeSyncCursor } from './cursor';
 import { countOutboxEntries } from './outbox';
+import type { SessionGuard } from './sessionGuard';
 
 /**
  * The pull: `GET /v1/sync?since=<cursor>` until `hasMore` is false.
@@ -29,6 +30,12 @@ export interface PullDependencies {
   readonly api: Pick<ApiClient, 'pullSync'>;
   /** Progress for the `Catching up` screen (§5.3), reported after each applied page. */
   readonly onProgress?: (progress: PullProgress) => void;
+  /**
+   * Keeps the pass inside the session it began in (`sessionGuard.ts`): a page fetched for
+   * user A is not written into user B's database. The engine always supplies one; optional
+   * here only so the pull's own unit cases need not invent a session.
+   */
+  readonly guard?: SessionGuard;
 }
 
 export interface PullProgress {
@@ -71,7 +78,7 @@ async function wipeSyncedRows(txn: SqliteExecutor): Promise<void> {
 }
 
 export async function pullChanges(deps: PullDependencies): Promise<PullOutcome> {
-  const { database, api, onProgress } = deps;
+  const { database, api, onProgress, guard } = deps;
 
   let cursor = await readSyncCursor(database);
   let pages = 0;
@@ -79,7 +86,10 @@ export async function pullChanges(deps: PullDependencies): Promise<PullOutcome> 
   let resynced = false;
 
   for (;;) {
+    guard?.assertCurrent();
     const response = await api.pullSync({ since: cursor });
+    // The page answers a request made under the session the pass began in.
+    guard?.assertCurrent();
 
     if (response.resyncRequired) {
       if (resynced) {
@@ -91,7 +101,10 @@ export async function pullChanges(deps: PullDependencies): Promise<PullOutcome> 
         return { pages, changes, cursor, resynced, resyncDeferred: true };
       }
 
-      await database.withExclusiveTransactionAsync(wipeSyncedRows);
+      await database.withExclusiveTransactionAsync(async (txn) => {
+        guard?.assertCurrent();
+        await wipeSyncedRows(txn);
+      });
       cursor = INITIAL_CURSOR;
       resynced = true;
       onProgress?.({ pages, changes, hasMore: true, resyncing: true });
@@ -99,6 +112,7 @@ export async function pullChanges(deps: PullDependencies): Promise<PullOutcome> 
     }
 
     await database.withExclusiveTransactionAsync(async (txn) => {
+      guard?.assertCurrent();
       for (const change of response.changes) {
         await applyServerRecord(txn, change);
       }
