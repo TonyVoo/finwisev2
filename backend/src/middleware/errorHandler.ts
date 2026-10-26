@@ -49,6 +49,11 @@ export const errorHandler: ErrorRequestHandler = (
       status: error.status,
       code: error.code,
     });
+    // The contract promises every 429 carries `Retry-After`. Setting it here, rather
+    // than at the throw site, is what makes that true of every thrower.
+    if (error.retryAfterSeconds !== undefined) {
+      res.setHeader('Retry-After', String(error.retryAfterSeconds));
+    }
     res.status(error.status).json(error.toEnvelope());
     return;
   }

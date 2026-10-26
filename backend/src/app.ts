@@ -1,4 +1,5 @@
 import express, { Router, type Express } from 'express';
+import { getConfig } from './config.ts';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.ts';
 import { jsonBodyErrors, parseJsonBody, requireJsonContentType } from './middleware/jsonBody.ts';
 import { requestId } from './middleware/requestId.ts';
@@ -35,6 +36,16 @@ export function createApp(): Express {
   // Express would otherwise 301 `/v1/me/` to `/v1/me`, turning a trailing-slash typo in
   // a client into a redirect the client has to follow instead of an honest 404.
   app.set('strict routing', false);
+
+  /**
+   * What `req.ip` means, which the login rate limiter keys a bucket on.
+   *
+   * `false` by default: the socket's remote address, correct when this process is the
+   * thing clients connect to. Behind a proxy it has to be the proxy count, or every
+   * request appears to come from the balancer and the per-address bucket becomes one
+   * global budget. See `TRUST_PROXY` in `config.ts`.
+   */
+  app.set('trust proxy', getConfig().trustProxy);
 
   app.use(requestId);
   app.use(requireJsonContentType);

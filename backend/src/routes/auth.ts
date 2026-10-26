@@ -9,7 +9,13 @@ import {
 } from '@expense-tracker/shared';
 import { Router, type Request, type Response } from 'express';
 import { getPrisma } from '../db/client.ts';
+import { isApiProblem } from '../errors.ts';
 import { sendJson } from '../http/respond.ts';
+import {
+  loginRateLimit,
+  recordLoginFailure,
+  recordLoginSuccess,
+} from '../middleware/loginRateLimit.ts';
 import { validateBody } from '../middleware/validate.ts';
 import { login, logout, refresh, signup } from '../services/authService.ts';
 
@@ -41,11 +47,37 @@ authRouter.post(
   },
 );
 
-authRouter.post('/auth/login', validateBody(LoginRequest), async (req: Request, res: Response) => {
-  const body = req.body as LoginRequest;
-  const result = await login(getPrisma(), { email: body.email, password: body.password });
-  sendJson(res, 200, AuthResponse, result);
-});
+/**
+ * Login, with the throttle either side of the service call.
+ *
+ * This is the one route in the file that is not purely "validate, call, send", and the
+ * reason is that a rate limiter has to see the *outcome*, not just the request.
+ * `loginRateLimit` rejects a caller already over the line before argon2 runs; the
+ * try/catch below is what feeds it, and it counts `invalid_credentials` alone. A `500`
+ * is not evidence of guessing, so a database outage must not lock every user out.
+ *
+ * The ordering matters: `validateBody` first, so the limiter keys its buckets on an
+ * email the schema has already vouched for, then `loginRateLimit`.
+ */
+authRouter.post(
+  '/auth/login',
+  validateBody(LoginRequest),
+  loginRateLimit,
+  async (req: Request, res: Response) => {
+    const body = req.body as LoginRequest;
+    let result;
+    try {
+      result = await login(getPrisma(), { email: body.email, password: body.password });
+    } catch (error) {
+      if (isApiProblem(error) && error.code === 'invalid_credentials') {
+        recordLoginFailure(req, body.email);
+      }
+      throw error;
+    }
+    recordLoginSuccess(req, body.email);
+    sendJson(res, 200, AuthResponse, result);
+  },
+);
 
 authRouter.post(
   '/auth/refresh',

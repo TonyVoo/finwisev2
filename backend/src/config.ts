@@ -55,6 +55,26 @@ const EnvSchema = z.object({
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().min(1).default(60),
 
   LOG_FORMAT: z.enum(['pretty', 'json', 'silent']).optional(),
+
+  /**
+   * How many reverse proxies sit in front of this process, or `false` for none.
+   *
+   * This is a rate-limiting setting, not a cosmetic one. `req.ip` is the socket's remote
+   * address unless Express is told to trust `X-Forwarded-For`, so behind a load balancer
+   * an untrusting server sees every request as coming from the balancer — and the
+   * per-source-address login bucket collapses into a single global budget shared by
+   * every user on the planet. That is not a weak limiter, it is an outage.
+   *
+   * The inverse mistake is worse, which is why the default is `false` and the value is a
+   * *count* rather than a boolean: trusting a header nobody is stripping lets a caller
+   * set their own `X-Forwarded-For` and mint a fresh bucket per guess. Set this to the
+   * number of proxies you actually run, so Express takes the Nth-from-last entry — the
+   * one your own proxy wrote — and ignores whatever the client put in front of it.
+   */
+  TRUST_PROXY: z
+    .union([z.literal('false'), z.coerce.number().int().min(0)])
+    .default('false')
+    .transform((value) => (value === 'false' ? false : value)),
 });
 
 function build() {
@@ -89,6 +109,8 @@ function build() {
       accessTokenTtlSeconds: env.ACCESS_TOKEN_TTL_SECONDS,
     },
     refreshTokenTtlDays: env.REFRESH_TOKEN_TTL_DAYS,
+    /** Express's `trust proxy` setting. See `TRUST_PROXY` above for why it matters. */
+    trustProxy: env.TRUST_PROXY,
     logFormat: env.LOG_FORMAT ?? (isTest ? 'silent' : isProduction ? 'json' : 'pretty'),
     /**
      * Whether to re-validate every response body against the `shared/` schema before

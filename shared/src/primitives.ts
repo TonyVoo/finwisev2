@@ -38,6 +38,28 @@ export const LIMITS = {
   EMAIL_MAX: 254,
   /** Largest accepted `amountMinor`: ~10 billion major units. */
   AMOUNT_MINOR_MAX: 999_999_999_999,
+  /**
+   * Login throttling (`POST /v1/auth/login`, `TVO-38`), published in the OpenAPI contract.
+   *
+   * One window length for both buckets: 15 minutes. Long enough that guessing at the
+   * limit is not worth an attacker's time, short enough that a user whose email was
+   * targeted is locked out for a bounded, stated period rather than until someone
+   * intervenes. It is also the ceiling of `Retry-After` on a login `429`.
+   */
+  LOGIN_RATE_LIMIT_WINDOW_SECONDS: 15 * 60,
+  /**
+   * Failed logins one email address may accrue per window before the next attempt is
+   * `429 rate_limited`. Cleared by a successful login. Ten leaves room for an honest user
+   * who forgets which password they used and stops well short of a dictionary run.
+   */
+  LOGIN_MAX_FAILURES_PER_EMAIL: 10,
+  /**
+   * Failed logins one source address may accrue per window, across every email. Higher
+   * than the per-email figure on purpose - several people can share an address - but low
+   * enough to catch one guess against each of many accounts. Never cleared by a success,
+   * so a spray cannot be refunded by landing one lucky login partway through.
+   */
+  LOGIN_MAX_FAILURES_PER_IP: 50,
 } as const;
 
 /**

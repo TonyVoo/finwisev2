@@ -18,13 +18,28 @@ export class ApiProblem extends Error {
   readonly code: ErrorCode;
   readonly status: number;
   readonly details?: ErrorDetails;
+  /**
+   * Seconds the client should wait, for the one code that carries a header.
+   *
+   * It lives on the problem rather than being set by whoever throws, so that the
+   * contract's promise — a `429` *always* carries `Retry-After` — is kept at the single
+   * place a non-2xx response is written (`middleware/errorHandler.ts`) instead of at
+   * every throw site. A future second thrower of `rate_limited` cannot forget it.
+   */
+  readonly retryAfterSeconds?: number;
 
-  constructor(code: ErrorCode, message: string, details?: ErrorDetails) {
+  constructor(
+    code: ErrorCode,
+    message: string,
+    details?: ErrorDetails,
+    retryAfterSeconds?: number,
+  ) {
     super(message);
     this.name = 'ApiProblem';
     this.code = code;
     this.status = ERROR_CODE_STATUS[code];
     if (details !== undefined) this.details = details;
+    if (retryAfterSeconds !== undefined) this.retryAfterSeconds = retryAfterSeconds;
   }
 
   toEnvelope(): ApiError {
@@ -81,5 +96,21 @@ export const problems = {
     ),
   batchTooLarge: (message = 'Request body is too large.') =>
     new ApiProblem('batch_too_large', message),
+  /**
+   * Over a published rate limit.
+   *
+   * The message says nothing about *which* bucket was hit. On login the two buckets are
+   * keyed by email and by source address, and saying which one tripped would tell a
+   * caller whether anyone else has been failing against that email recently — a weaker
+   * oracle than `invalid_credentials` would be, but the same kind, and there is no
+   * reason for a client to know.
+   */
+  rateLimited: (retryAfterSeconds: number) =>
+    new ApiProblem(
+      'rate_limited',
+      'Too many attempts. Wait for the period given in Retry-After and try again.',
+      undefined,
+      retryAfterSeconds,
+    ),
   internal: (message = 'Something went wrong.') => new ApiProblem('internal_error', message),
 } as const;

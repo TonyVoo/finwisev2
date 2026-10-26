@@ -3828,11 +3828,19 @@ and they are where a security or correctness regression shows up first.
 - **Pre** `F-FRESH`
 - **Steps** Send repeated failed logins for one email, repeated logins from one address, and a
   burst of authenticated reads
-- **Expect** `[BLOCKED-BY-GAP 10]` — the contract says login is "rate limited per email and per
-  source address" and that `429 rate_limited` sets `Retry-After`, but **no threshold or window is
-  stated anywhere**, so there is no number to assert against. What this case can assert today: a
-  `429` body validates against `ApiError` with `code: "rate_limited"` and carries a
-  non-negative integer `Retry-After`. The threshold assertion waits on GAP 10.
+- **Expect** A burst of failed logins for one email is answered `401` exactly
+  `LIMITS.LOGIN_MAX_FAILURES_PER_EMAIL` times (10) and `429` after that; a spray of single failures
+  across many emails from one address is answered `401` exactly
+  `LIMITS.LOGIN_MAX_FAILURES_PER_IP` times (50) and `429` after that. Each `429` body validates
+  against `ApiError` with `code: "rate_limited"` and carries a non-negative integer `Retry-After`
+  no larger than `LIMITS.LOGIN_RATE_LIMIT_WINDOW_SECONDS`. A burst of authenticated reads is **not**
+  throttled — the limiter guards the credential endpoint, not the session.
+- **Status** Executed, green. Was `[BLOCKED-BY-GAP 10]`; executing it found there was no limiter at
+  all (`TVO-38`), which has landed, and the thresholds this case now asserts are published in
+  `LIMITS`. The figures themselves are still Backend's proposal pending sign-off — see GAP 10 — but
+  they are written down, so the case has a number to assert against either way.
+- **Where** `backend/tests/plan.edgecases.test.ts` (`API-09 — rate limiting`), with the per-bucket,
+  recovery and no-enumeration detail in `backend/tests/auth.rateLimit.test.ts`
 
 ### API-10 — `GET /v1/sync` query validation
 
@@ -4229,7 +4237,7 @@ no new `revision`, and another account's id rejected as `400 validation_error`.
 | 5   | A future-dated row arriving by sync is unreachable in every view | Medium | **not filed** — the Designer's call | `EDGE-04` step 3 | `EDGE-04` unparks |
 | 7b  | `immutable_field` is unreachable on the **REST** path | Low | **not filed** — a choice between two one-line fixes | `API-04` (half) | `API-04`'s REST half unparks |
 | 9   | No E2E driver is named in `docs/PLAN.md` §7 | Low | **closed 12 Oct** — Maestro agreed with Mobile Dev, split by platform; the infrastructure half is **TVO-30** | nothing | — |
-| 10  | Rate limits are not quantified | Low | **not filed** — an owner call | `API-09` | `API-09` can assert that a limit exists, not just its shape |
+| 10  | Rate limits are not quantified | Low | **numbers proposed** — sign-off wanted; the missing limiter was `TVO-38`, landed | `API-09` (now executed, green) | nothing — `API-09` asserts the published thresholds |
 
 **Four gaps were added on 2026-10-21, all four found by running the app rather than reading it, and
 one of them parks cases rather than merely describing a defect.** GAP 24 is the one that parks:
@@ -5728,13 +5736,53 @@ because a concurrent run held the workspace.
 Agreeing the driver therefore unblocks more than this plan previously claimed, and the remainder is
 `TVO-30`.
 
-### GAP 10 — Rate limits are not quantified
+### GAP 10 — Rate limits are not quantified — **NUMBERS PROPOSED, AWAITING SIGN-OFF**
 
-`429 rate_limited` is documented on every operation, `Retry-After` is specified, and login is said
-to be limited "per email and per source address" — but no threshold or window appears anywhere.
-`API-09` can assert the response **shape** but not that any limit is actually enforced, so a
-server with no rate limiting at all would pass. Numbers would also let the app's own retry
-back-off be tuned against something real rather than guessed.
+As filed: `429 rate_limited` is documented on every operation, `Retry-After` is specified, and
+login is said to be limited "per email and per source address" — but no threshold or window
+appeared anywhere. `API-09` could assert the response **shape** but not that any limit was
+enforced, so a server with no rate limiting at all would pass.
+
+**Executing `API-09` found exactly that server**, which was filed separately as `TVO-38`: there was
+no limiter, and 25 wrong passwords were answered `401` in 421 ms. The two halves of that issue are
+now in different states.
+
+**The limiter exists** (`backend/src/middleware/loginRateLimit.ts`, landed under `TVO-38`). The
+exposure is closed and `API-09` is executed and green, including the threshold assertion this gap
+was parking.
+
+**The numbers are Backend's proposal, not a ruling.** Implementing a limiter required picking
+figures, so rather than leave them undocumented they are published where both sides read them —
+`LIMITS.LOGIN_MAX_FAILURES_PER_EMAIL`, `LIMITS.LOGIN_MAX_FAILURES_PER_IP` and
+`LIMITS.LOGIN_RATE_LIMIT_WINDOW_SECONDS` — and stated on the operation in
+`docs/api/openapi.yaml`, with a contract test holding the two in agreement:
+
+| Bucket | Failures per window | Cleared by a success |
+| --- | --- | --- |
+| One email address | 10 | yes |
+| One source address, all emails | 50 | no |
+| Window | 15 minutes, rolling | — |
+
+Whoever owns the security posture should confirm or revise these three figures. The two judgement
+calls inside them, stated so they can be disagreed with rather than discovered:
+
+1. **Only failed attempts are counted, by both buckets.** Counting successes would put every user
+   behind one office or carrier NAT on a shared budget — a denial of service against honest
+   traffic, which an attacker (whose requests are all failures) would not notice.
+2. **There is no lockout and nothing is persisted.** A short forgetful window is the trade: an
+   attacker who can lock a *known* email out by failing against it is an attack of its own, and the
+   shorter the window the less it is worth. The cost to be honest about is that a targeted user can
+   be locked out for up to 15 minutes.
+
+Revising the figures is a one-line change in `shared/src/primitives.ts` plus the matching prose in
+`docs/api/openapi.yaml`; `auth.rateLimit.test.ts` and `API-09` read the constants rather than
+literals, so neither needs editing. What **would** be a code change is a different *shape* of
+policy — a progressive delay, a persisted lockout, or a per-account counter surviving restart.
+
+One deployment note, since it is the thing most likely to make these numbers behave unexpectedly:
+the per-address bucket keys on `req.ip`, which is only the real client address if `TRUST_PROXY` is
+set to the number of proxies in front of the process. Left at `false` behind a load balancer, every
+user shares one budget of 50.
 
 ---
 

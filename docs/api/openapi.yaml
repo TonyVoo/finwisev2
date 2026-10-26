@@ -212,7 +212,28 @@ paths:
 
         A wrong email and a wrong password are reported identically as
         `401 invalid_credentials`, so this endpoint cannot be used to enumerate accounts.
-        Login is rate limited per email and per source address.
+
+        **Rate limited, per email and per source address.** Two buckets, both counting
+        **failed** attempts only over a rolling **15-minute** window
+        (`LIMITS.LOGIN_RATE_LIMIT_WINDOW_SECONDS`):
+
+        | Bucket | Failures per window | Cleared by a success |
+        | --- | --- | --- |
+        | One email address | 10 (`LIMITS.LOGIN_MAX_FAILURES_PER_EMAIL`) | yes |
+        | One source address, all emails | 50 (`LIMITS.LOGIN_MAX_FAILURES_PER_IP`) | no |
+
+        Over either limit the answer is `429 rate_limited` with `Retry-After` set to the
+        whole seconds remaining in the window, and the password is **not** verified — so
+        being throttled is cheap for the server and tells the caller nothing about
+        whether the credentials were right. A throttled email with no account behaves
+        identically to one with an account, so the limiter is not an enumeration oracle
+        either.
+
+        Successful logins are never counted. That is deliberate: many unrelated users
+        share one office or carrier address, and counting their successes would ration
+        honest traffic without troubling an attacker, whose requests are all failures.
+
+        A client should obey `Retry-After` rather than retrying on a schedule of its own.
       security: []
       x-errorCodes:
         - validation_error
@@ -1432,8 +1453,12 @@ components:
       schema:
         type: string
     RetryAfter:
-      description: Seconds to wait before retrying.
-      required: false
+      description: |
+        Whole seconds to wait before retrying. Always present on a `429`, and always a
+        non-negative integer — a client can parse it without a fallback. It is the time
+        remaining in the limiter's current window, so obeying it exactly is enough; it
+        never exceeds the window itself (900s for login).
+      required: true
       schema:
         type: integer
         minimum: 0
@@ -1538,7 +1563,15 @@ components:
               code: unknown_category
               message: No live category with that id for this user.
     RateLimited:
-      description: 'Too many requests. Code: `rate_limited`. Honour `Retry-After`.'
+      description: |
+        Too many requests. Code: `rate_limited`. `Retry-After` is always set; wait that
+        many seconds and retry rather than backing off on a schedule of your own.
+
+        Thresholds are published per operation where they are enforced — see
+        `POST /v1/auth/login` for the login buckets. An operation that lists
+        `rate_limited` in `x-errorCodes` without stating a threshold reserves the right
+        to throttle but does not currently do so, and a client should handle the status
+        regardless.
       headers:
         X-Request-Id: { $ref: '#/components/headers/XRequestId' }
         Retry-After: { $ref: '#/components/headers/RetryAfter' }
@@ -2036,7 +2069,10 @@ components:
     ExpenseNote:
       type: string
       maxLength: 500
-      description: Free-text note, up to 500 characters after trimming (the server trims).
+      description: |
+        Free-text note, up to 500 characters after trimming (the server trims). The limit
+        is measured after trimming, so 500 characters padded with whitespace is accepted.
+        A note that trims to nothing is not an error — it is stored as `null`.
       examples: ['Weekly shop']
 
     Expense:
@@ -2107,12 +2143,17 @@ components:
           oneOf:
             - { $ref: '#/components/schemas/ExpenseNote' }
             - type: 'null'
+          description: |
+            Free-text note. Trimmed, and a value that trims to nothing is stored as
+            `null` rather than an empty string, so `null` is the only representation of
+            "no note" in the database.
 
     ExpenseUpdateRequest:
       type: object
       description: |
         Partial update. At least one property must be present; an empty object is
-        `400 validation_error`. Send `note: null` to clear the note.
+        `400 validation_error`. Send `note: null` to clear the note; a `note` that trims
+        to nothing (`""` or whitespace) means the same thing and clears it too.
       additionalProperties: false
       minProperties: 1
       properties:
@@ -2124,6 +2165,10 @@ components:
           oneOf:
             - { $ref: '#/components/schemas/ExpenseNote' }
             - type: 'null'
+          description: |
+            Free-text note. Trimmed, and a value that trims to nothing is stored as
+            `null` rather than an empty string, so `null` is the only representation of
+            "no note" in the database.
 
     ExpenseListResponse:
       type: object
@@ -2275,6 +2320,10 @@ components:
           oneOf:
             - { $ref: '#/components/schemas/ExpenseNote' }
             - type: 'null'
+          description: |
+            Free-text note. Trimmed, and a value that trims to nothing is stored as
+            `null` rather than an empty string, so `null` is the only representation of
+            "no note" in the database.
         deletedAt: { $ref: '#/components/schemas/DeletedAt' }
 
     ClientMutationId:

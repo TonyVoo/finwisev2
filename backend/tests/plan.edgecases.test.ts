@@ -92,9 +92,7 @@ describe('EDGE-06 — a category deleted while it has expenses', () => {
     }
     const spend = created.reduce((sum, e) => sum + e.amountMinor, 0);
 
-    const before = await api()
-      .get('/v1/expenses?limit=200')
-      .set('Authorization', user.auth);
+    const before = await api().get('/v1/expenses?limit=200').set('Authorization', user.auth);
     const beforeRows = before.body.data as Expense[];
     const beforeTotal = beforeRows.reduce((sum, e) => sum + e.amountMinor, 0);
 
@@ -227,25 +225,21 @@ describe('EDGE-09 — a note at and past its limit, and whitespace-only', () => 
   });
 
   /**
-   * `TVO-39`. The plan's Expect for the whitespace-only note is `note: null`, not `""`,
-   * and the server stores `""`: `ExpenseNote` is `.trim().max(500)` with no `.min(1)`, and
-   * `expenseService.ts:133` writes `input.note ?? null`, which leaves an empty string
-   * alone. Nobody sees it today because the client normalises in `normaliseNote` and
-   * `ExpenseRow` guards an empty note a second time - so this is a server that accepts a
-   * row only its own client's manners keep out of the database.
+   * `TVO-39`, fixed. The plan's Expect for the whitespace-only note is `note: null`, not
+   * `""`. `ExpenseNote` trims but has no `.min(1)`, and a writer's `input.note ?? null`
+   * cannot catch what is left, because `""` is not nullish - so the normalisation lives
+   * on `ExpenseNoteInput` in the shared contract instead, which the create, patch and
+   * sync push shapes all read `note` through.
    */
-  it.fails('stores a whitespace-only note as null rather than an empty string', async () => {
+  it('stores a whitespace-only note as null rather than an empty string', async () => {
     const user = await createUser();
 
-    const response = await api()
-      .post('/v1/expenses')
-      .set('Authorization', user.auth)
-      .send({
-        categoryId: user.defaultCategory.id,
-        amountMinor: 100,
-        date: '2026-10-06',
-        note: '   ',
-      });
+    const response = await api().post('/v1/expenses').set('Authorization', user.auth).send({
+      categoryId: user.defaultCategory.id,
+      amountMinor: 100,
+      date: '2026-10-06',
+      note: '   ',
+    });
 
     expect(response.status).toBe(201);
     expect((response.body.data as Expense).note).toBeNull();
@@ -293,23 +287,26 @@ describe('EDGE-10 — a category name at its bounds', () => {
 
 describe('API-09 — rate limiting', () => {
   /**
-   * `GAP 10` was filed as "the threshold is not quantified, so there is no number to
-   * assert against". Executing the case says something sharper than that: there is no
-   * limiter at all.
+   * Executable at last, and with a number to assert against.
    *
-   * `docs/api/openapi.yaml` says login is "rate limited per email and per source address"
-   * and `shared/src/errors.ts` reserves `rate_limited` -> 429 for it. `rate_limited`
-   * appears nowhere in `backend/src`, and the burst below confirms it from outside: every
-   * attempt is answered, none is throttled. `TVO-38`.
+   * This case was `[BLOCKED-BY-GAP 10]`: the contract said login was "rate limited per
+   * email and per source address" without stating a threshold anywhere, so there was no
+   * figure to test. Executing it turned up something sharper than a missing figure —
+   * there was no limiter at all, 25 wrong passwords answered `401` in 421ms — which was
+   * filed as `TVO-38`.
    *
-   * Written as two cases on purpose. The first records today's behaviour so this suite is
-   * green and the finding lives in the board rather than in a permanently red file; the
-   * second is the assertion the case actually wants, and it is the one to flip when the
-   * limiter lands.
+   * Both halves have now landed. `shared/src/primitives.ts` publishes the thresholds and
+   * the window, `docs/api/openapi.yaml` states them on the operation, and the limiter is
+   * `backend/src/middleware/loginRateLimit.ts`. So the two cases below are the two the
+   * plan always wanted: the burst is throttled, and the `429` is one a client can obey.
+   *
+   * The per-email and per-address buckets, the lockout-and-recovery behaviour and the
+   * no-enumeration property are covered in depth by `auth.rateLimit.test.ts`. These two
+   * stay deliberately close to the plan's own Steps and Expect wording.
    */
   const BURST = 25;
 
-  it('does not throttle a burst of failed logins for one email, which is the defect', async () => {
+  it('throttles a burst of failed logins for one email', async () => {
     const email = uniqueEmail('ratelimit');
     const signup = await api().post('/v1/auth/signup').send({ email, password: TEST_PASSWORD });
     expect(signup.status).toBe(201);
@@ -322,13 +319,28 @@ describe('API-09 — rate limiting', () => {
       statuses.push(response.status);
     }
 
-    // Every one of them got a real answer. An attacker's guess rate is bounded by nothing
-    // but the argon2 verify, which is the whole of the protection that exists today.
-    expect(new Set(statuses)).toEqual(new Set([401]));
-    expect(statuses.filter((s) => s === 429)).toHaveLength(0);
+    // The burst is answered, then stopped. `BURST` is 25 and the published per-email
+    // threshold is 10, so the run must contain both codes: all-401 was the defect, and
+    // all-429 would mean the limiter is refusing the very first attempt.
+    expect(new Set(statuses)).toEqual(new Set([401, 429]));
+
+    // Exactly the published budget of real answers, and every attempt after the
+    // threshold throttled. Asserted against `LIMITS` rather than against 10, so a
+    // revision of the number does not need this line edited.
+    expect(statuses.filter((s) => s === 401)).toHaveLength(LIMITS.LOGIN_MAX_FAILURES_PER_EMAIL);
+    expect(statuses.filter((s) => s === 429)).toHaveLength(
+      BURST - LIMITS.LOGIN_MAX_FAILURES_PER_EMAIL,
+    );
+
+    // And the throttling starts where it should, rather than the two codes merely both
+    // being present somewhere in the run.
+    expect(statuses.slice(0, LIMITS.LOGIN_MAX_FAILURES_PER_EMAIL).every((s) => s === 401)).toBe(
+      true,
+    );
+    expect(statuses.slice(LIMITS.LOGIN_MAX_FAILURES_PER_EMAIL).every((s) => s === 429)).toBe(true);
   }, 120_000);
 
-  it.fails('eventually answers 429 with a Retry-After a client can obey', async () => {
+  it('eventually answers 429 with a Retry-After a client can obey', async () => {
     const email = uniqueEmail('ratelimit-wanted');
     await api().post('/v1/auth/signup').send({ email, password: TEST_PASSWORD });
 
@@ -354,5 +366,9 @@ describe('API-09 — rate limiting', () => {
     const retryAfter = Number(limited?.retryAfter);
     expect(Number.isInteger(retryAfter)).toBe(true);
     expect(retryAfter).toBeGreaterThanOrEqual(0);
+
+    // Inside the published window, so the figure is the limiter's own deadline rather
+    // than an invented constant the client would wait out for no reason.
+    expect(retryAfter).toBeLessThanOrEqual(LIMITS.LOGIN_RATE_LIMIT_WINDOW_SECONDS);
   }, 120_000);
 });
