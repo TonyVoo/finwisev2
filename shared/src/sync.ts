@@ -10,7 +10,7 @@ import {
   Uuid,
 } from './primitives.js';
 import { Category, CategoryColor, CategoryName } from './category.js';
-import { Expense, ExpenseNote } from './expense.js';
+import { Expense, ExpenseNoteInput } from './expense.js';
 
 /**
  * The sync contract. Both sides implement against this independently, so it is spelled
@@ -125,7 +125,7 @@ export const ExpenseSyncFields = z
     amountMinor: AmountMinor.optional(),
     currency: CurrencyCode.optional(),
     date: CalendarDate.optional(),
-    note: ExpenseNote.nullable().optional(),
+    note: ExpenseNoteInput.optional(),
     deletedAt: Timestamp.nullable().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, { error: 'fields must not be empty' });

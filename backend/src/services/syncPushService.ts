@@ -213,6 +213,8 @@ async function applyExpenseItem(
         amountMinor: BigInt(amountMinor),
         currency,
         date: fromCalendarDate(date),
+        // As on the REST create path: `ExpenseNoteInput` has already normalised a
+        // note that trims to nothing, so this only fills in an omitted one.
         note: fields.note ?? null,
         createdAt: now,
         updatedAt: incomingUpdatedAt,

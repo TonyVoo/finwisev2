@@ -83,6 +83,31 @@ describe('applied — a create', () => {
     });
   });
 
+  it('stores a whitespace-only note as null, on the push path too', async () => {
+    const id = uuidv7();
+    const [result] = await pushOk(user, [
+      {
+        entity: 'expense',
+        id,
+        updatedAt: ISO(Date.now() - 60_000),
+        clientMutationId: uuidv7(),
+        fields: {
+          categoryId: user.defaultCategory.id,
+          amountMinor: 450,
+          date: '2026-10-09',
+          note: '   ',
+        },
+      },
+    ]);
+
+    // `TVO-39`. This is the path that matters most: the mobile client normalises before
+    // it ever sends, but a second client or a replayed push does not, and this endpoint
+    // is where such a row would land. `ExpenseNoteInput` is on `ExpenseSyncFields`, so
+    // the push inherits the same answer the REST create path gives.
+    expect(result?.status).toBe('applied');
+    expect(result?.record).toMatchObject({ id, note: null });
+  });
+
   it('gives the category a colour from the shared palette when the client omits one', async () => {
     const [result] = await pushOk(user, [
       {

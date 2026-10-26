@@ -218,6 +218,26 @@ describe('PATCH /v1/expenses/:id', () => {
     expect(cleared.body.data.note).toBeNull();
   });
 
+  it('clears a note sent as whitespace, which has the same meaning as null', async () => {
+    const user = await createUser();
+    const expense = await createExpense(user, {
+      categoryId: user.categories.Groceries!.id,
+      note: 'Weekly shop',
+    });
+
+    const response = await api()
+      .patch(`/v1/expenses/${expense.id}`)
+      .set('Authorization', user.auth)
+      .send({ note: '   ' });
+
+    // `TVO-39`. `ExpenseNoteInput` collapses a note that trims to nothing to `null`, so
+    // the patch means "clear it" rather than "store an empty string". The alternative is
+    // a second representation of "no note" in the column, which every later reader has
+    // to know about; `null` is the one they already know.
+    expect(response.status).toBe(200);
+    expect(response.body.data.note).toBeNull();
+  });
+
   it('moves an expense to another live category', async () => {
     const user = await createUser();
     const expense = await createExpense(user, { categoryId: user.categories.Groceries!.id });

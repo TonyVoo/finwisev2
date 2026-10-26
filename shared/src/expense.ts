@@ -20,6 +20,23 @@ export const ExpenseNote = z
   .max(LIMITS.EXPENSE_NOTE_MAX)
   .describe('Free-text note, up to 500 characters after trimming.');
 
+/**
+ * A note as a client *sends* it: trimmed, and a note that trims to nothing is `null`.
+ *
+ * `ExpenseNote` alone trims but cannot collapse `"   "` to "no note" - the result is `""`,
+ * which is not nullish, so a writer's `input.note ?? null` leaves it alone and the column
+ * ends up with two spellings of "no note" that every later reader has to know about
+ * (`TVO-39`, `EDGE-09`). Normalising here, on the input side of the contract, means the
+ * REST create and patch shapes and the sync push fields all give the same answer, and no
+ * server writer has to remember to do it.
+ *
+ * Input shapes use this; the *response* shapes keep plain `ExpenseNote`, since a row the
+ * server reports has already been through here.
+ */
+export const ExpenseNoteInput = ExpenseNote.nullable().transform((value) =>
+  value === '' ? null : value,
+);
+
 /** An expense row as the server reports it. */
 export const Expense = z.strictObject({
   ...SYNCABLE_SHAPE,
@@ -42,7 +59,7 @@ export const ExpenseCreateRequest = z.strictObject({
     "Defaults to the user's currency when omitted. In the MVP it must equal it; anything else is a validation_error.",
   ),
   date: CalendarDate,
-  note: ExpenseNote.nullable().optional(),
+  note: ExpenseNoteInput.optional(),
 });
 
 export const ExpenseUpdateRequest = z
@@ -51,7 +68,7 @@ export const ExpenseUpdateRequest = z
     amountMinor: AmountMinor.optional(),
     currency: CurrencyCode.optional(),
     date: CalendarDate.optional(),
-    note: ExpenseNote.nullable().optional(),
+    note: ExpenseNoteInput.optional(),
   })
   .refine((v) => Object.keys(v).length > 0, { error: 'at least one field must be present' });
 
@@ -112,6 +129,7 @@ export const ExpenseResponse = z.strictObject({
 });
 
 export type ExpenseNote = z.infer<typeof ExpenseNote>;
+export type ExpenseNoteInput = z.infer<typeof ExpenseNoteInput>;
 export type Expense = z.infer<typeof Expense>;
 export type ExpenseCreateRequest = z.infer<typeof ExpenseCreateRequest>;
 export type ExpenseUpdateRequest = z.infer<typeof ExpenseUpdateRequest>;

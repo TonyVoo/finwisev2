@@ -130,6 +130,9 @@ export async function createExpense(
         amountMinor: BigInt(input.amountMinor),
         currency,
         date: fromCalendarDate(input.date),
+        // Only absence to handle: `ExpenseNoteInput` has already turned a note that
+        // trims to nothing into `null`, which `?? null` could not have (`""` is not
+        // nullish). See `shared/src/expense.ts`.
         note: input.note ?? null,
         // Set explicitly rather than left to the column default, so a freshly created row
         // reports `createdAt === updatedAt` to the millisecond.
