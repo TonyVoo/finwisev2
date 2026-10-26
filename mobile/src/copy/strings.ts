@@ -51,6 +51,20 @@ export const COPY = {
     total: { current: 'Total this month', other: 'Total' },
     section: { today: 'Today', yesterday: 'Yesterday' },
     fab: 'Add expense',
+    search: {
+      open: 'Search expenses',
+      close: 'Close search',
+      placeholder: 'Search notes and categories',
+      clear: 'Clear search',
+      allCategories: 'All categories',
+      /** `{count}` results, e.g. `3 results`; one has its own form (deck §0: no `(s)`). */
+      resultsOne: '1 result',
+      resultsMany: '{count} results',
+      empty: {
+        headline: 'No matches',
+        body: 'Nothing matches that search. Try different words or another category.',
+      },
+    },
   },
 
   summary: {
@@ -136,7 +150,17 @@ export const COPY = {
     currency: 'Currency',
     currencyHint: 'Set when you created your account.',
     categories: 'Categories',
+    export: 'Export expenses',
+    exportHint: 'Save everything you have recorded as a CSV file.',
     logout: 'Log out',
+  },
+
+  /** The CSV export's outcomes, shown as snackbars. Success needs none: the share sheet is it. */
+  export: {
+    busy: 'Preparing your file',
+    empty: 'There are no expenses to export yet.',
+    unavailable: 'Sharing files is not available on this device.',
+    failed: 'Could not export your expenses. Try again.',
   },
 
   /** The log out dialog (`09-copy-deck.md`). The body depends on whether the outbox is empty. */

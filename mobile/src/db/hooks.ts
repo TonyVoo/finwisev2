@@ -10,12 +10,14 @@ import {
   type CategoryWithCount,
   type ExpenseDetail,
   type ExpenseListItem,
+  type ExpenseSearch,
   type PendingChange,
   anyExpensesExist,
   coloursInUse,
   countPendingRecords,
   findExpense,
   findFallbackCategory,
+  isSearchActive,
   lastUsedCategoryId,
   listLiveCategories,
   listLiveCategoriesWithCounts,
@@ -24,6 +26,8 @@ import {
   monthCategorySpend,
   monthTotalMinor,
   monthsWithExpenses,
+  searchExpenses,
+  searchSummary,
 } from './queries';
 
 /**
@@ -240,5 +244,31 @@ export function useColoursInUse(): UseQueryResult<readonly string[]> {
   return useQuery({
     queryKey: queryKeys.categories.coloursInUse(),
     queryFn: () => coloursInUse(database),
+  });
+}
+
+/** Matches for the Home search, across every month. Keyed on the trimmed text. */
+export function useExpenseSearch(
+  search: ExpenseSearch,
+): UseQueryResult<readonly ExpenseListItem[]> {
+  const database = useDatabase();
+  const text = search.text.trim();
+  return useQuery({
+    queryKey: queryKeys.expenses.search(text, search.categoryId),
+    queryFn: () => searchExpenses(database, { text, categoryId: search.categoryId }),
+    enabled: isSearchActive(search),
+  });
+}
+
+/** Count and total of everything the search matches (not just the rendered page). */
+export function useExpenseSearchSummary(
+  search: ExpenseSearch,
+): UseQueryResult<{ readonly count: number; readonly totalMinor: number }> {
+  const database = useDatabase();
+  const text = search.text.trim();
+  return useQuery({
+    queryKey: [...queryKeys.expenses.search(text, search.categoryId), 'summary'] as const,
+    queryFn: () => searchSummary(database, { text, categoryId: search.categoryId }),
+    enabled: isSearchActive(search),
   });
 }

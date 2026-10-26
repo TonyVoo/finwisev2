@@ -325,3 +325,31 @@ separator.
 **Amounts in accessibility labels are the formatted currency string** (`$12.50`), which both
 VoiceOver and TalkBack read as money. Never pass `amountMinor` to a label
 (`00-foundations.md` §8 rule 3).
+
+## 9. Post-MVP additions
+
+Strings for features built after the MVP scope in `docs/PLAN.md` §1 was closed. They were
+**not** written by the Designer: the developer transcribed them here so the copy test
+(`mobile/tests/copy/strings.test.ts`) keeps holding every shipped string to this file. Treat
+them as proposals the Designer can reword; changing a row here means changing
+`mobile/src/copy/strings.ts` in the same commit.
+
+| Key                          | Copy                                                                 | Where                      |
+| ---------------------------- | -------------------------------------------------------------------- | -------------------------- |
+| `settings.export`            | `Export expenses`                                                    | Settings                   |
+| `settings.exportHint`        | `Save everything you have recorded as a CSV file.`                   | Settings                   |
+| `export.busy`                | `Preparing your file`                                                | Settings, while exporting  |
+| `export.empty`               | `There are no expenses to export yet.`                               | Snackbar                   |
+| `export.unavailable`         | `Sharing files is not available on this device.`                     | Snackbar                   |
+| `export.failed`              | `Could not export your expenses. Try again.`                         | Snackbar                   |
+| `sync.sheet.idle.headline`   | `Up to date`                                                         | Sync sheet, already open when sync settles |
+| `sync.sheet.idle.body`       | `Everything on this device has been synced.`                         | Sync sheet, already open when sync settles |
+| `home.search.open`           | `Search expenses`                                                    | Home, a11y label           |
+| `home.search.close`          | `Close search`                                                       | Home, a11y label           |
+| `home.search.placeholder`    | `Search notes and categories`                                        | Home, search field         |
+| `home.search.clear`          | `Clear search`                                                       | Home, a11y label           |
+| `home.search.allCategories`  | `All categories`                                                     | Home, filter chip          |
+| `home.search.resultsOne`     | `1 result`                                                           | Home, result summary       |
+| `home.search.resultsMany`    | `{count} results`                                                    | Home, result summary       |
+| `home.search.empty.headline` | `No matches`                                                         | Home, empty search         |
+| `home.search.empty.body`     | `Nothing matches that search. Try different words or another category.` | Home, empty search      |

@@ -15,6 +15,33 @@ import { type MountedScreen, authResponse, mountScreen, ok, secureStore } from '
  * outbox it is looking at, and confirming it ends the session the way rule 14 lists.
  */
 
+/**
+ * The two native modules the export reaches. `File` records what is written to it, and
+ * `Sharing` records what is shared; both are reset in `beforeEach`.
+ */
+const mockFiles: { uri: string; contents: string }[] = [];
+const mockShare = jest.fn(async (_uri: string, _options?: unknown) => undefined);
+const mockSharingAvailable = jest.fn(async () => true);
+
+jest.mock('expo-file-system', () => ({
+  Paths: { cache: 'file:///cache' },
+  File: class {
+    readonly uri: string;
+    constructor(dir: string, name: string) {
+      this.uri = `${dir}/${name}`;
+    }
+    create(): void {}
+    write(contents: string): void {
+      mockFiles.push({ uri: this.uri, contents });
+    }
+  },
+}));
+
+jest.mock('expo-sharing', () => ({
+  isAvailableAsync: () => mockSharingAvailable(),
+  shareAsync: (uri: string, options?: unknown) => mockShare(uri, options),
+}));
+
 const EMPTY_PAGE = {
   changes: [],
   nextCursor: 0,
@@ -43,6 +70,9 @@ describe('the settings screen', () => {
     secureStore().clear();
     requests = [];
     logoutUnreachable = false;
+    mockFiles.length = 0;
+    mockShare.mockClear();
+    mockSharingAvailable.mockImplementation(async () => true);
     mounted = await mountScreen(<SettingsScreen />, { transport });
     // A session with a user row, as a signed-in device has. Its own sign-in sync (TVO-34)
     // is let finish first so it cannot interleave with a case's own assertions.
@@ -146,5 +176,79 @@ describe('the settings screen', () => {
     expect(
       mounted.container.queryClient.getQueryCache().findAll({ queryKey: queryKeys.local() }),
     ).toHaveLength(0);
+  });
+
+  describe('Export expenses', () => {
+    async function seedExpense(): Promise<void> {
+      await mounted.database.runAsync(
+        `INSERT INTO categories (id, name, color, isDefault, updatedAt, revision)
+         VALUES ('c-1', 'Groceries', '#2F8044', 0, '2026-10-01T00:00:00.000Z', 1)`,
+        [],
+      );
+      await mounted.database.runAsync(
+        `INSERT INTO expenses (id, categoryId, amountMinor, currency, date, note, updatedAt, revision)
+         VALUES ('e-1', 'c-1', 1250, 'USD', '2026-10-08', 'Weekly shop', '2026-10-08T00:00:00.000Z', 1)`,
+        [],
+      );
+    }
+
+    it('offers the export, with its hint', async () => {
+      expect(await screen.findByTestId('settings-export')).toBeTruthy();
+      expect(screen.getByText(COPY.settings.export)).toBeTruthy();
+      expect(screen.getByText(COPY.settings.exportHint)).toBeTruthy();
+    });
+
+    it('writes the CSV and opens the share sheet with it', async () => {
+      await seedExpense();
+
+      fireEvent.press(await screen.findByTestId('settings-export'));
+      await waitFor(() => expect(mockShare).toHaveBeenCalledTimes(1));
+
+      expect(mockFiles).toHaveLength(1);
+      expect(mockFiles[0]?.contents).toContain('2026-10-08,12.50,USD,Groceries,Weekly shop');
+      expect(mockShare.mock.calls[0]?.[0]).toBe(mockFiles[0]?.uri);
+      expect(mockShare.mock.calls[0]?.[1]).toMatchObject({ mimeType: 'text/csv' });
+    });
+
+    it('says so, and writes nothing, when there are no expenses', async () => {
+      fireEvent.press(await screen.findByTestId('settings-export'));
+
+      expect(await screen.findByText(COPY.export.empty)).toBeTruthy();
+      expect(mockFiles).toEqual([]);
+      expect(mockShare).not.toHaveBeenCalled();
+    });
+
+    it('says so when the device cannot share files', async () => {
+      await seedExpense();
+      mockSharingAvailable.mockImplementation(async () => false);
+
+      fireEvent.press(await screen.findByTestId('settings-export'));
+
+      expect(await screen.findByText(COPY.export.unavailable)).toBeTruthy();
+      expect(mockFiles).toEqual([]);
+    });
+
+    it('reports a failure and can be tried again', async () => {
+      await seedExpense();
+      mockShare.mockImplementationOnce(async () => {
+        throw new Error('share failed');
+      });
+
+      fireEvent.press(await screen.findByTestId('settings-export'));
+      expect(await screen.findByText(COPY.export.failed)).toBeTruthy();
+
+      fireEvent.press(await screen.findByTestId('settings-export'));
+      await waitFor(() => expect(mockShare).toHaveBeenCalledTimes(2));
+    });
+
+    it('works with no network at all', async () => {
+      await seedExpense();
+      requests.length = 0;
+
+      fireEvent.press(await screen.findByTestId('settings-export'));
+      await waitFor(() => expect(mockShare).toHaveBeenCalledTimes(1));
+
+      expect(requests).toEqual([]);
+    });
   });
 });

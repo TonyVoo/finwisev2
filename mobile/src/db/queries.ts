@@ -271,6 +271,20 @@ export async function listMonthExpenses(
   range: DateRange,
   page: { readonly limit: number; readonly offset?: number } = { limit: 50 },
 ): Promise<readonly ExpenseListItem[]> {
+  return selectExpenseItems(database, LIVE_IN_MONTH, [range.from, range.to], page);
+}
+
+/**
+ * The shared read behind the month list and search: same row shape, same ordering, same
+ * pending/refused derivation, so a search result can never render differently from the row
+ * it is a hit for. `where` is trusted SQL written in this file; every value is a parameter.
+ */
+async function selectExpenseItems(
+  database: SqliteDatabase,
+  where: string,
+  params: readonly (string | number)[],
+  page: { readonly limit: number; readonly offset?: number },
+): Promise<readonly ExpenseListItem[]> {
   const rows = await database.getAllAsync<
     Omit<ExpenseListItem, 'pending' | 'needsAttention'> & {
       pending: number;
@@ -300,10 +314,10 @@ export async function listMonthExpenses(
             ) AS rejected
        FROM expenses e
        LEFT JOIN categories c ON c.id = e.categoryId AND c.deletedAt IS NULL
-      WHERE ${LIVE_IN_MONTH}
+      WHERE ${where}
       ORDER BY e.date DESC, e.id DESC
       LIMIT ? OFFSET ?`,
-    [range.from, range.to, page.limit, page.offset ?? 0],
+    [...params, page.limit, page.offset ?? 0],
   );
 
   return rows.map(({ pending, rejected, ...row }) => ({
@@ -596,4 +610,118 @@ export async function listPendingChanges(
     amountMinor: row.entity === 'expense' ? row.amountMinor : null,
     operation: row.deletedAt !== null ? 'deleted' : (row.revision ?? 0) === 0 ? 'added' : 'edited',
   }));
+}
+
+/** One live expense as the CSV export reads it. */
+export interface ExportRow {
+  readonly date: string;
+  readonly amountMinor: number;
+  readonly currency: string;
+  readonly categoryName: string;
+  readonly note: string | null;
+}
+
+/**
+ * Every live expense, oldest first, with its category's name - for the CSV export.
+ *
+ * Oldest first, unlike every screen: a spreadsheet is read top to bottom and summed, and
+ * a ledger reads forward in time. Ties on `date` break on `id`, which is UUIDv7 and so
+ * orders by creation, which keeps two exports of the same data byte-identical.
+ *
+ * An expense whose category is gone is exported under the live fallback category's name
+ * rather than dropped or left blank, for the reason `monthCategorySpend` gives: it is
+ * still money the user spent. The `Uncategorized` literal is the contract's seed name,
+ * used only when there is no live fallback row either - a broken invariant only a buggy
+ * peer can produce - and never to *find* the fallback, which is resolved by its flag.
+ *
+ * Unbounded on purpose. An export that silently stops at a page size is a wrong file,
+ * and the table is local and indexed on `(deletedAt, date, id)`.
+ */
+export async function listExpensesForExport(
+  database: SqliteDatabase,
+): Promise<readonly ExportRow[]> {
+  return await database.getAllAsync<ExportRow>(
+    `SELECT e.date,
+            e.amountMinor,
+            e.currency,
+            COALESCE(c.name, f.name, 'Uncategorized') AS categoryName,
+            e.note
+       FROM expenses e
+       LEFT JOIN categories c ON c.id = e.categoryId AND c.deletedAt IS NULL
+       LEFT JOIN (
+         SELECT name FROM categories
+          WHERE isDefault = 1 AND deletedAt IS NULL
+          ORDER BY id LIMIT 1
+       ) f ON 1 = 1
+      WHERE e.deletedAt IS NULL
+      ORDER BY e.date ASC, e.id ASC`,
+    [],
+  );
+}
+
+/** What the Home search bar asks for. Both parts are optional; both empty means "no search". */
+export interface ExpenseSearch {
+  /** Free text, matched against the note and the category name. Trimmed by the caller. */
+  readonly text: string;
+  /** Restrict to one category, or null for all of them. */
+  readonly categoryId: string | null;
+}
+
+/** True when the search would narrow anything. Whitespace alone is not a search. */
+export function isSearchActive(search: ExpenseSearch): boolean {
+  return search.text.trim() !== '' || search.categoryId !== null;
+}
+
+/** Escape `%`, `_` and the escape character itself, so user text is matched literally. */
+export function escapeLike(text: string): string {
+  return text.replace(/[\\%_]/g, (ch) => `\\${ch}`);
+}
+
+function searchWhere(search: ExpenseSearch): { where: string; params: (string | number)[] } {
+  const clauses = ['e.deletedAt IS NULL'];
+  const params: (string | number)[] = [];
+  const text = search.text.trim();
+  if (text !== '') {
+    const pattern = `%${escapeLike(text)}%`;
+    clauses.push(
+      `(e.note LIKE ? ESCAPE '\\' OR COALESCE(c.name, (SELECT f.name FROM categories f WHERE f.isDefault = 1 AND f.deletedAt IS NULL ORDER BY f.id LIMIT 1), '') LIKE ? ESCAPE '\\')`,
+    );
+    params.push(pattern, pattern);
+  }
+  if (search.categoryId !== null) {
+    clauses.push('e.categoryId = ?');
+    params.push(search.categoryId);
+  }
+  return { where: clauses.join(' AND '), params };
+}
+
+/**
+ * Expenses matching a search, across every month, newest first.
+ *
+ * Search deliberately ignores the selected month: someone looking for "dentist" does not know
+ * which month it was in. Local SQLite only, so it works offline like everything else.
+ */
+export async function searchExpenses(
+  database: SqliteDatabase,
+  search: ExpenseSearch,
+  page: { readonly limit: number; readonly offset?: number } = { limit: 100 },
+): Promise<readonly ExpenseListItem[]> {
+  const { where, params } = searchWhere(search);
+  return selectExpenseItems(database, where, params, page);
+}
+
+/** Count and total of everything a search matches, computed over all matches, not one page. */
+export async function searchSummary(
+  database: SqliteDatabase,
+  search: ExpenseSearch,
+): Promise<{ readonly count: number; readonly totalMinor: number }> {
+  const { where, params } = searchWhere(search);
+  const row = await database.getFirstAsync<{ count: number; total: number | null }>(
+    `SELECT COUNT(*) AS count, SUM(e.amountMinor) AS total
+       FROM expenses e
+       LEFT JOIN categories c ON c.id = e.categoryId AND c.deletedAt IS NULL
+      WHERE ${where}`,
+    params,
+  );
+  return { count: row?.count ?? 0, totalMinor: row?.total ?? 0 };
 }

@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
 import { SkeletonBlock } from '../components/Chrome';
 import { Button } from '../components/Button';
-import { EMPTY_COPY, emptyMonthHeadline, goToMonthAction } from '../copy/strings';
+import { COPY, EMPTY_COPY, emptyMonthHeadline, goToMonthAction } from '../copy/strings';
 import { color, size, space, type } from '../theme/tokens';
 
 /**
@@ -85,6 +85,18 @@ export function MonthEmpty({
           testID="empty-go-to-current"
         />
       )}
+    </View>
+  );
+}
+
+/** A search that matched nothing - distinct from "no expenses", which says to add one. */
+export function SearchEmpty() {
+  return (
+    <View testID="empty-search" style={styles.empty}>
+      <Text style={styles.headline} accessibilityRole="header">
+        {COPY.home.search.empty.headline}
+      </Text>
+      <Text style={styles.body}>{COPY.home.search.empty.body}</Text>
     </View>
   );
 }

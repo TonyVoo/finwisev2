@@ -5,8 +5,11 @@ import { useSessionController } from '@/auth/SessionProvider';
 import { Button } from '@/components/Button';
 import { AppBar, IconButton } from '@/components/Chrome';
 import { Dialog } from '@/components/Dialog';
+import { useSnackbar } from '@/components/Snackbar';
 import { Row, RowSubtitle, RowTitle } from '@/components/Row';
 import { COPY } from '@/copy/strings';
+import { useDatabase } from '@/db/DatabaseProvider';
+import { exportExpenses, nativeExportDependencies } from '@/export/exportExpenses';
 import { usePendingRecordCount, useUserCurrency, useUserEmail } from '@/db/hooks';
 import { color, space, type } from '@/theme/tokens';
 
@@ -32,9 +35,35 @@ export default function SettingsScreen() {
   const currency = useUserCurrency();
   const email = useUserEmail();
   const pending = usePendingRecordCount();
+  const database = useDatabase();
+  const showSnackbar = useSnackbar();
   const [confirmingLogout, setConfirmingLogout] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const hasUnsynced = (pending.data ?? 0) > 0;
+
+  /**
+   * Export is a local read, a file write and the OS share sheet - no network - so it has
+   * no offline state to design. `exporting` only stops a second tap while the first is
+   * still writing; the result is the share sheet, or one snackbar saying why not.
+   */
+  async function onExport(): Promise<void> {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const result = await exportExpenses({
+        database,
+        now: () => new Date(),
+        ...nativeExportDependencies,
+      });
+      if (result.status === 'empty') showSnackbar({ message: COPY.export.empty });
+      if (result.status === 'unavailable') showSnackbar({ message: COPY.export.unavailable });
+    } catch {
+      showSnackbar({ message: COPY.export.failed });
+    } finally {
+      setExporting(false);
+    }
+  }
 
   return (
     <View style={styles.screen}>
@@ -81,6 +110,19 @@ export default function SettingsScreen() {
         <RowTitle>{COPY.settings.categories}</RowTitle>
       </Row>
 
+      <View style={styles.group}>
+        <Row
+          testID="settings-export"
+          onPress={() => void onExport()}
+          lastInGroup
+          accessibilityLabel={`${COPY.settings.export}. ${COPY.settings.exportHint}`}
+          accessibilityState={{ disabled: exporting }}
+        >
+          <RowTitle>{COPY.settings.export}</RowTitle>
+          <RowSubtitle>{exporting ? COPY.export.busy : COPY.settings.exportHint}</RowSubtitle>
+        </Row>
+      </View>
+
       <View style={styles.logout}>
         <Button
           label={COPY.settings.logout}
@@ -115,6 +157,9 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: color.bg.canvas,
+  },
+  group: {
+    marginTop: space[6],
   },
   logout: {
     paddingHorizontal: space[4],
