@@ -38,6 +38,7 @@ describe('migrate', () => {
       'expenses',
       'meta',
       'outbox',
+      'recurring',
       'sync_rejections',
       'user',
     ]);

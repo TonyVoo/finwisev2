@@ -58,6 +58,12 @@ export const queryKeys = {
     months: () => ['local', 'expenses', 'months'] as const,
   },
 
+  recurring: {
+    all: () => ['local', 'recurring'] as const,
+    /** Every live rule, with its category's name and colour. */
+    live: () => ['local', 'recurring', 'live'] as const,
+  },
+
   user: {
     /** The currency every amount on every screen is formatted in. */
     currency: () => ['local', 'user', 'currency'] as const,

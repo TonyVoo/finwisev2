@@ -92,7 +92,14 @@ export interface LocalStore {
  * them, and a rejection outliving the rows it describes would put a `needs-attention`
  * marker on the next account's store pointing at records that are not there.
  */
-const DATA_TABLES = ['outbox', 'sync_rejections', 'expenses', 'categories', 'user'] as const;
+const DATA_TABLES = [
+  'outbox',
+  'sync_rejections',
+  'expenses',
+  'recurring',
+  'categories',
+  'user',
+] as const;
 
 async function readOwner(executor: SqliteExecutor): Promise<string | null> {
   const row = await executor.getFirstAsync<{ value: string }>(
@@ -110,6 +117,7 @@ async function hasRows(executor: SqliteExecutor): Promise<boolean> {
     // row to whoever signs in next.
     `SELECT (EXISTS (SELECT 1 FROM categories)
           OR EXISTS (SELECT 1 FROM expenses)
+          OR EXISTS (SELECT 1 FROM recurring)
           OR EXISTS (SELECT 1 FROM outbox)
           OR EXISTS (SELECT 1 FROM user)) AS present`,
     [],

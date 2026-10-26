@@ -5,6 +5,8 @@ import {
   type CategorySyncFields,
   type Expense as WireExpense,
   type ExpenseSyncFields,
+  type RecurringRule as WireRecurringRule,
+  type RecurringSyncFields,
   type SyncEntity,
   type SyncPushItem,
   type SyncPushResponse,
@@ -14,7 +16,12 @@ import {
 import type { Db } from '../db/client.ts';
 import { getPrisma } from '../db/client.ts';
 import { isUniqueViolation } from '../db/errors.ts';
-import { fromCalendarDate, toWireCategory, toWireExpense } from '../db/mappers.ts';
+import {
+  fromCalendarDate,
+  toWireCategory,
+  toWireExpense,
+  toWireRecurringRule,
+} from '../db/mappers.ts';
 import { nextRevision } from '../db/revision.ts';
 import { ApiProblem, isApiProblem, problems } from '../errors.ts';
 import { logger } from '../logger.ts';
@@ -26,6 +33,7 @@ import type {
   Category as CategoryRow,
   Expense as ExpenseRow,
   Prisma,
+  RecurringRule as RecurringRuleRow,
 } from '../db/generated/client.ts';
 
 /**
@@ -48,12 +56,19 @@ import type {
  */
 
 /** The authoritative server row for a result, or null when there is none to report. */
-type RecordFor<E extends SyncEntity> = E extends 'category' ? WireCategory : WireExpense;
+type RecordFor<E extends SyncEntity> = E extends 'category'
+  ? WireCategory
+  : E extends 'recurring'
+    ? WireRecurringRule
+    : WireExpense;
+
+/** Any row the sync can report. */
+type WireRecord = WireCategory | WireExpense | WireRecurringRule;
 
 /** What applying (or declining to apply) one item produced. */
 interface Outcome {
   readonly status: SyncPushStatus;
-  readonly record: WireCategory | WireExpense | null;
+  readonly record: WireRecord | null;
   readonly error: ApiErrorBody | null;
 }
 
@@ -262,6 +277,136 @@ async function applyExpenseItem(
   return applied(toWireExpense(updated));
 }
 
+// ---------------------------------------------------------------------------
+// Recurring rule
+// ---------------------------------------------------------------------------
+
+async function applyRecurringItem(
+  tx: Db,
+  userId: string,
+  item: Extract<SyncPushItem, { entity: 'recurring' }>,
+  now: Date,
+): Promise<Outcome> {
+  const fields: RecurringSyncFields = item.fields;
+  const existing: RecurringRuleRow | null = await tx.recurringRule.findUnique({
+    where: { id: item.id },
+  });
+  if (existing && existing.userId !== userId) throw idAlreadyInUse();
+
+  const incomingUpdatedAt = clampPushedUpdatedAt(item.updatedAt, now, {
+    userId,
+    entity: 'recurring',
+    id: item.id,
+  });
+
+  if (!existing) {
+    const { categoryId, amountMinor, frequency, startDate } = fields;
+    if (
+      categoryId === undefined ||
+      amountMinor === undefined ||
+      frequency === undefined ||
+      startDate === undefined
+    ) {
+      throw requiredToCreate(
+        'recurring',
+        [
+          categoryId === undefined ? 'categoryId' : undefined,
+          amountMinor === undefined ? 'amountMinor' : undefined,
+          frequency === undefined ? 'frequency' : undefined,
+          startDate === undefined ? 'startDate' : undefined,
+        ].filter((name): name is string => name !== undefined),
+      );
+    }
+    const endDate = fields.endDate ?? null;
+    requireOrderedDates(startDate, endDate);
+
+    const currency = requireAccountCurrency(fields.currency, await accountCurrency(tx, userId));
+    const deletedAt = fields.deletedAt === undefined ? null : toDate(fields.deletedAt);
+    await requireOwnCategoryForWrite(tx, userId, categoryId, { requireLive: deletedAt === null });
+
+    const revision = await nextRevision(tx, userId);
+    const created = await tx.recurringRule.create({
+      data: {
+        id: item.id,
+        userId,
+        categoryId,
+        amountMinor: BigInt(amountMinor),
+        currency,
+        note: fields.note ?? null,
+        frequency,
+        startDate: fromCalendarDate(startDate),
+        endDate: endDate === null ? null : fromCalendarDate(endDate),
+        createdAt: now,
+        updatedAt: incomingUpdatedAt,
+        deletedAt,
+        revision,
+      },
+    });
+    return applied(toWireRecurringRule(created));
+  }
+
+  if (decideLww({ incomingUpdatedAt, storedUpdatedAt: existing.updatedAt }) !== 'applied') {
+    return conflict(toWireRecurringRule(existing));
+  }
+
+  if (fields.currency !== undefined) {
+    requireAccountCurrency(fields.currency, await accountCurrency(tx, userId));
+  }
+
+  // The merged result is what has to make sense: `{ endDate }` alone cannot be judged
+  // against a `startDate` it does not carry, so both come from the stored row when absent.
+  const startDate = fields.startDate ?? toCalendarDateOf(existing.startDate);
+  const endDate =
+    fields.endDate === undefined
+      ? existing.endDate === null
+        ? null
+        : toCalendarDateOf(existing.endDate)
+      : fields.endDate;
+  requireOrderedDates(startDate, endDate);
+
+  const deletedAt = fields.deletedAt === undefined ? existing.deletedAt : toDate(fields.deletedAt);
+  // Checked only when the push names a category. A rule whose category was deleted since
+  // keeps pointing at it (the device files its expenses under the default instead), so
+  // insisting on a live category for an unrelated edit - the amount, say - would refuse a
+  // change the user can only fix by picking a category they were never asked about.
+  if (fields.categoryId !== undefined) {
+    await requireOwnCategoryForWrite(tx, userId, fields.categoryId, {
+      requireLive: deletedAt === null,
+    });
+  }
+
+  const revision = await nextRevision(tx, userId);
+  const updated = await tx.recurringRule.update({
+    where: { id: existing.id },
+    data: {
+      ...(fields.categoryId === undefined ? {} : { categoryId: fields.categoryId }),
+      ...(fields.amountMinor === undefined ? {} : { amountMinor: BigInt(fields.amountMinor) }),
+      ...(fields.currency === undefined ? {} : { currency: fields.currency }),
+      ...(fields.note === undefined ? {} : { note: fields.note }),
+      ...(fields.frequency === undefined ? {} : { frequency: fields.frequency }),
+      startDate: fromCalendarDate(startDate),
+      endDate: endDate === null ? null : fromCalendarDate(endDate),
+      deletedAt,
+      updatedAt: incomingUpdatedAt,
+      revision,
+    },
+  });
+  return applied(toWireRecurringRule(updated));
+}
+
+function toCalendarDateOf(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+/** `YYYY-MM-DD` compares as text, so no parsing and no timezone to get wrong. */
+function requireOrderedDates(startDate: string, endDate: string | null): void {
+  if (endDate !== null && endDate < startDate) {
+    throw problems.validation('`endDate` must not be earlier than `startDate`.', {
+      issues: [{ path: 'fields.endDate', message: 'must not be earlier than startDate' }],
+    });
+  }
+}
+
 function toDate(value: string | null): Date | null {
   return value === null ? null : new Date(value);
 }
@@ -290,11 +435,11 @@ function clampPushedUpdatedAt(
   return clampClientUpdatedAt(incoming, now);
 }
 
-function applied(record: WireCategory | WireExpense): Outcome {
+function applied(record: WireRecord): Outcome {
   return { status: 'applied', record, error: null };
 }
 
-function conflict(record: WireCategory | WireExpense): Outcome {
+function conflict(record: WireRecord): Outcome {
   return { status: 'conflict_server_wins', record, error: null };
 }
 
@@ -381,7 +526,11 @@ async function currentRecord(
   userId: string,
   entity: SyncEntity,
   id: string,
-): Promise<WireCategory | WireExpense | null> {
+): Promise<WireRecord | null> {
+  if (entity === 'recurring') {
+    const row = await tx.recurringRule.findFirst({ where: { id, userId } });
+    return row ? toWireRecurringRule(row) : null;
+  }
   if (entity === 'category') {
     const row = await tx.category.findFirst({ where: { id, userId } });
     return row ? toWireCategory(row) : null;
@@ -465,9 +614,17 @@ function buildResult(args: {
   // Split by entity so `record` is narrowed to the branch's own row type rather than
   // cast. The discriminated union is what gives the client a precise `record` without a
   // cast of its own; building it with one here would waste that.
-  return args.entity === 'category'
-    ? { entity: 'category', ...base, record: args.outcome.record as RecordFor<'category'> | null }
-    : { entity: 'expense', ...base, record: args.outcome.record as RecordFor<'expense'> | null };
+  if (args.entity === 'category') {
+    return { entity: 'category', ...base, record: args.outcome.record as RecordFor<'category'> | null };
+  }
+  if (args.entity === 'recurring') {
+    return {
+      entity: 'recurring',
+      ...base,
+      record: args.outcome.record as RecordFor<'recurring'> | null,
+    };
+  }
+  return { entity: 'expense', ...base, record: args.outcome.record as RecordFor<'expense'> | null };
 }
 
 /**
@@ -548,9 +705,14 @@ async function attemptItem(
           // a retry replays it instead of being parsed again.
           return { status: 'invalid', record: null, error: parsed.error };
         }
-        return parsed.item.entity === 'category'
-          ? applyCategoryItem(tx, userId, parsed.item, now)
-          : applyExpenseItem(tx, userId, parsed.item, now);
+        switch (parsed.item.entity) {
+          case 'category':
+            return applyCategoryItem(tx, userId, parsed.item, now);
+          case 'recurring':
+            return applyRecurringItem(tx, userId, parsed.item, now);
+          default:
+            return applyExpenseItem(tx, userId, parsed.item, now);
+        }
       }),
     );
   } catch (error) {
@@ -570,7 +732,7 @@ async function attemptItem(
     // create comes first. Rethrown as `LostCreateRace` so the caller re-runs the item from
     // the top: a fresh read then sees the committed row, and the item resolves as either an
     // idempotent replay or an ordinary last-write-wins update. See {@link applyOne}.
-    if (isUniqueViolation(error, `${entity === 'category' ? 'categories' : 'expenses'}_pkey`)) {
+    if (isUniqueViolation(error, `${PRIMARY_KEY_TABLE[entity]}_pkey`)) {
       throw new LostCreateRace(id);
     }
 
@@ -611,6 +773,13 @@ async function attemptItem(
 
   return buildResult({ entity, id, clientMutationId, outcome, idempotentReplay: false });
 }
+
+/** The table each entity lives in, which names its primary-key constraint. */
+const PRIMARY_KEY_TABLE: Readonly<Record<SyncEntity, string>> = {
+  category: 'categories',
+  recurring: 'recurring_rules',
+  expense: 'expenses',
+};
 
 /**
  * Another transaction created this row while we were deciding to create it too.

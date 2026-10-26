@@ -382,3 +382,35 @@ them as proposals the Designer can reword; changing a row here means changing
 | `category.field.budget`      | `Monthly budget (optional)`                                          | Category sheet, field label |
 | `category.field.budgetPlaceholder` | `No budget`                                                    | Category sheet, field placeholder |
 | `validation.category.budgetFormat` | `Enter an amount like 40 or 40.50.`                            | Category sheet, field error |
+| `settings.recurring` | `Recurring expenses` | Settings |
+| `settings.recurringHint` | `Rent, subscriptions and other regular payments.` | Settings |
+| `recurring.title` | `Recurring expenses` | Recurring screen title |
+| `recurring.fab` | `Add recurring expense` | Recurring screen, button |
+| `recurring.new.title` | `New recurring expense` | Recurring sheet title |
+| `recurring.edit.title` | `Edit recurring expense` | Recurring sheet title |
+| `recurring.field.amount` | `Amount` | Recurring sheet, field label |
+| `recurring.field.category` | `Category` | Recurring sheet, field label |
+| `recurring.field.note` | `Note (optional)` | Recurring sheet, field label |
+| `recurring.field.frequency` | `Repeats` | Recurring sheet, field label |
+| `recurring.field.startDate` | `Starts` | Recurring sheet, field label |
+| `recurring.field.endDate` | `Ends (optional)` | Recurring sheet, field label |
+| `recurring.field.datePlaceholder` | `YYYY-MM-DD` | Recurring sheet, date placeholder |
+| `recurring.field.endPlaceholder` | `Never` | Recurring sheet, end placeholder |
+| `recurring.frequency.weekly` | `Weekly` | Recurring sheet, option |
+| `recurring.frequency.monthly` | `Monthly` | Recurring sheet, option |
+| `recurring.hint.pastStart` | `A start date in the past adds the expenses you missed.` | Recurring sheet, hint |
+| `recurring.error.amount` | `Enter an amount like 12 or 12.99.` | Recurring sheet, field error |
+| `recurring.error.date` | `Enter a date like 2026-11-05.` | Recurring sheet, field error |
+| `recurring.error.endBeforeStart` | `The end date cannot be before the start date.` | Recurring sheet, field error |
+| `recurring.error.noCategory` | `Add a category first.` | Recurring sheet, field error |
+| `recurring.row.next` | `Next {date}` | Recurring list, row subtitle |
+| `recurring.row.ended` | `Ended` | Recurring list, row subtitle |
+| `recurring.create` | `Add` | Recurring sheet, button |
+| `recurring.save` | `Save` | Recurring sheet, button |
+| `recurring.delete` | `Delete recurring expense` | Recurring sheet, button |
+| `recurring.deleteDialog.title` | `Delete this recurring expense?` | Delete dialog |
+| `recurring.deleteDialog.body` | `Expenses it already added will stay. No new ones will be added.` | Delete dialog |
+| `recurring.empty.headline` | `No recurring expenses` | Recurring list, empty |
+| `recurring.empty.body` | `Add one and it will create the expense for you each week or month, even offline.` | Recurring list, empty |
+| `snack.recurring.saved` | `Recurring expense saved.` | Snackbar |
+| `snack.recurring.deleted` | `Recurring expense deleted.` | Snackbar |

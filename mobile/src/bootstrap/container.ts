@@ -8,6 +8,7 @@ import type { TokenStore } from '../auth/sessionRecord';
 import { createSecureTokenStore } from '../auth/tokenStore';
 import { type Clock, systemClock } from '../lib/clock';
 import { createSqliteLocalStore } from '../db/localStore';
+import { generateDueRecurring } from '../recurring/generate';
 import { openLocalDatabase } from '../db/open';
 import type { SqliteDatabase } from '../db/sqlite';
 import { createQueryClient } from '../query/client';
@@ -115,6 +116,14 @@ export async function createAppContainer(options: AppContainerOptions = {}): Pro
     // a pull would land rows in SQLite that no screen showed until the next user edit.
     onLocalDataChanged: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.local() });
+    },
+    // Due recurring expenses are created here: locally, offline, at launch and at the start
+    // of every pass, so a rule that fired while the app was closed has its expenses by the
+    // time the first screen reads - and the drain that follows sends them.
+    beforeSync: async () => {
+      if (session.getSnapshot().status !== 'authenticated') return;
+      const created = await generateDueRecurring(database, { clock });
+      if (created > 0) void queryClient.invalidateQueries({ queryKey: queryKeys.local() });
     },
   });
 

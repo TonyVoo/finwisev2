@@ -1,4 +1,9 @@
-import { CategorySyncFields, ExpenseSyncFields, type SyncEntity } from '@expense-tracker/shared';
+import {
+  CategorySyncFields,
+  ExpenseSyncFields,
+  RecurringSyncFields,
+  type SyncEntity,
+} from '@expense-tracker/shared';
 import type { SqliteBindValue } from './sqlite';
 
 /**
@@ -42,8 +47,26 @@ export interface ExpenseRow {
   readonly revision: number;
 }
 
+/** A row of the local `recurring` table (migration 6). */
+export interface RecurringRow {
+  readonly id: string;
+  readonly categoryId: string;
+  readonly amountMinor: number;
+  readonly currency: string;
+  readonly note: string | null;
+  readonly frequency: 'weekly' | 'monthly';
+  /** Calendar date `YYYY-MM-DD`. */
+  readonly startDate: string;
+  readonly endDate: string | null;
+  readonly createdAt: string | null;
+  readonly updatedAt: string;
+  readonly deletedAt: string | null;
+  readonly revision: number;
+}
+
 export interface LocalRowByEntity {
   readonly category: CategoryRow;
+  readonly recurring: RecurringRow;
   readonly expense: ExpenseRow;
 }
 
@@ -104,8 +127,27 @@ const EXPENSE_SPEC: EntitySpec = {
   parseFields: (fields) => ExpenseSyncFields.parse(fields),
 };
 
+const RECURRING_SPEC: EntitySpec = {
+  entity: 'recurring',
+  table: 'recurring',
+  mutableColumns: [
+    'categoryId',
+    'amountMinor',
+    'currency',
+    'note',
+    'frequency',
+    'startDate',
+    'endDate',
+    'deletedAt',
+  ],
+  requiredOnCreate: ['categoryId', 'amountMinor', 'currency', 'frequency', 'startDate'],
+  insertDefaults: { note: null, endDate: null, createdAt: null, deletedAt: null, revision: 0 },
+  parseFields: (fields) => RecurringSyncFields.parse(fields),
+};
+
 export const ENTITY_SPECS: Readonly<Record<SyncEntity, EntitySpec>> = {
   category: CATEGORY_SPEC,
+  recurring: RECURRING_SPEC,
   expense: EXPENSE_SPEC,
 };
 

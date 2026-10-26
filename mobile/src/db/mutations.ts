@@ -434,3 +434,98 @@ async function resolveFallback(
 
 /** Re-exported so screens import one module for a local write. */
 export type { Clock, LocalMutationOptions, QueuedMutation };
+
+// ---------------------------------------------------------------------------
+// Recurring rules
+// ---------------------------------------------------------------------------
+
+/** A recurring rule as the form submits it. */
+export interface NewRecurring {
+  readonly categoryId: string;
+  readonly amountMinor: number;
+  readonly currency: string;
+  readonly note: string | null;
+  readonly frequency: 'weekly' | 'monthly';
+  readonly startDate: string;
+  readonly endDate: string | null;
+}
+
+/**
+ * Create a rule: one row, one outbox entry, one transaction. The expenses it is due to
+ * produce are made by `generateDueRecurring`, which the caller runs next so a rule started
+ * in the past shows its backfilled expenses straight away.
+ */
+export async function createRecurring(
+  database: SqliteDatabase,
+  rule: NewRecurring,
+  options: LocalMutationOptions & { readonly id?: string } = {},
+): Promise<QueuedMutation> {
+  return await applyLocalMutation(
+    database,
+    {
+      entity: 'recurring',
+      id: options.id ?? uuidv7(),
+      fields: {
+        categoryId: rule.categoryId,
+        amountMinor: rule.amountMinor,
+        currency: rule.currency,
+        note: normaliseNote(rule.note),
+        frequency: rule.frequency,
+        startDate: rule.startDate,
+        // Absent and null mean the same on a new row; the shorter push omits it.
+        ...(rule.endDate === null ? {} : { endDate: rule.endDate }),
+      },
+    },
+    options,
+  );
+}
+
+/**
+ * Change a rule. Only the named fields are written and queued.
+ *
+ * **Expenses already generated are untouched**: they are ordinary expenses now, and editing
+ * the rule changes what it produces from here on, not history. The one exception to
+ * "untouched" is by design - occurrences are recomputed from `startDate`, so moving it
+ * earlier backfills the newly covered dates and moving it later stops nothing that exists.
+ */
+export async function updateRecurring(
+  database: SqliteDatabase,
+  id: string,
+  changes: Partial<NewRecurring>,
+  options: LocalMutationOptions = {},
+): Promise<QueuedMutation> {
+  return await applyLocalMutation(
+    database,
+    {
+      entity: 'recurring',
+      id,
+      fields: {
+        ...(changes.categoryId === undefined ? {} : { categoryId: changes.categoryId }),
+        ...(changes.amountMinor === undefined ? {} : { amountMinor: changes.amountMinor }),
+        ...(changes.currency === undefined ? {} : { currency: changes.currency }),
+        ...(changes.note === undefined ? {} : { note: normaliseNote(changes.note) }),
+        ...(changes.frequency === undefined ? {} : { frequency: changes.frequency }),
+        ...(changes.startDate === undefined ? {} : { startDate: changes.startDate }),
+        ...(changes.endDate === undefined ? {} : { endDate: changes.endDate }),
+      },
+    },
+    options,
+  );
+}
+
+/**
+ * Stop a rule: a tombstone. Nothing it generated is removed - those expenses are real
+ * spending that happened - and nothing more is generated.
+ */
+export async function deleteRecurring(
+  database: SqliteDatabase,
+  id: string,
+  options: LocalMutationOptions = {},
+): Promise<QueuedMutation> {
+  const stamp = (options.clock ?? systemClock)();
+  return await applyLocalMutation(
+    database,
+    { entity: 'recurring', id, fields: { deletedAt: toTimestamp(stamp) } },
+    options,
+  );
+}

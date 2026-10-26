@@ -2,11 +2,13 @@ import type {
   CalendarDate,
   Category as WireCategory,
   Expense as WireExpense,
+  RecurringRule as WireRecurringRule,
   User as WireUser,
 } from '@expense-tracker/shared';
 import type {
   Category as CategoryRow,
   Expense as ExpenseRow,
+  RecurringRule as RecurringRuleRow,
   User as UserRow,
 } from './generated/client.ts';
 
@@ -70,6 +72,24 @@ export function toWireExpense(row: ExpenseRow): WireExpense {
     currency: row.currency,
     date: toCalendarDate(row.date),
     note: row.note,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    deletedAt: row.deletedAt?.toISOString() ?? null,
+    revision: row.revision,
+  };
+}
+
+export function toWireRecurringRule(row: RecurringRuleRow): WireRecurringRule {
+  return {
+    id: row.id,
+    categoryId: row.categoryId,
+    amountMinor: Number(row.amountMinor),
+    currency: row.currency,
+    note: row.note,
+    // Held by a CHECK constraint, so the cast narrows what the database already guarantees.
+    frequency: row.frequency as WireRecurringRule['frequency'],
+    startDate: toCalendarDate(row.startDate),
+    endDate: row.endDate === null ? null : toCalendarDate(row.endDate),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     deletedAt: row.deletedAt?.toISOString() ?? null,

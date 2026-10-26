@@ -11,6 +11,7 @@ import {
 } from './primitives.js';
 import { Category, CategoryColor, CategoryName, MonthlyBudget } from './category.js';
 import { Expense, ExpenseNoteInput } from './expense.js';
+import { RecurringRule, RecurringSyncFields } from './recurring.js';
 
 /**
  * The sync contract. Both sides implement against this independently, so it is spelled
@@ -26,18 +27,18 @@ import { Expense, ExpenseNoteInput } from './expense.js';
  * - `clientMutationId` makes a retried push a no-op that replays the original result.
  *   Remembered for 90 days — the tombstone horizon, so the two cannot drift.
  * - A batch is applied in one transaction in dependency order: **categories, then
- *   expenses**, so an expense created offline against an offline-created category syncs
+ *   recurring rules, then expenses**, so an expense created offline against an offline-created category syncs
  *   in a single round trip.
  * - Tombstones are pruned after 90 days; a `since` older than that horizon gets
  *   `resyncRequired: true`.
  */
 
-export const SYNC_ENTITIES = ['category', 'expense'] as const;
+export const SYNC_ENTITIES = ['category', 'recurring', 'expense'] as const;
 
 export const SyncEntity = z
   .enum(SYNC_ENTITIES)
   .describe(
-    'Which table the change belongs to. The server applies a batch in this order: all `category` items, then all `expense` items.',
+    'Which table the change belongs to. The server applies a batch in this order: all `category` items, then all `recurring` items, then all `expense` items.',
   );
 
 // ---------------------------------------------------------------------------
@@ -69,6 +70,7 @@ export const SyncPullQuery = z.strictObject({
  */
 export const SyncChange = z.discriminatedUnion('entity', [
   z.strictObject({ entity: z.literal('category'), record: Category }),
+  z.strictObject({ entity: z.literal('recurring'), record: RecurringRule }),
   z.strictObject({ entity: z.literal('expense'), record: Expense }),
 ]);
 
@@ -149,6 +151,11 @@ export const SyncPushItem = z.discriminatedUnion('entity', [
     entity: z.literal('category'),
     ...PUSH_ITEM_BASE,
     fields: CategorySyncFields,
+  }),
+  z.strictObject({
+    entity: z.literal('recurring'),
+    ...PUSH_ITEM_BASE,
+    fields: RecurringSyncFields,
   }),
   z.strictObject({
     entity: z.literal('expense'),
@@ -245,6 +252,11 @@ export const SyncPushResult = z.discriminatedUnion('entity', [
     record: Category.nullable(),
   }),
   z.strictObject({
+    entity: z.literal('recurring'),
+    ...PUSH_RESULT_BASE,
+    record: RecurringRule.nullable(),
+  }),
+  z.strictObject({
     entity: z.literal('expense'),
     ...PUSH_RESULT_BASE,
     record: Expense.nullable(),
@@ -279,5 +291,6 @@ export type SyncPushResponse = z.infer<typeof SyncPushResponse>;
  */
 export const SYNC_APPLY_ORDER = [
   'category',
+  'recurring',
   'expense',
 ] as const satisfies ReadonlyArray<SyncEntity>;

@@ -13,6 +13,7 @@ import {
   type ExpenseListItem,
   type ExpenseSearch,
   type PendingChange,
+  type RecurringListItem,
   anyExpensesExist,
   coloursInUse,
   countPendingRecords,
@@ -23,6 +24,7 @@ import {
   listLiveCategories,
   listLiveCategoriesWithCounts,
   listMonthExpenses,
+  listLiveRecurring,
   listPendingChanges,
   monthCategorySpend,
   monthTotalMinor,
@@ -177,6 +179,15 @@ export function useExpense(id: string | null): UseQueryResult<ExpenseDetail | nu
     queryKey: queryKeys.expenses.detail(id ?? ''),
     queryFn: () => findExpense(database, id ?? ''),
     enabled: id !== null,
+  });
+}
+
+/** The recurring-expense list. */
+export function useRecurringList(): UseQueryResult<readonly RecurringListItem[]> {
+  const database = useDatabase();
+  return useQuery({
+    queryKey: queryKeys.recurring.live(),
+    queryFn: () => listLiveRecurring(database),
   });
 }
 

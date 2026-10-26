@@ -1,5 +1,6 @@
 import {
   type CategorySyncFields,
+  type RecurringSyncFields,
   type ExpenseSyncFields,
   type SyncEntity,
   Uuid,
@@ -31,6 +32,11 @@ import type { SqliteBindValue, SqliteDatabase, SqliteExecutor } from './sqlite';
 /** A mutation of one local row. Mirrors one item of a `POST /v1/sync` batch. */
 export type LocalMutation =
   | { readonly entity: 'category'; readonly id: string; readonly fields: CategorySyncFields }
+  | {
+      readonly entity: 'recurring';
+      readonly id: string;
+      readonly fields: RecurringSyncFields;
+    }
   | { readonly entity: 'expense'; readonly id: string; readonly fields: ExpenseSyncFields };
 
 export interface LocalMutationOptions {

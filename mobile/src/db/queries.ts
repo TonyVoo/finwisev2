@@ -747,3 +747,46 @@ export async function searchSummary(
   );
   return { count: row?.count ?? 0, totalMinor: row?.total ?? 0 };
 }
+
+/** A recurring rule as the list consumes it: the row, its category, its local sync state. */
+export interface RecurringListItem {
+  readonly id: string;
+  readonly categoryId: string;
+  /** The live category's name, or null when it is gone - the rule files under the fallback. */
+  readonly categoryName: string | null;
+  readonly categoryColor: string | null;
+  readonly amountMinor: number;
+  readonly currency: string;
+  readonly note: string | null;
+  readonly frequency: 'weekly' | 'monthly';
+  readonly startDate: string;
+  readonly endDate: string | null;
+  readonly pending: boolean;
+}
+
+/**
+ * Every live rule, soonest-started first, with its category resolved.
+ *
+ * A `LEFT JOIN` on live categories: a rule whose category was deleted stays in the list
+ * (it is still generating, under the fallback) rather than vanishing from the one screen
+ * that can delete it.
+ */
+export async function listLiveRecurring(
+  database: SqliteDatabase,
+): Promise<readonly RecurringListItem[]> {
+  const rows = await database.getAllAsync<
+    Omit<RecurringListItem, 'pending'> & { pending: number }
+  >(
+    `SELECT r.id, r.categoryId, c.name AS categoryName, c.color AS categoryColor,
+            r.amountMinor, r.currency, r.note, r.frequency, r.startDate, r.endDate,
+            EXISTS (
+              SELECT 1 FROM outbox o WHERE o.entity = 'recurring' AND o.recordId = r.id
+            ) AS pending
+       FROM recurring r
+       LEFT JOIN categories c ON c.id = r.categoryId AND c.deletedAt IS NULL
+      WHERE r.deletedAt IS NULL
+      ORDER BY r.startDate, r.id`,
+    [],
+  );
+  return rows.map((row) => ({ ...row, pending: row.pending === 1 }));
+}

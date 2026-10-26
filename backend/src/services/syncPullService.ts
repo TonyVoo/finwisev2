@@ -6,7 +6,7 @@ import {
 } from '@expense-tracker/shared';
 import type { Db } from '../db/client.ts';
 import { getPrisma } from '../db/client.ts';
-import { toWireCategory, toWireExpense } from '../db/mappers.ts';
+import { toWireCategory, toWireExpense, toWireRecurringRule } from '../db/mappers.ts';
 import { needsResync } from '../sync/resolver.ts';
 
 /**
@@ -49,7 +49,7 @@ export const PULL_TRANSACTION_OPTIONS = { isolationLevel: 'RepeatableRead' } as 
  * Read one page, and the user's watermarks, from a **single database snapshot**.
  *
  * The transaction is the load-bearing part, and `RepeatableRead` is why it exists rather
- * than being an optimisation. Categories and expenses are two tables, so a page is two
+ * than being an optimisation. Categories, recurring rules and expenses are three tables, so a page is three
  * queries; under the default `READ COMMITTED` each statement gets its own snapshot, and
  * that is enough to lose a write:
  *
@@ -76,8 +76,13 @@ async function readPage(
 
   const run = async (tx: Db): Promise<PageSnapshot> => {
     const counter = await tx.revisionCounter.findUnique({ where: { userId } });
-    const [categories, expenses] = await Promise.all([
+    const [categories, recurring, expenses] = await Promise.all([
       tx.category.findMany({
+        where: { userId, revision: { gt: since } },
+        orderBy: { revision: 'asc' },
+        take,
+      }),
+      tx.recurringRule.findMany({
         where: { userId, revision: { gt: since } },
         orderBy: { revision: 'asc' },
         take,
@@ -97,6 +102,10 @@ async function readPage(
       ...categories.map((row) => ({
         revision: row.revision,
         change: { entity: 'category', record: toWireCategory(row) } satisfies SyncChange,
+      })),
+      ...recurring.map((row) => ({
+        revision: row.revision,
+        change: { entity: 'recurring', record: toWireRecurringRule(row) } satisfies SyncChange,
       })),
       ...expenses.map((row) => ({
         revision: row.revision,

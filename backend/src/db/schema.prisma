@@ -50,6 +50,7 @@ model User {
   revisionCounter RevisionCounter?
   categories      Category[]
   expenses        Expense[]
+  recurringRules  RecurringRule[]
   refreshTokens   RefreshToken[]
   syncMutations   SyncMutation[]
 
@@ -155,6 +156,42 @@ model Expense {
   @@map("expenses")
 }
 
+/// A recurring-expense rule. Syncable.
+///
+/// Holds no "next date": occurrences are a pure function of `start_date` and `frequency`,
+/// and the devices - not the server - create the expenses (see `shared/src/recurring.ts`).
+///
+/// `category_id` is deliberately **not** a foreign key. A rule whose category is later
+/// deleted keeps the id, and the device files its expenses under the `Uncategorized`
+/// default instead - so a category delete has nothing extra to reassign and the tombstone
+/// sweep has no ordering constraint against this table. Cross-tenant references are
+/// refused at write time (`requireOwnCategoryForWrite`), which is where that matters.
+model RecurringRule {
+  id         String @id @db.Uuid
+  userId     String @map("user_id") @db.Uuid
+  categoryId String @map("category_id") @db.Uuid
+
+  amountMinor BigInt  @map("amount_minor")
+  currency    String  @db.Char(3)
+  note        String? @db.VarChar(500)
+
+  /// `weekly` | `monthly`; a CHECK constraint holds it, as for `sync_mutations.status`.
+  frequency String @db.VarChar(8)
+
+  startDate DateTime  @map("start_date") @db.Date
+  endDate   DateTime? @map("end_date") @db.Date
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime  @map("updated_at") @db.Timestamptz(3)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)
+  revision  Int
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, revision])
+  @@map("recurring_rules")
+}
+
 /// The idempotency ledger for `POST /v1/sync`: one row per `clientMutationId`.
 ///
 /// A push retried after a dropped response must be a no-op that replays the original
@@ -171,7 +208,7 @@ model SyncMutation {
   userId           String @map("user_id") @db.Uuid
   clientMutationId String @map("client_mutation_id") @db.Uuid
 
-  /// `category` | `expense`. Not a Prisma enum: the wire values are owned by
+  /// `category` | `recurring` | `expense`. Not a Prisma enum: the wire values are owned by
   /// `SYNC_ENTITIES` in `shared/`, and a second enum here could disagree with it.
   entity String @db.VarChar(16)
 

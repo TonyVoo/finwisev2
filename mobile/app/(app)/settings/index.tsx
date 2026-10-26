@@ -104,10 +104,20 @@ export default function SettingsScreen() {
         testID="settings-categories"
         onPress={() => router.push('/(app)/settings/categories')}
         chevron
-        lastInGroup
         accessibilityLabel={COPY.settings.categories}
       >
         <RowTitle>{COPY.settings.categories}</RowTitle>
+      </Row>
+
+      <Row
+        testID="settings-recurring"
+        onPress={() => router.push('/(app)/settings/recurring')}
+        chevron
+        lastInGroup
+        accessibilityLabel={`${COPY.settings.recurring}. ${COPY.settings.recurringHint}`}
+      >
+        <RowTitle>{COPY.settings.recurring}</RowTitle>
+        <RowSubtitle>{COPY.settings.recurringHint}</RowSubtitle>
       </Row>
 
       <View style={styles.group}>

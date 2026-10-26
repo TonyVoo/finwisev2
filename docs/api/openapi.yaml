@@ -1358,15 +1358,15 @@ paths:
 
         ## Ordering within a batch
 
-        The server applies all `category` items before all `expense` items, so an expense
-        created offline against a category created offline in the same session syncs in a
-        single round trip. Clients should push in that order too; the server sorts
+        The server applies all `category` items before all `recurring` items before all
+        `expense` items, so an expense created offline against a category created offline in
+        the same session syncs in a single round trip. Clients should push in that order too; the server sorts
         internally either way, so the two cannot disagree.
 
         ## Batch size
 
         1–500 items. Over 500 is `413 batch_too_large`; split and send sequentially,
-        keeping categories ahead of the expenses that reference them.
+        keeping categories ahead of the rules and expenses that reference them.
       x-errorCodes:
         - validation_error
         - malformed_request
@@ -2296,6 +2296,73 @@ components:
         deletedAt: { $ref: '#/components/schemas/DeletedAt' }
         revision: { $ref: '#/components/schemas/Revision' }
 
+    RecurringFrequency:
+      type: string
+      enum: [weekly, monthly]
+      description: |
+        `weekly`: every 7 days from `startDate`. `monthly`: the same day of the month as
+        `startDate`, clamped to the length of shorter months (a rule starting on the 31st
+        lands on the 28th/29th in February and the 30th in April, and is back on the 31st
+        in May - it does not drift).
+
+    RecurringRule:
+      type: object
+      description: |
+        A recurring-expense rule as the server reports it.
+
+        The rule stores no "next date": every occurrence is a pure function of `startDate`
+        and `frequency`, so two devices that know the rule agree on every date it has ever
+        produced. The **devices** create the expenses, offline like any other, giving each a
+        deterministic id derived from the rule and the occurrence date so two devices
+        generating the same occurrence produce the same row. The server never generates
+        expenses and accepts any UUID as an expense id.
+      additionalProperties: false
+      required:
+        - id
+        - categoryId
+        - amountMinor
+        - currency
+        - note
+        - frequency
+        - startDate
+        - endDate
+        - createdAt
+        - updatedAt
+        - deletedAt
+        - revision
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        categoryId:
+          allOf: [{ $ref: '#/components/schemas/Uuid' }]
+          description: |
+            Category the generated expenses are filed under. Unlike an expense, a rule is
+            **not** reassigned when its category is deleted: it keeps the id, and the device
+            files the expenses under the `Uncategorized` default instead.
+        amountMinor: { $ref: '#/components/schemas/AmountMinor' }
+        currency: { $ref: '#/components/schemas/CurrencyCode' }
+        note:
+          oneOf:
+            - { $ref: '#/components/schemas/ExpenseNote' }
+            - type: 'null'
+          description: Note copied onto every generated expense, or `null`.
+        frequency: { $ref: '#/components/schemas/RecurringFrequency' }
+        startDate:
+          allOf: [{ $ref: '#/components/schemas/CalendarDate' }]
+          description: |
+            First occurrence, and the anchor every later one is computed from. May be in the
+            past, in which case the missed occurrences are generated.
+        endDate:
+          oneOf:
+            - { $ref: '#/components/schemas/CalendarDate' }
+            - type: 'null'
+          description: |
+            Last day an occurrence may fall on, inclusive. `null` repeats until the rule is
+            deleted. Never earlier than `startDate`.
+        createdAt: { $ref: '#/components/schemas/CreatedAt' }
+        updatedAt: { $ref: '#/components/schemas/UpdatedAt' }
+        deletedAt: { $ref: '#/components/schemas/DeletedAt' }
+        revision: { $ref: '#/components/schemas/Revision' }
+
     ExpenseCreateRequest:
       type: object
       additionalProperties: false
@@ -2392,6 +2459,16 @@ components:
         entity: { const: category }
         record: { $ref: '#/components/schemas/Category' }
 
+    RecurringSyncChange:
+      type: object
+      title: Recurring rule change
+      description: A changed recurring rule, as delivered by `GET /v1/sync`.
+      additionalProperties: false
+      required: [entity, record]
+      properties:
+        entity: { const: recurring }
+        record: { $ref: '#/components/schemas/RecurringRule' }
+
     ExpenseSyncChange:
       type: object
       title: Expense change
@@ -2409,15 +2486,17 @@ components:
         is the only way a delete crosses the wire.
 
         `entity` also fixes the order the server applies a batch in: all `category` items,
-        then all `expense` items — so an expense created offline against a category created
-        offline syncs in one round trip.
+        then all `recurring` items, then all `expense` items — so an expense created offline
+        against a category created offline syncs in one round trip.
       oneOf:
         - { $ref: '#/components/schemas/CategorySyncChange' }
+        - { $ref: '#/components/schemas/RecurringSyncChange' }
         - { $ref: '#/components/schemas/ExpenseSyncChange' }
       discriminator:
         propertyName: entity
         mapping:
           category: '#/components/schemas/CategorySyncChange'
+          recurring: '#/components/schemas/RecurringSyncChange'
           expense: '#/components/schemas/ExpenseSyncChange'
 
     SyncPullResponse:
@@ -2509,6 +2588,35 @@ components:
             "no note" in the database.
         deletedAt: { $ref: '#/components/schemas/DeletedAt' }
 
+    RecurringSyncFields:
+      type: object
+      description: |
+        Mutable recurring-rule fields in a push. Same upsert/merge semantics as
+        `CategorySyncFields`. To create a row that does not exist yet, `categoryId`,
+        `amountMinor`, `frequency` and `startDate` are all required.
+
+        `endDate` is checked against `startDate` **after** the merge, so `{ endDate }` alone
+        is judged against the stored `startDate`; an end before the start is `invalid`.
+        `endDate: null` removes the end. Set `deletedAt` to delete; `null` to undelete.
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        categoryId: { $ref: '#/components/schemas/Uuid' }
+        amountMinor: { $ref: '#/components/schemas/AmountMinor' }
+        currency: { $ref: '#/components/schemas/CurrencyCode' }
+        note:
+          oneOf:
+            - { $ref: '#/components/schemas/ExpenseNote' }
+            - type: 'null'
+          description: Trimmed; a value that trims to nothing is stored as `null`.
+        frequency: { $ref: '#/components/schemas/RecurringFrequency' }
+        startDate: { $ref: '#/components/schemas/CalendarDate' }
+        endDate:
+          oneOf:
+            - { $ref: '#/components/schemas/CalendarDate' }
+            - type: 'null'
+        deletedAt: { $ref: '#/components/schemas/DeletedAt' }
+
     ClientMutationId:
       allOf: [{ $ref: '#/components/schemas/Uuid' }]
       description: |
@@ -2551,6 +2659,19 @@ components:
         clientMutationId: { $ref: '#/components/schemas/ClientMutationId' }
         fields: { $ref: '#/components/schemas/CategorySyncFields' }
 
+    RecurringSyncPushItem:
+      type: object
+      title: Recurring rule push item
+      description: An upsert of one recurring rule.
+      additionalProperties: false
+      required: [entity, id, updatedAt, clientMutationId, fields]
+      properties:
+        entity: { const: recurring }
+        id: { $ref: '#/components/schemas/SyncPushItemId' }
+        updatedAt: { $ref: '#/components/schemas/SyncPushUpdatedAt' }
+        clientMutationId: { $ref: '#/components/schemas/ClientMutationId' }
+        fields: { $ref: '#/components/schemas/RecurringSyncFields' }
+
     ExpenseSyncPushItem:
       type: object
       title: Expense push item
@@ -2570,11 +2691,13 @@ components:
         Creates and updates are the same call — the server upserts on `id`.
       oneOf:
         - { $ref: '#/components/schemas/CategorySyncPushItem' }
+        - { $ref: '#/components/schemas/RecurringSyncPushItem' }
         - { $ref: '#/components/schemas/ExpenseSyncPushItem' }
       discriminator:
         propertyName: entity
         mapping:
           category: '#/components/schemas/CategorySyncPushItem'
+          recurring: '#/components/schemas/RecurringSyncPushItem'
           expense: '#/components/schemas/ExpenseSyncPushItem'
 
     SyncPushRequest:
@@ -2650,6 +2773,28 @@ components:
             `conflict_server_wins` alike. `null` only for an `invalid` item whose row does
             not exist server-side.
 
+    RecurringSyncPushResult:
+      type: object
+      title: Recurring rule push result
+      description: The outcome of one recurring-rule upsert, plus the authoritative server row.
+      additionalProperties: false
+      required: [entity, clientMutationId, id, status, idempotentReplay, error, record]
+      properties:
+        entity: { const: recurring }
+        clientMutationId: { $ref: '#/components/schemas/SyncPushEchoedMutationId' }
+        id: { $ref: '#/components/schemas/Uuid' }
+        status: { $ref: '#/components/schemas/SyncPushStatus' }
+        idempotentReplay: { $ref: '#/components/schemas/SyncPushIdempotentReplay' }
+        error: { $ref: '#/components/schemas/SyncPushError' }
+        record:
+          oneOf:
+            - { $ref: '#/components/schemas/RecurringRule' }
+            - type: 'null'
+          description: |
+            The authoritative server row after the batch — present for `applied` and
+            `conflict_server_wins` alike. `null` only for an `invalid` item whose row does
+            not exist server-side.
+
     ExpenseSyncPushResult:
       type: object
       title: Expense push result
@@ -2683,11 +2828,13 @@ components:
         will never have.
       oneOf:
         - { $ref: '#/components/schemas/CategorySyncPushResult' }
+        - { $ref: '#/components/schemas/RecurringSyncPushResult' }
         - { $ref: '#/components/schemas/ExpenseSyncPushResult' }
       discriminator:
         propertyName: entity
         mapping:
           category: '#/components/schemas/CategorySyncPushResult'
+          recurring: '#/components/schemas/RecurringSyncPushResult'
           expense: '#/components/schemas/ExpenseSyncPushResult'
 
     SyncPushResponse:

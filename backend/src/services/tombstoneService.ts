@@ -36,6 +36,7 @@ import { TOMBSTONE_HORIZON_DAYS, tombstoneHorizon } from '../sync/resolver.ts';
 export interface PruneResult {
   readonly expenses: number;
   readonly categories: number;
+  readonly recurring: number;
   /** Idempotency-ledger rows swept on the same horizon. */
   readonly ledgerEntries: number;
   /** Rows older than the horizon that could not be pruned yet; see below. */
@@ -73,6 +74,17 @@ export async function pruneTombstones(
       RETURNING "revision"
     `;
 
+    // No foreign key points at or from a rule's category, so this has no ordering
+    // constraint against the other two; it sits here only to keep the destructive
+    // statements together.
+    const recurring = await tx.$queryRaw<{ revision: number }[]>`
+      DELETE FROM "recurring_rules"
+       WHERE "user_id" = ${userId}::uuid
+         AND "deleted_at" IS NOT NULL
+         AND "deleted_at" < ${horizon}
+      RETURNING "revision"
+    `;
+
     const categories = await tx.$queryRaw<{ revision: number }[]>`
       DELETE FROM "categories"
        WHERE "user_id" = ${userId}::uuid
@@ -101,7 +113,7 @@ export async function pruneTombstones(
     });
 
     const counter = await tx.revisionCounter.findUnique({ where: { userId } });
-    const deletedRevisions = [...expenses, ...categories].map((row) => row.revision);
+    const deletedRevisions = [...expenses, ...recurring, ...categories].map((row) => row.revision);
     // The watermark is the *highest* revision destroyed, not a count: a client whose
     // `since` is at or above it has already seen every delete that was pruned, so it can
     // still be served incrementally. Monotonic, because a lower value would re-open a
@@ -122,6 +134,7 @@ export async function pruneTombstones(
     return {
       expenses: expenses.length,
       categories: categories.length,
+      recurring: recurring.length,
       ledgerEntries: ledgerEntries.count,
       categoriesRetained: retained,
       prunedThroughRevision,
@@ -150,6 +163,7 @@ export async function pruneAllTombstones(now = new Date()): Promise<{
   users: number;
   expenses: number;
   categories: number;
+  recurring: number;
   ledgerEntries: number;
 }> {
   const db = getPrisma();
@@ -161,17 +175,21 @@ export async function pruneAllTombstones(now = new Date()): Promise<{
       UNION ALL
       SELECT "user_id" FROM "expenses"   WHERE "deleted_at" IS NOT NULL AND "deleted_at" < ${horizon}
       UNION ALL
+      SELECT "user_id" FROM "recurring_rules" WHERE "deleted_at" IS NOT NULL AND "deleted_at" < ${horizon}
+      UNION ALL
       SELECT "user_id" FROM "sync_mutations" WHERE "created_at" < ${horizon}
     ) AS "stale"
   `;
 
   let expenses = 0;
   let categories = 0;
+  let recurring = 0;
   let ledgerEntries = 0;
   for (const { user_id: userId } of userIds) {
     const result = await pruneTombstones(db, userId, now);
     expenses += result.expenses;
     categories += result.categories;
+    recurring += result.recurring;
     ledgerEntries += result.ledgerEntries;
   }
 
@@ -180,7 +198,8 @@ export async function pruneAllTombstones(now = new Date()): Promise<{
     users: userIds.length,
     expenses,
     categories,
+    recurring,
     ledgerEntries,
   });
-  return { users: userIds.length, expenses, categories, ledgerEntries };
+  return { users: userIds.length, expenses, categories, recurring, ledgerEntries };
 }

@@ -163,11 +163,53 @@ export const COPY = {
     currency: 'Currency',
     currencyHint: 'Set when you created your account.',
     categories: 'Categories',
+    recurring: 'Recurring expenses',
+    recurringHint: 'Rent, subscriptions and other regular payments.',
     export: 'Export expenses',
     exportHint: 'Save everything you have recorded as a CSV file.',
     changePassword: 'Change password',
     deleteAccount: 'Delete account',
     logout: 'Log out',
+  },
+
+  /** Recurring expenses: rules the device turns into real expenses each week or month. */
+  recurring: {
+    title: 'Recurring expenses',
+    fab: 'Add recurring expense',
+    new: { title: 'New recurring expense' },
+    edit: { title: 'Edit recurring expense' },
+    field: {
+      amount: 'Amount',
+      category: 'Category',
+      note: 'Note (optional)',
+      frequency: 'Repeats',
+      startDate: 'Starts',
+      endDate: 'Ends (optional)',
+      datePlaceholder: 'YYYY-MM-DD',
+      endPlaceholder: 'Never',
+    },
+    frequency: { weekly: 'Weekly', monthly: 'Monthly' },
+    hint: {
+      pastStart: 'A start date in the past adds the expenses you missed.',
+    },
+    error: {
+      amount: 'Enter an amount like 12 or 12.99.',
+      date: 'Enter a date like 2026-11-05.',
+      endBeforeStart: 'The end date cannot be before the start date.',
+      noCategory: 'Add a category first.',
+    },
+    row: { next: 'Next {date}', ended: 'Ended' },
+    create: 'Add',
+    save: 'Save',
+    delete: 'Delete recurring expense',
+    deleteDialog: {
+      title: 'Delete this recurring expense?',
+      body: 'Expenses it already added will stay. No new ones will be added.',
+    },
+    empty: {
+      headline: 'No recurring expenses',
+      body: 'Add one and it will create the expense for you each week or month, even offline.',
+    },
   },
 
   /** The CSV export's outcomes, shown as snackbars. Success needs none: the share sheet is it. */
@@ -341,6 +383,10 @@ export const SNACK_COPY = {
     updated: 'Changes saved.',
     deleted: 'Expense deleted.',
     restored: 'Expense restored.',
+  },
+  recurring: {
+    saved: 'Recurring expense saved.',
+    deleted: 'Recurring expense deleted.',
   },
   category: {
     created: '{name} created.',

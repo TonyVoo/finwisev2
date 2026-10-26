@@ -187,12 +187,81 @@ ALTER TABLE categories ADD COLUMN monthlyBudgetMinor INTEGER
   CHECK (monthlyBudgetMinor IS NULL OR monthlyBudgetMinor >= 1);
 `;
 
+/**
+ * Recurring expenses: the rules table, and the two CHECKs that name the entities.
+ *
+ * SQLite cannot alter a CHECK, so `outbox` and `sync_rejections` are rebuilt to allow
+ * `'recurring'` - create, copy, drop, rename, recreate the indexes. Every row is carried
+ * across, **including the undrained queue**, and the AUTOINCREMENT high-water mark is
+ * carried too, because `seq` must stay monotonic among entries that coexist and a drained
+ * queue that restarted at 1 would let a new entry sort before one a stale reader holds.
+ *
+ * The rule has no `nextDate` and no foreign key, mirroring the server (`shared/src/
+ * recurring.ts`): occurrences are computed from `startDate`, and a rule whose category is
+ * gone is filed under the fallback at generation time.
+ */
+const RECURRING = `
+CREATE TABLE recurring (
+  id          TEXT    NOT NULL PRIMARY KEY,
+  categoryId  TEXT    NOT NULL,
+  amountMinor INTEGER NOT NULL,
+  currency    TEXT    NOT NULL,
+  note        TEXT,
+  frequency   TEXT    NOT NULL CHECK (frequency IN ('weekly', 'monthly')),
+  startDate   TEXT    NOT NULL,
+  endDate     TEXT,
+  createdAt   TEXT,
+  updatedAt   TEXT    NOT NULL,
+  deletedAt   TEXT,
+  revision    INTEGER NOT NULL DEFAULT 0,
+  CHECK (endDate IS NULL OR endDate >= startDate)
+);
+
+CREATE INDEX idx_recurring_live ON recurring (deletedAt, startDate);
+
+CREATE TABLE outbox_v6 (
+  seq              INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+  entity           TEXT    NOT NULL CHECK (entity IN ('category', 'recurring', 'expense')),
+  recordId         TEXT    NOT NULL,
+  fields           TEXT    NOT NULL,
+  updatedAt        TEXT    NOT NULL,
+  clientMutationId TEXT    NOT NULL UNIQUE,
+  queuedAt         TEXT    NOT NULL,
+  attempts         INTEGER NOT NULL DEFAULT 0,
+  lastError        TEXT
+);
+INSERT INTO outbox_v6 (seq, entity, recordId, fields, updatedAt, clientMutationId, queuedAt, attempts, lastError)
+  SELECT seq, entity, recordId, fields, updatedAt, clientMutationId, queuedAt, attempts, lastError
+    FROM outbox;
+DELETE FROM sqlite_sequence WHERE name = 'outbox_v6';
+INSERT INTO sqlite_sequence (name, seq)
+  SELECT 'outbox_v6', COALESCE(MAX(seq), 0) FROM sqlite_sequence WHERE name = 'outbox';
+DROP TABLE outbox;
+ALTER TABLE outbox_v6 RENAME TO outbox;
+CREATE INDEX idx_outbox_entity_seq ON outbox (entity, seq);
+CREATE INDEX idx_outbox_record ON outbox (entity, recordId);
+
+CREATE TABLE sync_rejections_v6 (
+  entity     TEXT NOT NULL CHECK (entity IN ('category', 'recurring', 'expense')),
+  recordId   TEXT NOT NULL,
+  code       TEXT NOT NULL,
+  message    TEXT NOT NULL,
+  rejectedAt TEXT NOT NULL,
+  PRIMARY KEY (entity, recordId)
+);
+INSERT INTO sync_rejections_v6 (entity, recordId, code, message, rejectedAt)
+  SELECT entity, recordId, code, message, rejectedAt FROM sync_rejections;
+DROP TABLE sync_rejections;
+ALTER TABLE sync_rejections_v6 RENAME TO sync_rejections;
+`;
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: 'initial-schema', up: INITIAL_SCHEMA },
   { version: 2, name: 'store-owner', up: STORE_OWNER },
   { version: 3, name: 'user-profile', up: USER_PROFILE },
   { version: 4, name: 'sync-rejections', up: SYNC_REJECTIONS },
   { version: 5, name: 'category-budget', up: CATEGORY_BUDGET },
+  { version: 6, name: 'recurring', up: RECURRING },
 ];
 
 /** Highest version `MIGRATIONS` can bring a database to. */

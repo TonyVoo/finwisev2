@@ -111,6 +111,14 @@ export interface SyncEngineDependencies {
    * audiences: this one re-runs SQLite queries, that one re-renders a pill.
    */
   readonly onLocalDataChanged?: () => void;
+  /**
+   * Local work to do before a pass - and before the reachability check, because it needs no
+   * network. Recurring-expense generation lives here: it must run offline at launch and when
+   * the app foregrounds, and a sync that is about to drain the outbox should drain what it
+   * just created. Never throws into the engine; a failure is swallowed so it cannot cost a
+   * sync.
+   */
+  readonly beforeSync?: () => Promise<void>;
 }
 
 export interface SyncEngine {
@@ -204,11 +212,26 @@ export function createSyncEngine(deps: SyncEngineDependencies): SyncEngine {
     } finally {
       publish({ inFlight: false, resyncing: false, resyncProgress: null });
       await refreshPending();
-      if (changedLocalRows(push, pull)) onLocalDataChanged?.();
+      if (changedLocalRows(push, pull)) {
+        // A pull may have delivered a rule another device created; its due expenses are
+        // made now rather than at the next pass. Idempotent, so a pass that delivered
+        // nothing relevant creates nothing.
+        try {
+          await deps.beforeSync?.();
+        } catch {
+          // As above: housekeeping never fails a sync.
+        }
+        onLocalDataChanged?.();
+      }
     }
   }
 
   async function sync(trigger: SyncTrigger): Promise<SyncRunResult> {
+    try {
+      await deps.beforeSync?.();
+    } catch {
+      // Local housekeeping; the sync itself must still happen.
+    }
     if (running !== null) {
       rerunRequested = true;
       return await running;

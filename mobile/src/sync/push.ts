@@ -106,9 +106,14 @@ function prepare(entry: OutboxEntry): Prepared {
 /** The result's record as a {@link SyncChange}, keeping the entity and record together. */
 function toChange(result: SyncPushResult): SyncChange | null {
   if (result.record === null) return null;
-  return result.entity === 'category'
-    ? { entity: 'category', record: result.record }
-    : { entity: 'expense', record: result.record };
+  switch (result.entity) {
+    case 'category':
+      return { entity: 'category', record: result.record };
+    case 'recurring':
+      return { entity: 'recurring', record: result.record };
+    case 'expense':
+      return { entity: 'expense', record: result.record };
+  }
 }
 
 function tally(outcome: PushOutcome, status: SyncPushStatus): PushOutcome {
