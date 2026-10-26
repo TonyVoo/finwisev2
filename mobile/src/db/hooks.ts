@@ -3,7 +3,7 @@ import { LIMITS } from '@expense-tracker/shared';
 import { queryKeys } from '../query/keys';
 import { type MonthKey, monthRange } from '../lib/calendar';
 import { useDatabase } from './DatabaseProvider';
-import { readUserCurrency } from './user';
+import { readUserCurrency, readUserEmail } from './user';
 import {
   type CategoryListItem,
   type CategorySpend,
@@ -222,6 +222,15 @@ export function useUserCurrency(): UseQueryResult<string | null> {
   return useQuery({
     queryKey: queryKeys.user.currency(),
     queryFn: () => readUserCurrency(database),
+  });
+}
+
+/** The signed-in account's email, for the read-only Settings row. */
+export function useUserEmail(): UseQueryResult<string | null> {
+  const database = useDatabase();
+  return useQuery({
+    queryKey: queryKeys.user.email(),
+    queryFn: () => readUserEmail(database),
   });
 }
 

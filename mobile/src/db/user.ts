@@ -74,3 +74,12 @@ export async function readUserCurrency(database: SqliteDatabase): Promise<string
   );
   return row?.currency ?? null;
 }
+
+/** The signed-in account's email, or null when there is no user row (see {@link readUserCurrency}). */
+export async function readUserEmail(database: SqliteDatabase): Promise<string | null> {
+  const row = await database.getFirstAsync<{ email: string }>(
+    'SELECT email FROM user WHERE onlyRow = 1',
+    [],
+  );
+  return row?.email ?? null;
+}

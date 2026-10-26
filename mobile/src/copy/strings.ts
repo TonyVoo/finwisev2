@@ -138,6 +138,14 @@ export const COPY = {
     categories: 'Categories',
     logout: 'Log out',
   },
+
+  /** The log out dialog (`09-copy-deck.md`). The body depends on whether the outbox is empty. */
+  logout: {
+    title: 'Log out?',
+    bodyClean: 'You can log back in at any time.',
+    bodyPending: 'Changes that have not synced yet will be lost.',
+    confirm: 'Log out',
+  },
 } as const;
 
 /** §2.2 — field validation. The client only ever renders these for rules it enforces. */
@@ -321,6 +329,13 @@ export const SYNC_COPY = {
   sheet: {
     title: 'Sync',
     syncing: { headline: 'Syncing', body: 'Bringing your expenses up to date.' },
+    /**
+     * Only readable by a sheet that was already open when the state settled - the sheet is
+     * reachable through the pill and the pill is hidden when idle (§4 rule 5), but `Try
+     * again` is itself how an open sheet gets here. It must say nothing is waiting, because
+     * the pending copy below it would claim changes are queued when the outbox is empty.
+     */
+    idle: { headline: 'Up to date', body: 'Everything on this device has been synced.' },
     pending: {
       headline: 'Waiting to sync',
       body: 'Your changes are saved on this device and will sync in a moment.',
@@ -501,7 +516,10 @@ export function syncPillA11yLabel(state: SyncPillState, pendingRecords: number):
   }
 }
 
-/** The sheet's headline and body for a state. The idle state cannot open the sheet (§4 rule 5). */
+/**
+ * The sheet's headline and body for a state. The idle state cannot *open* the sheet (§4
+ * rule 5), but an open sheet can settle into it after a successful `Try again`.
+ */
 export function syncSheetCopy(state: SyncPillState): {
   readonly headline: string;
   readonly body: string;
@@ -515,9 +533,9 @@ export function syncSheetCopy(state: SyncPillState): {
     case 'offline':
     case 'offline-pending':
       return sheet.offline;
-    // `pending`, and `idle` only if something ever opens the sheet without a pill: the
-    // reassuring copy is the right thing to read in both.
-    default:
+    case 'idle':
+      return sheet.idle;
+    case 'pending':
       return sheet.pending;
   }
 }

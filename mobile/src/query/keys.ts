@@ -58,6 +58,8 @@ export const queryKeys = {
   user: {
     /** The currency every amount on every screen is formatted in. */
     currency: () => ['local', 'user', 'currency'] as const,
+    /** The account's email, shown read-only on Settings. */
+    email: () => ['local', 'user', 'email'] as const,
   },
 
   outbox: {
