@@ -1,7 +1,7 @@
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
 import { COPY } from '@/copy/strings';
-import { color, radius, size, space, type } from '@/theme/tokens';
+import { color, isDark, radius, size, space, type } from '@/theme/tokens';
 
 /**
  * The Home search bar: a text field plus a row of category chips.
@@ -39,6 +39,7 @@ export function SearchBar({
           onChangeText={onChangeText}
           placeholder={COPY.home.search.placeholder}
           placeholderTextColor={color.text.tertiary}
+          keyboardAppearance={isDark ? 'dark' : 'light'}
           autoFocus
           autoCorrect={false}
           returnKeyType="search"

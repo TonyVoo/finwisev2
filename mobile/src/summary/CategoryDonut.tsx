@@ -10,7 +10,7 @@ import {
 import { Pie, PolarChart } from 'victory-native';
 import { monthName, type MonthKey } from '../lib/calendar';
 import { formatMoney } from '../lib/money';
-import { color, motion, size, space, type } from '../theme/tokens';
+import { color, displayCategoryColor, motion, size, space, type } from '../theme/tokens';
 import type { SpendEntry } from './summaryModel';
 
 /**
@@ -76,7 +76,7 @@ export function CategoryDonut({ entries, totalMinor, currency, month }: Category
     // Minor units, straight from the aggregate. The chart takes the ratio of these, which
     // is the exact share rather than the rounded percentage the legend prints (rule 3).
     value: entry.totalMinor,
-    color: entry.color,
+    color: displayCategoryColor(entry.color),
   }));
 
   return (

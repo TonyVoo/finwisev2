@@ -6,7 +6,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { color, radius, size, space, type } from '../theme/tokens';
+import { color, isDark, radius, size, space, type } from '../theme/tokens';
 
 /**
  * The button, as `docs/design/00-foundations.md` §6 specifies it.
@@ -98,7 +98,7 @@ const VARIANTS: Readonly<Record<ButtonVariant, VariantStyle>> = {
     fill: color.danger.default,
     // "darkens equivalently" to primary's pressed step. There is no `danger.pressed`
     // token, so the shift is the same relative darkening applied to `danger.default`.
-    pressedFill: '#8E1E17',
+    pressedFill: isDark ? '#D9645C' : '#8E1E17',
     label: color.text.inverse,
     minHeight: size.buttonHeight,
   },

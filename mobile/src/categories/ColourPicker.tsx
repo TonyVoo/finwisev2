@@ -7,6 +7,7 @@ import {
   type CategoryColorToken,
   categoryColor,
   color,
+  displayCategoryColor,
   radius,
   space,
   type,
@@ -107,7 +108,7 @@ function Swatch({
         // depending on an outline property's platform support.
         style={[styles.ring, selected ? styles.ringSelected : null]}
       >
-        <View style={[styles.swatch, { backgroundColor: hex }]}>
+        <View style={[styles.swatch, { backgroundColor: displayCategoryColor(hex) }]}>
           {selected ? (
             <Feather
               testID={COLOUR_CHECK_TEST_ID}
@@ -143,7 +144,7 @@ export function ReservedColour({ hex }: { readonly hex: string }) {
           testID="colour-reserved"
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
-          style={[styles.swatch, { backgroundColor: hex }]}
+          style={[styles.swatch, { backgroundColor: displayCategoryColor(hex) }]}
         />
       </View>
       <Text style={styles.reserved}>{COPY.category.colour.reserved}</Text>

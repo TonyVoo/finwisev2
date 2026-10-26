@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { formatMoney } from '../lib/money';
-import { color, radius, space, type } from '../theme/tokens';
+import { color, displayCategoryColor, radius, space, type } from '../theme/tokens';
 import { budgetLabel, legendRowLabel, type SpendEntry } from './summaryModel';
 
 /**
@@ -103,7 +103,7 @@ function LegendRow({
         <View style={styles.leading}>
           <View
             testID={`${LEGEND_SWATCH_TEST_ID_PREFIX}-${id}`}
-            style={[styles.swatch, { backgroundColor: entry.color }]}
+            style={[styles.swatch, { backgroundColor: displayCategoryColor(entry.color) }]}
             // The name is right beside it in text, so announcing the swatch would be
             // announcing the same thing twice - and "image" is all it could say.
             accessibilityElementsHidden

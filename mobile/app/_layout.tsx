@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppProviders } from '@/bootstrap/AppProviders';
 import { type AppContainer, createAppContainer } from '@/bootstrap/container';
+import { color, isDark } from '@/theme/tokens';
 
 /**
  * The root route: build the app container, then render the tree.
@@ -76,9 +77,8 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <AppProviders container={container}>
-        {/* Light theme only for the MVP, so the status bar is pinned rather than
-            following the OS (docs/design/README.md Scope notes). */}
-        <StatusBar style="dark" />
+        {/* Icons contrast with whichever palette `theme/tokens` picked at launch. */}
+        <StatusBar style={isDark ? 'light' : 'dark'} />
         <Slot />
       </AppProviders>
     </SafeAreaProvider>
@@ -92,13 +92,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     padding: 24,
+    backgroundColor: color.bg.canvas,
   },
   bootTitle: {
+    color: color.text.primary,
     fontSize: 17,
     fontWeight: '600',
     textAlign: 'center',
   },
   bootDetail: {
+    color: color.text.primary,
     fontSize: 13,
     opacity: 0.7,
     textAlign: 'center',

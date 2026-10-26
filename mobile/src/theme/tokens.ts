@@ -1,3 +1,5 @@
+import { Appearance } from 'react-native';
+
 /**
  * The design tokens, as TypeScript.
  *
@@ -13,8 +15,7 @@
  * a spec violation (`docs/design/00-foundations.md` §1.1, §3).
  */
 
-/** Light theme only for the MVP (`docs/design/README.md` §Scope notes). */
-export const color = {
+export const lightColor = {
   bg: {
     canvas: '#F7F8FA',
     surface: '#FFFFFF',
@@ -45,6 +46,68 @@ export const color = {
   },
 } as const;
 
+type Widen<T> = { readonly [K in keyof T]: { readonly [P in keyof T[K]]: string } };
+export type ColorTokens = Widen<typeof lightColor>;
+
+/**
+ * Added after the MVP, by the developer rather than the Designer: contrast-checked in
+ * `tests/theme/darkPalette.test.ts` but not design-reviewed. Mirrors `color.dark` in
+ * `docs/design/tokens.json`. On dark the roles keep their meaning, not their lightness:
+ * `primary` and the status hues are the *light* variants (text on a dark surface), and
+ * `text.inverse` is near-black because it is what sits on those fills.
+ */
+export const darkColor: ColorTokens = {
+  bg: {
+    canvas: '#0F1115',
+    surface: '#181B20',
+    sunken: '#0A0C0F',
+    scrim: 'rgba(0,0,0,0.6)',
+  },
+  text: {
+    primary: '#F3F4F6',
+    secondary: '#B4BAC4',
+    tertiary: '#9AA1AD',
+    inverse: '#06140F',
+    disabled: '#6B7280',
+  },
+  primary: {
+    default: '#3DBBA0',
+    pressed: '#7FD9C5',
+    subtle: '#12302A',
+  },
+  danger: { default: '#F27C73', subtle: '#3A1816' },
+  warning: { default: '#F0B04A', subtle: '#33250C' },
+  success: { default: '#5BC083', subtle: '#12281A' },
+  info: { default: '#7BA7F2', subtle: '#14233D' },
+  border: {
+    hairline: '#2A2F37',
+    strong: '#3B424C',
+    input: '#7A8290',
+    focus: '#3DBBA0',
+  },
+};
+
+export type ColorScheme = 'light' | 'dark';
+
+/** Anything the OS reports other than `dark` (including `null`, "no preference") is light. */
+export function resolveScheme(raw: string | null | undefined): ColorScheme {
+  return raw === 'dark' ? 'dark' : 'light';
+}
+
+/**
+ * The scheme this process runs in, decided **once**, at import, from the system setting.
+ *
+ * Styles across the app are `StyleSheet.create` calls at module level, so they bake a
+ * colour in when their module loads. That makes the theme a launch-time choice: the app
+ * follows the phone's setting every time it starts, but flipping the setting while the app
+ * is open needs a restart to show. Live switching would mean turning every one of those
+ * stylesheets into a hook - a much larger change than the palette itself.
+ */
+export const scheme: ColorScheme = resolveScheme(Appearance.getColorScheme());
+export const isDark = scheme === 'dark';
+
+export const color: ColorTokens = isDark ? darkColor : lightColor;
+
 /**
  * The ten category hues. Separated by **hue, not lightness** — the closest two are 1.00:1
  * against each other — which is why colour is never the only carrier of category identity
@@ -63,7 +126,35 @@ export const categoryColor = {
   slate: '#6B7280',
 } as const;
 
+/**
+ * The same ten hues lifted for a dark surface (`categoryDark` in the JSON). A category's
+ * colour is stored as its light hex, so dark mode maps it at render time instead of
+ * rewriting data: `displayCategoryColor`.
+ */
+export const categoryColorDark = {
+  green: '#3A9A54',
+  orange: '#C4721F',
+  blue: '#4A87E3',
+  indigo: '#7370DB',
+  teal: '#2F8F8C',
+  red: '#DB5555',
+  pink: '#D0589B',
+  purple: '#A468DA',
+  ochre: '#A68A1E',
+  slate: '#8A919E',
+} as const;
+
 export type CategoryColorToken = keyof typeof categoryColor;
+
+/** The colour to *draw* for a stored category hex. Unknown hexes pass through unchanged. */
+export function displayCategoryColor(hex: string, dark: boolean = isDark): string {
+  if (!dark) return hex;
+  const lower = hex.toLowerCase();
+  for (const key of Object.keys(categoryColor) as CategoryColorToken[]) {
+    if (categoryColor[key].toLowerCase() === lower) return categoryColorDark[key];
+  }
+  return hex;
+}
 
 /**
  * The nine colours offered when creating a category, in the order the sheet lays them out.

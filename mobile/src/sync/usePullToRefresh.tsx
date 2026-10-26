@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import { RefreshControl, type RefreshControlProps } from 'react-native';
 import { useSync } from './SyncProvider';
+import { color } from '../theme/tokens';
 
 /**
  * Pull-to-refresh on Home and Summary: a sync, not a reload.
@@ -97,7 +98,15 @@ export function usePullToRefresh(): PullToRefresh {
   // Rebuilt when `refreshing` flips, which is what drives the spinner on a `ScrollView`:
   // the element carries the flag, so a stale element would freeze the spinner on.
   const refreshControl = useMemo(
-    () => <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />,
+    () => (
+      <RefreshControl
+        refreshing={refreshing}
+        onRefresh={onRefresh}
+        tintColor={color.text.secondary}
+        colors={[color.primary.default]}
+        progressBackgroundColor={color.bg.surface}
+      />
+    ),
     [refreshing, onRefresh],
   );
 

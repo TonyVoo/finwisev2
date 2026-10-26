@@ -4,7 +4,7 @@ import { LIMITS } from '@expense-tracker/shared';
 import { Button } from '../components/Button';
 import { Sheet } from '../components/Sheet';
 import { COPY } from '../copy/strings';
-import { color, radius, space, type } from '../theme/tokens';
+import { color, isDark, radius, space, type } from '../theme/tokens';
 
 /**
  * The note sheet: `docs/design/06-expense-form.md` rule 10.
@@ -65,6 +65,7 @@ export function NoteSheet({ visible, onClose, note, onDone }: NoteSheetProps) {
           onChangeText={setDraft}
           placeholder={COPY.form.field.notePlaceholder}
           placeholderTextColor={color.text.tertiary}
+          keyboardAppearance={isDark ? 'dark' : 'light'}
           accessibilityLabel={COPY.form.field.note}
           multiline
           numberOfLines={4}

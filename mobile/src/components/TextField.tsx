@@ -1,6 +1,6 @@
 import { type ReactNode, type Ref, useState } from 'react';
 import { StyleSheet, Text, TextInput, type TextInputProps, View } from 'react-native';
-import { color, radius, size, space, type } from '../theme/tokens';
+import { color, isDark, radius, size, space, type } from '../theme/tokens';
 
 /**
  * The text field, as `docs/design/00-foundations.md` §6 specifies it.
@@ -105,6 +105,7 @@ export function TextField({
           onChangeText={onChangeText}
           placeholder={placeholder}
           placeholderTextColor={color.text.tertiary}
+          keyboardAppearance={isDark ? 'dark' : 'light'}
           onFocus={() => setFocused(true)}
           onBlur={() => {
             setFocused(false);

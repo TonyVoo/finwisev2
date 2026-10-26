@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
-import { color, radius, size, space, type } from '../theme/tokens';
+import { color, displayCategoryColor, radius, size, space, type } from '../theme/tokens';
 
 /**
  * The row, as `docs/design/00-foundations.md` §6 specifies it.
@@ -194,7 +194,7 @@ export function Swatch({
         width: diameter,
         height: diameter,
         borderRadius: radius.sm,
-        backgroundColor: colorHex,
+        backgroundColor: displayCategoryColor(colorHex),
       }}
     />
   );
