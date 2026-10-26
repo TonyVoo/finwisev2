@@ -123,6 +123,26 @@ export default function SettingsScreen() {
         </Row>
       </View>
 
+      <View style={styles.group}>
+        <Row
+          testID="settings-change-password"
+          onPress={() => router.push('/(app)/settings/change-password')}
+          chevron
+          accessibilityLabel={COPY.settings.changePassword}
+        >
+          <RowTitle>{COPY.settings.changePassword}</RowTitle>
+        </Row>
+        <Row
+          testID="settings-delete-account"
+          onPress={() => router.push('/(app)/settings/delete-account')}
+          chevron
+          lastInGroup
+          accessibilityLabel={COPY.settings.deleteAccount}
+        >
+          <RowTitle>{COPY.settings.deleteAccount}</RowTitle>
+        </Row>
+      </View>
+
       <View style={styles.logout}>
         <Button
           label={COPY.settings.logout}

@@ -3,7 +3,7 @@ import { COPY } from '@/copy/strings';
 import { queryKeys } from '@/query/keys';
 import type { Transport, TransportRequest } from '@/api/transport';
 import SettingsScreen from '../../app/(app)/settings/index';
-import { resetRouter } from '../support/router';
+import { resetRouter, routerRecord } from '../support/router';
 import { type MountedScreen, authResponse, mountScreen, ok, secureStore } from '../support/mount';
 
 /**
@@ -121,6 +121,16 @@ describe('the settings screen', () => {
     expect(screen.queryByText(COPY.logout.bodyPending)).toBeNull();
     // Opening the dialog ends nothing.
     expect(mounted.container.session.getSnapshot().status).toBe('authenticated');
+  });
+
+  it('opens Change password and Delete account', async () => {
+    fireEvent.press(await screen.findByTestId('settings-change-password'));
+    fireEvent.press(await screen.findByTestId('settings-delete-account'));
+
+    expect(routerRecord.push).toEqual([
+      '/(app)/settings/change-password',
+      '/(app)/settings/delete-account',
+    ]);
   });
 
   it('warns that unsynced changes will be lost when the outbox is not empty', async () => {

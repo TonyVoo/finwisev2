@@ -5,6 +5,8 @@ import type {
   CategoryListResponse,
   CategoryResponse,
   CategoryUpdateRequest,
+  ChangePasswordRequest,
+  DeleteAccountRequest,
   ExpenseCreateRequest,
   ExpenseListQuery,
   ExpenseListResponse,
@@ -21,6 +23,7 @@ import type {
   SyncPullResponse,
   SyncPushRequest,
   SyncPushResponse,
+  TokenPair,
 } from '@expense-tracker/shared';
 import { ENDPOINTS, type Endpoint } from './endpoints';
 import { ResponseShapeError, toApiRequestError } from './errors';
@@ -49,6 +52,10 @@ export interface ApiClient {
   refresh(body: RefreshRequest): Promise<RefreshResponse>;
   logout(body: LogoutRequest): Promise<void>;
   getMe(): Promise<MeResponse>;
+  /** Replaces the password and ends every other session; returns this device's new pair. */
+  changePassword(body: ChangePasswordRequest): Promise<TokenPair>;
+  /** Permanently deletes the account and all its data. 204, no body. */
+  deleteAccount(body: DeleteAccountRequest): Promise<void>;
 
   listCategories(query?: CategoryListQuery): Promise<CategoryListResponse>;
   createCategory(body: CategoryCreateRequest): Promise<CategoryResponse>;
@@ -123,6 +130,8 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     refresh: (body) => send(ENDPOINTS.refresh, { body }),
     logout: (body) => send(ENDPOINTS.logout, { body }),
     getMe: () => send(ENDPOINTS.getMe),
+    changePassword: (body) => send(ENDPOINTS.changePassword, { body }),
+    deleteAccount: (body) => send(ENDPOINTS.deleteAccount, { body }),
 
     listCategories: (query) => send(ENDPOINTS.listCategories, { query: toQuery(query) }),
     createCategory: (body) => send(ENDPOINTS.createCategory, { body }),

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CurrencyCode, Timestamp } from './primitives.js';
+import { CurrencyCode, LIMITS, Timestamp } from './primitives.js';
 import { Email, Password, User } from './user.js';
 
 /**
@@ -39,6 +39,29 @@ export const LogoutRequest = z.strictObject({
   refreshToken: RefreshToken,
 });
 
+/**
+ * A password being *presented* rather than chosen: no minimum, because the account's
+ * existing password is checked against its hash, not against today's rules. An account
+ * created under an older, weaker rule must still be able to confirm itself and change it.
+ */
+const PresentedPassword = z.string().min(1).max(LIMITS.PASSWORD_MAX);
+
+export const ChangePasswordRequest = z
+  .strictObject({
+    currentPassword: PresentedPassword.describe("The account's current password, re-entered."),
+    newPassword: Password,
+  })
+  .refine((body) => body.currentPassword !== body.newPassword, {
+    path: ['newPassword'],
+    message: 'The new password must be different from the current one.',
+  });
+
+export const DeleteAccountRequest = z.strictObject({
+  password: PresentedPassword.describe(
+    'The account password, re-entered. Deleting an account cannot be undone, so a stolen access token alone is not enough.',
+  ),
+});
+
 /** A freshly issued access + refresh pair. */
 export const TokenPair = z.strictObject({
   accessToken: z
@@ -65,6 +88,8 @@ export const AuthResponse = z.strictObject({
 /** Response to refresh: a rotated pair. The previous refresh token is now revoked. */
 export const RefreshResponse = TokenPair;
 
+export type ChangePasswordRequest = z.infer<typeof ChangePasswordRequest>;
+export type DeleteAccountRequest = z.infer<typeof DeleteAccountRequest>;
 export type SignupRequest = z.infer<typeof SignupRequest>;
 export type LoginRequest = z.infer<typeof LoginRequest>;
 export type RefreshRequest = z.infer<typeof RefreshRequest>;

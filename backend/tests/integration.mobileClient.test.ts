@@ -733,3 +733,45 @@ describe('API-25 — a refresh whose answer never arrives', () => {
     await expect(anonymous.logout({ refreshToken: auth.refreshToken })).resolves.toBeUndefined();
   });
 });
+
+describe('the account endpoints, through the real client against the real server', () => {
+  it('changes the password: parses the returned pair, 403s a wrong one, and keeps the 403 off the session', async () => {
+    const { auth, client, anonymous } = await signedIn();
+
+    // A wrong current password is `403 forbidden` - and the client surfaces it as a normal
+    // ApiRequestError rather than the session-ending 401 path.
+    const wrong = await client
+      .changePassword({ currentPassword: 'not-the-password', newPassword: 'staple-battery-horse' })
+      .catch((error: unknown) => error);
+    expect(wrong).toBeInstanceOf(ApiRequestError);
+    expect((wrong as ApiRequestError).status).toBe(403);
+    expect((wrong as ApiRequestError).code).toBe('forbidden');
+
+    const pair = await client.changePassword({
+      currentPassword: TEST_PASSWORD,
+      newPassword: 'staple-battery-horse',
+    });
+    expect(pair.accessToken).toMatch(/\S/);
+    expect(pair.refreshToken).not.toBe(auth.refreshToken);
+
+    // The old refresh token died with the change; the returned one works.
+    await expect(anonymous.refresh({ refreshToken: auth.refreshToken })).rejects.toMatchObject({
+      code: 'token_invalid',
+    });
+    await expect(anonymous.refresh({ refreshToken: pair.refreshToken })).resolves.toBeDefined();
+    await expect(
+      anonymous.login({ email: auth.user.email, password: 'staple-battery-horse' }),
+    ).resolves.toBeDefined();
+  });
+
+  it('deletes the account: resolves with no body, then the account is gone', async () => {
+    const { auth, client, anonymous } = await signedIn();
+
+    await expect(client.deleteAccount({ password: TEST_PASSWORD })).resolves.toBeUndefined();
+
+    await expect(
+      anonymous.login({ email: auth.user.email, password: TEST_PASSWORD }),
+    ).rejects.toMatchObject({ code: 'invalid_credentials' });
+    await expect(client.getMe()).rejects.toMatchObject({ code: 'token_invalid' });
+  });
+});

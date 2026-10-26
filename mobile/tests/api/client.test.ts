@@ -67,7 +67,7 @@ describe('the endpoint table', () => {
  * `ENDPOINTS.updateExpense` compiles cleanly and issues a `PATCH` where the user asked
  * for a delete - and the reverse sends `DELETE` when they asked to edit an amount.
  *
- * Eight of the sixteen methods had no test at all before this table.
+ * Eight of the then-sixteen methods had no test at all before this table.
  */
 // `API-12`. TypeScript cannot catch a method reaching for a neighbour's route: the three
 // expense writes all answer `ExpenseResponse`, as do the three category writes, as do signup
@@ -75,7 +75,7 @@ describe('the endpoint table', () => {
 describe('every client method', () => {
   const ID = '0192f5a0-0000-7000-8000-0000000000aa';
 
-  // A 400 envelope, so one transport serves all sixteen without sixteen valid success
+  // A 400 envelope, so one transport serves every method without a valid success
   // bodies. The request is recorded before the status is read.
   const REJECTED: TransportResponse = {
     status: 400,
@@ -90,6 +90,11 @@ describe('every client method', () => {
     ['refresh', (client) => client.refresh({ refreshToken: 'r' })],
     ['logout', (client) => client.logout({ refreshToken: 'r' })],
     ['getMe', (client) => client.getMe()],
+    [
+      'changePassword',
+      (client) => client.changePassword({ currentPassword: 'a', newPassword: 'correct horse 42' }),
+    ],
+    ['deleteAccount', (client) => client.deleteAccount({ password: 'a' })],
 
     ['listCategories', (client) => client.listCategories()],
     ['createCategory', (client) => client.createCategory({ name: 'Rent' })],
@@ -114,22 +119,22 @@ describe('every client method', () => {
     );
   });
 
-  it.each(CALLS)('%s issues the method, path and auth flag the contract declares', async (
-    operationId,
-    call,
-  ) => {
-    const route = API_ROUTES.find((candidate) => candidate.operationId === operationId)!;
-    const { client, seen } = clientReturning(REJECTED);
+  it.each(CALLS)(
+    '%s issues the method, path and auth flag the contract declares',
+    async (operationId, call) => {
+      const route = API_ROUTES.find((candidate) => candidate.operationId === operationId)!;
+      const { client, seen } = clientReturning(REJECTED);
 
-    await call(client).catch(() => undefined);
+      await call(client).catch(() => undefined);
 
-    expect(seen).toHaveLength(1);
-    expect(seen[0]).toMatchObject({
-      method: route.method,
-      path: resolvePath(route.path, { id: ID }),
-      requiresAuth: route.auth,
-    });
-  });
+      expect(seen).toHaveLength(1);
+      expect(seen[0]).toMatchObject({
+        method: route.method,
+        path: resolvePath(route.path, { id: ID }),
+        requiresAuth: route.auth,
+      });
+    },
+  );
 });
 
 describe('resolvePath', () => {

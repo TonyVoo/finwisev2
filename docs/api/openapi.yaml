@@ -426,6 +426,118 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+    delete:
+      operationId: deleteAccount
+      tags: [auth]
+      summary: Permanently delete the account
+      description: |
+        Deletes the authenticated user and **everything it owns**: every expense, every
+        category, every session and the sync ledger. It cannot be undone, and there is no
+        grace period or tombstone - the email address is free to register again immediately.
+
+        The caller must re-enter the account password, so a stolen access token alone cannot
+        destroy an account. A wrong password is `403 forbidden` (not `401`: the session is
+        fine, this action is what is refused, and a client must not treat it as a dead
+        session). **Wrong answers are rate limited per account**, shared with
+        `POST /v1/me/password`; see `rate_limited`.
+
+        Access tokens are stateless and are not revoked: one issued before the delete keeps
+        verifying until it expires (at most 1h), after which `GET /v1/me` answers
+        `401 token_invalid`. Refresh tokens die with the account immediately.
+      x-errorCodes:
+        - validation_error
+        - malformed_request
+        - unsupported_media_type
+        - unauthorized
+        - token_expired
+        - token_invalid
+        - forbidden
+        - rate_limited
+        - internal_error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeleteAccountRequest' }
+            example:
+              password: correct-horse-battery
+      responses:
+        '204':
+          description: The account and all its data are gone. No body.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/me/password:
+    post:
+      operationId: changePassword
+      tags: [auth]
+      summary: Change the password
+      description: |
+        Replaces the account password and **ends every other session**: all of the account's
+        refresh tokens are revoked in the same transaction, and the response carries a fresh
+        pair for the calling device so the user is not signed out of the app they are using.
+        Overwrite the stored pair with it.
+
+        The caller must re-enter the current password. A wrong one is `403 forbidden` (not
+        `401` - the session is fine and a client must not treat it as dead). The new password
+        must satisfy the usual 8-128 character rule and differ from the current one
+        (`validation_error` otherwise). **Wrong answers are rate limited per account**,
+        shared with `DELETE /v1/me`.
+
+        Access tokens are stateless and are not revoked: another device keeps working with
+        its access token until it expires (at most 1h) and is signed out when it next
+        refreshes.
+      x-errorCodes:
+        - validation_error
+        - malformed_request
+        - unsupported_media_type
+        - unauthorized
+        - token_expired
+        - token_invalid
+        - forbidden
+        - rate_limited
+        - internal_error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChangePasswordRequest' }
+            example:
+              currentPassword: correct-horse-battery
+              newPassword: staple-battery-horse
+      responses:
+        '200':
+          description: Password changed. A fresh session for this device.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenPair' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /v1/categories:
     get:
       operationId: listCategories
@@ -1518,9 +1630,21 @@ components:
             error:
               code: token_expired
               message: Access token has expired.
-    # There is deliberately no `Forbidden` (403) response component. The `forbidden`
-    # error code is reserved in the enum, but no MVP endpoint returns it: cross-tenant
-    # row access is reported as `404 not_found` so that ids cannot be probed.
+    Forbidden:
+      description: |
+        The caller is authenticated but this action was refused. Code: `forbidden`. Today the
+        only cause is a wrong password on `POST /v1/me/password` or `DELETE /v1/me`. It is a
+        `403` and not a `401` on purpose: the session is valid, so a client must not refresh,
+        retry or sign out because of it. Cross-tenant row access is still `404 not_found`.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            error:
+              code: forbidden
+              message: The password is incorrect.
     NotFound:
       description: |
         No such route, or no such row **for this user**. Code: `not_found`. A row owned by
@@ -1698,7 +1822,7 @@ components:
         | `invalid_credentials` | 401 | Email/password pair did not match. Does not say which half was wrong. |
         | `token_expired` | 401 | Token is well-formed but past its expiry. Refresh and retry once. |
         | `token_invalid` | 401 | Token signature/shape is bad, or the refresh token is unknown, revoked or already rotated. Re-login. |
-        | `forbidden` | 403 | Authenticated but not permitted. Cross-tenant row access is `not_found`, not this. |
+        | `forbidden` | 403 | Authenticated, but this action was refused - today, a wrong password on `POST /v1/me/password` or `DELETE /v1/me`. Cross-tenant row access is `not_found`, not this. |
         | `not_found` | 404 | No such route, or no such row for this user. Cross-tenant reads are 404, not 403, so ids cannot be probed. |
         | `email_already_exists` | 409 | Signup with an email that already has an account. |
         | `category_name_taken` | 409 | Another live category of this user already has that name (case-insensitive). |
@@ -1894,6 +2018,32 @@ components:
       required: [refreshToken]
       properties:
         refreshToken: { $ref: '#/components/schemas/RefreshToken' }
+
+    ChangePasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: The account's current password, re-entered.
+        newPassword: { $ref: '#/components/schemas/Password' }
+      description: The new password must differ from the current one.
+
+    DeleteAccountRequest:
+      type: object
+      additionalProperties: false
+      required: [password]
+      properties:
+        password:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: |
+            The account password, re-entered. Deleting an account cannot be undone, so a
+            stolen access token alone is not enough.
 
     LogoutRequest:
       type: object

@@ -60,6 +60,15 @@ export const LIMITS = {
    * so a spray cannot be refunded by landing one lucky login partway through.
    */
   LOGIN_MAX_FAILURES_PER_IP: 50,
+  /**
+   * Wrong "current password" answers one *account* may accrue per window across
+   * `POST /v1/me/password` and `DELETE /v1/me`, before the next attempt is
+   * `429 rate_limited`. Keyed on the user the access token names, so there is no
+   * per-address bucket to bypass: the caller already holds a valid token and the only thing
+   * being guarded is the password behind it. Cleared by a correct answer; the window is the
+   * login window.
+   */
+  PASSWORD_CONFIRM_MAX_FAILURES_PER_USER: 10,
 } as const;
 
 /**

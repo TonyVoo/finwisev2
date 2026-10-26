@@ -238,15 +238,16 @@ describe('error envelope parity', () => {
       ]),
     );
     const unreachable = ERROR_CODES.filter((code) => !used.has(code));
-    // `forbidden` is reserved: cross-tenant access is reported as 404 so ids cannot be
-    // probed, and nothing else in the MVP is permission-gated.
-    expect(unreachable).toEqual(['forbidden']);
+    // Every code is reachable from some operation. `forbidden` became reachable with the
+    // password-confirming endpoints; before that it was reserved.
+    expect(unreachable).toEqual([]);
   });
 
   it('has a reusable response component per error status it serves', () => {
     for (const name of [
       'BadRequest',
       'Unauthorized',
+      'Forbidden',
       'NotFound',
       'UnsupportedMediaType',
       'UnprocessableEntity',
@@ -530,7 +531,10 @@ describe('tenancy', () => {
   it('reports cross-tenant rows as 404 rather than 403', () => {
     const notFound = responses.NotFound as Json;
     expect(notFound.description as string).toMatch(/owned by\s+another user/i);
-    expect(responses.Forbidden).toBeUndefined();
+    // `Forbidden` exists now, for the password-confirming endpoints - and says in so many
+    // words that it is not the cross-tenant answer.
+    expect((responses.Forbidden as Json).description as string).toMatch(/password/i);
+    expect((responses.Forbidden as Json).description as string).toMatch(/404 not_found/);
     const resourceId = (components.parameters as Record<string, Json>).ResourceId!;
     expect(resourceId.description as string).toMatch(/404/);
   });

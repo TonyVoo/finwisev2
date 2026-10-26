@@ -1,6 +1,7 @@
 import { afterAll, beforeEach } from 'vitest';
 import { disconnectPrisma } from '../src/db/client.ts';
 import { resetLoginRateLimitForTests } from '../src/middleware/loginRateLimit.ts';
+import { resetPasswordConfirmRateLimitForTests } from '../src/middleware/passwordConfirmRateLimit.ts';
 import { truncateAll } from './support/db.ts';
 
 /**
@@ -19,6 +20,7 @@ beforeEach(async () => {
    * would be order-dependent in a way that only shows up when a file grows.
    */
   resetLoginRateLimitForTests();
+  resetPasswordConfirmRateLimitForTests();
 });
 
 // Without this the pool keeps the worker's event loop alive and vitest hangs on exit.

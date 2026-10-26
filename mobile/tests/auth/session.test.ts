@@ -131,6 +131,37 @@ describe('createSessionController', () => {
     });
   });
 
+  describe('adoptTokenPair', () => {
+    it('replaces the stored pair for the same user without moving the epoch', async () => {
+      const { controller, tokenStore } = controllerWith(tokenPair('1'));
+      await controller.initialize();
+      const epoch = controller.getEpoch();
+
+      await controller.adoptTokenPair(tokenPair('9'));
+
+      expect(controller.getSnapshot().status).toBe('authenticated');
+      await expect(controller.getAccessToken()).resolves.toBe('access-9');
+      await expect(tokenStore.read()).resolves.toMatchObject({
+        userId: USER_ID,
+        accessToken: 'access-9',
+        refreshToken: 'refresh-9',
+      });
+      // Not a sign-in: a request in flight under the old pair is still this user's.
+      expect(controller.getEpoch()).toBe(epoch);
+    });
+
+    it('does nothing once the session is gone, so it cannot resurrect a logout', async () => {
+      const { controller, tokenStore } = controllerWith(tokenPair('1'));
+      await controller.initialize();
+      await controller.signOut();
+
+      await controller.adoptTokenPair(tokenPair('9'));
+
+      expect(controller.getSnapshot()).toEqual({ status: 'anonymous', expired: false });
+      await expect(tokenStore.read()).resolves.toBeNull();
+    });
+  });
+
   describe('ensureFreshAccessToken', () => {
     it('rotates and persists the new pair', async () => {
       const { controller, tokenStore } = controllerWith(tokenPair('1'));

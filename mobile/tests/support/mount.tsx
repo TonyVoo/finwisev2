@@ -139,6 +139,7 @@ export async function mountWithSession(
     getEpoch: () => 0,
     ensureFreshAccessToken: async () => null,
     signIn: async () => undefined,
+    adoptTokenPair: async () => undefined,
     signOut: async () => undefined,
   };
 

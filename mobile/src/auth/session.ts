@@ -58,6 +58,16 @@ export interface SessionController {
    */
   signIn(auth: AuthResponse): Promise<void>;
   /**
+   * Install a replacement token pair for the *same* signed-in user, as the server issues
+   * after a password change (every other session is revoked, this device gets a new one).
+   *
+   * Not a sign-in: the epoch does not move and the local database is untouched, because
+   * nothing about whose data this is has changed - the same reason a refresh rotation does
+   * not bump it. A no-op when the session is already gone, so a pair that arrives after a
+   * logout cannot resurrect the session it belonged to.
+   */
+  adoptTokenPair(pair: TokenPair): Promise<void>;
+  /**
    * End the session the user asked to end: tokens revoked locally **and the local
    * database wiped**, per `docs/design/04-expense-list.md` §Behaviour rule 14.
    *
@@ -276,6 +286,12 @@ export function createSessionController(options: SessionControllerOptions): Sess
       // and before `persist`, so every listener woken by the publish already sees it.
       epoch += 1;
       await persist(sessionFromTokenPair(auth, auth.user.id, clock()));
+    },
+
+    async adoptTokenPair(pair) {
+      const current = session;
+      if (current === null) return;
+      await persist(sessionFromTokenPair(pair, current.userId, clock()));
     },
 
     async signOut() {

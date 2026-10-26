@@ -1,5 +1,6 @@
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import { verifyAccessToken } from '../auth/accessToken.ts';
+import { getPrisma } from '../db/client.ts';
 import { problems } from '../errors.ts';
 
 /**
@@ -42,7 +43,20 @@ export const requireAuth: RequestHandler = (
   }
 
   verifyAccessToken(token)
-    .then((userId) => {
+    .then(async (userId) => {
+      // A signature that verifies proves the token was minted for this user, not that the
+      // user still exists. Access tokens are stateless, so one outlives `DELETE /v1/me` by
+      // up to an hour - and without this check a second signed-in device would spend that
+      // hour getting `500`s from foreign-key violations on every push, instead of being
+      // told once, correctly, that its session is gone. One primary-key lookup, and the
+      // answer is the same `token_invalid` that `GET /v1/me` has always given.
+      const account = await getPrisma().user.findUnique({
+        where: { id: userId },
+        select: { id: true },
+      });
+      if (account === null) {
+        throw problems.tokenInvalid('Access token does not belong to an existing account.');
+      }
       req.userId = userId;
       next();
     })

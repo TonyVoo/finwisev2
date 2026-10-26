@@ -338,6 +338,28 @@ them as proposals the Designer can reword; changing a row here means changing
 | ---------------------------- | -------------------------------------------------------------------- | -------------------------- |
 | `settings.export`            | `Export expenses`                                                    | Settings                   |
 | `settings.exportHint`        | `Save everything you have recorded as a CSV file.`                   | Settings                   |
+| `settings.changePassword`    | `Change password`                                                    | Settings                   |
+| `settings.deleteAccount`     | `Delete account`                                                     | Settings                   |
+| `account.changePassword.title`    | `Change password`                                               | Change password            |
+| `account.changePassword.hint`     | `You will be logged out on your other devices.`                 | Change password            |
+| `account.changePassword.current`  | `Current password`                                              | Change password, field     |
+| `account.changePassword.new`      | `New password`                                                  | Change password, field     |
+| `account.changePassword.confirm`  | `Confirm new password`                                          | Change password, field     |
+| `account.changePassword.submit`   | `Change password`                                               | Change password, button    |
+| `account.changePassword.mismatch` | `The passwords do not match.`                                   | Change password, field error |
+| `account.changePassword.same`     | `Choose a password different from your current one.`            | Change password, field error |
+| `account.changePassword.success`  | `Password changed.`                                             | Snackbar                   |
+| `account.changePassword.offline`  | `You need to be online to change your password.`                | Change password, banner    |
+| `account.deleteAccount.title`     | `Delete account`                                                | Delete account             |
+| `account.deleteAccount.warning`   | `This permanently deletes your account and every expense and category in it, on this device and on our server. It cannot be undone.` | Delete account |
+| `account.deleteAccount.password`  | `Password`                                                      | Delete account, field      |
+| `account.deleteAccount.submit`    | `Delete my account`                                             | Delete account, button     |
+| `account.deleteAccount.dialogTitle` | `Delete your account?`                                        | Delete account, dialog     |
+| `account.deleteAccount.dialogBody`  | `Everything will be gone for good. Export your expenses first if you want a copy.` | Delete account, dialog |
+| `account.deleteAccount.confirm`   | `Delete account`                                                | Delete account, dialog     |
+| `account.deleteAccount.offline`   | `You need to be online to delete your account.`                 | Delete account, banner     |
+| `account.wrongPassword`           | `That password is incorrect.`                                   | Both, field error          |
+| `account.tooManyAttempts`         | `Too many attempts. Try again in a moment.`                     | Both, banner               |
 | `export.busy`                | `Preparing your file`                                                | Settings, while exporting  |
 | `export.empty`               | `There are no expenses to export yet.`                               | Snackbar                   |
 | `export.unavailable`         | `Sharing files is not available on this device.`                     | Snackbar                   |

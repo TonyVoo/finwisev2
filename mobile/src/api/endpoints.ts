@@ -12,6 +12,7 @@ import {
   type RouteSpec,
   SyncPullResponse,
   SyncPushResponse,
+  TokenPair,
 } from '@expense-tracker/shared';
 import type { z } from 'zod';
 
@@ -64,6 +65,8 @@ export const ENDPOINTS = {
   refresh: endpoint('refresh', RefreshResponse),
   logout: emptyEndpoint('logout'),
   getMe: endpoint('getMe', MeResponse),
+  changePassword: endpoint('changePassword', TokenPair),
+  deleteAccount: emptyEndpoint('deleteAccount'),
 
   listCategories: endpoint('listCategories', CategoryListResponse),
   createCategory: endpoint('createCategory', CategoryResponse),

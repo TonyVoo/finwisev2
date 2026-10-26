@@ -152,6 +152,8 @@ export const COPY = {
     categories: 'Categories',
     export: 'Export expenses',
     exportHint: 'Save everything you have recorded as a CSV file.',
+    changePassword: 'Change password',
+    deleteAccount: 'Delete account',
     logout: 'Log out',
   },
 
@@ -161,6 +163,36 @@ export const COPY = {
     empty: 'There are no expenses to export yet.',
     unavailable: 'Sharing files is not available on this device.',
     failed: 'Could not export your expenses. Try again.',
+  },
+
+  /** Change password and delete account, both reached from Settings and both online-only. */
+  account: {
+    changePassword: {
+      title: 'Change password',
+      hint: 'You will be logged out on your other devices.',
+      current: 'Current password',
+      new: 'New password',
+      confirm: 'Confirm new password',
+      submit: 'Change password',
+      mismatch: 'The passwords do not match.',
+      same: 'Choose a password different from your current one.',
+      success: 'Password changed.',
+      offline: 'You need to be online to change your password.',
+    },
+    deleteAccount: {
+      title: 'Delete account',
+      warning:
+        'This permanently deletes your account and every expense and category in it, on this device and on our server. It cannot be undone.',
+      password: 'Password',
+      submit: 'Delete my account',
+      dialogTitle: 'Delete your account?',
+      dialogBody:
+        'Everything will be gone for good. Export your expenses first if you want a copy.',
+      confirm: 'Delete account',
+      offline: 'You need to be online to delete your account.',
+    },
+    wrongPassword: 'That password is incorrect.',
+    tooManyAttempts: 'Too many attempts. Try again in a moment.',
   },
 
   /** The log out dialog (`09-copy-deck.md`). The body depends on whether the outbox is empty. */

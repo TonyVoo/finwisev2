@@ -17,7 +17,7 @@ import type { Db } from '../db/client.ts';
 import { isUniqueViolation } from '../db/errors.ts';
 import { toWireUser } from '../db/mappers.ts';
 import { nextRevisionBlock } from '../db/revision.ts';
-import { problems } from '../errors.ts';
+import { ApiProblem, problems } from '../errors.ts';
 import { logger } from '../logger.ts';
 
 /**
@@ -235,4 +235,88 @@ export async function logout(db: Db, presentedToken: string): Promise<void> {
     data: { revokedAt: new Date() },
   });
   if (result.count > 0) logger.info('session revoked');
+}
+
+/**
+ * Check the password a signed-in user just re-entered.
+ *
+ * `forbidden`, not `invalid_credentials`: that code is a `401`, and a `401` on an
+ * authenticated route tells every client "your session is dead" - the mobile client reacts
+ * by refreshing and, failing that, signing the user out. A mistyped password on a settings
+ * screen must not do that. The caller is authenticated; this action is what is refused.
+ *
+ * A missing user row is `token_invalid` for the reason `GET /v1/me` gives: the token
+ * verified but its account is gone, and the client's right move is to log in again.
+ */
+async function confirmPassword(db: Db, userId: string, presented: string) {
+  const user = await db.user.findUnique({ where: { id: userId } });
+  if (!user) throw problems.tokenInvalid('Access token does not belong to an existing account.');
+
+  const ok = await verifyPassword(presented, user.passwordHash);
+  if (!ok) throw new ApiProblem('forbidden', 'The password is incorrect.');
+  return user;
+}
+
+export interface ChangePasswordInput {
+  readonly currentPassword: string;
+  readonly newPassword: string;
+}
+
+/**
+ * Change the password, end every other session, and hand this device a fresh one.
+ *
+ * Every refresh token of the account is revoked in the same transaction as the new hash.
+ * That is the point of changing a password after a suspected compromise: whoever holds a
+ * stolen refresh token (good for 60 days) must lose it with the old password. This device
+ * is issued a replacement so the user is not signed out of the app they are standing in.
+ *
+ * What this does *not* do: revoke access tokens, which are stateless 1-hour JWTs. A stolen
+ * access token keeps working until it expires. The contract says so on this endpoint.
+ */
+export async function changePassword(
+  db: Db,
+  userId: string,
+  input: ChangePasswordInput,
+): Promise<TokenPair> {
+  await confirmPassword(db, userId, input.currentPassword);
+
+  // Hashed before the transaction opens, as in `signup`: argon2id would otherwise hold a
+  // connection for ~50ms for no reason.
+  const passwordHash = await hashPassword(input.newPassword);
+
+  const tokens = await db.$transaction(async (tx) => {
+    await tx.user.update({ where: { id: userId }, data: { passwordHash } });
+    await tx.refreshToken.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    return issueSession(tx, userId);
+  });
+
+  logger.info('password changed', { userId });
+  return tokens;
+}
+
+/**
+ * Permanently delete the account and everything it owns.
+ *
+ * Expenses go first and explicitly. Every other table cascades from `users`, but an expense
+ * references its category with `onDelete: Restrict` (a category cleanup must never be able
+ * to silently take spend history with it), and a cascade from the user deletes categories
+ * and expenses in an order Postgres does not promise - so relying on it would make this
+ * either flaky or a constraint error. Removing the expenses first leaves the cascade nothing
+ * to trip over.
+ *
+ * Hard delete, not a tombstone: the account's whole purpose here is to stop existing, and a
+ * soft-deleted user row would still hold the email address against re-registration.
+ */
+export async function deleteAccount(db: Db, userId: string, password: string): Promise<void> {
+  await confirmPassword(db, userId, password);
+
+  await db.$transaction(async (tx) => {
+    await tx.expense.deleteMany({ where: { userId } });
+    await tx.user.delete({ where: { id: userId } });
+  });
+
+  logger.info('account deleted', { userId });
 }
