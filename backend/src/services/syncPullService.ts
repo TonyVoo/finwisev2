@@ -34,6 +34,18 @@ interface PageSnapshot {
 }
 
 /**
+ * The options the pull's transaction runs with, lifted out of the call so a test can
+ * assert on them (`SYNC-57`, `GAP 18`).
+ *
+ * `RepeatableRead` is not a tuning choice, and nothing but a comment defended it before:
+ * the behaviour it protects needs a write to commit in a window of roughly a tenth of a
+ * millisecond between the page's two queries, so no behavioural test of it is reliable.
+ * Naming the options makes the setting something a structural test can pin. The push side
+ * has an equivalent constant (`PUSH_TRANSACTION_OPTIONS` in `syncPushService.ts`).
+ */
+export const PULL_TRANSACTION_OPTIONS = { isolationLevel: 'RepeatableRead' } as const;
+
+/**
  * Read one page, and the user's watermarks, from a **single database snapshot**.
  *
  * The transaction is the load-bearing part, and `RepeatableRead` is why it exists rather
@@ -108,7 +120,7 @@ async function readPage(
   // change the isolation level anyway.
   const prisma = getPrisma();
   if (db !== prisma) return run(db);
-  return prisma.$transaction(run, { isolationLevel: 'RepeatableRead' });
+  return prisma.$transaction(run, PULL_TRANSACTION_OPTIONS);
 }
 
 export async function pullChanges(
