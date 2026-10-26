@@ -2,6 +2,7 @@ import { screen, waitFor } from '@testing-library/react-native';
 import { NetworkUnavailableError } from '@/api/errors';
 import { OFFLINE_COPY, VALIDATION_COPY } from '@/copy/strings';
 import { OWNER_KEY } from '@/db/localStore';
+import { readCategoryReviewPending } from '@/db/onboarding';
 import { readUser } from '@/db/user';
 import SignupScreen from '../../app/(auth)/signup';
 import { resetRouter, routerRecord } from '../support/router';
@@ -260,6 +261,17 @@ describe('the sign up screen', () => {
         [OWNER_KEY],
       );
       expect(rows[0]?.value).toBe('0192f5a0-0000-7000-8000-00000000a001');
+    });
+
+    it('flags the one-time category review, after the store was adopted', async () => {
+      await submitForm();
+      await authenticated();
+
+      // Written after `signIn`, never before: adopting the store wipes the previous
+      // account's meta, so a flag written first would be wiped with it.
+      await waitFor(async () =>
+        expect(await readCategoryReviewPending(mounted.database)).toBe(true),
+      );
     });
 
     it('does not seed the default categories locally', async () => {

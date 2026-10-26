@@ -2,6 +2,7 @@ import { screen, waitFor } from '@testing-library/react-native';
 import { NetworkUnavailableError } from '@/api/errors';
 import { OFFLINE_COPY, VALIDATION_COPY } from '@/copy/strings';
 import { OWNER_KEY } from '@/db/localStore';
+import { readCategoryReviewPending } from '@/db/onboarding';
 import { readUser } from '@/db/user';
 import LoginScreen from '../../app/(auth)/login';
 import { resetRouter, routerRecord, setSearchParams } from '../support/router';
@@ -134,6 +135,13 @@ describe('the log in screen', () => {
       const persisted = [...secureStore().values()].join(' ');
       expect(persisted).toContain('access-1');
       expect(persisted).toContain('refresh-1');
+    });
+
+    it('does not flag the category review: a login is a returning user', async () => {
+      await submitCredentials();
+      await authenticated();
+
+      expect(await readCategoryReviewPending(mounted.database)).toBe(false);
     });
 
     it('stamps the local database with the user who signed in', async () => {

@@ -360,6 +360,10 @@ them as proposals the Designer can reword; changing a row here means changing
 | `account.deleteAccount.offline`   | `You need to be online to delete your account.`                 | Delete account, banner     |
 | `account.wrongPassword`           | `That password is incorrect.`                                   | Both, field error          |
 | `account.tooManyAttempts`         | `Too many attempts. Try again in a moment.`                     | Both, banner               |
+| `home.categoryReview.title`   | `Your categories are ready`                                         | Home, after signup         |
+| `home.categoryReview.body`    | `We set up a few to get you started. Rename, remove or add your own any time.` | Home, after signup |
+| `home.categoryReview.review`  | `Review categories`                                                 | Home, after signup, button |
+| `home.categoryReview.dismiss` | `Not now`                                                           | Home, after signup, button |
 | `export.busy`                | `Preparing your file`                                                | Settings, while exporting  |
 | `export.empty`               | `There are no expenses to export yet.`                               | Snackbar                   |
 | `export.unavailable`         | `Sharing files is not available on this device.`                     | Snackbar                   |

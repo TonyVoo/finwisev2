@@ -51,6 +51,13 @@ export const COPY = {
     total: { current: 'Total this month', other: 'Total' },
     section: { today: 'Today', yesterday: 'Yesterday' },
     fab: 'Add expense',
+    /** The one-time prompt after signup (`db/onboarding.ts`). */
+    categoryReview: {
+      title: 'Your categories are ready',
+      body: 'We set up a few to get you started. Rename, remove or add your own any time.',
+      review: 'Review categories',
+      dismiss: 'Not now',
+    },
     search: {
       open: 'Search expenses',
       close: 'Close search',

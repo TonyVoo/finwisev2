@@ -5,9 +5,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppBar, Fab, IconButton } from '@/components/Chrome';
 import { useSnackbar } from '@/components/Snackbar';
 import { COPY, SNACK_COPY } from '@/copy/strings';
+import { useDatabase } from '@/db/DatabaseProvider';
 import { useLocalWrite } from '@/db/localWrite';
+import { clearCategoryReviewPending } from '@/db/onboarding';
+import { queryKeys } from '@/query/keys';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   useAnyExpensesExist,
+  useCategoryReviewPending,
   useExpenseSearch,
   useExpenseSearchSummary,
   useLiveCategories,
@@ -17,6 +22,7 @@ import {
 } from '@/db/hooks';
 import { isSearchActive } from '@/db/queries';
 import { deleteExpense, restoreExpense } from '@/db/mutations';
+import { CategoryReviewBanner } from '@/expenses/CategoryReviewBanner';
 import { ExpenseRow } from '@/expenses/ExpenseRow';
 import { groupByDate } from '@/expenses/listModel';
 import { FirstRunEmpty, ListSkeleton, MonthEmpty, SearchEmpty } from '@/expenses/ListStates';
@@ -93,6 +99,20 @@ export default function ExpenseListScreen() {
     searching ? search : { text: '', categoryId: null },
   );
   const categories = useLiveCategories();
+
+  const database = useDatabase();
+  const queryClient = useQueryClient();
+  const reviewPending = useCategoryReviewPending();
+  // Both answers clear it, so it is asked once. Not a `localWrite`: this is a fact about the
+  // device, not a record, so there is nothing to sync.
+  const answerCategoryReview = useCallback(
+    async (open: boolean) => {
+      await clearCategoryReviewPending(database);
+      await queryClient.invalidateQueries({ queryKey: queryKeys.onboarding.categoryReview() });
+      if (open) router.push('/(app)/settings/categories');
+    },
+    [database, queryClient, router],
+  );
 
   const closeSearch = useCallback(() => {
     setSearchOpen(false);
@@ -182,6 +202,13 @@ export default function ExpenseListScreen() {
       ) : (
         <MonthSwitcher onOpenPicker={() => router.push('/(app)/month-picker')} />
       )}
+
+      {reviewPending.data === true && !searchOpen ? (
+        <CategoryReviewBanner
+          onReview={() => void answerCategoryReview(true)}
+          onDismiss={() => void answerCategoryReview(false)}
+        />
+      ) : null}
 
       {searching ? (
         // Across every month, so the month total would be the wrong number to show. This is

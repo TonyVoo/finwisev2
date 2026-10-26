@@ -37,6 +37,13 @@ export interface UseAuthFormOptions {
   readonly request: (credentials: Credentials) => Promise<AuthResponse>;
   /** Prefilled email, when arriving from the `Log in instead` link (§1.2 rule 4). */
   readonly initialEmail?: string;
+  /**
+   * Runs after the session has been adopted, never before: `signIn` adopts the local store
+   * and may wipe it, so anything written earlier would be wiped with the previous user's
+   * rows. Best effort - a failure here is swallowed, because the account exists and the user
+   * is signed in, and reporting "sign up failed" for a missing first-run hint would be a lie.
+   */
+  readonly onSignedIn?: (auth: AuthResponse) => Promise<void>;
 }
 
 export interface UseAuthFormResult {
@@ -54,6 +61,7 @@ export function useAuthForm({
   validate,
   request,
   initialEmail = '',
+  onSignedIn,
 }: UseAuthFormOptions): UseAuthFormResult {
   const session = useSessionController();
   const [state, rawDispatch] = useReducer(
@@ -115,21 +123,19 @@ export function useAuthForm({
         // Adopts the local store, writes the user row and persists the tokens. The route
         // guard takes it from here. `busy` stays set through that transition on purpose.
         await session.signIn(auth);
+        if (onSignedIn !== undefined) await onSignedIn(auth).catch(() => undefined);
       } catch (error) {
         if (!mounted.current) return;
         rawDispatch({ kind: 'failed', presentation: presentAuthError(error, screen) });
         setBusy(false);
       }
     })();
-  }, [busy, request, screen, session, state.values, validate]);
+  }, [busy, onSignedIn, request, screen, session, state.values, validate]);
 
   return {
     state,
     busy,
-    setField: useCallback(
-      (field, value) => rawDispatch({ kind: 'change', field, value }),
-      [],
-    ),
+    setField: useCallback((field, value) => rawDispatch({ kind: 'change', field, value }), []),
     blurField: useCallback((field) => rawDispatch({ kind: 'blur', field }), []),
     submit,
     fieldRefs,

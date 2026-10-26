@@ -3,6 +3,11 @@ import { COPY, EMPTY_COPY, SNACK_COPY } from '@/copy/strings';
 import { MONTH_NEXT_TEST_ID, MONTH_PREVIOUS_TEST_ID } from '@/month/MonthSwitcher';
 import { MONTH_TOTAL_TEST_ID } from '@/expenses/MonthTotal';
 import { FIRST_RUN_EMPTY_TEST_ID, MONTH_EMPTY_TEST_ID } from '@/expenses/ListStates';
+import {
+  clearCategoryReviewPending,
+  markCategoryReviewPending,
+  readCategoryReviewPending,
+} from '@/db/onboarding';
 import { writeUser } from '@/db/user';
 import type { SqliteDatabase } from '@/db/sqlite';
 import ExpenseListScreen from '../../app/(app)/(tabs)/index';
@@ -640,5 +645,51 @@ describe('the expense list', () => {
     await userEvent.press(screen.getByText(COPY.common.undo));
 
     expect(requests).toEqual([]);
+  });
+});
+
+describe('the one-time category review prompt', () => {
+  beforeEach(() => {
+    resetRouter();
+  });
+
+  it('is absent unless a signup asked for it', async () => {
+    await mountHome(seedOctober);
+    expect(screen.queryByTestId('category-review')).toBeNull();
+  });
+
+  it('shows after a signup, and Review opens the category editor and is then gone for good', async () => {
+    const mounted = await mountHome(async (database) => {
+      await seedOctober(database);
+      await markCategoryReviewPending(database);
+    });
+    expect(await screen.findByTestId('category-review')).toBeTruthy();
+
+    await userEvent.press(screen.getByTestId('category-review-open'));
+
+    await waitFor(() => expect(screen.queryByTestId('category-review')).toBeNull());
+    expect(routerRecord.push).toContain('/(app)/settings/categories');
+    expect(await readCategoryReviewPending(mounted.database)).toBe(false);
+  });
+
+  it('Not now dismisses it for good without navigating anywhere', async () => {
+    const mounted = await mountHome(async (database) => {
+      await seedOctober(database);
+      await markCategoryReviewPending(database);
+    });
+    await userEvent.press(await screen.findByTestId('category-review-dismiss'));
+
+    await waitFor(() => expect(screen.queryByTestId('category-review')).toBeNull());
+    expect(routerRecord.push).toEqual([]);
+    expect(await readCategoryReviewPending(mounted.database)).toBe(false);
+  });
+
+  it('does not nag on a later visit once answered', async () => {
+    await mountHome(async (database) => {
+      await seedOctober(database);
+      await markCategoryReviewPending(database);
+      await clearCategoryReviewPending(database);
+    });
+    expect(screen.queryByTestId('category-review')).toBeNull();
   });
 });

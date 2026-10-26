@@ -65,6 +65,11 @@ export const queryKeys = {
     email: () => ['local', 'user', 'email'] as const,
   },
 
+  onboarding: {
+    /** Whether Home should still offer to review the categories created at signup. */
+    categoryReview: () => ['local', 'onboarding', 'categoryReview'] as const,
+  },
+
   outbox: {
     pendingCount: () => ['local', 'outbox', 'pendingCount'] as const,
     /** The queued changes the sync sheet lists, one per record (§4). */

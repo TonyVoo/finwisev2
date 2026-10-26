@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
+import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useApiClient } from '@/bootstrap/AppProviders';
 import { useAuthForm } from '@/auth/useAuthForm';
@@ -12,6 +13,9 @@ import { PasswordField } from '@/components/PasswordField';
 import { Sheet } from '@/components/Sheet';
 import { TextField } from '@/components/TextField';
 import { COPY } from '@/copy/strings';
+import { useDatabase } from '@/db/DatabaseProvider';
+import { markCategoryReviewPending } from '@/db/onboarding';
+import { queryKeys } from '@/query/keys';
 import {
   CURRENCY_OPTIONS,
   DEFAULT_CURRENCY_CODE,
@@ -48,8 +52,17 @@ export default function SignupScreen() {
   const [currency, setCurrency] = useState(DEFAULT_CURRENCY_CODE);
   const [pickerOpen, setPickerOpen] = useState(false);
 
+  const database = useDatabase();
+  const queryClient = useQueryClient();
+
   const form = useAuthForm({
     screen: 'signup',
+    // After the session is adopted: the new account's categories were seeded for it, and
+    // Home offers to show them once (`db/onboarding.ts`).
+    onSignedIn: async () => {
+      await markCategoryReviewPending(database);
+      await queryClient.invalidateQueries({ queryKey: queryKeys.onboarding.categoryReview() });
+    },
     validate: validateSignup,
     request: ({ email, password }) => api.signup({ email, password, currency }),
   });
@@ -60,7 +73,9 @@ export default function SignupScreen() {
       title={COPY.signup.title}
       onBack={() => router.back()}
       testID="signup"
-      banner={state.banner === null ? null : <FormBanner message={state.banner} testID="signup-banner" />}
+      banner={
+        state.banner === null ? null : <FormBanner message={state.banner} testID="signup-banner" />
+      }
     >
       <View>
         <TextField
@@ -175,9 +190,7 @@ export default function SignupScreen() {
               <Text style={styles.optionLabel}>{`${option.code} - ${option.name}`}</Text>
               {/* The trailing check is a visual confirmation; `accessibilityState`
                   above is what a screen reader reads. */}
-              {selected ? (
-                <Feather name="check" size={20} color={color.primary.default} />
-              ) : null}
+              {selected ? <Feather name="check" size={20} color={color.primary.default} /> : null}
             </Pressable>
           );
         })}

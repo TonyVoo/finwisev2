@@ -3,6 +3,7 @@ import { LIMITS } from '@expense-tracker/shared';
 import { queryKeys } from '../query/keys';
 import { type MonthKey, monthRange } from '../lib/calendar';
 import { useDatabase } from './DatabaseProvider';
+import { readCategoryReviewPending } from './onboarding';
 import { readUserCurrency, readUserEmail } from './user';
 import {
   type CategoryListItem,
@@ -270,5 +271,14 @@ export function useExpenseSearchSummary(
     queryKey: [...queryKeys.expenses.search(text, search.categoryId), 'summary'] as const,
     queryFn: () => searchSummary(database, { text, categoryId: search.categoryId }),
     enabled: isSearchActive(search),
+  });
+}
+
+/** Whether Home should still offer the one-time "review your categories" prompt. */
+export function useCategoryReviewPending(): UseQueryResult<boolean> {
+  const database = useDatabase();
+  return useQuery({
+    queryKey: queryKeys.onboarding.categoryReview(),
+    queryFn: () => readCategoryReviewPending(database),
   });
 }

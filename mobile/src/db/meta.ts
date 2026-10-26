@@ -29,6 +29,12 @@ export const META_KEYS = {
   syncCursor: 'syncCursor',
   /** When a sync last completed, ISO-8601. Drives `Last synced {relative}` in the sheet. */
   lastSyncedAt: 'lastSyncedAt',
+  /**
+   * Present (as `'1'`) from signup until the user answers the "review your categories"
+   * prompt on Home. A fact about this device's first run, not about any row, and wiped with
+   * the store so it cannot carry over to the next account to sign in here.
+   */
+  categoryReviewPending: 'categoryReviewPending',
 } as const;
 
 export type MetaKey = (typeof META_KEYS)[keyof typeof META_KEYS];
@@ -37,7 +43,11 @@ export type MetaKey = (typeof META_KEYS)[keyof typeof META_KEYS];
  * Keys a wipe must take with it: everything except the owner, which the wipe is in the
  * middle of rewriting.
  */
-export const WIPED_META_KEYS: readonly MetaKey[] = [META_KEYS.syncCursor, META_KEYS.lastSyncedAt];
+export const WIPED_META_KEYS: readonly MetaKey[] = [
+  META_KEYS.syncCursor,
+  META_KEYS.lastSyncedAt,
+  META_KEYS.categoryReviewPending,
+];
 
 export async function readMeta(executor: SqliteExecutor, key: MetaKey): Promise<string | null> {
   const row = await executor.getFirstAsync<{ value: string }>(
