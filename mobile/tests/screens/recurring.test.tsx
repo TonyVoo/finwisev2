@@ -19,14 +19,37 @@ async function seed(database: SqliteDatabase): Promise<void> {
   await seedCategory(database, { id: RENT, name: 'Rent' });
 }
 
-async function fillAndSubmit(fields: { amount: string; start: string }): Promise<void> {
+/** Open a date row and pick `date` from the grid, stepping months from the one shown. */
+async function pickDate(
+  row: string,
+  date: string,
+  monthsBack = 0,
+  monthsForward = 0,
+): Promise<void> {
+  await userEvent.press(screen.getByTestId(row));
+  await userEvent.press(screen.getByTestId('date-choose'));
+  for (let i = 0; i < monthsBack; i += 1) {
+    await userEvent.press(screen.getByTestId('date-grid-previous'));
+  }
+  for (let i = 0; i < monthsForward; i += 1) {
+    await userEvent.press(screen.getByTestId('date-grid-next'));
+  }
+  await userEvent.press(screen.getByTestId(`date-day-${date}`));
+}
+
+async function fillAndSubmit(fields: {
+  amount: string;
+  monthsBack: number;
+  monthsForward?: number;
+  start: string;
+}): Promise<void> {
   await userEvent.press(screen.getByTestId('recurring-fab'));
   await act(async () => {
     screen.getByTestId('recurring-amount').props.onChangeText(fields.amount);
-    screen.getByTestId('recurring-start').props.onChangeText(fields.start);
   });
   await userEvent.press(screen.getByTestId(`recurring-category-${RENT}`));
   await userEvent.press(screen.getByTestId('recurring-frequency-monthly'));
+  await pickDate('recurring-start', fields.start, fields.monthsBack, fields.monthsForward ?? 0);
   await userEvent.press(screen.getByTestId('recurring-submit'));
 }
 
@@ -46,7 +69,7 @@ describe('the recurring screen', () => {
     const { database } = await mountScreen(<RecurringScreen />, { clock: () => NOW, seed });
 
     // 26 Aug and 26 Sep and 26 Oct have all passed or are today: three occurrences.
-    await fillAndSubmit({ amount: '900', start: '2026-08-26' });
+    await fillAndSubmit({ amount: '900', start: '2026-08-26', monthsBack: 2 });
 
     await waitFor(() => expect(screen.queryByText(SNACK_COPY.recurring.saved)).not.toBeNull());
 
@@ -65,18 +88,34 @@ describe('the recurring screen', () => {
     expect(entities.filter((e) => e === 'expense')).toHaveLength(3);
   });
 
-  it('refuses a bad date and says so', async () => {
+  it('lets a rule start in the future, and says nothing is added yet', async () => {
     const { database } = await mountScreen(<RecurringScreen />, { clock: () => NOW, seed });
 
-    await fillAndSubmit({ amount: '10', start: '2026-02-30' });
+    await fillAndSubmit({ amount: '900', start: '2026-11-05', monthsBack: 0, monthsForward: 1 });
+    await waitFor(() => expect(screen.queryByText(SNACK_COPY.recurring.saved)).not.toBeNull());
 
-    expect(screen.queryByText(COPY.recurring.error.date)).not.toBeNull();
+    expect(await database.getAllAsync('SELECT id FROM expenses', [])).toHaveLength(0);
+    expect(await database.getAllAsync('SELECT id FROM recurring', [])).toHaveLength(1);
+  });
+
+  it('refuses an end date before the start date', async () => {
+    const { database } = await mountScreen(<RecurringScreen />, { clock: () => NOW, seed });
+
+    await userEvent.press(screen.getByTestId('recurring-fab'));
+    await act(async () => {
+      screen.getByTestId('recurring-amount').props.onChangeText('10');
+    });
+    await pickDate('recurring-end', '2026-11-30', 0, 1);
+    await pickDate('recurring-start', '2026-12-05', 0, 2);
+    await userEvent.press(screen.getByTestId('recurring-submit'));
+
+    expect(screen.queryByText(COPY.recurring.error.endBeforeStart)).not.toBeNull();
     expect(await outboxEntries(database)).toHaveLength(0);
   });
 
   it('deletes the rule but keeps what it already added', async () => {
     const { database } = await mountScreen(<RecurringScreen />, { clock: () => NOW, seed });
-    await fillAndSubmit({ amount: '900', start: '2026-10-26' });
+    await fillAndSubmit({ amount: '900', start: '2026-10-26', monthsBack: 0 });
     await waitFor(() => expect(screen.queryByText(SNACK_COPY.recurring.saved)).not.toBeNull());
 
     const row = await waitFor(() => {

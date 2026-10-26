@@ -4,6 +4,8 @@ import {
   Modal,
   PanResponder,
   Pressable,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -56,10 +58,7 @@ export function Sheet({ visible, title, onClose, children, testID }: SheetProps)
       if (!cancelled) setReduceMotion(enabled);
     });
 
-    const subscription = AccessibilityInfo.addEventListener(
-      'reduceMotionChanged',
-      setReduceMotion,
-    );
+    const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
     return () => {
       cancelled = true;
       subscription.remove();
@@ -89,7 +88,12 @@ export function Sheet({ visible, title, onClose, children, testID }: SheetProps)
       onRequestClose={onClose}
       accessibilityViewIsModal
     >
-      <View style={styles.root}>
+      {/* iOS does not resize a Modal for the keyboard; without this the form's lower fields
+          and its Save button sit under it. Android resizes the window itself. */}
+      <KeyboardAvoidingView
+        style={styles.root}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
         {/* The scrim. A sibling of the sheet rather than its parent, so a tap on the
             sheet itself cannot bubble up to it and close what the user just touched. */}
         <Pressable
@@ -130,9 +134,11 @@ export function Sheet({ visible, title, onClose, children, testID }: SheetProps)
 
           {/* Scrolls rather than clipping: ten currency rows at a large font scale are
               taller than a short phone (§2, no fixed-height containers). */}
-          <ScrollView>{children}</ScrollView>
+          {/* `handled`: with a field focused, the first tap on a button inside the sheet would
+              otherwise only dismiss the keyboard, and the form's Save needed two presses. */}
+          <ScrollView keyboardShouldPersistTaps="handled">{children}</ScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

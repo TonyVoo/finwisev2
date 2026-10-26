@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSessionController } from '@/auth/SessionProvider';
 import { Button } from '@/components/Button';
@@ -80,88 +80,92 @@ export default function SettingsScreen() {
         }
       />
 
-      <Row
-        testID="settings-email"
-        accessibilityLabel={`${COPY.settings.email}, ${email.data ?? ''}`}
-        trailing={<Text style={styles.value}>{email.data ?? ''}</Text>}
-      >
-        <RowTitle>{COPY.settings.email}</RowTitle>
-      </Row>
+      {/* Eight rows and a button no longer fit a short phone or a large font size; without
+          this the Log out button below the fold simply could not be reached. */}
+      <ScrollView contentContainerStyle={styles.content}>
+        <Row
+          testID="settings-email"
+          accessibilityLabel={`${COPY.settings.email}, ${email.data ?? ''}`}
+          trailing={<Text style={styles.value}>{email.data ?? ''}</Text>}
+        >
+          <RowTitle>{COPY.settings.email}</RowTitle>
+        </Row>
 
-      {/* Read-only, with the reason stated: the currency is fixed at signup
+        {/* Read-only, with the reason stated: the currency is fixed at signup
           (`03-auth.md` §Behaviour rule 9), so this says so rather than looking tappable. */}
-      <Row
-        accessibilityLabel={`${COPY.settings.currency}, ${currency.data ?? ''}. ${
-          COPY.settings.currencyHint
-        }`}
-        trailing={<Text style={styles.value}>{currency.data ?? ''}</Text>}
-      >
-        <RowTitle>{COPY.settings.currency}</RowTitle>
-        <RowSubtitle>{COPY.settings.currencyHint}</RowSubtitle>
-      </Row>
-
-      <Row
-        testID="settings-categories"
-        onPress={() => router.push('/(app)/settings/categories')}
-        chevron
-        accessibilityLabel={COPY.settings.categories}
-      >
-        <RowTitle>{COPY.settings.categories}</RowTitle>
-      </Row>
-
-      <Row
-        testID="settings-recurring"
-        onPress={() => router.push('/(app)/settings/recurring')}
-        chevron
-        lastInGroup
-        accessibilityLabel={`${COPY.settings.recurring}. ${COPY.settings.recurringHint}`}
-      >
-        <RowTitle>{COPY.settings.recurring}</RowTitle>
-        <RowSubtitle>{COPY.settings.recurringHint}</RowSubtitle>
-      </Row>
-
-      <View style={styles.group}>
         <Row
-          testID="settings-export"
-          onPress={() => void onExport()}
-          lastInGroup
-          accessibilityLabel={`${COPY.settings.export}. ${COPY.settings.exportHint}`}
-          accessibilityState={{ disabled: exporting }}
+          accessibilityLabel={`${COPY.settings.currency}, ${currency.data ?? ''}. ${
+            COPY.settings.currencyHint
+          }`}
+          trailing={<Text style={styles.value}>{currency.data ?? ''}</Text>}
         >
-          <RowTitle>{COPY.settings.export}</RowTitle>
-          <RowSubtitle>{exporting ? COPY.export.busy : COPY.settings.exportHint}</RowSubtitle>
+          <RowTitle>{COPY.settings.currency}</RowTitle>
+          <RowSubtitle>{COPY.settings.currencyHint}</RowSubtitle>
         </Row>
-      </View>
 
-      <View style={styles.group}>
         <Row
-          testID="settings-change-password"
-          onPress={() => router.push('/(app)/settings/change-password')}
+          testID="settings-categories"
+          onPress={() => router.push('/(app)/settings/categories')}
           chevron
-          accessibilityLabel={COPY.settings.changePassword}
+          accessibilityLabel={COPY.settings.categories}
         >
-          <RowTitle>{COPY.settings.changePassword}</RowTitle>
+          <RowTitle>{COPY.settings.categories}</RowTitle>
         </Row>
+
         <Row
-          testID="settings-delete-account"
-          onPress={() => router.push('/(app)/settings/delete-account')}
+          testID="settings-recurring"
+          onPress={() => router.push('/(app)/settings/recurring')}
           chevron
           lastInGroup
-          accessibilityLabel={COPY.settings.deleteAccount}
+          accessibilityLabel={`${COPY.settings.recurring}. ${COPY.settings.recurringHint}`}
         >
-          <RowTitle>{COPY.settings.deleteAccount}</RowTitle>
+          <RowTitle>{COPY.settings.recurring}</RowTitle>
+          <RowSubtitle>{COPY.settings.recurringHint}</RowSubtitle>
         </Row>
-      </View>
 
-      <View style={styles.logout}>
-        <Button
-          label={COPY.settings.logout}
-          variant="destructive"
-          fullWidth
-          onPress={() => setConfirmingLogout(true)}
-          testID="settings-logout"
-        />
-      </View>
+        <View style={styles.group}>
+          <Row
+            testID="settings-export"
+            onPress={() => void onExport()}
+            lastInGroup
+            accessibilityLabel={`${COPY.settings.export}. ${COPY.settings.exportHint}`}
+            accessibilityState={{ disabled: exporting }}
+          >
+            <RowTitle>{COPY.settings.export}</RowTitle>
+            <RowSubtitle>{exporting ? COPY.export.busy : COPY.settings.exportHint}</RowSubtitle>
+          </Row>
+        </View>
+
+        <View style={styles.group}>
+          <Row
+            testID="settings-change-password"
+            onPress={() => router.push('/(app)/settings/change-password')}
+            chevron
+            accessibilityLabel={COPY.settings.changePassword}
+          >
+            <RowTitle>{COPY.settings.changePassword}</RowTitle>
+          </Row>
+          <Row
+            testID="settings-delete-account"
+            onPress={() => router.push('/(app)/settings/delete-account')}
+            chevron
+            lastInGroup
+            accessibilityLabel={COPY.settings.deleteAccount}
+          >
+            <RowTitle>{COPY.settings.deleteAccount}</RowTitle>
+          </Row>
+        </View>
+
+        <View style={styles.logout}>
+          <Button
+            label={COPY.settings.logout}
+            variant="destructive"
+            fullWidth
+            onPress={() => setConfirmingLogout(true)}
+            testID="settings-logout"
+          />
+        </View>
+      </ScrollView>
 
       <Dialog
         visible={confirmingLogout}
@@ -187,6 +191,9 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: color.bg.canvas,
+  },
+  content: {
+    paddingBottom: space[8],
   },
   group: {
     marginTop: space[6],

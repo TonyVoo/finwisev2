@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
 import { Row, RowTitle } from '../components/Row';
@@ -60,39 +60,85 @@ export interface DateSheetProps {
   readonly selected: CalendarDate;
   readonly today: CalendarDate;
   readonly onSelect: (date: CalendarDate) => void;
+  /**
+   * Reuse for dates that may lie ahead (a recurring rule's start and end). Off by default:
+   * an expense that has not happened yet is a budget (rule 9), so the expense form keeps
+   * refusing the future.
+   */
+  readonly allowFuture?: boolean;
+  /** Earliest pickable date, inclusive. None by default (`05-month-switcher.md` rule 3). */
+  readonly minimum?: CalendarDate;
+  /** Sheet heading. Defaults to the expense form's `Date`. */
+  readonly title?: string;
+  /** Show `Today` and `Yesterday` above the grid. On by default. */
+  readonly quickOptions?: boolean;
+  /** An extra first row that clears the value, e.g. `Never` for an optional end date. */
+  readonly clearOption?: { readonly label: string; readonly onPress: () => void };
 }
 
-export function DateSheet({ visible, onClose, selected, today, onSelect }: DateSheetProps) {
+export function DateSheet({
+  visible,
+  onClose,
+  selected,
+  today,
+  onSelect,
+  allowFuture = false,
+  minimum,
+  title,
+  quickOptions = true,
+  clearOption,
+}: DateSheetProps) {
   const [showGrid, setShowGrid] = useState(false);
   // The month the grid is looking at, which starts on the selected date's month.
   const [gridMonth, setGridMonth] = useState(() => monthKeyOf(selected));
+
+  // Closed means the next opening starts from the quick options again, not on a grid left
+  // open (and left on another month) by the last use.
+  useEffect(() => {
+    if (!visible) setShowGrid(false);
+  }, [visible]);
 
   const yesterday = stepDay(today, -1);
 
   return (
     <Sheet
       visible={visible}
-      title={COPY.form.field.date}
+      title={title ?? COPY.form.field.date}
       onClose={onClose}
       testID={DATE_SHEET_TEST_ID}
     >
-      <Row
-        testID={DATE_TODAY_TEST_ID}
-        onPress={() => onSelect(today)}
-        accessibilityLabel={`${COPY.form.date.today}, ${spokenDate(today)}`}
-        accessibilityState={{ selected: selected === today }}
-      >
-        <RowTitle>{COPY.form.date.today}</RowTitle>
-      </Row>
+      {clearOption === undefined ? null : (
+        <Row
+          testID="date-clear"
+          onPress={clearOption.onPress}
+          accessibilityLabel={clearOption.label}
+          accessibilityState={{ selected: false }}
+        >
+          <RowTitle>{clearOption.label}</RowTitle>
+        </Row>
+      )}
 
-      <Row
-        testID={DATE_YESTERDAY_TEST_ID}
-        onPress={() => onSelect(yesterday)}
-        accessibilityLabel={`${COPY.form.date.yesterday}, ${spokenDate(yesterday)}`}
-        accessibilityState={{ selected: selected === yesterday }}
-      >
-        <RowTitle>{COPY.form.date.yesterday}</RowTitle>
-      </Row>
+      {quickOptions ? (
+        <>
+          <Row
+            testID={DATE_TODAY_TEST_ID}
+            onPress={() => onSelect(today)}
+            accessibilityLabel={`${COPY.form.date.today}, ${spokenDate(today)}`}
+            accessibilityState={{ selected: selected === today }}
+          >
+            <RowTitle>{COPY.form.date.today}</RowTitle>
+          </Row>
+
+          <Row
+            testID={DATE_YESTERDAY_TEST_ID}
+            onPress={() => onSelect(yesterday)}
+            accessibilityLabel={`${COPY.form.date.yesterday}, ${spokenDate(yesterday)}`}
+            accessibilityState={{ selected: selected === yesterday }}
+          >
+            <RowTitle>{COPY.form.date.yesterday}</RowTitle>
+          </Row>
+        </>
+      ) : null}
 
       <Row
         testID={DATE_CHOOSE_TEST_ID}
@@ -115,6 +161,8 @@ export function DateSheet({ visible, onClose, selected, today, onSelect }: DateS
           month={gridMonth}
           selected={selected}
           today={today}
+          allowFuture={allowFuture}
+          minimum={minimum}
           onChangeMonth={setGridMonth}
           onSelect={onSelect}
         />
@@ -127,12 +175,16 @@ function DayGrid({
   month,
   selected,
   today,
+  allowFuture,
+  minimum,
   onChangeMonth,
   onSelect,
 }: {
   readonly month: string;
   readonly selected: CalendarDate;
   readonly today: CalendarDate;
+  readonly allowFuture: boolean;
+  readonly minimum: CalendarDate | undefined;
   readonly onChangeMonth: (next: string) => void;
   readonly onSelect: (date: CalendarDate) => void;
 }) {
@@ -140,20 +192,27 @@ function DayGrid({
   const days = daysInMonth(month);
   // No lower bound (rule 9), and no month beyond the one today falls in: every future day
   // is refused anyway, so a month of nothing but disabled cells is a dead end.
-  const canGoNext = monthKey(year, monthNumber) < monthKeyOf(today);
+  const canGoNext = allowFuture || monthKey(year, monthNumber) < monthKeyOf(today);
+  const canGoPrevious = minimum === undefined || monthKey(year, monthNumber) > monthKeyOf(minimum);
 
   return (
     <View testID={DATE_GRID_TEST_ID} style={styles.grid}>
       <View style={styles.gridHeader}>
         <Pressable
           testID="date-grid-previous"
-          onPress={() => onChangeMonth(stepMonth(month, -1))}
+          onPress={canGoPrevious ? () => onChangeMonth(stepMonth(month, -1)) : undefined}
+          disabled={!canGoPrevious}
           hitSlop={HIT_SLOP_44}
           accessibilityRole="button"
           accessibilityLabel={`Previous month, ${monthLabel(stepMonth(month, -1))}`}
+          accessibilityState={{ disabled: !canGoPrevious }}
           style={styles.gridArrow}
         >
-          <Feather name="chevron-left" size={20} color={color.text.primary} />
+          <Feather
+            name="chevron-left"
+            size={20}
+            color={canGoPrevious ? color.text.primary : color.text.disabled}
+          />
         </Pressable>
 
         <Text style={styles.gridMonth} accessibilityRole="header">
@@ -183,7 +242,9 @@ function DayGrid({
           const date = calendarDate(year, monthNumber, index + 1);
           // Rule 9: a date in the future is rejected. "An expense that has not happened
           // yet is a budget", which is explicitly out of scope.
-          const future = isFutureDate(date, today);
+          const future =
+            (!allowFuture && isFutureDate(date, today)) ||
+            (minimum !== undefined && date < minimum);
           const isSelected = date === selected;
 
           return (
