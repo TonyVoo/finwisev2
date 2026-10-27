@@ -278,6 +278,11 @@ export const VIETNAMESE_COPY: CopyBundle = {
     goals: {
       title: 'Mục tiêu tiết kiệm',
       fab: 'Thêm mục tiêu tiết kiệm',
+      reminder: {
+        weekTitle: 'Mục tiêu đến hạn sau một tuần',
+        dayTitle: 'Mục tiêu đến hạn vào ngày mai',
+        body: '{name} · còn {remaining}',
+      },
       new: { title: 'Mục tiêu tiết kiệm mới' },
       edit: { title: 'Sửa mục tiêu tiết kiệm' },
       field: {

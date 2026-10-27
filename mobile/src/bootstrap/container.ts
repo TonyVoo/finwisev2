@@ -10,6 +10,7 @@ import { type Clock, systemClock } from '../lib/clock';
 import { createSqliteLocalStore } from '../db/localStore';
 import { generateDueRecurring } from '../recurring/generate';
 import { syncBillReminders } from '../notifications/billReminders';
+import { syncGoalReminders } from '../notifications/goalReminders';
 import { META_KEYS, readMeta } from '../db/meta';
 import { type LanguagePreference, parseLanguagePreference } from '../i18n/language';
 import { type ThemePreference, parseThemePreference } from '../theme/ThemeProvider';
@@ -141,6 +142,7 @@ export async function createAppContainer(options: AppContainerOptions = {}): Pro
       const created = await generateDueRecurring(database, { clock });
       if (created > 0) void queryClient.invalidateQueries({ queryKey: queryKeys.local() });
       void syncBillReminders(database, clock()).catch(() => undefined);
+      void syncGoalReminders(database, clock()).catch(() => undefined);
     },
   });
 

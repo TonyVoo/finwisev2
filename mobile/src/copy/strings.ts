@@ -315,6 +315,12 @@ export const COPY = {
   goals: {
     title: 'Savings goals',
     fab: 'Add savings goal',
+    /** Notifications for a goal with a deadline: a week before, and the day before. */
+    reminder: {
+      weekTitle: 'Goal due in a week',
+      dayTitle: 'Goal due tomorrow',
+      body: '{name} · {remaining} to go',
+    },
     new: { title: 'New savings goal' },
     edit: { title: 'Edit savings goal' },
     field: {

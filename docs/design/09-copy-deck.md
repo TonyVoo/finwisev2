@@ -509,6 +509,9 @@ them as proposals the Designer can reword; changing a row here means changing
 | `settings.goalsHint` | `Save towards something you want.` | Settings row, hint |
 | `goals.title` | `Savings goals` | Goals screen title |
 | `goals.fab` | `Add savings goal` | Goals screen, add button |
+| `goals.reminder.weekTitle` | `Goal due in a week` | Notification, 7 days before a savings goal's deadline |
+| `goals.reminder.dayTitle` | `Goal due tomorrow` | Notification, the day before a savings goal's deadline |
+| `goals.reminder.body` | `{name} · {remaining} to go` | Notification, both goal reminders |
 | `goals.new.title` | `New savings goal` | Goal sheet, create |
 | `goals.edit.title` | `Edit savings goal` | Goal sheet, edit |
 | `goals.field.name` | `Name` | Goal sheet |

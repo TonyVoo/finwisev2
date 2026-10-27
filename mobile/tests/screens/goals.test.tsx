@@ -1,4 +1,5 @@
 import * as Haptics from 'expo-haptics';
+import * as Notifications from 'expo-notifications';
 import { act, screen, userEvent, waitFor } from '@testing-library/react-native';
 import { COPY, SNACK_COPY } from '@/copy/strings';
 import { createGoal } from '@/db/mutations';
@@ -68,6 +69,38 @@ describe('the savings goals screen', () => {
     expect(row?.savedMinor).toBe(40000);
     // Under target, so still the target badge.
     expect(screen.getByTestId('goal-badge-target', hidden)).toBeTruthy();
+  });
+
+  it('reschedules the goal reminders after a deposit, once for a goal with a deadline', async () => {
+    await mountScreen(<GoalsScreen />, {
+      clock: () => NOW,
+      seed: async (database) => {
+        await seedFallbackCategory(database);
+        await createGoal(
+          database,
+          {
+            name: 'Holiday',
+            targetMinor: 100000,
+            savedMinor: 0,
+            currency: 'USD',
+            deadline: '2026-11-20',
+          },
+          { id: GOAL_ID },
+        );
+      },
+    });
+    await waitFor(() =>
+      expect(screen.queryByTestId(`${GOAL_ROW_TEST_ID_PREFIX}-${GOAL_ID}`)).not.toBeNull(),
+    );
+    jest.clearAllMocks();
+
+    await deposit('400');
+
+    await waitFor(() => expect(Notifications.scheduleNotificationAsync).toHaveBeenCalled());
+    const ids = (Notifications.scheduleNotificationAsync as jest.Mock).mock.calls.map(
+      (call) => call[0].identifier,
+    );
+    expect(ids).toEqual([`goal-reminder:${GOAL_ID}:week`, `goal-reminder:${GOAL_ID}:day`]);
   });
 
   it('turns the badge to a check once the target is met', async () => {

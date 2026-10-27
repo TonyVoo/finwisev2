@@ -1,3 +1,6 @@
+import { useDatabase } from '@/db/DatabaseProvider';
+import { requestReminderPermission } from '@/notifications/billReminders';
+import { syncGoalReminders } from '@/notifications/goalReminders';
 import { EmptyIcon } from '@/components/EmptyIcon';
 import { useCallback, useState } from 'react';
 import { AccessibilityInfo, FlatList, StyleSheet, Text, View } from 'react-native';
@@ -39,6 +42,7 @@ export default function GoalsScreen() {
   const localWrite = useLocalWrite();
   const { today } = useSelectedMonth();
 
+  const database = useDatabase();
   const goals = useGoalsList();
   const currency = useUserCurrency().data ?? 'USD';
   const [depositing, setDepositing] = useState<GoalListItem | null>(null);
@@ -54,10 +58,14 @@ export default function GoalsScreen() {
         if (editing === null) await createGoal(db, { ...value, currency });
         else await updateGoal(db, editing.id, value);
       });
+      // A deadline is what a reminder is for, so that is when to ask; the sync pass never does.
+      void (value.deadline === null ? Promise.resolve(true) : requestReminderPermission())
+        .then(() => syncGoalReminders(database))
+        .catch(() => undefined);
       setSheetOpen(false);
       showSnackbar({ message: SNACK_COPY.goal.saved });
     },
-    [editing, currency, localWrite, showSnackbar],
+    [editing, currency, localWrite, showSnackbar, database],
   );
 
   const deposit = useCallback(
@@ -66,11 +74,13 @@ export default function GoalsScreen() {
       const target = depositing;
       await localWrite((db) => depositToGoal(db, target.id, amountMinor));
       savedHaptic();
+      // A deposit changes what is left to save, which is in the reminder text.
+      void syncGoalReminders(database).catch(() => undefined);
       setDepositing(null);
       showSnackbar({ message: SNACK_COPY.goal.deposited });
       AccessibilityInfo.announceForAccessibility(SNACK_COPY.goal.deposited);
     },
-    [depositing, localWrite, showSnackbar],
+    [depositing, localWrite, showSnackbar, database],
   );
 
   const confirmDelete = useCallback(async () => {
@@ -78,9 +88,10 @@ export default function GoalsScreen() {
     const target = pendingDelete;
     setPendingDelete(null);
     await localWrite((db) => deleteGoal(db, target.id));
+    void syncGoalReminders(database).catch(() => undefined);
     showSnackbar({ message: SNACK_COPY.goal.deleted });
     AccessibilityInfo.announceForAccessibility(SNACK_COPY.goal.deleted);
-  }, [pendingDelete, localWrite, showSnackbar]);
+  }, [pendingDelete, localWrite, showSnackbar, database]);
 
   return (
     <View style={styles.screen}>
