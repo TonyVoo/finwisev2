@@ -91,5 +91,6 @@ describe('the savings goals screen', () => {
 
     await waitFor(() => expect(screen.queryByTestId('goals-empty')).not.toBeNull());
     expect(screen.getByText(COPY.goals.empty.headline)).toBeTruthy();
+    expect(screen.getByTestId('empty-icon-target', hidden)).toBeTruthy();
   });
 });

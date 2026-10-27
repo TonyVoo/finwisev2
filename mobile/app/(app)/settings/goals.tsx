@@ -1,3 +1,4 @@
+import { EmptyIcon } from '@/components/EmptyIcon';
 import { useCallback, useState } from 'react';
 import { AccessibilityInfo, FlatList, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -140,6 +141,7 @@ export default function GoalsScreen() {
         ListEmptyComponent={
           goals.isPending ? null : (
             <View style={styles.empty} testID="goals-empty">
+              <EmptyIcon name="target" />
               <Text style={styles.emptyHeadline} accessibilityRole="header">
                 {COPY.goals.empty.headline}
               </Text>

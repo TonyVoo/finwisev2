@@ -1,3 +1,4 @@
+import { EmptyIcon } from '@/components/EmptyIcon';
 import { useCallback, useState } from 'react';
 import { AccessibilityInfo, FlatList, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -120,10 +121,12 @@ export default function RecurringScreen() {
               }}
               chevron
               lastInGroup={index === rows.length - 1}
-              leading={<Swatch
+              leading={
+                <Swatch
                   colorHex={item.categoryColor ?? color.text.tertiary}
                   name={item.categoryName ?? undefined}
-                />}
+                />
+              }
               accessibilityLabel={`${recurringTitle(item, fallbackName)}, ${recurringSummary(item)}, ${recurringNextLabel(item, today)}`}
               accessibilityHint={COPY.a11y.editRecurring}
               accessibilityActions={[
@@ -148,6 +151,7 @@ export default function RecurringScreen() {
         ListEmptyComponent={
           rules.isPending ? null : (
             <View style={styles.empty} testID="recurring-empty">
+              <EmptyIcon name="repeat" />
               <Text style={styles.emptyHeadline} accessibilityRole="header">
                 {COPY.recurring.empty.headline}
               </Text>

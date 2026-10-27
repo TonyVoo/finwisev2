@@ -63,6 +63,7 @@ describe('the recurring screen', () => {
 
     await waitFor(() => expect(screen.queryByTestId('recurring-empty')).not.toBeNull());
     expect(screen.getByText(COPY.recurring.empty.headline)).toBeTruthy();
+    expect(screen.getByTestId('empty-icon-repeat', { includeHiddenElements: true })).toBeTruthy();
   });
 
   it('saves a rule, queues it, and backfills the expenses already due', async () => {
