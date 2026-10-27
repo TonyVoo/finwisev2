@@ -526,6 +526,8 @@ them as proposals the Designer can reword; changing a row here means changing
 | `household.empty.body` | `Keep one set of expenses with a partner or family. Everyone can see and add everything.` | Household screen |
 | `household.create` | `Create a household` | Household screen |
 | `household.join` | `Join with a code` | Household screen |
+| `household.addedBy` | `Added by {name}` | Expense row, in a shared household |
+| `household.addedByYou` | `Added by you` | Expense row, in a shared household |
 | `household.members` | `Members` | Household screen |
 | `household.role.owner` | `Owner` | Household screen |
 | `household.role.member` | `Member` | Household screen |

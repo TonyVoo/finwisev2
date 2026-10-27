@@ -62,6 +62,7 @@ export function serverExpense(overrides: Partial<Expense> & { id: string }): Exp
     originalCurrency: null,
     date: '2026-10-08',
     note: null,
+    createdBy: null,
     createdAt: '2026-10-01T00:00:00.000Z',
     updatedAt: '2026-10-01T00:00:00.000Z',
     deletedAt: null,

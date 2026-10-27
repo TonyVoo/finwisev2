@@ -1,6 +1,7 @@
+import type { MeResponse } from '@expense-tracker/shared';
 import type { ApiClient } from '../api/client';
 import { META_KEYS, WIPED_META_KEYS, deleteMeta, readMeta, writeMeta } from '../db/meta';
-import type { SqliteDatabase } from '../db/sqlite';
+import type { SqliteDatabase, SqliteExecutor } from '../db/sqlite';
 import { writeUser } from '../db/user';
 
 /**
@@ -50,6 +51,7 @@ export async function reconcileDataScope(
   }
 
   const target = me.dataOwnerId ?? me.user.id;
+  await storeMembers(database, me.household);
   // Absent means the store has only ever held the account's own books.
   const identity = (await readMeta(database, META_KEYS.owner)) ?? me.user.id;
   const current = (await readMeta(database, META_KEYS.dataScope)) ?? identity;
@@ -66,9 +68,28 @@ export async function reconcileDataScope(
       await txn.runAsync(`DELETE FROM ${table}`, []);
     }
     await deleteMeta(txn, WIPED_META_KEYS);
+    // Wiped with the rest, so it is written back from the same answer.
+    await storeMembers(txn, me.household);
     // The household's currency while in one, the account's own again on leaving.
     await writeUser(txn, me.user);
     await writeMeta(txn, META_KEYS.dataScope, target);
   });
   return 'switched';
+}
+
+/**
+ * Who is in the household, kept for labelling rows offline. Written on every call, not only on
+ * a scope change, because a member joining or leaving changes it without changing whose books
+ * this device holds. Cleared for an account in none, and for a server that does not say.
+ */
+async function storeMembers(
+  executor: SqliteExecutor,
+  household: MeResponse['household'],
+): Promise<void> {
+  if (household === null || household === undefined) {
+    await deleteMeta(executor, [META_KEYS.householdMembers]);
+    return;
+  }
+  const members = household.members.map(({ userId, email }) => ({ userId, email }));
+  await writeMeta(executor, META_KEYS.householdMembers, JSON.stringify(members));
 }

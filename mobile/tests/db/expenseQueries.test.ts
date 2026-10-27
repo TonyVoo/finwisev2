@@ -129,6 +129,7 @@ describe('expense and category reads', () => {
           originalCurrency: null,
           date: '2026-10-09',
           note: 'Milk, eggs',
+          createdBy: null,
           pending: false,
           needsAttention: false,
         },

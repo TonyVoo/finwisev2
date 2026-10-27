@@ -142,8 +142,12 @@ export async function createAppContainer(options: AppContainerOptions = {}): Pro
       if (session.getSnapshot().status !== 'authenticated') return;
       // First, before anything is read or pushed: a device whose account moved to another
       // data scope (joined or left a household, or was removed) must not push the old rows.
-      if ((await reconcileDataScope(database, api)) === 'switched') {
+      const scope = await reconcileDataScope(database, api);
+      if (scope === 'switched') {
         void queryClient.invalidateQueries({ queryKey: queryKeys.local() });
+      } else if (scope === 'unchanged') {
+        // Someone may have joined or left without changing whose books this device holds.
+        void queryClient.invalidateQueries({ queryKey: queryKeys.householdMembers() });
       }
       const created = await generateDueRecurring(database, { clock });
       if (created > 0) void queryClient.invalidateQueries({ queryKey: queryKeys.local() });

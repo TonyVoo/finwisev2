@@ -384,6 +384,15 @@ BEGIN
 END;
 `;
 
+/**
+ * Who added an expense: the server's `createdBy`, which a pull writes and the device only reads.
+ * NULL for rows from before it was recorded and for rows made here until the server answers.
+ * Not a foreign key: the author may be someone else, and may since have left.
+ */
+const EXPENSE_AUTHOR = `
+ALTER TABLE expenses ADD COLUMN createdBy TEXT;
+`;
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: 'initial-schema', up: INITIAL_SCHEMA },
   { version: 2, name: 'store-owner', up: STORE_OWNER },
@@ -396,6 +405,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 9, name: 'entry-kind', up: ENTRY_KIND },
   { version: 10, name: 'savings-goals', up: GOALS },
   { version: 11, name: 'foreign-amounts', up: FOREIGN_AMOUNTS },
+  { version: 12, name: 'expense-author', up: EXPENSE_AUTHOR },
 ];
 
 /** Highest version `MIGRATIONS` can bring a database to. */

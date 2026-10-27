@@ -105,6 +105,8 @@ export function expenseRowLabel(
   item: ExpenseListItem,
   today: CalendarDate,
   locale?: string,
+  /** "Added by Bao", in a shared household. */
+  addedBy?: string | null,
 ): string {
   const parts = [
     rowCategoryName(item),
@@ -114,6 +116,7 @@ export function expenseRowLabel(
       ? []
       : [COPY.home.paidIn.replace('{amount}', originalLabel(item, locale) ?? '')]),
     ...(item.note === null || item.note.trim().length === 0 ? [] : [item.note]),
+    ...(addedBy === null || addedBy === undefined ? [] : [addedBy]),
     dayLabel(item.date, today, locale),
     ...(item.pending ? [COPY.a11y.notSyncedYet] : []),
     // Deck §8: the row's composed label ends with `, could not sync` when the server

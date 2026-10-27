@@ -286,6 +286,8 @@ export const VIETNAMESE_COPY: CopyBundle = {
       },
       create: 'Tạo hộ gia đình',
       join: 'Tham gia bằng mã',
+      addedBy: 'Thêm bởi {name}',
+      addedByYou: 'Bạn đã thêm',
       members: 'Thành viên',
       role: {
         owner: 'Chủ hộ',

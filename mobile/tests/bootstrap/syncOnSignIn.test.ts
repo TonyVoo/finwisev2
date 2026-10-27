@@ -86,6 +86,7 @@ const PAGE = {
         originalCurrency: null,
         date: '2026-10-21',
         note: 'seeded by another device',
+        createdBy: null,
         createdAt: '2026-10-21T06:00:00.000Z',
         updatedAt: '2026-10-21T06:00:00.000Z',
         deletedAt: null,
@@ -120,6 +121,13 @@ function serverRequiringAuth() {
     return { status: 200, body: { user: AUTH.user }, requestId: null };
   };
   return { transport, seen };
+}
+
+/** Give the engine a run of turns to finish a pass. */
+async function settled(): Promise<void> {
+  for (let turn = 0; turn < 50; turn += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
 }
 
 const pullsIn = (seen: readonly TransportRequest[]) =>
@@ -173,8 +181,9 @@ describe('a session arriving after the engine has started', () => {
     const before = pullsIn(seen).length;
 
     await container.session.signIn(AUTH);
-    // Any fix is asynchronous; give it the microtask turns a sync needs to finish.
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    // Any fix is asynchronous; give it the turns a sync needs to finish. A pass now asks who
+    // the device's books belong to before it pulls, so it takes more than one.
+    await settled();
 
     expect(pullsIn(seen).length).toBeGreaterThan(before);
     const row = await database.getFirstAsync<{ id: string; amountMinor: number }>(
@@ -195,7 +204,7 @@ describe('a session arriving after the engine has started', () => {
     const { container } = await launchedAnonymous();
 
     await container.session.signIn(AUTH);
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await settled();
 
     expect(container.sync.getStatus().lastAttemptFailed).toBe(false);
     expect(container.sync.getStatus().lastError).toBeNull();

@@ -8,6 +8,7 @@ import {
   markCategoryReviewPending,
   readCategoryReviewPending,
 } from '@/db/onboarding';
+import { META_KEYS, writeMeta } from '@/db/meta';
 import { writeUser } from '@/db/user';
 import { writeLastSyncedAt } from '@/sync/cursor';
 import type { SqliteDatabase } from '@/db/sqlite';
@@ -649,6 +650,51 @@ describe('the expense list', () => {
     await userEvent.press(screen.getByText(COPY.common.undo));
 
     expect(requests).toEqual([]);
+  });
+});
+
+describe('who added each expense, in a shared household', () => {
+  const SAM = '0192f5a0-0000-7000-8000-00000000b001';
+  const ADA = '0192f5a0-0000-7000-8000-00000000a001';
+
+  async function seedShared(database: SqliteDatabase, members: boolean): Promise<void> {
+    await seedOctober(database);
+    await database.runAsync('UPDATE expenses SET createdBy = ? WHERE id = ?', [SAM, expenseId(1)]);
+    await database.runAsync('UPDATE expenses SET createdBy = ? WHERE id = ?', [ADA, expenseId(2)]);
+    if (members) {
+      await writeMeta(
+        database,
+        META_KEYS.householdMembers,
+        JSON.stringify([
+          { userId: ADA, email: 'ada@example.com' },
+          { userId: SAM, email: 'sam@example.com' },
+        ]),
+      );
+    }
+  }
+
+  it('says who added a row, by name, and "you" for your own', async () => {
+    await mountHome((database) => seedShared(database, true));
+
+    await waitFor(() => expect(screen.queryByText(/Added by Sam/)).not.toBeNull());
+    expect(screen.getByText(/Added by you/)).toBeTruthy();
+  });
+
+  it('is part of what a screen reader hears for the row', async () => {
+    await mountHome((database) => seedShared(database, true));
+
+    await waitFor(() =>
+      expect(screen.getByTestId(`expense-row-${expenseId(1)}`).props.accessibilityLabel).toContain(
+        'Added by Sam',
+      ),
+    );
+  });
+
+  it('shows nothing extra for an account that is not in a household', async () => {
+    await mountHome((database) => seedShared(database, false));
+
+    await waitFor(() => expect(screen.queryByText('Milk, eggs')).not.toBeNull());
+    expect(screen.queryByText(/Added by/)).toBeNull();
   });
 });
 

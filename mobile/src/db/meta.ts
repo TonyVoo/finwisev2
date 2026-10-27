@@ -72,6 +72,12 @@ export const META_KEYS = {
    * the account's own books.
    */
   dataScope: 'dataScope',
+  /**
+   * JSON `[{ userId, email }]`: who is in the household, as `GET /v1/me` last said. What lets a
+   * row say who added it while offline. Absent when the account is in none. Wiped with the store:
+   * it names other people.
+   */
+  householdMembers: 'householdMembers',
 } as const;
 
 export type MetaKey = (typeof META_KEYS)[keyof typeof META_KEYS];
@@ -87,6 +93,7 @@ export const WIPED_META_KEYS: readonly MetaKey[] = [
   META_KEYS.budgetNotified,
   META_KEYS.categoryRenameAnswered,
   META_KEYS.dataScope,
+  META_KEYS.householdMembers,
 ];
 
 export async function readMeta(executor: SqliteExecutor, key: MetaKey): Promise<string | null> {

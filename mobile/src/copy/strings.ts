@@ -323,6 +323,8 @@ export const COPY = {
     },
     create: 'Create a household',
     join: 'Join with a code',
+    addedBy: 'Added by {name}',
+    addedByYou: 'Added by you',
     members: 'Members',
     role: {
       owner: 'Owner',

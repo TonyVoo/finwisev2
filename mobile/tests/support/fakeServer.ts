@@ -280,6 +280,7 @@ export function createFakeSyncServer(options: FakeSyncServerOptions = {}): FakeS
         originalCurrency: item.fields.originalCurrency ?? null,
         date,
         note: item.fields.note ?? null,
+        createdBy: null,
         createdAt: item.updatedAt,
         updatedAt: item.updatedAt,
         deletedAt: item.fields.deletedAt ?? null,

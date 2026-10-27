@@ -17,7 +17,9 @@ const OWNER_ID = '0192f5a0-0000-7000-8000-00000000b001';
 const CATEGORY_ID = '0192f5a0-0000-7000-8000-0000000000c1';
 const WRITTEN_AT = new Date('2026-10-09T09:00:00.000Z');
 
-function me(overrides: { dataOwnerId?: string; currency?: string } = {}): MeResponse {
+function me(
+  overrides: { dataOwnerId?: string; currency?: string; household?: MeResponse['household'] } = {},
+): MeResponse {
   return {
     user: {
       id: ME_ID,
@@ -26,6 +28,7 @@ function me(overrides: { dataOwnerId?: string; currency?: string } = {}): MeResp
       createdAt: '2026-10-01T00:00:00.000Z',
     },
     ...(overrides.dataOwnerId === undefined ? {} : { dataOwnerId: overrides.dataOwnerId }),
+    ...(overrides.household === undefined ? {} : { household: overrides.household }),
   };
 }
 
@@ -156,5 +159,75 @@ describe('reconcileDataScope', () => {
 
     expect(again).toBe('unchanged');
     expect(await count('categories')).toBe(1);
+  });
+
+  describe('who is in the household, for labelling rows offline', () => {
+    const household = {
+      id: '0192f5a0-0000-7000-8000-00000000c001',
+      role: 'member' as const,
+      ownerId: OWNER_ID,
+      currency: 'USD',
+      members: [
+        {
+          userId: OWNER_ID,
+          email: 'bao@example.com',
+          role: 'owner' as const,
+          joinedAt: '2026-10-01T00:00:00.000Z',
+        },
+        {
+          userId: ME_ID,
+          email: 'ana@example.com',
+          role: 'member' as const,
+          joinedAt: '2026-10-02T00:00:00.000Z',
+        },
+      ],
+    };
+
+    it('keeps the members the server reports', async () => {
+      await reconcileDataScope(database, {
+        getMe: async () => me({ dataOwnerId: OWNER_ID, household }),
+      });
+
+      expect(JSON.parse((await readMeta(database, META_KEYS.householdMembers)) ?? 'null')).toEqual([
+        { userId: OWNER_ID, email: 'bao@example.com' },
+        { userId: ME_ID, email: 'ana@example.com' },
+      ]);
+    });
+
+    it('refreshes them even when the scope did not change', async () => {
+      const api = (members: typeof household.members) => ({
+        getMe: async () => me({ dataOwnerId: OWNER_ID, household: { ...household, members } }),
+      });
+      await reconcileDataScope(database, api(household.members));
+
+      const result = await reconcileDataScope(database, api([household.members[0]!]));
+
+      expect(result).toBe('unchanged');
+      expect(JSON.parse((await readMeta(database, META_KEYS.householdMembers)) ?? 'null')).toEqual([
+        { userId: OWNER_ID, email: 'bao@example.com' },
+      ]);
+    });
+
+    it('forgets them when the account is in no household', async () => {
+      await reconcileDataScope(database, {
+        getMe: async () => me({ dataOwnerId: OWNER_ID, household }),
+      });
+
+      await reconcileDataScope(database, {
+        getMe: async () => me({ dataOwnerId: ME_ID, household: null }),
+      });
+
+      expect(await readMeta(database, META_KEYS.householdMembers)).toBeNull();
+    });
+
+    it('forgets them when an older server does not say', async () => {
+      await reconcileDataScope(database, {
+        getMe: async () => me({ dataOwnerId: OWNER_ID, household }),
+      });
+
+      await reconcileDataScope(database, { getMe: async () => me({ dataOwnerId: OWNER_ID }) });
+
+      expect(await readMeta(database, META_KEYS.householdMembers)).toBeNull();
+    });
   });
 });

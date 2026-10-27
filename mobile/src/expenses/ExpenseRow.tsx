@@ -38,15 +38,25 @@ export interface ExpenseRowProps {
   readonly onPress: () => void;
   readonly onDelete: () => void;
   readonly lastInGroup?: boolean;
+  /** "Added by Bao": who put it in a shared household's books. Absent when not shared. */
+  readonly addedBy?: string | null;
 }
 
-export function ExpenseRow({ item, today, onPress, onDelete, lastInGroup }: ExpenseRowProps) {
+export function ExpenseRow({
+  item,
+  today,
+  onPress,
+  onDelete,
+  lastInGroup,
+  addedBy,
+}: ExpenseRowProps) {
   const styles = useStyles();
   // What was actually paid, when that was in another currency, then the note.
   const original = originalLabel(item);
   const note = item.note === null || item.note.trim().length === 0 ? null : item.note;
   const subtitle =
-    [original, note].filter((part): part is string => part !== null).join(' · ') || null;
+    [original, note, addedBy ?? null].filter((part): part is string => part !== null).join(' · ') ||
+    null;
   return (
     <SwipeToDelete
       onDelete={onDelete}
@@ -57,11 +67,8 @@ export function ExpenseRow({ item, today, onPress, onDelete, lastInGroup }: Expe
         testID={`expense-row-${item.id}`}
         onPress={onPress}
         lastInGroup={lastInGroup}
-        leading={<Swatch
-            colorHex={rowCategoryColor(item)}
-            name={item.categoryName ?? undefined}
-          />}
-        accessibilityLabel={expenseRowLabel(item, today)}
+        leading={<Swatch colorHex={rowCategoryColor(item)} name={item.categoryName ?? undefined} />}
+        accessibilityLabel={expenseRowLabel(item, today, undefined, addedBy)}
         accessibilityHint={COPY.a11y.editExpense}
         // The gesture's screen-reader equivalent. Named `delete` because that is the
         // standard action name both platforms surface in their own UI.

@@ -88,6 +88,7 @@ export const SERVER_COLUMNS: Readonly<Record<SyncEntity, readonly string[]>> = {
     'originalCurrency',
     'date',
     'note',
+    'createdBy',
     'createdAt',
     'updatedAt',
     'deletedAt',

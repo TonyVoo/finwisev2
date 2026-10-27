@@ -1,3 +1,4 @@
+import { useAddedBy } from '@/household/useAddedBy';
 import { useCallback, useEffect, useState } from 'react';
 import { AccessibilityInfo, SectionList, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -113,6 +114,7 @@ export default function ExpenseListScreen() {
   const categories = useLiveCategories();
 
   const database = useDatabase();
+  const addedBy = useAddedBy();
   const queryClient = useQueryClient();
   const reviewPending = useCategoryReviewPending();
 
@@ -316,6 +318,7 @@ export default function ExpenseListScreen() {
             item={item}
             today={today}
             lastInGroup={index === section.data.length - 1}
+            addedBy={addedBy(item.createdBy)}
             onPress={() => router.push(`/(app)/expense/${item.id}`)}
             onDelete={() => void onDelete(item.id)}
           />

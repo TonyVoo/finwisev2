@@ -252,6 +252,8 @@ export interface ExpenseListItem {
   readonly originalCurrency: string | null;
   readonly date: string;
   readonly note: string | null;
+  /** Who added it (the server's `createdBy`); null until the server answers, and for old rows. */
+  readonly createdBy: string | null;
   readonly pending: boolean;
   /**
    * The server refused this row and nothing is queued for it any more
@@ -323,6 +325,7 @@ async function selectExpenseItems(
             e.originalCurrency,
             e.date,
             e.note,
+            e.createdBy,
             c.name  AS categoryName,
             c.color AS categoryColor,
             (SELECT f.name  FROM categories f

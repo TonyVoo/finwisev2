@@ -47,6 +47,8 @@ export interface ExpenseRow {
   /** Calendar date `YYYY-MM-DD`. Never a timestamp. */
   readonly date: string;
   readonly note: string | null;
+  /** The account that added it (server-assigned); null until the server answers, and for old rows. */
+  readonly createdBy: string | null;
   readonly createdAt: string | null;
   readonly updatedAt: string;
   readonly deletedAt: string | null;
@@ -160,6 +162,7 @@ const EXPENSE_SPEC: EntitySpec = {
     originalAmountMinor: null,
     originalCurrency: null,
     note: null,
+    createdBy: null,
     createdAt: null,
     deletedAt: null,
     revision: 0,

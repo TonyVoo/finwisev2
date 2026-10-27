@@ -617,7 +617,11 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
               trailing={
                 chosenCategory === null ? null : (
                   <View style={styles.value}>
-                    <Swatch colorHex={chosenCategory.color} diameter={20} name={chosenCategory.name} />
+                    <Swatch
+                      colorHex={chosenCategory.color}
+                      diameter={20}
+                      name={chosenCategory.name}
+                    />
                     <Text style={styles.valueText}>{chosenCategory.name}</Text>
                   </View>
                 )

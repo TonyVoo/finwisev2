@@ -200,6 +200,7 @@ describe('applyLocalMutation', () => {
           originalCurrency: null,
           date: '2026-10-08',
           note: 'Lunch',
+          createdBy: null,
           createdAt: null,
           updatedAt: '2026-10-08T10:30:00.000Z',
           deletedAt: null,
