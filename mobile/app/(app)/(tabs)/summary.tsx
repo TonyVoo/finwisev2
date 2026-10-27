@@ -11,6 +11,9 @@ import { MonthSwitcher } from '@/month/MonthSwitcher';
 import { useSelectedMonth } from '@/month/MonthProvider';
 import { CategoryDonut } from '@/summary/CategoryDonut';
 import { SpendLegend } from '@/summary/SpendLegend';
+import { InsightsCard } from '@/summary/InsightsCard';
+import { buildInsights } from '@/summary/insightsModel';
+import { stepMonth, monthLabel } from '@/lib/calendar';
 import { SpendTrend } from '@/summary/SpendTrend';
 import { buildTrend } from '@/summary/trendModel';
 import { SummaryEmpty, SummarySkeleton } from '@/summary/SummaryStates';
@@ -75,6 +78,8 @@ export default function SummaryScreen() {
   const spend = useMonthCategorySpend(month);
   const currency = useUserCurrency();
   const trendRows = useSpendTrend(month);
+  const previousMonth = stepMonth(month, -1);
+  const previousSpend = useMonthCategorySpend(previousMonth);
 
   // The frame or two before the first read returns, abandoned after 300ms whatever happens
   // - after that the honest answer is `empty`, not `loading` (`useFirstPaintSkeleton`).
@@ -142,6 +147,14 @@ export default function SummaryScreen() {
         ) : (
           <SummaryEmpty />
         )}
+
+        {!pending && currencyCode !== null && previousSpend.data !== undefined ? (
+          <InsightsCard
+            insights={buildInsights(spend.data ?? [], previousSpend.data)}
+            previousLabel={monthLabel(previousMonth).split(' ')[0] ?? ''}
+            currency={currencyCode}
+          />
+        ) : null}
 
         {/* Below the month's own figures, and shown even for an empty month: "nothing this month"
             is context the trend gives. Held back until there are two months to compare. */}

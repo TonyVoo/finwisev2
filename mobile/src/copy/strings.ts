@@ -130,6 +130,15 @@ export const COPY = {
     count: { many: '{count} expenses', one: '1 expense' },
     /** The trend card: spend per month over the six months ending at the selected one. */
     trend: { title: 'Last 6 months' },
+    /** Observations under the chart (`summary/insightsModel.ts`). */
+    insights: {
+      title: 'Insights',
+      up: 'You have spent {percent}% more than in {month}.',
+      down: 'You have spent {percent}% less than in {month}.',
+      same: 'Your spending is about the same as in {month}.',
+      top: '{name} is your biggest category, at {percent}% of the month.',
+      rise: '{name} is up {amount} on {month}.',
+    },
   },
 
   form: {

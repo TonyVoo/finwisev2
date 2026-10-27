@@ -480,3 +480,9 @@ them as proposals the Designer can reword; changing a row here means changing
 | `home.budgetAlert.andMore` | `{names} and {count} more` | Home, budget banner, more than three names |
 | `home.budgetAlert.open` | `See summary` | Home, budget banner button |
 | `home.budgetAlert.dismiss` | `Dismiss` | Home, budget banner button |
+| `summary.insights.title` | `Insights` | Summary, insights card heading |
+| `summary.insights.up` | `You have spent {percent}% more than in {month}.` | Summary, insights card |
+| `summary.insights.down` | `You have spent {percent}% less than in {month}.` | Summary, insights card |
+| `summary.insights.same` | `Your spending is about the same as in {month}.` | Summary, insights card |
+| `summary.insights.top` | `{name} is your biggest category, at {percent}% of the month.` | Summary, insights card |
+| `summary.insights.rise` | `{name} is up {amount} on {month}.` | Summary, insights card |
