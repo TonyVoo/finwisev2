@@ -1,5 +1,6 @@
 import { getActiveIntlLocale } from '../i18n/language';
 import { keyHaptic } from '../lib/haptics';
+import { useReduceMotion } from '../lib/useReduceMotion';
 import { Animated, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useEffect, useRef } from 'react';
 import Feather from '@expo/vector-icons/Feather';
@@ -187,30 +188,42 @@ function Key({
   // The key's height floor grows with the OS font scale, so a large-text user gets a
   // taller keypad rather than clipped labels (§Accessibility rule 5).
   const { fontScale } = useWindowDimensions();
+  // A small dip under the finger and a spring back: the key feels pressed. Skipped under
+  // Reduce Motion, where the background change alone marks the press.
+  const reduceMotion = useReduceMotion();
+  const scale = useRef(new Animated.Value(1)).current;
+  const animateTo = (toValue: number) => {
+    if (reduceMotion) return;
+    Animated.spring(scale, { toValue, useNativeDriver: true, speed: 60, bounciness: 8 }).start();
+  };
 
   return (
-    <Pressable
-      testID={testID}
-      onPress={() => {
-        keyHaptic();
-        onPress();
-      }}
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
-      style={({ pressed }) => [
-        styles.key,
-        { minHeight: size.rowMinHeight * Math.max(1, fontScale) },
-        { backgroundColor: pressed ? color.bg.canvas : color.bg.surface },
-      ]}
-    >
-      {glyph === undefined ? (
-        <Text style={styles.keyLabel} numberOfLines={1}>
-          {label}
-        </Text>
-      ) : (
-        <Feather name={glyph} size={24} color={color.text.primary} />
-      )}
-    </Pressable>
+    <Animated.View testID={`${testID}-scale`} style={{ flex: 1, transform: [{ scale }] }}>
+      <Pressable
+        testID={testID}
+        onPressIn={() => animateTo(0.92)}
+        onPressOut={() => animateTo(1)}
+        onPress={() => {
+          keyHaptic();
+          onPress();
+        }}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
+        style={({ pressed }) => [
+          styles.key,
+          { minHeight: size.rowMinHeight * Math.max(1, fontScale) },
+          { backgroundColor: pressed ? color.bg.canvas : color.bg.surface },
+        ]}
+      >
+        {glyph === undefined ? (
+          <Text style={styles.keyLabel} numberOfLines={1}>
+            {label}
+          </Text>
+        ) : (
+          <Feather name={glyph} size={24} color={color.text.primary} />
+        )}
+      </Pressable>
+    </Animated.View>
   );
 }
 

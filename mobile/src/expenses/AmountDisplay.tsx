@@ -1,4 +1,6 @@
-import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Animated, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { useReduceMotion } from '../lib/useReduceMotion';
 import { formatMoney } from '../lib/money';
 import { space, type } from '../theme/tokens';
 import { createStyles } from '../theme/ThemeProvider';
@@ -46,11 +48,24 @@ export function AmountDisplay({ amountMinor, currency, muted, error, hint }: Amo
   const formatted = formatMoney(amountMinor, currency);
   const message = error ?? hint;
 
+  // A small pop each time the value changes, so a digit landing is felt as well as read.
+  const reduceMotion = useReduceMotion();
+  const pop = useRef(new Animated.Value(1)).current;
+  const previous = useRef(amountMinor);
+  useEffect(() => {
+    if (previous.current === amountMinor) return;
+    previous.current = amountMinor;
+    if (reduceMotion) return;
+    pop.setValue(1.06);
+    Animated.spring(pop, { toValue: 1, useNativeDriver: true, speed: 40, bounciness: 10 }).start();
+  }, [amountMinor, reduceMotion, pop]);
+
   return (
     <View style={styles.block}>
-      <Text
+      <Animated.Text
         testID={AMOUNT_DISPLAY_TEST_ID}
         style={[
+          { transform: [{ scale: pop }] },
           fontScale > HERO_MAX_FONT_SCALE ? styles.amountLarge : styles.amountHero,
           muted ? styles.amountMuted : null,
         ]}
@@ -66,7 +81,7 @@ export function AmountDisplay({ amountMinor, currency, muted, error, hint }: Amo
         adjustsFontSizeToFit
       >
         {formatted}
-      </Text>
+      </Animated.Text>
 
       {/* Always rendered, even with nothing to say, so the line is reserved and the keypad
           below never moves. ` ` rather than `''`: an empty string collapses to zero
