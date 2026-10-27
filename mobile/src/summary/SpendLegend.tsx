@@ -1,7 +1,8 @@
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Swatch } from '../components/Row';
 import { formatMoney } from '../lib/money';
-import { displayCategoryColor, radius, space, type } from '../theme/tokens';
-import { createStyles, useTheme } from '../theme/ThemeProvider';
+import { space, type } from '../theme/tokens';
+import { createStyles } from '../theme/ThemeProvider';
 import { budgetLabel, legendRowLabel, type SpendEntry } from './summaryModel';
 
 /**
@@ -32,7 +33,6 @@ import { budgetLabel, legendRowLabel, type SpendEntry } from './summaryModel';
 
 export const LEGEND_TEST_ID = 'summary-legend';
 export const LEGEND_ROW_TEST_ID_PREFIX = 'legend-row';
-export const LEGEND_SWATCH_TEST_ID_PREFIX = 'legend-swatch';
 
 /**
  * Above this scale a row stacks: name on the first line, amount and percent on the second,
@@ -50,11 +50,11 @@ const PERCENT_WIDTH = 44;
  * Neither is a `size` token and neither should be: `tokens.json` carries the sizes that
  * recur across screens, and `tests/theme/tokens.test.ts` asserts the module mirrors that
  * file exactly. These two occur here. Same reasoning as `MonthSwitcher`'s `BAR_MIN_HEIGHT`.
- * The legend swatch is also deliberately smaller than the list's 24 `size.swatch`: it sits
- * beside a `type.body` name rather than leading a 56-tall row.
+ * The legend badge is the same 24 as the list's `size.swatch`, so a category looks the same
+ * on every screen.
  */
 const ROW_MIN_HEIGHT = 48;
-const SWATCH_SIZE = 16;
+const SWATCH_SIZE = 24;
 
 export interface SpendLegendProps {
   readonly entries: readonly SpendEntry[];
@@ -93,7 +93,6 @@ function LegendRow({
   readonly first: boolean;
 }) {
   const styles = useStyles();
-  const { isDark } = useTheme();
   const id = entry.categoryId ?? 'uncategorized';
 
   return (
@@ -105,14 +104,7 @@ function LegendRow({
     >
       <View style={[styles.main, stacked ? styles.rowStacked : null]}>
         <View style={styles.leading}>
-          <View
-            testID={`${LEGEND_SWATCH_TEST_ID_PREFIX}-${id}`}
-            style={[styles.swatch, { backgroundColor: displayCategoryColor(entry.color, isDark) }]}
-            // The name is right beside it in text, so announcing the swatch would be
-            // announcing the same thing twice - and "image" is all it could say.
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-          />
+          <Swatch colorHex={entry.color} diameter={SWATCH_SIZE} name={entry.name} />
           <Text style={styles.name} numberOfLines={1}>
             {entry.name}
           </Text>
@@ -213,11 +205,6 @@ const useStyles = createStyles((color) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: space[3],
-    },
-    swatch: {
-      width: SWATCH_SIZE,
-      height: SWATCH_SIZE,
-      borderRadius: radius.sm,
     },
     name: {
       ...type.body,

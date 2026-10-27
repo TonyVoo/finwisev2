@@ -200,6 +200,13 @@ describe('a month with spend in it', () => {
     ]);
   });
 
+  it('gives each legend row its category icon', async () => {
+    await mountSummary(seedOctober);
+
+    const icons = screen.queryAllByTestId('swatch-icon', { includeHiddenElements: true });
+    expect(icons).toHaveLength(6);
+  });
+
   it('draws the slices in legend order, largest first', async () => {
     await mountSummary(seedOctober);
 
