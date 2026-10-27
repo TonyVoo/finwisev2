@@ -1,3 +1,4 @@
+import Feather from '@expo/vector-icons/Feather';
 import { Tabs } from 'expo-router';
 import { useColors } from '@/theme/ThemeProvider';
 
@@ -26,8 +27,23 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: color.text.tertiary,
       }}
     >
-      <Tabs.Screen name="index" options={{ title: 'Expenses' }} />
-      <Tabs.Screen name="summary" options={{ title: 'Summary' }} />
+      {/* Without a `tabBarIcon` the navigator draws nothing at all - a bare label. */}
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Expenses',
+          tabBarIcon: ({ color: tint, size }) => <Feather name="list" size={size} color={tint} />,
+        }}
+      />
+      <Tabs.Screen
+        name="summary"
+        options={{
+          title: 'Summary',
+          tabBarIcon: ({ color: tint, size }) => (
+            <Feather name="pie-chart" size={size} color={tint} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }
