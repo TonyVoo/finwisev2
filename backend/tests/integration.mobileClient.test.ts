@@ -612,9 +612,14 @@ describe('API-26 — the real SessionController against a real server', () => {
     expect(trips.filter((trip) => trip.url === '/v1/auth/refresh')).toEqual([
       { method: 'POST', url: '/v1/auth/refresh', status: 200 },
     ]);
-    expect(trips.filter((trip) => trip.status === 200 && trip.url !== '/v1/auth/refresh')).toEqual([
-      { method: 'GET', url: '/v1/me', status: 200 },
+    // Either order: they race, and which answers first is the server's business.
+    expect(
+      trips
+        .filter((trip) => trip.status === 200 && trip.url !== '/v1/auth/refresh')
+        .sort((a, b) => a.url.localeCompare(b.url)),
+    ).toEqual([
       { method: 'GET', url: '/v1/categories', status: 200 },
+      { method: 'GET', url: '/v1/me', status: 200 },
     ]);
 
     /*

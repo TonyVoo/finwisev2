@@ -2984,6 +2984,15 @@ components:
             household - the household owner's. A device keeps its local store per data owner, so
             a change here means a clear and a resync. Absent from servers that predate
             households; treat absent as the account's own id.
+        household:
+          oneOf:
+            - { $ref: '#/components/schemas/Household' }
+            - { type: 'null' }
+          description: |
+            The household the account is in, with its members, or `null`. It rides on `/v1/me` so
+            a device can label each shared expense with who added it, offline, from the call it
+            already makes at the start of every sync pass. Absent from servers that predate it
+            and from endpoints that return only the user.
 
     SignupRequest:
       type: object

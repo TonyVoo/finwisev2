@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { CurrencyCode, LIMITS, Timestamp, Uuid } from './primitives.js';
-import { Email } from './user.js';
+import { Email, User } from './user.js';
 
 /**
  * Shared households (`docs/design/10-households.md`).
@@ -77,3 +77,23 @@ export type HouseholdCreateRequest = z.infer<typeof HouseholdCreateRequest>;
 export type HouseholdInviteRequest = z.infer<typeof HouseholdInviteRequest>;
 export type HouseholdLeaveRequest = z.infer<typeof HouseholdLeaveRequest>;
 export type HouseholdJoinRequest = z.infer<typeof HouseholdJoinRequest>;
+
+/**
+ * `GET /v1/me`: who the token belongs to, and the books it works in.
+ *
+ * Lives here rather than beside `User` because it carries the household, and `Household`
+ * already depends on `Email` from `user.ts`.
+ */
+export const MeResponse = z.strictObject({
+  user: User,
+  dataOwnerId: Uuid.optional().describe(
+    "Whose rows this account reads and writes: its own id, or - while it is in a household - the household owner's. A device keeps its local store per data owner, so a change here means a clear and a resync. Absent from servers that predate households; treat absent as the account's own id.",
+  ),
+  household: Household.nullable()
+    .optional()
+    .describe(
+      'The household the account is in, with its members, or `null`. It rides on `/v1/me` so a device can label each shared expense with who added it, offline, from the call it already makes at the start of every sync pass. Absent from servers that predate it and from endpoints that return only the user.',
+    ),
+});
+
+export type MeResponse = z.infer<typeof MeResponse>;

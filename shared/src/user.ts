@@ -49,14 +49,6 @@ export const User = z.strictObject({
   createdAt: Timestamp,
 });
 
-export const MeResponse = z.strictObject({
-  user: User,
-  dataOwnerId: Uuid.optional().describe(
-    "Whose rows this account reads and writes: its own id, or - while it is in a household - the household owner's. A device keeps its local store per data owner, so a change here means a clear and a resync. Absent from servers that predate households; treat absent as the account's own id.",
-  ),
-});
-
 export type Email = z.infer<typeof Email>;
 export type Password = z.infer<typeof Password>;
 export type User = z.infer<typeof User>;
-export type MeResponse = z.infer<typeof MeResponse>;

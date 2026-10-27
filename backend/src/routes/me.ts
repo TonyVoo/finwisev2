@@ -23,6 +23,7 @@ import {
   confirmEmailVerification,
   sendEmailVerification,
 } from '../services/emailVerificationService.ts';
+import { getHousehold } from '../services/householdService.ts';
 import { sendJson } from '../http/respond.ts';
 import { dataOwnerIdOf, userIdOf } from '../http/types.ts';
 
@@ -58,7 +59,11 @@ meRouter.get('/me', async (req: Request, res: Response) => {
           })
         )?.currency ?? user.currency);
 
-  sendJson(res, 200, MeResponse, { user: { ...toWireUser(user), currency }, dataOwnerId });
+  sendJson(res, 200, MeResponse, {
+    user: { ...toWireUser(user), currency },
+    dataOwnerId,
+    household: (await getHousehold(getPrisma(), userId)).household,
+  });
 });
 
 /**

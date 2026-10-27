@@ -320,6 +320,29 @@ describe('the shared data scope', () => {
     expect(asOwner.body.dataOwnerId).toBe(owner.user.id);
   });
 
+  it('carries the household, with who is in it, on /v1/me for the app to label rows', async () => {
+    const { owner, member } = await householdOfTwo();
+
+    const asMember = await api().get('/v1/me').set('Authorization', member.auth);
+    const asOwner = await api().get('/v1/me').set('Authorization', owner.auth);
+
+    for (const body of [asMember.body, asOwner.body]) {
+      expect(body.household.members.map((m: { userId: string }) => m.userId).sort()).toEqual(
+        [owner.user.id, member.user.id].sort(),
+      );
+    }
+    expect(asMember.body.household.role).toBe('member');
+    expect(asOwner.body.household.role).toBe('owner');
+  });
+
+  it('has no household on /v1/me for a person in none', async () => {
+    const user = await createUser();
+
+    const me = await api().get('/v1/me').set('Authorization', user.auth);
+
+    expect(me.body.household).toBeNull();
+  });
+
   it('reports a plain account as its own data owner, in its own currency', async () => {
     const user = await createUser({ currency: 'EUR' });
 
