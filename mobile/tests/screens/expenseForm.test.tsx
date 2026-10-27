@@ -326,6 +326,25 @@ describe('the expense form', () => {
       });
     });
 
+    it('saves income when the toggle is switched, and titles the form for it', async () => {
+      const { database } = await mountAdd();
+      await userEvent.press(screen.getByTestId('kind-toggle-income'));
+      expect(screen.getByText('Add income')).toBeTruthy();
+      await typeAmount('250000');
+
+      await userEvent.press(screen.getByTestId(SAVE_TEST_ID));
+
+      await waitFor(async () => expect(await outboxEntries(database)).toHaveLength(1));
+      const row = await database.getFirstAsync<{ kind: string; amountMinor: number }>(
+        'SELECT kind, amountMinor FROM expenses',
+        [],
+      );
+      expect(row).toEqual({ kind: 'income', amountMinor: 250000 });
+      expect(JSON.parse(entryAt(await outboxEntries(database), 0).fields)).toMatchObject({
+        kind: 'income',
+      });
+    });
+
     it('pops back and confirms, with no spinner in between', async () => {
       // State `loading` on save: "none". A save is as fast offline as online.
       await mountAdd();
