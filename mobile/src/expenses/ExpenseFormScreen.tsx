@@ -537,7 +537,7 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
               <View style={styles.deleteSlot}>
                 <Button
                   testID={DELETE_TEST_ID}
-                  label={COPY.form.delete}
+                  label={live?.kind === 'income' ? COPY.form.deleteIncome : COPY.form.delete}
                   variant="ghost"
                   tone="danger"
                   fullWidth

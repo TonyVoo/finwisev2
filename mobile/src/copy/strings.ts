@@ -178,6 +178,7 @@ export const COPY = {
     },
     save: 'Save',
     delete: 'Delete expense',
+    deleteIncome: 'Delete income',
     close: 'Close without saving',
     /** The date sheet's three quick options (`06-expense-form.md` rule 7). */
     date: { today: 'Today', yesterday: 'Yesterday', choose: 'Choose a date…' },
