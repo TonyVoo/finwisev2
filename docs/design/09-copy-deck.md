@@ -153,6 +153,12 @@ blank banner.
 | `mutation_id_reused`     | _(never shown)_ — a client bug; logged, and the record is flagged `needs-attention`   | none                                             |
 | `batch_too_large`        | _(never shown)_ — the client splits the batch and retries                             | none                                             |
 | `rate_limited`           | `Too many attempts. Try again in a moment.`                                           | form banner                                      |
+| `invalid_invite_code`    | `That code is incorrect or has expired.`                                              | Join household, Code field                       |
+| `household_exists`       | `You are already in a household.`                                                     | Household screen, banner                         |
+| `not_in_household`       | `You are not in a household.`                                                         | Household screen, banner                         |
+| `household_owner_only`   | `Only the household owner can do that.`                                               | Household screen, banner                         |
+| `owner_cannot_leave`     | `The owner cannot leave the household. Delete it instead.`                            | Household screen, banner                         |
+| `household_has_members`  | `Delete your household before deleting your account.`                                 | Delete account, banner                           |
 | `rates_unavailable`      | `Could not get today's exchange rate. Enter it yourself.`                             | Expense form, Rate field                         |
 | `internal_error`         | `Something went wrong on our end. Try again.`                                         | form banner                                      |
 

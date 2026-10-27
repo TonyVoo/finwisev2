@@ -52,6 +52,18 @@ export const ERROR_CODES = [
   'batch_too_large',
   /** 429 — too many requests. `Retry-After` is set. */
   'rate_limited',
+  /** 400 — a household invite code was wrong, expired or already used. Does not say which, so a guesser learns nothing. */
+  'invalid_invite_code',
+  /** 409 — the person is already in a household (one at a time). */
+  'household_exists',
+  /** 404 — the person is not in a household. */
+  'not_in_household',
+  /** 403 — only the household's owner may do this (invite, remove a member, delete the household). */
+  'household_owner_only',
+  /** 409 — the owner cannot leave their own household; they delete it instead. */
+  'owner_cannot_leave',
+  /** 409 — an account that owns a household with other members cannot be deleted until the household is. */
+  'household_has_members',
   /** 502 — the exchange-rate provider could not be reached or gave an unusable answer. Retry later, or enter the rate by hand. */
   'rates_unavailable',
   /** 500 — unexpected server fault. Never leaks internals; correlate via the logged request id. */
@@ -119,6 +131,12 @@ export const ERROR_CODE_STATUS: Readonly<Record<ErrorCode, number>> = {
   mutation_id_reused: 409,
   batch_too_large: 413,
   rate_limited: 429,
+  invalid_invite_code: 400,
+  household_exists: 409,
+  not_in_household: 404,
+  household_owner_only: 403,
+  owner_cannot_leave: 409,
+  household_has_members: 409,
   rates_unavailable: 502,
   internal_error: 500,
 };

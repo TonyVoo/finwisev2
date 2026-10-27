@@ -38,7 +38,7 @@ export const User = z.strictObject({
   id: Uuid,
   email: Email,
   currency: CurrencyCode.describe(
-    "The user's single currency, captured at signup. Every expense of this user defaults to it.",
+    "The user's single currency, captured at signup. Every expense of this user defaults to it. While the account is in a household this is the household's (the owner's) currency, because that is what every shared amount is in.",
   ),
   emailVerified: z
     .boolean()
@@ -51,6 +51,9 @@ export const User = z.strictObject({
 
 export const MeResponse = z.strictObject({
   user: User,
+  dataOwnerId: Uuid.optional().describe(
+    "Whose rows this account reads and writes: its own id, or - while it is in a household - the household owner's. A device keeps its local store per data owner, so a change here means a clear and a resync. Absent from servers that predate households; treat absent as the account's own id.",
+  ),
 });
 
 export type Email = z.infer<typeof Email>;

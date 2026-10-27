@@ -100,6 +100,56 @@ export const API_ROUTES = [
 
   {
     method: 'get',
+    path: '/v1/household',
+    operationId: 'getHousehold',
+    auth: true,
+    successStatus: 200,
+  },
+  {
+    method: 'post',
+    path: '/v1/household',
+    operationId: 'createHousehold',
+    auth: true,
+    successStatus: 201,
+  },
+  {
+    method: 'delete',
+    path: '/v1/household',
+    operationId: 'deleteHousehold',
+    auth: true,
+    successStatus: 204,
+  },
+  {
+    method: 'post',
+    path: '/v1/household/invite',
+    operationId: 'createHouseholdInvite',
+    auth: true,
+    successStatus: 201,
+  },
+  {
+    method: 'post',
+    path: '/v1/household/join',
+    operationId: 'joinHousehold',
+    auth: true,
+    successStatus: 200,
+  },
+  {
+    method: 'post',
+    path: '/v1/household/leave',
+    operationId: 'leaveHousehold',
+    auth: true,
+    successStatus: 204,
+  },
+  {
+    method: 'delete',
+    path: '/v1/household/members/{userId}',
+    operationId: 'removeHouseholdMember',
+    auth: true,
+    successStatus: 204,
+  },
+
+  {
+    method: 'get',
     path: '/v1/categories',
     operationId: 'listCategories',
     auth: true,

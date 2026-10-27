@@ -72,6 +72,9 @@ tags:
       The refresh token is long-lived (60 days) on purpose: an offline-first app must not
       log the user out because they were offline for a week. It is stored server-side as a
       hash so it can be revoked, and it rotates on every refresh.
+  - name: household
+    description: |
+      Shared households: two or more people keep one set of books. See `docs/design/10-households.md`.
   - name: categories
     description: |
       User-owned expense categories. A set of defaults is seeded at signup, including an
@@ -544,6 +547,10 @@ paths:
         Access tokens are stateless and are not revoked: one issued before the delete keeps
         verifying until it expires (at most 1h), after which `GET /v1/me` answers
         `401 token_invalid`. Refresh tokens die with the account immediately.
+
+        An account that **owns a household with other members** cannot be deleted: that would
+        delete the shared data. It is `409 household_has_members` until the household is
+        deleted (`DELETE /v1/household`). A member's own deletion just ends their membership.
       x-errorCodes:
         - validation_error
         - malformed_request
@@ -552,6 +559,7 @@ paths:
         - token_expired
         - token_invalid
         - forbidden
+        - household_has_members
         - rate_limited
         - internal_error
       requestBody:
@@ -572,6 +580,19 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '409':
+          description: |
+            The account owns a household that still has other members. Code:
+            `household_has_members`. Delete the household first.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              example:
+                error:
+                  code: household_has_members
+                  message: Delete your household before deleting your account.
         '415':
           $ref: '#/components/responses/UnsupportedMediaType'
         '429':
@@ -802,6 +823,376 @@ paths:
           $ref: '#/components/responses/UnsupportedMediaType'
         '429':
           $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/household:
+    get:
+      operationId: getHousehold
+      tags: [household]
+      summary: The caller's household
+      description: |
+        The household the caller is in, with its members and the caller's own role, or
+        `{ "household": null }` when they are in none. The household is found from the access
+        token; it is never addressed by an id.
+      x-errorCodes:
+        - unauthorized
+        - token_expired
+        - token_invalid
+        - internal_error
+      responses:
+        '200':
+          description: Done.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HouseholdResponse' }
+              example: { household: { id: '0192f5a0-0000-7000-8000-0000000000b1', role: owner, ownerId: '0192f5a0-0000-7000-8000-0000000000a1', currency: USD, members: [{ userId: '0192f5a0-0000-7000-8000-0000000000a1', email: ana@example.com, role: owner, joinedAt: '2026-10-27T09:00:00.000Z' }] } }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      operationId: createHousehold
+      tags: [household]
+      summary: Start a household
+      description: |
+        Turns the caller's books into a shared household and makes them its owner. Nothing is
+        copied: every shared row is scoped by the owner's id, and the caller's rows already are.
+        A person can be in one household at a time.
+      x-errorCodes:
+        - validation_error
+        - malformed_request
+        - unsupported_media_type
+        - unauthorized
+        - token_expired
+        - token_invalid
+        - household_exists
+        - internal_error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/HouseholdCreateRequest' }
+            example: {}
+      responses:
+        '201':
+          description: Done.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HouseholdResponse' }
+              example: { household: { id: '0192f5a0-0000-7000-8000-0000000000b1', role: owner, ownerId: '0192f5a0-0000-7000-8000-0000000000a1', currency: USD, members: [{ userId: '0192f5a0-0000-7000-8000-0000000000a1', email: ana@example.com, role: owner, joinedAt: '2026-10-27T09:00:00.000Z' }] } }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: 'The caller is already in a household. Code: `household_exists`.'
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              example:
+                error:
+                  code: household_exists
+                  message: You are already in a household.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      operationId: deleteHousehold
+      tags: [household]
+      summary: Delete the household
+      description: |
+        Owner only. Dissolves the household: every member's data scope returns to their own
+        account, and the shared data stays with the owner. Members' private data, which was
+        hidden while they were in, reappears for them.
+      x-errorCodes:
+        - unauthorized
+        - token_expired
+        - token_invalid
+        - not_in_household
+        - household_owner_only
+        - internal_error
+      responses:
+        '204':
+          description: Done. No body.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+        '403':
+          description: 'Only the owner can delete the household. Code: `household_owner_only`.'
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              example:
+                error:
+                  code: household_owner_only
+                  message: Only the household owner can do that.
+        '404':
+          description: 'The caller is in no household. Code: `not_in_household`.'
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              example:
+                error:
+                  code: not_in_household
+                  message: You are not in a household.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/household/invite:
+    post:
+      operationId: createHouseholdInvite
+      tags: [household]
+      summary: Make an invite code
+      description: |
+        Owner only. Returns a one-time code, shown once and never retrievable again; asking
+        again replaces it. It is 8 characters from an alphabet without look-alikes, works for 48
+        hours, and for one person. Stored only as an HMAC.
+      x-errorCodes:
+        - validation_error
+        - malformed_request
+        - unsupported_media_type
+        - unauthorized
+        - token_expired
+        - token_invalid
+        - not_in_household
+        - household_owner_only
+        - internal_error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/HouseholdInviteRequest' }
+            example: {}
+      responses:
+        '201':
+          description: Done.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HouseholdInviteResponse' }
+              example: { data: { code: K7QM4T2X, expiresAt: '2026-10-29T09:00:00.000Z' } }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          description: 'Only the owner can invite. Code: `household_owner_only`.'
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              example:
+                error:
+                  code: household_owner_only
+                  message: Only the household owner can do that.
+        '404':
+          description: 'The caller is in no household. Code: `not_in_household`.'
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              example:
+                error:
+                  code: not_in_household
+                  message: You are not in a household.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/household/join:
+    post:
+      operationId: joinHousehold
+      tags: [household]
+      summary: Join with an invite code
+      description: |
+        Joins the household the code belongs to. From then on the caller's data scope is the
+        owner's; their own data stays where it is, untouched and hidden, and returns if they
+        leave. A wrong, expired or used code is `400 invalid_invite_code` and does not say which.
+        Rate limited per account: `INVITE_JOIN_MAX_PER_USER` attempts per window, every attempt
+        counted; `429` carries `Retry-After`. A device must sync its pending changes first, then
+        clear its local store and resync.
+      x-errorCodes:
+        - validation_error
+        - malformed_request
+        - unsupported_media_type
+        - unauthorized
+        - token_expired
+        - token_invalid
+        - invalid_invite_code
+        - household_exists
+        - rate_limited
+        - internal_error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/HouseholdJoinRequest' }
+            example: { code: K7QM4T2X }
+      responses:
+        '200':
+          description: Done.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HouseholdResponse' }
+              example: { household: { id: '0192f5a0-0000-7000-8000-0000000000b1', role: owner, ownerId: '0192f5a0-0000-7000-8000-0000000000a1', currency: USD, members: [{ userId: '0192f5a0-0000-7000-8000-0000000000a1', email: ana@example.com, role: owner, joinedAt: '2026-10-27T09:00:00.000Z' }] } }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: 'The caller is already in a household. Code: `household_exists`.'
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              example:
+                error:
+                  code: household_exists
+                  message: You are already in a household.
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/household/leave:
+    post:
+      operationId: leaveHousehold
+      tags: [household]
+      summary: Leave the household
+      description: |
+        A member leaves. Their data scope returns to their own account. The owner cannot leave,
+        because their id is the scope: they delete the household instead.
+      x-errorCodes:
+        - validation_error
+        - malformed_request
+        - unsupported_media_type
+        - unauthorized
+        - token_expired
+        - token_invalid
+        - not_in_household
+        - owner_cannot_leave
+        - internal_error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/HouseholdLeaveRequest' }
+            example: {}
+      responses:
+        '204':
+          description: Done. No body.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: 'The caller is in no household. Code: `not_in_household`.'
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              example:
+                error:
+                  code: not_in_household
+                  message: You are not in a household.
+        '409':
+          description: 'The owner cannot leave. Code: `owner_cannot_leave`.'
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              example:
+                error:
+                  code: owner_cannot_leave
+                  message: The owner cannot leave the household; delete it instead.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/household/members/{userId}:
+    delete:
+      operationId: removeHouseholdMember
+      tags: [household]
+      summary: Remove a member
+      description: |
+        Owner only. Removes another member; their data scope returns to their own account. The
+        owner cannot remove themselves (they delete the household).
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: The member to remove.
+          schema: { $ref: '#/components/schemas/Uuid' }
+      x-errorCodes:
+        - validation_error
+        - unauthorized
+        - token_expired
+        - token_invalid
+        - not_found
+        - not_in_household
+        - household_owner_only
+        - owner_cannot_leave
+        - internal_error
+      responses:
+        '204':
+          description: Done. No body.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          description: 'Only the owner can remove members. Code: `household_owner_only`.'
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              example:
+                error:
+                  code: household_owner_only
+                  message: Only the household owner can do that.
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: 'The owner cannot be removed. Code: `owner_cannot_leave`.'
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              example:
+                error:
+                  code: owner_cannot_leave
+                  message: The owner cannot leave the household; delete it instead.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -2400,6 +2791,12 @@ components:
         | `mutation_id_reused` | 409 | A `clientMutationId` was reused with a different payload. Also a per-record `invalid` on sync. |
         | `batch_too_large` | 413 | A `POST /v1/sync` batch exceeded 500 items, or the body exceeded the server limit. |
         | `rate_limited` | 429 | Too many requests. `Retry-After` is set. |
+        | `invalid_invite_code` | 400 | A household invite code was wrong, expired or already used. Does not say which. |
+        | `household_exists` | 409 | The person is already in a household. |
+        | `not_in_household` | 404 | The person is in no household. |
+        | `household_owner_only` | 403 | Only the household's owner may do this. |
+        | `owner_cannot_leave` | 409 | The owner cannot leave their own household; they delete it instead. |
+        | `household_has_members` | 409 | An account that owns a household with other members cannot be deleted until the household is. |
         | `rates_unavailable` | 502 | The exchange-rate provider could not be reached or gave an unusable answer. Retry later, or enter the rate by hand. |
         | `internal_error` | 500 | Unexpected server fault. Never leaks internals; correlate via `X-Request-Id`. |
       enum:
@@ -2423,6 +2820,12 @@ components:
         - mutation_id_reused
         - batch_too_large
         - rate_limited
+        - invalid_invite_code
+        - household_exists
+        - not_in_household
+        - household_owner_only
+        - owner_cannot_leave
+        - household_has_members
         - rates_unavailable
         - internal_error
 
@@ -2568,6 +2971,13 @@ components:
       required: [user]
       properties:
         user: { $ref: '#/components/schemas/User' }
+        dataOwnerId:
+          allOf: [{ $ref: '#/components/schemas/Uuid' }]
+          description: |
+            Whose rows this account reads and writes: its own id, or - while it is in a
+            household - the household owner's. A device keeps its local store per data owner, so
+            a change here means a clear and a resync. Absent from servers that predate
+            households; treat absent as the account's own id.
 
     SignupRequest:
       type: object
@@ -2658,6 +3068,99 @@ components:
       required: [refreshToken]
       properties:
         refreshToken: { $ref: '#/components/schemas/RefreshToken' }
+
+    InviteCode:
+      type: string
+      pattern: '^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{8}$'
+      description: |
+        The 8-character invite code the household's owner generated. Case-insensitive on input;
+        the alphabet has no look-alikes (no 0/O, 1/I/L).
+      example: K7QM4T2X
+
+    HouseholdRole:
+      type: string
+      enum: [owner, member]
+      description: '`owner` created the household; `member` joined with a code.'
+
+    HouseholdMember:
+      type: object
+      additionalProperties: false
+      required: [userId, email, role, joinedAt]
+      properties:
+        userId: { $ref: '#/components/schemas/Uuid' }
+        email: { $ref: '#/components/schemas/Email' }
+        role: { $ref: '#/components/schemas/HouseholdRole' }
+        joinedAt: { $ref: '#/components/schemas/Timestamp' }
+
+    Household:
+      type: object
+      additionalProperties: false
+      required: [id, role, ownerId, currency, members]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        role:
+          allOf: [{ $ref: '#/components/schemas/HouseholdRole' }]
+          description: The caller's own role.
+        ownerId:
+          allOf: [{ $ref: '#/components/schemas/Uuid' }]
+          description: The owner's user id, which is also the id every shared row is scoped by (`GET /v1/me` `dataOwnerId`).
+        currency:
+          allOf: [{ $ref: '#/components/schemas/CurrencyCode' }]
+          description: "The household's currency: the owner's."
+        members:
+          type: array
+          items: { $ref: '#/components/schemas/HouseholdMember' }
+
+    HouseholdResponse:
+      type: object
+      additionalProperties: false
+      required: [household]
+      properties:
+        household:
+          oneOf:
+            - { $ref: '#/components/schemas/Household' }
+            - { type: 'null' }
+          description: '`null` when the caller is in no household.'
+
+    HouseholdInvite:
+      type: object
+      additionalProperties: false
+      required: [code, expiresAt]
+      properties:
+        code: { $ref: '#/components/schemas/InviteCode' }
+        expiresAt: { $ref: '#/components/schemas/Timestamp' }
+
+    HouseholdInviteResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/HouseholdInvite' }
+
+    HouseholdCreateRequest:
+      type: object
+      description: No fields. The household is the caller's and is found from the token.
+      additionalProperties: false
+      properties: {}
+
+    HouseholdInviteRequest:
+      type: object
+      description: No fields. The household is the caller's and is found from the token.
+      additionalProperties: false
+      properties: {}
+
+    HouseholdLeaveRequest:
+      type: object
+      description: No fields. The household is the caller's and is found from the token.
+      additionalProperties: false
+      properties: {}
+
+    HouseholdJoinRequest:
+      type: object
+      additionalProperties: false
+      required: [code]
+      properties:
+        code: { $ref: '#/components/schemas/InviteCode' }
 
     RequestEmailVerificationRequest:
       type: object
