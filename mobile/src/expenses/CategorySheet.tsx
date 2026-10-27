@@ -4,7 +4,8 @@ import { Button } from '../components/Button';
 import { Row, RowTitle, Swatch } from '../components/Row';
 import { Sheet } from '../components/Sheet';
 import { COPY, EMPTY_COPY } from '../copy/strings';
-import { color, space, type } from '../theme/tokens';
+import { space, type } from '../theme/tokens';
+import { createStyles, useColors } from '../theme/ThemeProvider';
 import type { CategoryListItem } from '../db/queries';
 
 /**
@@ -48,6 +49,8 @@ export function CategorySheet({
   onSelect,
   onCreateNew,
 }: CategorySheetProps) {
+  const color = useColors();
+  const styles = useStyles();
   return (
     <Sheet
       visible={visible}
@@ -118,21 +121,23 @@ export function CategorySheet({
   );
 }
 
-const styles = StyleSheet.create({
-  list: {
-    // A cap rather than a height, so a short list does not leave a gap below it.
-    maxHeight: 360,
-  },
-  footer: {
-    paddingTop: space[2],
-  },
-  empty: {
-    alignItems: 'center',
-    gap: space[4],
-    paddingVertical: space[6],
-  },
-  emptyHeadline: {
-    ...type.title2,
-    color: color.text.primary,
-  },
-});
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    list: {
+      // A cap rather than a height, so a short list does not leave a gap below it.
+      maxHeight: 360,
+    },
+    footer: {
+      paddingTop: space[2],
+    },
+    empty: {
+      alignItems: 'center',
+      gap: space[4],
+      paddingVertical: space[6],
+    },
+    emptyHeadline: {
+      ...type.title2,
+      color: color.text.primary,
+    },
+  }),
+);

@@ -26,6 +26,28 @@ export default tseslint.config(
     },
   },
   {
+    // The palette is React state now (`useColors`). The static `color` export is the light
+    // palette, kept for tests; importing it into a component would pin that component to
+    // light mode and nothing else would notice.
+    files: ['mobile/src/**/*.{ts,tsx}', 'mobile/app/**/*.{ts,tsx}'],
+    ignores: ['mobile/src/theme/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/theme/tokens'],
+              importNames: ['color', 'lightColor', 'darkColor'],
+              message:
+                'Use useColors() / createStyles() from theme/ThemeProvider so the component follows the theme.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ['**/*.js', '**/*.mjs', '**/*.cjs'],
     ...tseslint.configs.disableTypeChecked,
   },

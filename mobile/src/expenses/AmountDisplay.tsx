@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { formatMoney } from '../lib/money';
-import { color, space, type } from '../theme/tokens';
+import { space, type } from '../theme/tokens';
+import { createStyles } from '../theme/ThemeProvider';
 
 /**
  * The amount, and the one reserved line beneath it:
@@ -39,6 +40,7 @@ export interface AmountDisplayProps {
 }
 
 export function AmountDisplay({ amountMinor, currency, muted, error, hint }: AmountDisplayProps) {
+  const styles = useStyles();
   const { fontScale } = useWindowDimensions();
   const formatted = formatMoney(amountMinor, currency);
   const message = error ?? hint;
@@ -79,36 +81,38 @@ export function AmountDisplay({ amountMinor, currency, muted, error, hint }: Amo
   );
 }
 
-const styles = StyleSheet.create({
-  block: {
-    alignItems: 'center',
-    paddingVertical: space[6],
-    backgroundColor: color.bg.surface,
-  },
-  amountHero: {
-    ...type.amountHero,
-    color: color.text.primary,
-    fontVariant: ['tabular-nums'],
-    textAlign: 'center',
-  },
-  amountLarge: {
-    ...type.display,
-    color: color.text.primary,
-    fontVariant: ['tabular-nums'],
-    textAlign: 'center',
-  },
-  amountMuted: {
-    color: color.text.tertiary,
-  },
-  message: {
-    ...type.footnote,
-    textAlign: 'center',
-    marginTop: space[2],
-  },
-  messageHint: {
-    color: color.text.tertiary,
-  },
-  messageError: {
-    color: color.danger.default,
-  },
-});
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    block: {
+      alignItems: 'center',
+      paddingVertical: space[6],
+      backgroundColor: color.bg.surface,
+    },
+    amountHero: {
+      ...type.amountHero,
+      color: color.text.primary,
+      fontVariant: ['tabular-nums'],
+      textAlign: 'center',
+    },
+    amountLarge: {
+      ...type.display,
+      color: color.text.primary,
+      fontVariant: ['tabular-nums'],
+      textAlign: 'center',
+    },
+    amountMuted: {
+      color: color.text.tertiary,
+    },
+    message: {
+      ...type.footnote,
+      textAlign: 'center',
+      marginTop: space[2],
+    },
+    messageHint: {
+      color: color.text.tertiary,
+    },
+    messageError: {
+      color: color.danger.default,
+    },
+  }),
+);

@@ -22,7 +22,8 @@ import {
   currencyAccessibilityLabel,
   currencyLabel,
 } from '@/lib/currencies';
-import { HIT_SLOP_44, color, radius, size, space, type } from '@/theme/tokens';
+import { HIT_SLOP_44, radius, size, space, type } from '@/theme/tokens';
+import { createStyles, useColors } from '@/theme/ThemeProvider';
 
 /**
  * Sign up - `docs/design/03-auth.md` §1.2.
@@ -47,6 +48,8 @@ import { HIT_SLOP_44, color, radius, size, space, type } from '@/theme/tokens';
  * place decides where a signed-in user lands.
  */
 export default function SignupScreen() {
+  const color = useColors();
+  const styles = useStyles();
   const router = useRouter();
   const api = useApiClient();
   const [currency, setCurrency] = useState(DEFAULT_CURRENCY_CODE);
@@ -199,55 +202,57 @@ export default function SignupScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  label: {
-    ...type.subhead,
-    color: color.text.secondary,
-    marginBottom: space[2],
-  },
-  select: {
-    minHeight: size.inputHeight,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: color.border.input,
-    backgroundColor: color.bg.surface,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: space[3],
-    paddingVertical: space[3],
-    gap: space[3],
-  },
-  selectValue: {
-    ...type.body,
-    color: color.text.primary,
-    flex: 1,
-  },
-  hint: {
-    ...type.footnote,
-    color: color.text.tertiary,
-    marginTop: space[1],
-  },
-  loginInstead: {
-    alignSelf: 'flex-start',
-    minHeight: size.tapTargetMin,
-    justifyContent: 'center',
-  },
-  loginInsteadLabel: {
-    ...type.bodyStrong,
-    color: color.primary.default,
-  },
-  option: {
-    minHeight: size.rowMinHeight,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: space[3],
-    paddingVertical: space[3],
-  },
-  optionLabel: {
-    ...type.body,
-    color: color.text.primary,
-    flex: 1,
-  },
-});
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    label: {
+      ...type.subhead,
+      color: color.text.secondary,
+      marginBottom: space[2],
+    },
+    select: {
+      minHeight: size.inputHeight,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: color.border.input,
+      backgroundColor: color.bg.surface,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: space[3],
+      paddingVertical: space[3],
+      gap: space[3],
+    },
+    selectValue: {
+      ...type.body,
+      color: color.text.primary,
+      flex: 1,
+    },
+    hint: {
+      ...type.footnote,
+      color: color.text.tertiary,
+      marginTop: space[1],
+    },
+    loginInstead: {
+      alignSelf: 'flex-start',
+      minHeight: size.tapTargetMin,
+      justifyContent: 'center',
+    },
+    loginInsteadLabel: {
+      ...type.bodyStrong,
+      color: color.primary.default,
+    },
+    option: {
+      minHeight: size.rowMinHeight,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: space[3],
+      paddingVertical: space[3],
+    },
+    optionLabel: {
+      ...type.body,
+      color: color.text.primary,
+      flex: 1,
+    },
+  }),
+);

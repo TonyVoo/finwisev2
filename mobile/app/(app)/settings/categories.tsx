@@ -36,7 +36,8 @@ import {
   updateCategory,
 } from '@/db/mutations';
 import { countCategoryExpenses, isCategoryNameTaken, type CategoryWithCount } from '@/db/queries';
-import { color, size, space, type } from '@/theme/tokens';
+import { size, space, type } from '@/theme/tokens';
+import { createStyles, useColors } from '@/theme/ThemeProvider';
 
 /**
  * Category management: `docs/design/07-categories.md`.
@@ -74,6 +75,8 @@ interface PendingDelete {
 }
 
 export default function CategoriesScreen() {
+  const color = useColors();
+  const styles = useStyles();
   const router = useRouter();
   const database = useDatabase();
   const showSnackbar = useSnackbar();
@@ -252,6 +255,7 @@ function CategoryRow({
   readonly onPress: () => void;
   readonly onDelete: () => void;
 }) {
+  const styles = useStyles();
   const row = (
     <Row
       testID={`${CATEGORY_ROW_TEST_ID_PREFIX}-${category.id}`}
@@ -296,6 +300,7 @@ function CategoryRow({
 
 /** State `loading:first-paint`: four skeleton rows, resolved with the count query. */
 function ListSkeleton() {
+  const styles = useStyles();
   return (
     <View
       testID="categories-skeleton"
@@ -314,33 +319,35 @@ function ListSkeleton() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: color.bg.canvas,
-  },
-  list: {
-    paddingBottom: size.fab + space[4] + space[4],
-  },
-  trailing: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space[2],
-  },
-  count: {
-    ...type.callout,
-    color: color.text.tertiary,
-    fontVariant: ['tabular-nums'],
-  },
-  skeletonRow: {
-    minHeight: size.rowMinHeight,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: color.bg.surface,
-    paddingHorizontal: space[4],
-    gap: space[3],
-  },
-  skeletonSpacer: {
-    flex: 1,
-  },
-});
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: color.bg.canvas,
+    },
+    list: {
+      paddingBottom: size.fab + space[4] + space[4],
+    },
+    trailing: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space[2],
+    },
+    count: {
+      ...type.callout,
+      color: color.text.tertiary,
+      fontVariant: ['tabular-nums'],
+    },
+    skeletonRow: {
+      minHeight: size.rowMinHeight,
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: color.bg.surface,
+      paddingHorizontal: space[4],
+      gap: space[3],
+    },
+    skeletonSpacer: {
+      flex: 1,
+    },
+  }),
+);

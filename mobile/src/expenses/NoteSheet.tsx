@@ -4,7 +4,8 @@ import { LIMITS } from '@expense-tracker/shared';
 import { Button } from '../components/Button';
 import { Sheet } from '../components/Sheet';
 import { COPY } from '../copy/strings';
-import { color, isDark, radius, space, type } from '../theme/tokens';
+import { radius, space, type } from '../theme/tokens';
+import { createStyles, useColors, useTheme } from '../theme/ThemeProvider';
 
 /**
  * The note sheet: `docs/design/06-expense-form.md` rule 10.
@@ -40,6 +41,9 @@ export interface NoteSheetProps {
 }
 
 export function NoteSheet({ visible, onClose, note, onDone }: NoteSheetProps) {
+  const color = useColors();
+  const { isDark } = useTheme();
+  const styles = useStyles();
   const [draft, setDraft] = useState(note);
 
   // Re-seeded on each presentation: the sheet stays mounted, so without this a note the
@@ -95,27 +99,29 @@ export function NoteSheet({ visible, onClose, note, onDone }: NoteSheetProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  body: {
-    gap: space[3],
-    paddingBottom: space[4],
-  },
-  input: {
-    ...type.body,
-    color: color.text.primary,
-    borderWidth: 1,
-    borderColor: color.border.input,
-    borderRadius: radius.md,
-    padding: space[3],
-    // Four lines tall, as a floor - it grows with the font scale rather than clipping.
-    minHeight: 4 * 24,
-  },
-  counter: {
-    ...type.footnote,
-    color: color.text.tertiary,
-    textAlign: 'right',
-  },
-  counterWarning: {
-    color: color.warning.default,
-  },
-});
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    body: {
+      gap: space[3],
+      paddingBottom: space[4],
+    },
+    input: {
+      ...type.body,
+      color: color.text.primary,
+      borderWidth: 1,
+      borderColor: color.border.input,
+      borderRadius: radius.md,
+      padding: space[3],
+      // Four lines tall, as a floor - it grows with the font scale rather than clipping.
+      minHeight: 4 * 24,
+    },
+    counter: {
+      ...type.footnote,
+      color: color.text.tertiary,
+      textAlign: 'right',
+    },
+    counterWarning: {
+      color: color.warning.default,
+    },
+  }),
+);

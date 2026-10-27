@@ -14,7 +14,8 @@ import {
   monthSpokenLabel,
 } from '@/lib/calendar';
 import { useSelectedMonth } from '@/month/MonthProvider';
-import { HIT_SLOP_44, color, radius, size, space, type } from '@/theme/tokens';
+import { HIT_SLOP_44, radius, size, space, type } from '@/theme/tokens';
+import { createStyles, useColors } from '@/theme/ThemeProvider';
 
 /**
  * The month picker: `docs/design/05-month-switcher.md` §The picker sheet.
@@ -51,6 +52,8 @@ export const THIS_MONTH_TEST_ID = 'month-this-month';
 const TWO_COLUMN_FONT_SCALE = 1.5;
 
 export default function MonthPickerScreen() {
+  const color = useColors();
+  const styles = useStyles();
   const router = useRouter();
   const { month, currentMonth, today, isCurrent, select, goToCurrent } = useSelectedMonth();
   const monthsWithExpenses = useMonthsWithExpenses();
@@ -154,6 +157,7 @@ function MonthCell({
   readonly future: boolean;
   readonly onPress: () => void;
 }) {
+  const styles = useStyles();
   // The precedence between the five cell states (§Month cell states). Selected wins over
   // current, because the user's choice is what the screen is about; future wins over
   // everything, because it cannot be chosen at all.
@@ -200,80 +204,82 @@ function MonthCell({
   );
 }
 
-const styles = StyleSheet.create({
-  yearStepper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: size.tapTargetMin,
-  },
-  yearArrow: {
-    minWidth: size.tapTargetMin,
-    minHeight: size.tapTargetMin,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  yearLabel: {
-    ...type.headline,
-    color: color.text.primary,
-    flex: 1,
-    textAlign: 'center',
-    fontVariant: ['tabular-nums'],
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: space[2],
-    paddingVertical: space[4],
-  },
-  cell: {
-    // A floor: the cell grows with the font scale rather than clipping `Oct`.
-    minHeight: 48,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: space[1],
-  },
-  cellDefault: {
-    backgroundColor: color.bg.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: color.border.hairline,
-  },
-  cellSelected: {
-    backgroundColor: color.primary.default,
-  },
-  cellCurrent: {
-    backgroundColor: color.primary.subtle,
-    borderWidth: 1,
-    borderColor: color.primary.default,
-  },
-  cellFuture: {
-    backgroundColor: color.bg.sunken,
-  },
-  cellLabel: {
-    ...type.subhead,
-  },
-  labelDefault: {
-    color: color.text.primary,
-  },
-  labelSelected: {
-    color: color.text.inverse,
-    fontWeight: '600',
-  },
-  labelCurrent: {
-    color: color.primary.default,
-    fontWeight: '600',
-  },
-  labelFuture: {
-    color: color.text.disabled,
-  },
-  dot: {
-    width: 4,
-    height: 4,
-    borderRadius: radius.pill,
-    backgroundColor: color.primary.default,
-  },
-  dotOnSelected: {
-    // On a `primary.default` fill the dot would be invisible in its own colour.
-    backgroundColor: color.text.inverse,
-  },
-});
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    yearStepper: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      minHeight: size.tapTargetMin,
+    },
+    yearArrow: {
+      minWidth: size.tapTargetMin,
+      minHeight: size.tapTargetMin,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    yearLabel: {
+      ...type.headline,
+      color: color.text.primary,
+      flex: 1,
+      textAlign: 'center',
+      fontVariant: ['tabular-nums'],
+    },
+    grid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: space[2],
+      paddingVertical: space[4],
+    },
+    cell: {
+      // A floor: the cell grows with the font scale rather than clipping `Oct`.
+      minHeight: 48,
+      borderRadius: radius.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: space[1],
+    },
+    cellDefault: {
+      backgroundColor: color.bg.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: color.border.hairline,
+    },
+    cellSelected: {
+      backgroundColor: color.primary.default,
+    },
+    cellCurrent: {
+      backgroundColor: color.primary.subtle,
+      borderWidth: 1,
+      borderColor: color.primary.default,
+    },
+    cellFuture: {
+      backgroundColor: color.bg.sunken,
+    },
+    cellLabel: {
+      ...type.subhead,
+    },
+    labelDefault: {
+      color: color.text.primary,
+    },
+    labelSelected: {
+      color: color.text.inverse,
+      fontWeight: '600',
+    },
+    labelCurrent: {
+      color: color.primary.default,
+      fontWeight: '600',
+    },
+    labelFuture: {
+      color: color.text.disabled,
+    },
+    dot: {
+      width: 4,
+      height: 4,
+      borderRadius: radius.pill,
+      backgroundColor: color.primary.default,
+    },
+    dotOnSelected: {
+      // On a `primary.default` fill the dot would be invisible in its own colour.
+      backgroundColor: color.text.inverse,
+    },
+  }),
+);

@@ -1,6 +1,7 @@
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Button } from './Button';
-import { color, elevation, radius, space, type } from '../theme/tokens';
+import { elevation, radius, space, type } from '../theme/tokens';
+import { createStyles } from '../theme/ThemeProvider';
 import { COPY } from '../copy/strings';
 
 /**
@@ -39,6 +40,7 @@ export function Dialog({
   cancelLabel = COPY.common.cancel,
   testID,
 }: DialogProps) {
+  const styles = useStyles();
   return (
     <Modal
       visible={visible}
@@ -90,33 +92,35 @@ export function Dialog({
   );
 }
 
-const styles = StyleSheet.create({
-  scrim: {
-    flex: 1,
-    backgroundColor: color.bg.scrim,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: space[4],
-  },
-  dialog: {
-    ...elevation[2],
-    width: '100%',
-    maxWidth: 320,
-    backgroundColor: color.bg.surface,
-    borderRadius: radius.lg,
-    padding: space[5],
-    gap: space[3],
-  },
-  title: {
-    ...type.title2,
-    color: color.text.primary,
-  },
-  body: {
-    ...type.callout,
-    color: color.text.secondary,
-  },
-  actions: {
-    marginTop: space[2],
-    gap: space[2],
-  },
-});
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    scrim: {
+      flex: 1,
+      backgroundColor: color.bg.scrim,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: space[4],
+    },
+    dialog: {
+      ...elevation[2],
+      width: '100%',
+      maxWidth: 320,
+      backgroundColor: color.bg.surface,
+      borderRadius: radius.lg,
+      padding: space[5],
+      gap: space[3],
+    },
+    title: {
+      ...type.title2,
+      color: color.text.primary,
+    },
+    body: {
+      ...type.callout,
+      color: color.text.secondary,
+    },
+    actions: {
+      marginTop: space[2],
+      gap: space[2],
+    },
+  }),
+);

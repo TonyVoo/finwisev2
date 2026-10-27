@@ -1,7 +1,8 @@
 import { type ReactNode, useRef, useState } from 'react';
 import { Animated, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
-import { color, motion, space, type } from '../theme/tokens';
+import { motion, space, type } from '../theme/tokens';
+import { createStyles, useColors } from '../theme/ThemeProvider';
 
 /**
  * A row with a destructive action revealed by a leading-to-trailing swipe
@@ -56,6 +57,8 @@ export function SwipeToDelete({
   enabled = true,
   testID,
 }: SwipeToDeleteProps) {
+  const color = useColors();
+  const styles = useStyles();
   const translateX = useRef(new Animated.Value(0)).current;
   const offset = useRef(0);
   const [rowWidth, setRowWidth] = useState(0);
@@ -131,26 +134,28 @@ export function SwipeToDelete({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    position: 'relative',
-    backgroundColor: color.danger.default,
-  },
-  action: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: ACTION_WIDTH,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: space[1],
-  },
-  actionLabel: {
-    ...type.caption,
-    color: color.text.inverse,
-  },
-  row: {
-    backgroundColor: color.bg.surface,
-  },
-});
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    container: {
+      position: 'relative',
+      backgroundColor: color.danger.default,
+    },
+    action: {
+      position: 'absolute',
+      right: 0,
+      top: 0,
+      bottom: 0,
+      width: ACTION_WIDTH,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: space[1],
+    },
+    actionLabel: {
+      ...type.caption,
+      color: color.text.inverse,
+    },
+    row: {
+      backgroundColor: color.bg.surface,
+    },
+  }),
+);

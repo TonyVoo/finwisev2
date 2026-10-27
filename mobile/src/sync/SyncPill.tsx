@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { ColorTokens } from '../theme/tokens';
 import {
   AccessibilityInfo,
   Animated,
@@ -10,7 +11,8 @@ import {
 } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
 import { syncPillA11yLabel, syncPillLabel } from '../copy/strings';
-import { HIT_SLOP_44, color, radius, size, space, type } from '../theme/tokens';
+import { HIT_SLOP_44, radius, size, space, type } from '../theme/tokens';
+import { useColors } from '../theme/ThemeProvider';
 import { type SyncInputs, type SyncPillState, isPillTappable, syncPillState } from './state';
 
 /**
@@ -55,7 +57,7 @@ interface PillStyle {
 }
 
 /** §3's table, as styling. `idle` is absent because it has nothing to style. */
-const PILL_STYLES: Record<Exclude<SyncPillState, 'idle'>, PillStyle> = {
+const pillStylesFor = (color: ColorTokens): Record<Exclude<SyncPillState, 'idle'>, PillStyle> => ({
   syncing: { glyph: 'refresh-cw', fill: color.info.subtle, tint: color.info.default },
   pending: { glyph: 'clock', fill: color.warning.subtle, tint: color.warning.default },
   // State 4 is not an error and is not coloured as one (rule 3): grey, quiet, `bg.sunken`.
@@ -66,7 +68,7 @@ const PILL_STYLES: Record<Exclude<SyncPillState, 'idle'>, PillStyle> = {
     tint: color.warning.default,
   },
   error: { glyph: 'alert-circle', fill: color.danger.subtle, tint: color.danger.default },
-};
+});
 
 export interface SyncPillProps {
   readonly inputs: SyncInputs;
@@ -76,6 +78,7 @@ export interface SyncPillProps {
 }
 
 export function SyncPill({ inputs, onPress, testID = 'sync-pill' }: SyncPillProps) {
+  const color = useColors();
   const showSyncing = useDelayedSyncing(inputs.inFlight);
   const state = syncPillState({ ...inputs, inFlight: inputs.inFlight && showSyncing });
 
@@ -96,7 +99,7 @@ export function SyncPill({ inputs, onPress, testID = 'sync-pill' }: SyncPillProp
   }
 
   const tappable = isPillTappable(state);
-  const { glyph, fill, tint } = PILL_STYLES[state];
+  const { glyph, fill, tint } = pillStylesFor(color)[state];
 
   return (
     <View style={styles.slot}>

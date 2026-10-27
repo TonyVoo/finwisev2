@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Slot } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -6,7 +6,13 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppProviders } from '@/bootstrap/AppProviders';
 import { type AppContainer, createAppContainer } from '@/bootstrap/container';
-import { color, isDark } from '@/theme/tokens';
+import {
+  ThemeProvider,
+  applyThemePreference,
+  createStyles,
+  useColors,
+  useTheme,
+} from '@/theme/ThemeProvider';
 
 /**
  * The root route: build the app container, then render the tree.
@@ -36,6 +42,8 @@ export default function RootLayout() {
 
     createAppContainer().then(
       (ready) => {
+        // Before the first frame, so a pinned theme never flashes the system one.
+        applyThemePreference(ready.themePreference);
         if (!cancelled) setContainer(ready);
       },
       (error: unknown) => {
@@ -61,10 +69,9 @@ export default function RootLayout() {
     // offline. There is no retry that would help, so say so plainly rather than looping.
     return (
       <SafeAreaProvider>
-        <View style={styles.boot}>
-          <Text style={styles.bootTitle}>Expense Tracker could not start</Text>
-          <Text style={styles.bootDetail}>{bootError.message}</Text>
-        </View>
+        <ThemeProvider>
+          <BootError message={bootError.message} />
+        </ThemeProvider>
       </SafeAreaProvider>
     );
   }
@@ -77,33 +84,58 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <AppProviders container={container}>
-        {/* Icons contrast with whichever palette `theme/tokens` picked at launch. */}
-        <StatusBar style={isDark ? 'light' : 'dark'} />
-        <Slot />
+        <ThemedStatusBar />
+        <ThemedRoot>
+          <Slot />
+        </ThemedRoot>
       </AppProviders>
     </SafeAreaProvider>
   );
 }
 
-const styles = StyleSheet.create({
-  boot: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    padding: 24,
-    backgroundColor: color.bg.canvas,
-  },
-  bootTitle: {
-    color: color.text.primary,
-    fontSize: 17,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  bootDetail: {
-    color: color.text.primary,
-    fontSize: 13,
-    opacity: 0.7,
-    textAlign: 'center',
-  },
-});
+/** Icons contrast with whichever palette is showing, including after a live switch. */
+function ThemedStatusBar() {
+  const { isDark } = useTheme();
+  return <StatusBar style={isDark ? 'light' : 'dark'} />;
+}
+
+/** The backdrop behind every route, so a screen transition never shows the navigator's white. */
+function ThemedRoot({ children }: { readonly children: ReactNode }) {
+  const color = useColors();
+  return <View style={{ flex: 1, backgroundColor: color.bg.canvas }}>{children}</View>;
+}
+
+function BootError({ message }: { readonly message: string }) {
+  const styles = useStyles();
+  return (
+    <View style={styles.boot}>
+      <Text style={styles.bootTitle}>Expense Tracker could not start</Text>
+      <Text style={styles.bootDetail}>{message}</Text>
+    </View>
+  );
+}
+
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    boot: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      padding: 24,
+      backgroundColor: color.bg.canvas,
+    },
+    bootTitle: {
+      color: color.text.primary,
+      fontSize: 17,
+      fontWeight: '600',
+      textAlign: 'center',
+    },
+    bootDetail: {
+      color: color.text.primary,
+      fontSize: 13,
+      opacity: 0.7,
+      textAlign: 'center',
+    },
+  }),
+);

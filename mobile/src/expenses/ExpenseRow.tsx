@@ -5,7 +5,8 @@ import { SwipeToDelete } from '../components/SwipeToDelete';
 import { COPY, SYNC_COPY } from '../copy/strings';
 import type { CalendarDate } from '../lib/calendar';
 import { formatMoney } from '../lib/money';
-import { color, space, type } from '../theme/tokens';
+import { space, type } from '../theme/tokens';
+import { createStyles } from '../theme/ThemeProvider';
 import type { ExpenseListItem } from '../db/queries';
 import { expenseRowLabel, rowCategoryColor, rowCategoryName } from './listModel';
 
@@ -40,6 +41,7 @@ export interface ExpenseRowProps {
 }
 
 export function ExpenseRow({ item, today, onPress, onDelete, lastInGroup }: ExpenseRowProps) {
+  const styles = useStyles();
   return (
     <SwipeToDelete
       onDelete={onDelete}
@@ -83,12 +85,7 @@ export function ExpenseRow({ item, today, onPress, onDelete, lastInGroup }: Expe
           <Text style={styles.needsAttention} testID={`expense-needs-attention-${item.id}`}>
             {SYNC_COPY.row.needsAttention}
           </Text>
-        ) : item.note === null ||
-          item.note.trim().length ===
-            0 ? // Omitted entirely when there is no note, rather than rendered as an empty line
-        // - `''` and `null` would otherwise look different (`mutations.ts`,
-        // `normaliseNote`).
-        null : (
+        ) : item.note === null || item.note.trim().length === 0 ? null : ( // `normaliseNote`). // - `''` and `null` would otherwise look different (`mutations.ts`, // Omitted entirely when there is no note, rather than rendered as an empty line
           <RowSubtitle>{item.note}</RowSubtitle>
         )}
       </Row>
@@ -96,19 +93,21 @@ export function ExpenseRow({ item, today, onPress, onDelete, lastInGroup }: Expe
   );
 }
 
-const styles = StyleSheet.create({
-  trailing: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space[1],
-  },
-  amount: {
-    ...type.bodyStrong,
-    color: color.text.primary,
-    fontVariant: ['tabular-nums'],
-  },
-  needsAttention: {
-    ...type.footnote,
-    color: color.danger.default,
-  },
-});
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    trailing: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space[1],
+    },
+    amount: {
+      ...type.bodyStrong,
+      color: color.text.primary,
+      fontVariant: ['tabular-nums'],
+    },
+    needsAttention: {
+      ...type.footnote,
+      color: color.danger.default,
+    },
+  }),
+);

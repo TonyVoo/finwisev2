@@ -1,4 +1,3 @@
-import type * as TokensModule from '@/theme/tokens';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
@@ -127,18 +126,5 @@ describe('scheme resolution', () => {
     expect(resolveScheme('light')).toBe('light');
     expect(resolveScheme(null)).toBe('light');
     expect(resolveScheme(undefined)).toBe('light');
-  });
-
-  it('exports the dark palette as `color` when the system is dark at launch', () => {
-    jest.isolateModules(() => {
-      jest.doMock('react-native/Libraries/Utilities/Appearance', () => ({
-        getColorScheme: () => 'dark',
-        addChangeListener: () => ({ remove: () => undefined }),
-      }));
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const tokens = require('@/theme/tokens') as typeof TokensModule;
-      expect(tokens.isDark).toBe(true);
-      expect(tokens.color.bg.canvas).toBe('#0F1115');
-    });
   });
 });

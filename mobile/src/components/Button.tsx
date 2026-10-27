@@ -6,7 +6,9 @@ import {
   Text,
   View,
 } from 'react-native';
-import { color, isDark, radius, size, space, type } from '../theme/tokens';
+import type { ColorTokens } from '../theme/tokens';
+import { radius, size, space, type } from '../theme/tokens';
+import { createStyles, useColors, useTheme } from '../theme/ThemeProvider';
 
 /**
  * The button, as `docs/design/00-foundations.md` §6 specifies it.
@@ -71,7 +73,10 @@ interface VariantStyle {
   readonly minHeight: number;
 }
 
-const VARIANTS: Readonly<Record<ButtonVariant, VariantStyle>> = {
+const variantsFor = (
+  color: ColorTokens,
+  isDark: boolean,
+): Readonly<Record<ButtonVariant, VariantStyle>> => ({
   primary: {
     fill: color.primary.default,
     pressedFill: color.primary.pressed,
@@ -102,7 +107,7 @@ const VARIANTS: Readonly<Record<ButtonVariant, VariantStyle>> = {
     label: color.text.inverse,
     minHeight: size.buttonHeight,
   },
-};
+});
 
 export function Button({
   label,
@@ -114,7 +119,10 @@ export function Button({
   disabledReason,
   testID,
 }: ButtonProps) {
-  const base = VARIANTS[variant];
+  const color = useColors();
+  const { isDark } = useTheme();
+  const styles = useStyles();
+  const base = variantsFor(color, isDark)[variant];
   // Only the label moves. The fill, the pressed fill and the height stay the variant's,
   // so a danger-toned ghost is still a ghost.
   const palette = tone === 'danger' ? { ...base, label: color.danger.default } : base;
@@ -176,37 +184,39 @@ export function Button({
   );
 }
 
-const styles = StyleSheet.create({
-  fullWidth: {
-    alignSelf: 'stretch',
-  },
-  button: {
-    // `minHeight`, not `height`: the heights in §6 are floors that grow with font scale.
-    borderRadius: radius.md,
-    paddingHorizontal: space[5],
-    paddingVertical: space[3],
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  label: {
-    ...type.bodyStrong,
-    textAlign: 'center',
-  },
-  labelHidden: {
-    opacity: 0,
-  },
-  indicator: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  reason: {
-    ...type.footnote,
-    color: color.text.tertiary,
-    marginTop: space[1],
-  },
-});
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    fullWidth: {
+      alignSelf: 'stretch',
+    },
+    button: {
+      // `minHeight`, not `height`: the heights in §6 are floors that grow with font scale.
+      borderRadius: radius.md,
+      paddingHorizontal: space[5],
+      paddingVertical: space[3],
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    label: {
+      ...type.bodyStrong,
+      textAlign: 'center',
+    },
+    labelHidden: {
+      opacity: 0,
+    },
+    indicator: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    reason: {
+      ...type.footnote,
+      color: color.text.tertiary,
+      marginTop: space[1],
+    },
+  }),
+);

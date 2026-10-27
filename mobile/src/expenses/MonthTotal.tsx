@@ -2,7 +2,8 @@ import { StyleSheet, Text, View } from 'react-native';
 import { SkeletonBlock } from '../components/Chrome';
 import { COPY, summaryExpenseCount } from '../copy/strings';
 import { formatMoney } from '../lib/money';
-import { color, space, type } from '../theme/tokens';
+import { space, type } from '../theme/tokens';
+import { createStyles } from '../theme/ThemeProvider';
 
 /**
  * The month total: `docs/design/04-expense-list.md` elements 6 and 7.
@@ -53,6 +54,7 @@ export interface MonthTotalProps {
 }
 
 export function MonthTotal({ totalMinor, currency, isCurrentMonth, count }: MonthTotalProps) {
+  const styles = useStyles();
   const label = isCurrentMonth ? COPY.home.total.current : COPY.home.total.other;
 
   if (totalMinor === undefined) {
@@ -91,25 +93,27 @@ export function MonthTotal({ totalMinor, currency, isCurrentMonth, count }: Mont
   );
 }
 
-const styles = StyleSheet.create({
-  block: {
-    backgroundColor: color.bg.surface,
-    paddingHorizontal: space[4],
-    paddingTop: space[3],
-    paddingBottom: space[4],
-    gap: space[1],
-  },
-  label: {
-    ...type.caption,
-    color: color.text.tertiary,
-  },
-  amount: {
-    ...type.display,
-    color: color.text.primary,
-    fontVariant: ['tabular-nums'],
-  },
-  count: {
-    ...type.footnote,
-    color: color.text.tertiary,
-  },
-});
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    block: {
+      backgroundColor: color.bg.surface,
+      paddingHorizontal: space[4],
+      paddingTop: space[3],
+      paddingBottom: space[4],
+      gap: space[1],
+    },
+    label: {
+      ...type.caption,
+      color: color.text.tertiary,
+    },
+    amount: {
+      ...type.display,
+      color: color.text.primary,
+      fontVariant: ['tabular-nums'],
+    },
+    count: {
+      ...type.footnote,
+      color: color.text.tertiary,
+    },
+  }),
+);

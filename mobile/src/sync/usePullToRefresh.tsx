@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import { RefreshControl, type RefreshControlProps } from 'react-native';
 import { useSync } from './SyncProvider';
-import { color } from '../theme/tokens';
+import { useColors } from '../theme/ThemeProvider';
 
 /**
  * Pull-to-refresh on Home and Summary: a sync, not a reload.
@@ -62,6 +62,7 @@ export interface PullToRefresh {
 }
 
 export function usePullToRefresh(): PullToRefresh {
+  const color = useColors();
   const { engine, enabled } = useSync();
   const [refreshing, setRefreshing] = useState(false);
 

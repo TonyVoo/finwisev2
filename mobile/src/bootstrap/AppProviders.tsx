@@ -1,10 +1,12 @@
-import { type ReactNode, createContext, useContext } from 'react';
+import { type ReactNode, createContext, useCallback, useContext } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { SessionProvider } from '../auth/SessionProvider';
 import { DatabaseProvider } from '../db/DatabaseProvider';
 import { MonthProvider } from '../month/MonthProvider';
 import { SnackbarProvider } from '../components/Snackbar';
 import { SyncProvider } from '../sync/SyncProvider';
+import { META_KEYS, writeMeta } from '../db/meta';
+import { ThemeProvider } from '../theme/ThemeProvider';
 import type { ApiClient } from '../api/client';
 import type { AppContainer } from './container';
 
@@ -42,23 +44,34 @@ export interface AppProvidersProps {
  * sheets and dialogs that can ask for one.
  */
 export function AppProviders({ container, startSync = true, children }: AppProvidersProps) {
+  const { database } = container;
+  // Fire-and-forget: a failed write must not undo a choice already on screen.
+  const saveTheme = useCallback(
+    (next: string) => {
+      void writeMeta(database, META_KEYS.themePreference, next).catch(() => undefined);
+    },
+    [database],
+  );
+
   return (
-    <QueryClientProvider client={container.queryClient}>
-      <SessionProvider controller={container.session}>
-        <ApiContext.Provider value={container.api}>
-          <DatabaseProvider database={container.database}>
-            {/* Inside `DatabaseProvider` and above the screens: the engine reads the same
+    <ThemeProvider initialPreference={container.themePreference} onPreferenceChange={saveTheme}>
+      <QueryClientProvider client={container.queryClient}>
+        <SessionProvider controller={container.session}>
+          <ApiContext.Provider value={container.api}>
+            <DatabaseProvider database={container.database}>
+              {/* Inside `DatabaseProvider` and above the screens: the engine reads the same
                 database the screens do, and `useLocalWrite` reaches up to it to trigger a
                 sync once a write has settled. */}
-            <SyncProvider engine={container.sync} enabled={startSync}>
-              <SnackbarProvider>
-                <MonthProvider clock={container.clock}>{children}</MonthProvider>
-              </SnackbarProvider>
-            </SyncProvider>
-          </DatabaseProvider>
-        </ApiContext.Provider>
-      </SessionProvider>
-    </QueryClientProvider>
+              <SyncProvider engine={container.sync} enabled={startSync}>
+                <SnackbarProvider>
+                  <MonthProvider clock={container.clock}>{children}</MonthProvider>
+                </SnackbarProvider>
+              </SyncProvider>
+            </DatabaseProvider>
+          </ApiContext.Provider>
+        </SessionProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }
 

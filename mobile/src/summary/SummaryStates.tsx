@@ -2,7 +2,8 @@ import { StyleSheet, Text, View } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
 import { SkeletonBlock } from '../components/Chrome';
 import { EMPTY_COPY } from '../copy/strings';
-import { color, radius, space, type } from '../theme/tokens';
+import { radius, space, type } from '../theme/tokens';
+import { createStyles, useColors } from '../theme/ThemeProvider';
 
 /**
  * The Summary's non-default states: `docs/design/08-monthly-summary.md` §States.
@@ -41,6 +42,8 @@ const SKELETON_ROWS = [0, 1, 2, 3];
  * then stops.
  */
 export function SummaryEmpty() {
+  const color = useColors();
+  const styles = useStyles();
   return (
     <View testID={SUMMARY_EMPTY_TEST_ID} style={styles.empty}>
       <Feather
@@ -72,6 +75,7 @@ export function SummaryEmpty() {
  * suppress, on a state that is almost never seen.
  */
 export function SummarySkeleton() {
+  const styles = useStyles();
   return (
     <View
       testID={SUMMARY_SKELETON_TEST_ID}
@@ -101,42 +105,44 @@ export function SummarySkeleton() {
   );
 }
 
-const styles = StyleSheet.create({
-  empty: {
-    alignItems: 'center',
-    paddingHorizontal: space[4],
-    // §States: `space.10` below the total.
-    paddingTop: space[10],
-    gap: space[2],
-  },
-  headline: {
-    ...type.title2,
-    color: color.text.primary,
-    textAlign: 'center',
-    // §States: `space.6` under the illustration, then `space.2` under the headline.
-    marginTop: space[6],
-  },
-  body: {
-    ...type.callout,
-    color: color.text.secondary,
-    textAlign: 'center',
-    maxWidth: 280,
-  },
-  skeletonDonut: {
-    alignItems: 'center',
-    marginVertical: space[6],
-  },
-  skeletonLegend: {
-    backgroundColor: color.bg.surface,
-  },
-  skeletonRow: {
-    minHeight: 48,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: space[4],
-    gap: space[3],
-  },
-  skeletonSpacer: {
-    flex: 1,
-  },
-});
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    empty: {
+      alignItems: 'center',
+      paddingHorizontal: space[4],
+      // §States: `space.10` below the total.
+      paddingTop: space[10],
+      gap: space[2],
+    },
+    headline: {
+      ...type.title2,
+      color: color.text.primary,
+      textAlign: 'center',
+      // §States: `space.6` under the illustration, then `space.2` under the headline.
+      marginTop: space[6],
+    },
+    body: {
+      ...type.callout,
+      color: color.text.secondary,
+      textAlign: 'center',
+      maxWidth: 280,
+    },
+    skeletonDonut: {
+      alignItems: 'center',
+      marginVertical: space[6],
+    },
+    skeletonLegend: {
+      backgroundColor: color.bg.surface,
+    },
+    skeletonRow: {
+      minHeight: 48,
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: space[4],
+      gap: space[3],
+    },
+    skeletonSpacer: {
+      flex: 1,
+    },
+  }),
+);

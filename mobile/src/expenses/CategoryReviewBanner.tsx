@@ -1,7 +1,8 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { Button } from '../components/Button';
 import { COPY } from '../copy/strings';
-import { color, radius, space, type } from '../theme/tokens';
+import { radius, space, type } from '../theme/tokens';
+import { createStyles } from '../theme/ThemeProvider';
 
 /**
  * The one-time prompt on Home after signup, offering a way into the category editor.
@@ -17,6 +18,7 @@ export function CategoryReviewBanner({
   readonly onReview: () => void;
   readonly onDismiss: () => void;
 }) {
+  const styles = useStyles();
   return (
     <View style={styles.card} testID="category-review">
       <Text style={styles.title} accessibilityRole="header">
@@ -40,18 +42,20 @@ export function CategoryReviewBanner({
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    marginHorizontal: space[4],
-    marginBottom: space[3],
-    padding: space[4],
-    gap: space[2],
-    borderRadius: radius.lg,
-    backgroundColor: color.bg.surface,
-    borderWidth: 1,
-    borderColor: color.border.input,
-  },
-  title: { ...type.headline, color: color.text.primary },
-  body: { ...type.body, color: color.text.secondary },
-  actions: { flexDirection: 'row', gap: space[2], alignItems: 'center', marginTop: space[1] },
-});
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    card: {
+      marginHorizontal: space[4],
+      marginBottom: space[3],
+      padding: space[4],
+      gap: space[2],
+      borderRadius: radius.lg,
+      backgroundColor: color.bg.surface,
+      borderWidth: 1,
+      borderColor: color.border.input,
+    },
+    title: { ...type.headline, color: color.text.primary },
+    body: { ...type.body, color: color.text.secondary },
+    actions: { flexDirection: 'row', gap: space[2], alignItems: 'center', marginTop: space[1] },
+  }),
+);

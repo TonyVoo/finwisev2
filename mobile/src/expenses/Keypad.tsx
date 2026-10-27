@@ -3,7 +3,8 @@ import { useEffect, useRef } from 'react';
 import Feather from '@expo/vector-icons/Feather';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COPY } from '../copy/strings';
-import { color, motion, radius, size, space, type } from '../theme/tokens';
+import { motion, radius, size, space, type } from '../theme/tokens';
+import { createStyles, useColors } from '../theme/ThemeProvider';
 
 /**
  * The amount keypad: `docs/design/06-expense-form.md` elements 10-13.
@@ -49,6 +50,7 @@ export function Keypad({
   rejectionCount = 0,
   shakeEnabled = true,
 }: KeypadProps) {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const shake = useRef(new Animated.Value(0)).current;
   const previousRejections = useRef(rejectionCount);
@@ -165,6 +167,8 @@ function Key({
   readonly glyph?: keyof typeof Feather.glyphMap;
   readonly onPress: () => void;
 }) {
+  const color = useColors();
+  const styles = useStyles();
   // The key's height floor grows with the OS font scale, so a large-text user gets a
   // taller keypad rather than clipped labels (§Accessibility rule 5).
   const { fontScale } = useWindowDimensions();
@@ -192,25 +196,27 @@ function Key({
   );
 }
 
-const styles = StyleSheet.create({
-  backdrop: {
-    backgroundColor: color.bg.sunken,
-    paddingHorizontal: space[2],
-    paddingTop: space[2],
-    gap: space[2],
-  },
-  row: {
-    flexDirection: 'row',
-    gap: space[2],
-  },
-  key: {
-    flex: 1,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  keyLabel: {
-    ...type.title2,
-    color: color.text.primary,
-  },
-});
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    backdrop: {
+      backgroundColor: color.bg.sunken,
+      paddingHorizontal: space[2],
+      paddingTop: space[2],
+      gap: space[2],
+    },
+    row: {
+      flexDirection: 'row',
+      gap: space[2],
+    },
+    key: {
+      flex: 1,
+      borderRadius: radius.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    keyLabel: {
+      ...type.title2,
+      color: color.text.primary,
+    },
+  }),
+);

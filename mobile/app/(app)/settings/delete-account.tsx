@@ -10,7 +10,8 @@ import { FormBanner } from '@/components/FormBanner';
 import { FormScreen } from '@/components/FormScreen';
 import { PasswordField } from '@/components/PasswordField';
 import { COPY, VALIDATION_COPY } from '@/copy/strings';
-import { color, space, type } from '@/theme/tokens';
+import { space, type } from '@/theme/tokens';
+import { createStyles } from '@/theme/ThemeProvider';
 
 /**
  * Delete account.
@@ -28,6 +29,7 @@ import { color, space, type } from '@/theme/tokens';
  * A failure leaves everything as it was: the account exists and so does the local data.
  */
 export default function DeleteAccountScreen() {
+  const styles = useStyles();
   const router = useRouter();
   const api = useApiClient();
   const session = useSessionController();
@@ -111,10 +113,12 @@ export default function DeleteAccountScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  warning: {
-    ...type.body,
-    color: color.text.secondary,
-    marginBottom: space[2],
-  },
-});
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    warning: {
+      ...type.body,
+      color: color.text.secondary,
+      marginBottom: space[2],
+    },
+  }),
+);

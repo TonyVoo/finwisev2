@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { formatMoney } from '../lib/money';
-import { color, displayCategoryColor, radius, space, type } from '../theme/tokens';
+import { displayCategoryColor, radius, space, type } from '../theme/tokens';
+import { createStyles, useTheme } from '../theme/ThemeProvider';
 import { budgetLabel, legendRowLabel, type SpendEntry } from './summaryModel';
 
 /**
@@ -61,6 +62,7 @@ export interface SpendLegendProps {
 }
 
 export function SpendLegend({ entries, currency }: SpendLegendProps) {
+  const styles = useStyles();
   const { fontScale } = useWindowDimensions();
   const stacked = fontScale > STACK_FONT_SCALE;
 
@@ -90,6 +92,8 @@ function LegendRow({
   readonly stacked: boolean;
   readonly first: boolean;
 }) {
+  const styles = useStyles();
+  const { isDark } = useTheme();
   const id = entry.categoryId ?? 'uncategorized';
 
   return (
@@ -103,7 +107,7 @@ function LegendRow({
         <View style={styles.leading}>
           <View
             testID={`${LEGEND_SWATCH_TEST_ID_PREFIX}-${id}`}
-            style={[styles.swatch, { backgroundColor: displayCategoryColor(entry.color) }]}
+            style={[styles.swatch, { backgroundColor: displayCategoryColor(entry.color, isDark) }]}
             // The name is right beside it in text, so announcing the swatch would be
             // announcing the same thing twice - and "image" is all it could say.
             accessibilityElementsHidden
@@ -152,97 +156,99 @@ function LegendRow({
   );
 }
 
-const styles = StyleSheet.create({
-  legend: {
-    backgroundColor: color.bg.surface,
-  },
-  row: {
-    // A floor rather than a height: the row grows with the font scale (element 11).
-    minHeight: ROW_MIN_HEIGHT,
-    justifyContent: 'center',
-    paddingHorizontal: space[4],
-    paddingVertical: space[2],
-    gap: space[2],
-  },
-  main: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space[4],
-  },
-  budget: {
-    width: '100%',
-    gap: space[1],
-  },
-  track: {
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: color.border.hairline,
-    overflow: 'hidden',
-  },
-  fill: {
-    height: 4,
-    backgroundColor: color.text.secondary,
-  },
-  fillOver: {
-    backgroundColor: color.danger.default,
-  },
-  budgetText: {
-    ...type.callout,
-    color: color.text.secondary,
-    fontVariant: ['tabular-nums'],
-  },
-  budgetOver: {
-    color: color.danger.default,
-  },
-  rowStacked: {
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    gap: space[1],
-  },
-  separator: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: color.border.hairline,
-  },
-  leading: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space[3],
-  },
-  swatch: {
-    width: SWATCH_SIZE,
-    height: SWATCH_SIZE,
-    borderRadius: radius.sm,
-  },
-  name: {
-    ...type.body,
-    color: color.text.primary,
-    flexShrink: 1,
-  },
-  figures: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space[4],
-  },
-  figuresStacked: {
-    // Leading-aligned under the name, and indented past the swatch so the two figures read
-    // as belonging to the row above them rather than to the screen edge.
-    marginLeft: SWATCH_SIZE + space[3],
-    gap: space[3],
-  },
-  amount: {
-    // `type.amountRow` spelt out rather than spread: the token's own `fontVariant` is a
-    // readonly tuple, which `TextStyle` will not take, so every money style in this app
-    // restates it as a mutable array (`MonthTotal`, `ExpenseRow`).
-    ...type.bodyStrong,
-    color: color.text.primary,
-    fontVariant: ['tabular-nums'],
-  },
-  percent: {
-    ...type.callout,
-    color: color.text.tertiary,
-    fontVariant: ['tabular-nums'],
-    width: PERCENT_WIDTH,
-    textAlign: 'right',
-  },
-});
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    legend: {
+      backgroundColor: color.bg.surface,
+    },
+    row: {
+      // A floor rather than a height: the row grows with the font scale (element 11).
+      minHeight: ROW_MIN_HEIGHT,
+      justifyContent: 'center',
+      paddingHorizontal: space[4],
+      paddingVertical: space[2],
+      gap: space[2],
+    },
+    main: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space[4],
+    },
+    budget: {
+      width: '100%',
+      gap: space[1],
+    },
+    track: {
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: color.border.hairline,
+      overflow: 'hidden',
+    },
+    fill: {
+      height: 4,
+      backgroundColor: color.text.secondary,
+    },
+    fillOver: {
+      backgroundColor: color.danger.default,
+    },
+    budgetText: {
+      ...type.callout,
+      color: color.text.secondary,
+      fontVariant: ['tabular-nums'],
+    },
+    budgetOver: {
+      color: color.danger.default,
+    },
+    rowStacked: {
+      flexDirection: 'column',
+      alignItems: 'flex-start',
+      gap: space[1],
+    },
+    separator: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: color.border.hairline,
+    },
+    leading: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space[3],
+    },
+    swatch: {
+      width: SWATCH_SIZE,
+      height: SWATCH_SIZE,
+      borderRadius: radius.sm,
+    },
+    name: {
+      ...type.body,
+      color: color.text.primary,
+      flexShrink: 1,
+    },
+    figures: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space[4],
+    },
+    figuresStacked: {
+      // Leading-aligned under the name, and indented past the swatch so the two figures read
+      // as belonging to the row above them rather than to the screen edge.
+      marginLeft: SWATCH_SIZE + space[3],
+      gap: space[3],
+    },
+    amount: {
+      // `type.amountRow` spelt out rather than spread: the token's own `fontVariant` is a
+      // readonly tuple, which `TextStyle` will not take, so every money style in this app
+      // restates it as a mutable array (`MonthTotal`, `ExpenseRow`).
+      ...type.bodyStrong,
+      color: color.text.primary,
+      fontVariant: ['tabular-nums'],
+    },
+    percent: {
+      ...type.callout,
+      color: color.text.tertiary,
+      fontVariant: ['tabular-nums'],
+      width: PERCENT_WIDTH,
+      textAlign: 'right',
+    },
+  }),
+);

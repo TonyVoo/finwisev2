@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
-import { color, displayCategoryColor, radius, size, space, type } from '../theme/tokens';
+import { displayCategoryColor, radius, size, space, type } from '../theme/tokens';
+import { createStyles, useColors, useTheme } from '../theme/ThemeProvider';
 
 /**
  * The row, as `docs/design/00-foundations.md` §6 specifies it.
@@ -74,6 +75,8 @@ export function Row({
   onAccessibilityAction,
   testID,
 }: RowProps) {
+  const color = useColors();
+  const styles = useStyles();
   const interactive = onPress !== undefined;
 
   return (
@@ -120,6 +123,7 @@ export function Row({
 
 /** A row's primary line, and its optional second line. */
 export function RowTitle({ children }: { readonly children: ReactNode }) {
+  const styles = useStyles();
   return (
     <Text style={styles.title} numberOfLines={1}>
       {children}
@@ -128,6 +132,7 @@ export function RowTitle({ children }: { readonly children: ReactNode }) {
 }
 
 export function RowSubtitle({ children }: { readonly children: ReactNode }) {
+  const styles = useStyles();
   return (
     <Text style={styles.subtitle} numberOfLines={1}>
       {children}
@@ -135,44 +140,46 @@ export function RowSubtitle({ children }: { readonly children: ReactNode }) {
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    // A floor. Rows grow with content and with font scale (§2 note 1).
-    minHeight: size.rowMinHeight,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: space[4],
-    paddingVertical: space[3],
-    gap: space[3],
-  },
-  leading: {
-    justifyContent: 'center',
-  },
-  content: {
-    flex: 1,
-    gap: 2,
-  },
-  chevron: {
-    marginLeft: space[1],
-  },
-  separator: {
-    position: 'absolute',
-    bottom: 0,
-    // Inset to the content's leading edge, not full-bleed (§6).
-    left: space[4],
-    right: 0,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: color.border.hairline,
-  },
-  title: {
-    ...type.body,
-    color: color.text.primary,
-  },
-  subtitle: {
-    ...type.callout,
-    color: color.text.secondary,
-  },
-});
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    row: {
+      // A floor. Rows grow with content and with font scale (§2 note 1).
+      minHeight: size.rowMinHeight,
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: space[4],
+      paddingVertical: space[3],
+      gap: space[3],
+    },
+    leading: {
+      justifyContent: 'center',
+    },
+    content: {
+      flex: 1,
+      gap: 2,
+    },
+    chevron: {
+      marginLeft: space[1],
+    },
+    separator: {
+      position: 'absolute',
+      bottom: 0,
+      // Inset to the content's leading edge, not full-bleed (§6).
+      left: space[4],
+      right: 0,
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: color.border.hairline,
+    },
+    title: {
+      ...type.body,
+      color: color.text.primary,
+    },
+    subtitle: {
+      ...type.callout,
+      color: color.text.secondary,
+    },
+  }),
+);
 
 /** A category's colour, as a 24x24 `radius.sm` square (`04-expense-list.md` element 10). */
 export function Swatch({
@@ -182,6 +189,7 @@ export function Swatch({
   readonly colorHex: string;
   readonly diameter?: number;
 }) {
+  const { isDark } = useTheme();
   return (
     <View
       testID={SWATCH_TEST_ID}
@@ -194,7 +202,7 @@ export function Swatch({
         width: diameter,
         height: diameter,
         borderRadius: radius.sm,
-        backgroundColor: displayCategoryColor(colorHex),
+        backgroundColor: displayCategoryColor(colorHex, isDark),
       }}
     />
   );

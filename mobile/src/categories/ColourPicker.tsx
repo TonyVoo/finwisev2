@@ -6,12 +6,12 @@ import {
   CATEGORY_PICKER_ORDER,
   type CategoryColorToken,
   categoryColor,
-  color,
   displayCategoryColor,
   radius,
   space,
   type,
 } from '../theme/tokens';
+import { createStyles, useColors, useTheme } from '../theme/ThemeProvider';
 
 /**
  * The colour picker: `docs/design/07-categories.md` §2 element 7 and §5 rule 6.
@@ -55,6 +55,7 @@ export function firstUnusedColour(coloursInUse: readonly string[]): string {
 }
 
 export function ColourPicker({ selected, onSelect, coloursInUse }: ColourPickerProps) {
+  const styles = useStyles();
   const taken = new Set(coloursInUse.map((hex) => hex.toLowerCase()));
 
   return (
@@ -88,6 +89,9 @@ function Swatch({
   readonly inUse: boolean;
   readonly onSelect: (hex: string) => void;
 }) {
+  const { isDark } = useTheme();
+  const color = useColors();
+  const styles = useStyles();
   const hex = categoryColor[token];
 
   return (
@@ -108,7 +112,7 @@ function Swatch({
         // depending on an outline property's platform support.
         style={[styles.ring, selected ? styles.ringSelected : null]}
       >
-        <View style={[styles.swatch, { backgroundColor: displayCategoryColor(hex) }]}>
+        <View style={[styles.swatch, { backgroundColor: displayCategoryColor(hex, isDark) }]}>
           {selected ? (
             <Feather
               testID={COLOUR_CHECK_TEST_ID}
@@ -134,6 +138,8 @@ function Swatch({
  * refusing all of them would be worse than not offering them.
  */
 export function ReservedColour({ hex }: { readonly hex: string }) {
+  const { isDark } = useTheme();
+  const styles = useStyles();
   return (
     <View>
       <Text style={styles.label} accessibilityRole="header">
@@ -144,7 +150,7 @@ export function ReservedColour({ hex }: { readonly hex: string }) {
           testID="colour-reserved"
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
-          style={[styles.swatch, { backgroundColor: displayCategoryColor(hex) }]}
+          style={[styles.swatch, { backgroundColor: displayCategoryColor(hex, isDark) }]}
         />
       </View>
       <Text style={styles.reserved}>{COPY.category.colour.reserved}</Text>
@@ -152,45 +158,47 @@ export function ReservedColour({ hex }: { readonly hex: string }) {
   );
 }
 
-const styles = StyleSheet.create({
-  label: {
-    ...type.subhead,
-    color: color.text.secondary,
-    marginBottom: space[2],
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: space[3],
-  },
-  cell: {
-    alignItems: 'center',
-    gap: space[1],
-  },
-  ring: {
-    // Transparent when unselected, so selecting one does not resize the grid.
-    borderWidth: 2,
-    borderColor: 'transparent',
-    borderRadius: radius.md + 4,
-    padding: 2,
-  },
-  ringSelected: {
-    borderColor: color.text.primary,
-  },
-  swatch: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  inUse: {
-    ...type.caption,
-    color: color.text.tertiary,
-  },
-  reserved: {
-    ...type.footnote,
-    color: color.text.tertiary,
-    marginTop: space[2],
-  },
-});
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    label: {
+      ...type.subhead,
+      color: color.text.secondary,
+      marginBottom: space[2],
+    },
+    grid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: space[3],
+    },
+    cell: {
+      alignItems: 'center',
+      gap: space[1],
+    },
+    ring: {
+      // Transparent when unselected, so selecting one does not resize the grid.
+      borderWidth: 2,
+      borderColor: 'transparent',
+      borderRadius: radius.md + 4,
+      padding: 2,
+    },
+    ringSelected: {
+      borderColor: color.text.primary,
+    },
+    swatch: {
+      width: 40,
+      height: 40,
+      borderRadius: radius.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    inUse: {
+      ...type.caption,
+      color: color.text.tertiary,
+    },
+    reserved: {
+      ...type.footnote,
+      color: color.text.tertiary,
+      marginTop: space[2],
+    },
+  }),
+);

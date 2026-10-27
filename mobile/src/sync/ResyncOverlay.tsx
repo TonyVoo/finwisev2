@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
 import { SYNC_COPY } from '../copy/strings';
-import { color, radius, space, type } from '../theme/tokens';
+import { radius, space, type } from '../theme/tokens';
+import { createStyles, useColors } from '../theme/ThemeProvider';
 import { useOptionalSyncStatus } from './SyncProvider';
 
 /**
@@ -38,6 +39,8 @@ export function ResyncOverlay() {
 }
 
 function CatchingUp({ pages }: { readonly pages: number }) {
+  const color = useColors();
+  const styles = useStyles();
   const reduceMotion = useReduceMotion();
   const sweep = useRef(new Animated.Value(0)).current;
   const { title, body } = SYNC_COPY.resync;
@@ -139,41 +142,43 @@ function useReduceMotion(): boolean {
 const TRACK_WIDTH = 200;
 const BAR_WIDTH = 80;
 
-const styles = StyleSheet.create({
-  screen: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    backgroundColor: color.bg.canvas,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: space[3],
-    paddingHorizontal: space[6],
-  },
-  title: {
-    ...type.title2,
-    color: color.text.primary,
-    textAlign: 'center',
-  },
-  body: {
-    ...type.callout,
-    color: color.text.secondary,
-    textAlign: 'center',
-  },
-  track: {
-    width: TRACK_WIDTH,
-    height: 4,
-    marginTop: space[2],
-    borderRadius: radius.pill,
-    backgroundColor: color.bg.sunken,
-    overflow: 'hidden',
-  },
-  bar: {
-    width: BAR_WIDTH,
-    height: 4,
-    borderRadius: radius.pill,
-    backgroundColor: color.primary.default,
-  },
-});
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    screen: {
+      position: 'absolute',
+      top: 0,
+      right: 0,
+      bottom: 0,
+      left: 0,
+      backgroundColor: color.bg.canvas,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: space[3],
+      paddingHorizontal: space[6],
+    },
+    title: {
+      ...type.title2,
+      color: color.text.primary,
+      textAlign: 'center',
+    },
+    body: {
+      ...type.callout,
+      color: color.text.secondary,
+      textAlign: 'center',
+    },
+    track: {
+      width: TRACK_WIDTH,
+      height: 4,
+      marginTop: space[2],
+      borderRadius: radius.pill,
+      backgroundColor: color.bg.sunken,
+      overflow: 'hidden',
+    },
+    bar: {
+      width: BAR_WIDTH,
+      height: 4,
+      borderRadius: radius.pill,
+      backgroundColor: color.primary.default,
+    },
+  }),
+);

@@ -2,7 +2,8 @@ import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { HIT_SLOP_44, color, elevation, radius, size, space, type } from '../theme/tokens';
+import { HIT_SLOP_44, elevation, radius, size, space, type } from '../theme/tokens';
+import { createStyles, useColors } from '../theme/ThemeProvider';
 
 /**
  * The screen furniture every expense screen shares: the app bar, the FAB, a skeleton
@@ -34,6 +35,7 @@ export function AppBar({
   elevated = false,
   testID,
 }: AppBarProps) {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
 
   return (
@@ -69,7 +71,7 @@ export function IconButton({
   label,
   onPress,
   size: glyphSize = 24,
-  tint = color.text.secondary,
+  tint: tintOverride,
   testID,
 }: {
   readonly icon: keyof typeof Feather.glyphMap;
@@ -79,6 +81,9 @@ export function IconButton({
   readonly tint?: string;
   readonly testID?: string;
 }) {
+  const color = useColors();
+  const styles = useStyles();
+  const tint = tintOverride ?? color.text.secondary;
   return (
     <Pressable
       testID={testID}
@@ -112,6 +117,8 @@ export function Fab({
   readonly bottomOffset?: number;
   readonly testID?: string;
 }) {
+  const color = useColors();
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
 
   return (
@@ -149,6 +156,7 @@ export function SkeletonBlock({
   readonly radius?: number;
   readonly testID?: string;
 }) {
+  const color = useColors();
   return (
     <View
       testID={testID}
@@ -168,6 +176,7 @@ export function SkeletonBlock({
  * `, not synced yet` to its own composed label.
  */
 export function PendingGlyph() {
+  const color = useColors();
   return (
     <Feather
       name="clock"
@@ -189,6 +198,7 @@ export function PendingGlyph() {
  * do something. Decorative, because the row appends `, could not sync` to its own label.
  */
 export function NeedsAttentionGlyph() {
+  const color = useColors();
   return (
     <Feather
       name="alert-circle"
@@ -201,48 +211,50 @@ export function NeedsAttentionGlyph() {
   );
 }
 
-const styles = StyleSheet.create({
-  appBar: {
-    backgroundColor: color.bg.surface,
-  },
-  appBarContent: {
-    minHeight: size.appBarHeight,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: space[4],
-    gap: space[2],
-  },
-  appBarSide: {
-    minWidth: 24,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space[2],
-  },
-  appBarSideTrailing: {
-    justifyContent: 'flex-end',
-  },
-  appBarTitle: {
-    ...type.headline,
-    color: color.text.primary,
-    flex: 1,
-  },
-  appBarTitleCentred: {
-    textAlign: 'center',
-  },
-  iconButton: {
-    minWidth: 24,
-    minHeight: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fab: {
-    ...elevation[2],
-    position: 'absolute',
-    right: space[4],
-    width: size.fab,
-    height: size.fab,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    appBar: {
+      backgroundColor: color.bg.surface,
+    },
+    appBarContent: {
+      minHeight: size.appBarHeight,
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: space[4],
+      gap: space[2],
+    },
+    appBarSide: {
+      minWidth: 24,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space[2],
+    },
+    appBarSideTrailing: {
+      justifyContent: 'flex-end',
+    },
+    appBarTitle: {
+      ...type.headline,
+      color: color.text.primary,
+      flex: 1,
+    },
+    appBarTitleCentred: {
+      textAlign: 'center',
+    },
+    iconButton: {
+      minWidth: 24,
+      minHeight: 24,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    fab: {
+      ...elevation[2],
+      position: 'absolute',
+      right: space[4],
+      width: size.fab,
+      height: size.fab,
+      borderRadius: radius.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+  }),
+);

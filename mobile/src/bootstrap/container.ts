@@ -9,6 +9,8 @@ import { createSecureTokenStore } from '../auth/tokenStore';
 import { type Clock, systemClock } from '../lib/clock';
 import { createSqliteLocalStore } from '../db/localStore';
 import { generateDueRecurring } from '../recurring/generate';
+import { META_KEYS, readMeta } from '../db/meta';
+import { type ThemePreference, parseThemePreference } from '../theme/ThemeProvider';
 import { openLocalDatabase } from '../db/open';
 import type { SqliteDatabase } from '../db/sqlite';
 import { createQueryClient } from '../query/client';
@@ -57,6 +59,12 @@ export interface AppContainer {
    * one and the background task borrows it.
    */
   readonly sync: SyncEngine;
+  /**
+   * The theme the person chose in Settings, read before the first frame so the app opens
+   * in it rather than flashing the system one. A device setting, not account data: it is
+   * not in the wiped meta keys, so logging out leaves it alone.
+   */
+  readonly themePreference: ThemePreference;
 }
 
 export interface AppContainerOptions {
@@ -151,5 +159,7 @@ export async function createAppContainer(options: AppContainerOptions = {}): Pro
     }
   });
 
-  return { database, session, api, queryClient, clock, sync };
+  const themePreference = parseThemePreference(await readMeta(database, META_KEYS.themePreference));
+
+  return { database, session, api, queryClient, clock, sync, themePreference };
 }

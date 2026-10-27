@@ -7,7 +7,8 @@ import { useSession } from '@/auth/SessionProvider';
 import { Button } from '@/components/Button';
 import { FormBanner } from '@/components/FormBanner';
 import { COPY, SESSION_EXPIRED } from '@/copy/strings';
-import { color, space, type } from '@/theme/tokens';
+import { space, type } from '@/theme/tokens';
+import { createStyles, useColors } from '@/theme/ThemeProvider';
 
 /**
  * Welcome - `docs/design/03-auth.md` §1.1.
@@ -25,6 +26,8 @@ import { color, space, type } from '@/theme/tokens';
  * only set when a refresh was actually rejected.
  */
 export default function WelcomeScreen() {
+  const color = useColors();
+  const styles = useStyles();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { expired } = useSession();
@@ -95,37 +98,39 @@ export default function WelcomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: color.bg.canvas,
-    paddingHorizontal: space[4],
-    alignItems: 'center',
-  },
-  banner: {
-    alignSelf: 'stretch',
-    marginBottom: space[6],
-  },
-  name: {
-    ...type.title1,
-    color: color.text.primary,
-    textAlign: 'center',
-    marginTop: space[12],
-  },
-  tagline: {
-    ...type.body,
-    color: color.text.secondary,
-    textAlign: 'center',
-    marginTop: space[3],
-  },
-  spacer: {
-    flex: 1,
-    // A floor, so the two CTAs do not ride up into the tagline on a short screen at a
-    // large font scale.
-    minHeight: space[8],
-  },
-  actions: {
-    alignSelf: 'stretch',
-    gap: space[3],
-  },
-});
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: color.bg.canvas,
+      paddingHorizontal: space[4],
+      alignItems: 'center',
+    },
+    banner: {
+      alignSelf: 'stretch',
+      marginBottom: space[6],
+    },
+    name: {
+      ...type.title1,
+      color: color.text.primary,
+      textAlign: 'center',
+      marginTop: space[12],
+    },
+    tagline: {
+      ...type.body,
+      color: color.text.secondary,
+      textAlign: 'center',
+      marginTop: space[3],
+    },
+    spacer: {
+      flex: 1,
+      // A floor, so the two CTAs do not ride up into the tagline on a short screen at a
+      // large font scale.
+      minHeight: space[8],
+    },
+    actions: {
+      alignSelf: 'stretch',
+      gap: space[3],
+    },
+  }),
+);

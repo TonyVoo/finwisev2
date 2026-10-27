@@ -414,3 +414,8 @@ them as proposals the Designer can reword; changing a row here means changing
 | `recurring.empty.body` | `Add one and it will create the expense for you each week or month, even offline.` | Recurring list, empty |
 | `snack.recurring.saved` | `Recurring expense saved.` | Snackbar |
 | `snack.recurring.deleted` | `Recurring expense deleted.` | Snackbar |
+| `settings.appearance` | `Appearance` | Settings, row title |
+| `appearance.title` | `Appearance` | Theme sheet, title |
+| `appearance.system` | `Match system` | Theme sheet, option and Settings row value |
+| `appearance.light` | `Light` | Theme sheet, option and Settings row value |
+| `appearance.dark` | `Dark` | Theme sheet, option and Settings row value |

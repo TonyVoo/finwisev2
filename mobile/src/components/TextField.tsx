@@ -1,6 +1,7 @@
 import { type ReactNode, type Ref, useState } from 'react';
 import { StyleSheet, Text, TextInput, type TextInputProps, View } from 'react-native';
-import { color, isDark, radius, size, space, type } from '../theme/tokens';
+import { radius, size, space, type } from '../theme/tokens';
+import { createStyles, useColors, useTheme } from '../theme/ThemeProvider';
 
 /**
  * The text field, as `docs/design/00-foundations.md` §6 specifies it.
@@ -85,6 +86,9 @@ export function TextField({
   testID,
   ...inputProps
 }: TextFieldProps) {
+  const color = useColors();
+  const { isDark } = useTheme();
+  const styles = useStyles();
   const [focused, setFocused] = useState(false);
   const invalid = error !== undefined;
 
@@ -141,45 +145,47 @@ export function TextField({
   );
 }
 
-const styles = StyleSheet.create({
-  label: {
-    ...type.subhead,
-    color: color.text.secondary,
-    marginBottom: space[2],
-  },
-  field: {
-    // A floor, so the field grows with font scale rather than clipping (§2).
-    minHeight: size.inputHeight,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    backgroundColor: color.bg.surface,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: space[3],
-  },
-  input: {
-    ...type.body,
-    color: color.text.primary,
-    flex: 1,
-    // Vertical padding rather than a fixed height, for the same font-scale reason.
-    paddingVertical: space[3],
-  },
-  focusRing: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderWidth: 2,
-    borderColor: color.border.focus,
-    borderRadius: radius.md,
-  },
-  helper: {
-    ...type.footnote,
-    color: color.text.tertiary,
-    marginTop: space[1],
-  },
-  helperError: {
-    color: color.danger.default,
-  },
-});
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    label: {
+      ...type.subhead,
+      color: color.text.secondary,
+      marginBottom: space[2],
+    },
+    field: {
+      // A floor, so the field grows with font scale rather than clipping (§2).
+      minHeight: size.inputHeight,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      backgroundColor: color.bg.surface,
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: space[3],
+    },
+    input: {
+      ...type.body,
+      color: color.text.primary,
+      flex: 1,
+      // Vertical padding rather than a fixed height, for the same font-scale reason.
+      paddingVertical: space[3],
+    },
+    focusRing: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      borderWidth: 2,
+      borderColor: color.border.focus,
+      borderRadius: radius.md,
+    },
+    helper: {
+      ...type.footnote,
+      color: color.text.tertiary,
+      marginTop: space[1],
+    },
+    helperError: {
+      color: color.danger.default,
+    },
+  }),
+);

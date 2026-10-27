@@ -19,7 +19,8 @@ import {
   weekdayIndex,
   weekdayInitials,
 } from '../lib/calendar';
-import { HIT_SLOP_44, color, radius, size, space, type } from '../theme/tokens';
+import { HIT_SLOP_44, radius, size, space, type } from '../theme/tokens';
+import { createStyles, useColors } from '../theme/ThemeProvider';
 
 /**
  * The date sheet: `docs/design/06-expense-form.md` rule 7.
@@ -190,6 +191,8 @@ function DayGrid({
   readonly onChangeMonth: (next: string) => void;
   readonly onSelect: (date: CalendarDate) => void;
 }) {
+  const color = useColors();
+  const styles = useStyles();
   const { year, month: monthNumber } = { ...dateParts(`${month}-01`) };
   const days = daysInMonth(month);
   // No lower bound (rule 9), and no month beyond the one today falls in: every future day
@@ -299,60 +302,62 @@ function DayGrid({
   );
 }
 
-const styles = StyleSheet.create({
-  grid: {
-    paddingTop: space[4],
-    gap: space[3],
-  },
-  gridHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  gridArrow: {
-    minWidth: size.tapTargetMin,
-    minHeight: size.tapTargetMin,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  gridMonth: {
-    ...type.headline,
-    color: color.text.primary,
-    flex: 1,
-    textAlign: 'center',
-  },
-  days: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: space[1],
-  },
-  day: {
-    // A seventh of the row, less the gaps, so the grid lays out as weeks-wide columns
-    // without having to know the width.
-    width: '13%',
-    minHeight: size.tapTargetMin,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.sm,
-  },
-  dayFilled: { backgroundColor: color.bg.surface },
-  weekday: { width: '13%', alignItems: 'center' },
-  weekdayLabel: { ...type.caption, color: color.text.tertiary },
-  daySelected: {
-    backgroundColor: color.primary.default,
-  },
-  dayDisabled: {
-    backgroundColor: color.bg.sunken,
-  },
-  dayLabel: {
-    ...type.body,
-    color: color.text.primary,
-    fontVariant: ['tabular-nums'],
-  },
-  dayLabelSelected: {
-    color: color.text.inverse,
-    fontWeight: '600',
-  },
-  dayLabelDisabled: {
-    color: color.text.disabled,
-  },
-});
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    grid: {
+      paddingTop: space[4],
+      gap: space[3],
+    },
+    gridHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    gridArrow: {
+      minWidth: size.tapTargetMin,
+      minHeight: size.tapTargetMin,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    gridMonth: {
+      ...type.headline,
+      color: color.text.primary,
+      flex: 1,
+      textAlign: 'center',
+    },
+    days: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: space[1],
+    },
+    day: {
+      // A seventh of the row, less the gaps, so the grid lays out as weeks-wide columns
+      // without having to know the width.
+      width: '13%',
+      minHeight: size.tapTargetMin,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: radius.sm,
+    },
+    dayFilled: { backgroundColor: color.bg.surface },
+    weekday: { width: '13%', alignItems: 'center' },
+    weekdayLabel: { ...type.caption, color: color.text.tertiary },
+    daySelected: {
+      backgroundColor: color.primary.default,
+    },
+    dayDisabled: {
+      backgroundColor: color.bg.sunken,
+    },
+    dayLabel: {
+      ...type.body,
+      color: color.text.primary,
+      fontVariant: ['tabular-nums'],
+    },
+    dayLabelSelected: {
+      color: color.text.inverse,
+      fontWeight: '600',
+    },
+    dayLabelDisabled: {
+      color: color.text.disabled,
+    },
+  }),
+);

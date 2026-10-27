@@ -1,5 +1,3 @@
-import { Appearance } from 'react-native';
-
 /**
  * The design tokens, as TypeScript.
  *
@@ -95,18 +93,14 @@ export function resolveScheme(raw: string | null | undefined): ColorScheme {
 }
 
 /**
- * The scheme this process runs in, decided **once**, at import, from the system setting.
+ * The light palette, under its old name.
  *
- * Styles across the app are `StyleSheet.create` calls at module level, so they bake a
- * colour in when their module loads. That makes the theme a launch-time choice: the app
- * follows the phone's setting every time it starts, but flipping the setting while the app
- * is open needs a restart to show. Live switching would mean turning every one of those
- * stylesheets into a hook - a much larger change than the palette itself.
+ * Components must not import this: it is one palette, fixed, and a component that read it
+ * would stay light in dark mode. They call `useColors()` (`theme/ThemeProvider`) and an
+ * ESLint rule keeps this import out of `src/` and `app/`. It remains for tests, which
+ * render outside a provider and so see the light default, and for non-React code.
  */
-export const scheme: ColorScheme = resolveScheme(Appearance.getColorScheme());
-export const isDark = scheme === 'dark';
-
-export const color: ColorTokens = isDark ? darkColor : lightColor;
+export const color: ColorTokens = lightColor;
 
 /**
  * The ten category hues. Separated by **hue, not lightness** — the closest two are 1.00:1
@@ -147,7 +141,7 @@ export const categoryColorDark = {
 export type CategoryColorToken = keyof typeof categoryColor;
 
 /** The colour to *draw* for a stored category hex. Unknown hexes pass through unchanged. */
-export function displayCategoryColor(hex: string, dark: boolean = isDark): string {
+export function displayCategoryColor(hex: string, dark: boolean): string {
   if (!dark) return hex;
   const lower = hex.toLowerCase();
   for (const key of Object.keys(categoryColor) as CategoryColorToken[]) {

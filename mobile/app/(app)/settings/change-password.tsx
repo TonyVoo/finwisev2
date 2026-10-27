@@ -11,7 +11,8 @@ import { FormScreen } from '@/components/FormScreen';
 import { PasswordField } from '@/components/PasswordField';
 import { useSnackbar } from '@/components/Snackbar';
 import { COPY, VALIDATION_COPY } from '@/copy/strings';
-import { color, space, type } from '@/theme/tokens';
+import { space, type } from '@/theme/tokens';
+import { createStyles } from '@/theme/ThemeProvider';
 
 /**
  * Change password.
@@ -26,6 +27,7 @@ import { color, space, type } from '@/theme/tokens';
  * access token expires, signing the user out an hour after they changed their password.
  */
 export default function ChangePasswordScreen() {
+  const styles = useStyles();
   const router = useRouter();
   const api = useApiClient();
   const session = useSessionController();
@@ -126,10 +128,12 @@ export default function ChangePasswordScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  hint: {
-    ...type.body,
-    color: color.text.secondary,
-    marginBottom: space[2],
-  },
-});
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    hint: {
+      ...type.body,
+      color: color.text.secondary,
+      marginBottom: space[2],
+    },
+  }),
+);

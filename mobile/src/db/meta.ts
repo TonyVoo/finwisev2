@@ -35,6 +35,12 @@ export const META_KEYS = {
    * the store so it cannot carry over to the next account to sign in here.
    */
   categoryReviewPending: 'categoryReviewPending',
+  /**
+   * `system`, `light` or `dark`: the theme chosen in Settings. A property of this device,
+   * so deliberately absent from {@link WIPED_META_KEYS} - signing out or switching account
+   * must not reset how the person likes their screen.
+   */
+  themePreference: 'themePreference',
 } as const;
 
 export type MetaKey = (typeof META_KEYS)[keyof typeof META_KEYS];

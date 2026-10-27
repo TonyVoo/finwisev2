@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
-import { HIT_SLOP_44, color, size, space, type } from '../theme/tokens';
+import { HIT_SLOP_44, size, space, type } from '../theme/tokens';
+import { createStyles, useColors } from '../theme/ThemeProvider';
 import { monthLabel, stepMonth } from '../lib/calendar';
 import { SNACK_COPY } from '../copy/strings';
 import { useSnackbar } from '../components/Snackbar';
@@ -46,6 +47,7 @@ export interface MonthSwitcherProps {
 }
 
 export function MonthSwitcher({ onOpenPicker }: MonthSwitcherProps) {
+  const styles = useStyles();
   const { month, canGoNext, step } = useSelectedMonth();
   const showSnackbar = useSnackbar();
 
@@ -103,6 +105,8 @@ function Arrow({
   readonly onPress: () => void;
   readonly disabled?: boolean;
 }) {
+  const color = useColors();
+  const styles = useStyles();
   return (
     <Pressable
       testID={testID}
@@ -120,32 +124,34 @@ function Arrow({
   );
 }
 
-const styles = StyleSheet.create({
-  bar: {
-    // A floor, so the bar grows with the label rather than clipping it (rule 6).
-    minHeight: BAR_MIN_HEIGHT,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: color.bg.surface,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: color.border.hairline,
-    paddingHorizontal: space[2],
-  },
-  arrow: {
-    minWidth: size.tapTargetMin,
-    minHeight: size.tapTargetMin,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  label: {
-    flex: 1,
-    minHeight: size.tapTargetMin,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  labelText: {
-    ...type.headline,
-    color: color.text.primary,
-    textAlign: 'center',
-  },
-});
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    bar: {
+      // A floor, so the bar grows with the label rather than clipping it (rule 6).
+      minHeight: BAR_MIN_HEIGHT,
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: color.bg.surface,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: color.border.hairline,
+      paddingHorizontal: space[2],
+    },
+    arrow: {
+      minWidth: size.tapTargetMin,
+      minHeight: size.tapTargetMin,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    label: {
+      flex: 1,
+      minHeight: size.tapTargetMin,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    labelText: {
+      ...type.headline,
+      color: color.text.primary,
+      textAlign: 'center',
+    },
+  }),
+);

@@ -1,7 +1,9 @@
 import { useEffect } from 'react';
+import type { ColorTokens } from '../theme/tokens';
 import { AccessibilityInfo, StyleSheet, Text, View } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
-import { color, radius, space, type } from '../theme/tokens';
+import { radius, space, type } from '../theme/tokens';
+import { useColors } from '../theme/ThemeProvider';
 
 /**
  * The form-level banner: what a screen says when a failure belongs to no single field.
@@ -37,17 +39,20 @@ export interface FormBannerProps {
   readonly testID?: string;
 }
 
-const TONES: Readonly<Record<BannerTone, { readonly fill: string; readonly ink: string }>> = {
+const tonesFor = (
+  color: ColorTokens,
+): Readonly<Record<BannerTone, { readonly fill: string; readonly ink: string }>> => ({
   danger: { fill: color.danger.subtle, ink: color.danger.default },
   info: { fill: color.info.subtle, ink: color.info.default },
-};
+});
 
 export function FormBanner({ message, tone = 'danger', testID }: FormBannerProps) {
+  const color = useColors();
   useEffect(() => {
     AccessibilityInfo.announceForAccessibility(message);
   }, [message]);
 
-  const palette = TONES[tone];
+  const palette = tonesFor(color)[tone];
 
   return (
     <View

@@ -14,7 +14,8 @@ import {
 import Feather from '@expo/vector-icons/Feather';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COPY } from '../copy/strings';
-import { HIT_SLOP_44, color, elevation, radius, size, space, type } from '../theme/tokens';
+import { HIT_SLOP_44, elevation, radius, size, space, type } from '../theme/tokens';
+import { createStyles, useColors } from '../theme/ThemeProvider';
 
 /**
  * The bottom sheet, as `docs/design/00-foundations.md` §6 specifies it.
@@ -48,6 +49,8 @@ export interface SheetProps {
 }
 
 export function Sheet({ visible, title, onClose, children, testID }: SheetProps) {
+  const color = useColors();
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const [reduceMotion, setReduceMotion] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
@@ -143,52 +146,54 @@ export function Sheet({ visible, title, onClose, children, testID }: SheetProps)
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  scrim: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: color.bg.scrim,
-  },
-  sheet: {
-    backgroundColor: color.bg.surface,
-    // Top corners only: the sheet is anchored to the bottom edge, so rounding the bottom
-    // would show the scrim through two notches.
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
-    paddingHorizontal: space[4],
-    maxHeight: '85%',
-    ...elevation[2],
-  },
-  grabberArea: {
-    // A 36x4 bar is far too small to grab, so the pan area is padded out around it while
-    // the bar itself stays the specified size.
-    paddingTop: space[2],
-    paddingBottom: space[2],
-    alignItems: 'center',
-  },
-  grabber: {
-    width: 36,
-    height: 4,
-    borderRadius: radius.pill,
-    backgroundColor: color.border.strong,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    minHeight: size.tapTargetMin,
-    gap: space[3],
-  },
-  title: {
-    ...type.title2,
-    color: color.text.primary,
-    flex: 1,
-  },
-});
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    root: {
+      flex: 1,
+      justifyContent: 'flex-end',
+    },
+    scrim: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: color.bg.scrim,
+    },
+    sheet: {
+      backgroundColor: color.bg.surface,
+      // Top corners only: the sheet is anchored to the bottom edge, so rounding the bottom
+      // would show the scrim through two notches.
+      borderTopLeftRadius: radius.lg,
+      borderTopRightRadius: radius.lg,
+      paddingHorizontal: space[4],
+      maxHeight: '85%',
+      ...elevation[2],
+    },
+    grabberArea: {
+      // A 36x4 bar is far too small to grab, so the pan area is padded out around it while
+      // the bar itself stays the specified size.
+      paddingTop: space[2],
+      paddingBottom: space[2],
+      alignItems: 'center',
+    },
+    grabber: {
+      width: 36,
+      height: 4,
+      borderRadius: radius.pill,
+      backgroundColor: color.border.strong,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      minHeight: size.tapTargetMin,
+      gap: space[3],
+    },
+    title: {
+      ...type.title2,
+      color: color.text.primary,
+      flex: 1,
+    },
+  }),
+);

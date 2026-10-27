@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { ColorTokens } from '../theme/tokens';
 import { StyleSheet, Text, View } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
 import { Button } from '../components/Button';
@@ -15,7 +16,8 @@ import { usePendingChanges, useUserCurrency } from '../db/hooks';
 import type { PendingChange } from '../db/queries';
 import { formatMoney } from '../lib/money';
 import { relativeTime } from '../lib/relativeTime';
-import { color, space, type } from '../theme/tokens';
+import { space, type } from '../theme/tokens';
+import { createStyles, useColors } from '../theme/ThemeProvider';
 import type { SyncEngine, SyncStatus } from './engine';
 import { syncPillState } from './state';
 
@@ -48,6 +50,8 @@ export interface SyncSheetProps {
 }
 
 export function SyncSheet({ visible, status, onClose, onRetry, now }: SyncSheetProps) {
+  const color = useColors();
+  const styles = useStyles();
   const [retrying, setRetrying] = useState(false);
   const pending = usePendingChanges();
   const currency = useUserCurrency();
@@ -75,7 +79,7 @@ export function SyncSheet({ visible, status, onClose, onRetry, now }: SyncSheetP
         <Feather
           name={STATUS_GLYPHS[state]}
           size={20}
-          color={STATUS_TINTS[state]}
+          color={statusTintsFor(color)[state]}
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         />
@@ -138,6 +142,7 @@ function PendingRow({
   readonly change: PendingChange;
   readonly currency: string | null;
 }) {
+  const styles = useStyles();
   const operation = OPERATION_LABELS[change.operation];
   const amount =
     change.amountMinor === null || currency === null
@@ -175,68 +180,70 @@ const STATUS_GLYPHS = {
   error: 'alert-circle' as const,
 };
 
-const STATUS_TINTS = {
+const statusTintsFor = (color: ColorTokens) => ({
   idle: color.text.secondary,
   syncing: color.info.default,
   pending: color.warning.default,
   offline: color.text.secondary,
   'offline-pending': color.warning.default,
   error: color.danger.default,
-};
-
-const styles = StyleSheet.create({
-  status: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space[2],
-  },
-  headline: {
-    ...type.bodyStrong,
-    color: color.text.primary,
-  },
-  body: {
-    ...type.callout,
-    color: color.text.secondary,
-    marginTop: space[2],
-  },
-  changes: {
-    marginTop: space[4],
-    gap: space[1],
-  },
-  sectionHeader: {
-    ...type.caption,
-    color: color.text.tertiary,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space[2],
-    paddingVertical: space[1],
-  },
-  rowLabel: {
-    ...type.callout,
-    color: color.text.primary,
-    flex: 1,
-  },
-  rowAmount: {
-    ...type.callout,
-    color: color.text.primary,
-    fontVariant: ['tabular-nums'],
-  },
-  rowOperation: {
-    ...type.callout,
-    color: color.text.tertiary,
-    minWidth: 56,
-    textAlign: 'right',
-  },
-  more: {
-    ...type.footnote,
-    color: color.text.tertiary,
-  },
-  lastSynced: {
-    ...type.footnote,
-    color: color.text.tertiary,
-    marginTop: space[4],
-    marginBottom: space[2],
-  },
 });
+
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    status: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space[2],
+    },
+    headline: {
+      ...type.bodyStrong,
+      color: color.text.primary,
+    },
+    body: {
+      ...type.callout,
+      color: color.text.secondary,
+      marginTop: space[2],
+    },
+    changes: {
+      marginTop: space[4],
+      gap: space[1],
+    },
+    sectionHeader: {
+      ...type.caption,
+      color: color.text.tertiary,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space[2],
+      paddingVertical: space[1],
+    },
+    rowLabel: {
+      ...type.callout,
+      color: color.text.primary,
+      flex: 1,
+    },
+    rowAmount: {
+      ...type.callout,
+      color: color.text.primary,
+      fontVariant: ['tabular-nums'],
+    },
+    rowOperation: {
+      ...type.callout,
+      color: color.text.tertiary,
+      minWidth: 56,
+      textAlign: 'right',
+    },
+    more: {
+      ...type.footnote,
+      color: color.text.tertiary,
+    },
+    lastSynced: {
+      ...type.footnote,
+      color: color.text.tertiary,
+      marginTop: space[4],
+      marginBottom: space[2],
+    },
+  }),
+);

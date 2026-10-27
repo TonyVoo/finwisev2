@@ -165,11 +165,20 @@ export const COPY = {
     categories: 'Categories',
     recurring: 'Recurring expenses',
     recurringHint: 'Rent, subscriptions and other regular payments.',
+    appearance: 'Appearance',
     export: 'Export expenses',
     exportHint: 'Save everything you have recorded as a CSV file.',
     changePassword: 'Change password',
     deleteAccount: 'Delete account',
     logout: 'Log out',
+  },
+
+  /** The theme choice, opened from Settings. */
+  appearance: {
+    title: 'Appearance',
+    system: 'Match system',
+    light: 'Light',
+    dark: 'Dark',
   },
 
   /** Recurring expenses: rules the device turns into real expenses each week or month. */

@@ -14,7 +14,7 @@ import { SummaryEmpty, SummarySkeleton } from '@/summary/SummaryStates';
 import { summariseMonth } from '@/summary/summaryModel';
 import { SyncIndicator } from '@/sync/SyncIndicator';
 import { usePullToRefresh } from '@/sync/usePullToRefresh';
-import { color } from '@/theme/tokens';
+import { createStyles } from '@/theme/ThemeProvider';
 
 export const SUMMARY_SCROLL_TEST_ID = 'summary-scroll';
 
@@ -62,6 +62,7 @@ export const SUMMARY_SCROLL_TEST_ID = 'summary-scroll';
  * stubbed in its place.
  */
 export default function SummaryScreen() {
+  const styles = useStyles();
   const router = useRouter();
   const { month, isCurrent } = useSelectedMonth();
 
@@ -139,13 +140,15 @@ export default function SummaryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: color.bg.canvas,
-  },
-  content: {
-    // The legend is what scrolls when it is long (rule 7); nothing above it is cropped.
-    flexGrow: 1,
-  },
-});
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: color.bg.canvas,
+    },
+    content: {
+      // The legend is what scrolls when it is long (rule 7); nothing above it is cropped.
+      flexGrow: 1,
+    },
+  }),
+);

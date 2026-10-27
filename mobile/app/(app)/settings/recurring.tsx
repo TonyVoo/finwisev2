@@ -20,7 +20,8 @@ import { useSelectedMonth } from '@/month/MonthProvider';
 import { generateDueRecurring } from '@/recurring/generate';
 import { RecurringFormSheet } from '@/recurring/RecurringFormSheet';
 import { recurringNextLabel, recurringSummary, recurringTitle } from '@/recurring/recurringModel';
-import { color, size, space, type } from '@/theme/tokens';
+import { size, space, type } from '@/theme/tokens';
+import { createStyles, useColors } from '@/theme/ThemeProvider';
 
 /**
  * Recurring expenses: the rules the device turns into real expenses.
@@ -35,6 +36,8 @@ export const RECURRING_ROW_TEST_ID_PREFIX = 'recurring-row';
 export const RECURRING_DELETE_DIALOG_TEST_ID = 'recurring-delete-dialog';
 
 export default function RecurringScreen() {
+  const color = useColors();
+  const styles = useStyles();
   const router = useRouter();
   const showSnackbar = useSnackbar();
   const localWrite = useLocalWrite();
@@ -176,10 +179,12 @@ export default function RecurringScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: color.bg.canvas },
-  list: { paddingBottom: size.fab + space[4] + space[4] },
-  empty: { padding: space[6], gap: space[2], alignItems: 'center' },
-  emptyHeadline: { ...type.title1, color: color.text.primary, textAlign: 'center' },
-  emptyBody: { ...type.body, color: color.text.secondary, textAlign: 'center' },
-});
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    screen: { flex: 1, backgroundColor: color.bg.canvas },
+    list: { paddingBottom: size.fab + space[4] + space[4] },
+    empty: { padding: space[6], gap: space[2], alignItems: 'center' },
+    emptyHeadline: { ...type.title1, color: color.text.primary, textAlign: 'center' },
+    emptyBody: { ...type.body, color: color.text.secondary, textAlign: 'center' },
+  }),
+);

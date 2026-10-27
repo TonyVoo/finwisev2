@@ -11,7 +11,9 @@ import { COPY } from '@/copy/strings';
 import { useDatabase } from '@/db/DatabaseProvider';
 import { exportExpenses, nativeExportDependencies } from '@/export/exportExpenses';
 import { usePendingRecordCount, useUserCurrency, useUserEmail } from '@/db/hooks';
-import { color, space, type } from '@/theme/tokens';
+import { space, type } from '@/theme/tokens';
+import { ThemeSheet, themePreferenceLabel } from '@/theme/ThemeSheet';
+import { createStyles, useColors, useTheme } from '@/theme/ThemeProvider';
 
 /**
  * Settings: `docs/design/04-expense-list.md` §Behaviour rule 14.
@@ -30,6 +32,8 @@ import { color, space, type } from '@/theme/tokens';
  * same `usePendingRecordCount` the sync pill reads, so the two cannot disagree.
  */
 export default function SettingsScreen() {
+  const color = useColors();
+  const styles = useStyles();
   const router = useRouter();
   const session = useSessionController();
   const currency = useUserCurrency();
@@ -39,6 +43,8 @@ export default function SettingsScreen() {
   const showSnackbar = useSnackbar();
   const [confirmingLogout, setConfirmingLogout] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [choosingTheme, setChoosingTheme] = useState(false);
+  const { preference } = useTheme();
 
   const hasUnsynced = (pending.data ?? 0) > 0;
 
@@ -125,6 +131,15 @@ export default function SettingsScreen() {
 
         <View style={styles.group}>
           <Row
+            testID="settings-appearance"
+            onPress={() => setChoosingTheme(true)}
+            chevron
+            accessibilityLabel={`${COPY.settings.appearance}, ${themePreferenceLabel(preference)}`}
+            trailing={<Text style={styles.value}>{themePreferenceLabel(preference)}</Text>}
+          >
+            <RowTitle>{COPY.settings.appearance}</RowTitle>
+          </Row>
+          <Row
             testID="settings-export"
             onPress={() => void onExport()}
             lastInGroup
@@ -167,6 +182,8 @@ export default function SettingsScreen() {
         </View>
       </ScrollView>
 
+      <ThemeSheet visible={choosingTheme} onClose={() => setChoosingTheme(false)} />
+
       <Dialog
         visible={confirmingLogout}
         testID="logout-dialog"
@@ -187,23 +204,25 @@ export default function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: color.bg.canvas,
-  },
-  content: {
-    paddingBottom: space[8],
-  },
-  group: {
-    marginTop: space[6],
-  },
-  logout: {
-    paddingHorizontal: space[4],
-    paddingTop: space[8],
-  },
-  value: {
-    ...type.body,
-    color: color.text.secondary,
-  },
-});
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: color.bg.canvas,
+    },
+    content: {
+      paddingBottom: space[8],
+    },
+    group: {
+      marginTop: space[6],
+    },
+    logout: {
+      paddingHorizontal: space[4],
+      paddingTop: space[8],
+    },
+    value: {
+      ...type.body,
+      color: color.text.secondary,
+    },
+  }),
+);

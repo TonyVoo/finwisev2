@@ -10,7 +10,8 @@ import {
 import { Pie, PolarChart } from 'victory-native';
 import { monthName, type MonthKey } from '../lib/calendar';
 import { formatMoney } from '../lib/money';
-import { color, displayCategoryColor, motion, size, space, type } from '../theme/tokens';
+import { displayCategoryColor, motion, size, space, type } from '../theme/tokens';
+import { createStyles, useColors, useTheme } from '../theme/ThemeProvider';
 import type { SpendEntry } from './summaryModel';
 
 /**
@@ -68,6 +69,9 @@ export interface CategoryDonutProps {
 }
 
 export function CategoryDonut({ entries, totalMinor, currency, month }: CategoryDonutProps) {
+  const color = useColors();
+  const { isDark } = useTheme();
+  const styles = useStyles();
   const { fontScale } = useWindowDimensions();
   const opacity = useMountFade();
 
@@ -76,7 +80,7 @@ export function CategoryDonut({ entries, totalMinor, currency, month }: Category
     // Minor units, straight from the aggregate. The chart takes the ratio of these, which
     // is the exact share rather than the rounded percentage the legend prints (rule 3).
     value: entry.totalMinor,
-    color: displayCategoryColor(entry.color),
+    color: displayCategoryColor(entry.color, isDark),
   }));
 
   return (
@@ -174,37 +178,39 @@ function useMountFade(): Animated.Value {
   return opacity;
 }
 
-const styles = StyleSheet.create({
-  chart: {
-    width: DIAMETER,
-    height: DIAMETER,
-    alignSelf: 'center',
-    marginVertical: space[6],
-  },
-  centre: {
-    // Overlaid on the ring rather than drawn into it: Skia text needs a font loaded as an
-    // asset, and a real `Text` is the thing that scales with dynamic type and can be
-    // hidden from assistive technology with the rest of the chart.
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  centreTotal: {
-    ...type.bodyStrong,
-    color: color.text.primary,
-    fontVariant: ['tabular-nums'],
-  },
-  centreCompact: {
-    ...type.callout,
-    color: color.text.primary,
-    fontVariant: ['tabular-nums'],
-  },
-  centreMonth: {
-    ...type.caption,
-    color: color.text.tertiary,
-  },
-});
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    chart: {
+      width: DIAMETER,
+      height: DIAMETER,
+      alignSelf: 'center',
+      marginVertical: space[6],
+    },
+    centre: {
+      // Overlaid on the ring rather than drawn into it: Skia text needs a font loaded as an
+      // asset, and a real `Text` is the thing that scales with dynamic type and can be
+      // hidden from assistive technology with the rest of the chart.
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    centreTotal: {
+      ...type.bodyStrong,
+      color: color.text.primary,
+      fontVariant: ['tabular-nums'],
+    },
+    centreCompact: {
+      ...type.callout,
+      color: color.text.primary,
+      fontVariant: ['tabular-nums'],
+    },
+    centreMonth: {
+      ...type.caption,
+      color: color.text.tertiary,
+    },
+  }),
+);

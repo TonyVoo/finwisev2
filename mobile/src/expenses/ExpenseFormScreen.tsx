@@ -47,7 +47,8 @@ import {
 import { currencyDecimals } from '../lib/money';
 import { dateRowLabel, monthKeyOf, monthName, monthParts, spokenDate } from '../lib/calendar';
 import { useSelectedMonth } from '../month/MonthProvider';
-import { color, size, space, type } from '../theme/tokens';
+import { size, space, type } from '../theme/tokens';
+import { createStyles, useColors } from '../theme/ThemeProvider';
 import { AmountDisplay } from './AmountDisplay';
 import { CategorySheet } from './CategorySheet';
 import { DateSheet } from './DateSheet';
@@ -101,6 +102,8 @@ export interface ExpenseFormScreenProps {
 }
 
 export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
+  const color = useColors();
+  const styles = useStyles();
   const router = useRouter();
   const database = useDatabase();
   const showSnackbar = useSnackbar();
@@ -531,6 +534,7 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
 
 /** Edit mode's single-frame skeleton while the row is read by id (state `loading`). */
 function FormSkeleton() {
+  const styles = useStyles();
   return (
     <View
       testID="form-skeleton"
@@ -547,6 +551,8 @@ function FormSkeleton() {
 }
 
 function ExpenseNotFound({ onBack }: { readonly onBack: () => void }) {
+  const color = useColors();
+  const styles = useStyles();
   return (
     <View testID={NOT_FOUND_TEST_ID} style={styles.notFound}>
       <Feather
@@ -570,68 +576,70 @@ function ExpenseNotFound({ onBack }: { readonly onBack: () => void }) {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: color.bg.canvas,
-  },
-  saveTarget: {
-    minWidth: size.tapTargetMin,
-    minHeight: size.tapTargetMin,
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-  },
-  save: {
-    ...type.bodyStrong,
-    color: color.primary.default,
-  },
-  saveDisabled: {
-    color: color.text.disabled,
-  },
-  rows: {
-    paddingBottom: space[6],
-  },
-  value: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space[2],
-  },
-  valueText: {
-    ...type.body,
-    color: color.text.secondary,
-  },
-  noteValue: {
-    ...type.callout,
-    color: color.text.secondary,
-  },
-  notePlaceholder: {
-    ...type.callout,
-    color: color.text.tertiary,
-  },
-  deleteSlot: {
-    paddingHorizontal: space[4],
-    paddingTop: space[6],
-  },
-  skeleton: {
-    padding: space[4],
-    gap: space[4],
-  },
-  notFound: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: space[2],
-    paddingHorizontal: space[4],
-  },
-  notFoundHeadline: {
-    ...type.title2,
-    color: color.text.primary,
-    marginTop: space[4],
-  },
-  notFoundBody: {
-    ...type.callout,
-    color: color.text.secondary,
-    textAlign: 'center',
-    marginBottom: space[4],
-  },
-});
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: color.bg.canvas,
+    },
+    saveTarget: {
+      minWidth: size.tapTargetMin,
+      minHeight: size.tapTargetMin,
+      alignItems: 'flex-end',
+      justifyContent: 'center',
+    },
+    save: {
+      ...type.bodyStrong,
+      color: color.primary.default,
+    },
+    saveDisabled: {
+      color: color.text.disabled,
+    },
+    rows: {
+      paddingBottom: space[6],
+    },
+    value: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space[2],
+    },
+    valueText: {
+      ...type.body,
+      color: color.text.secondary,
+    },
+    noteValue: {
+      ...type.callout,
+      color: color.text.secondary,
+    },
+    notePlaceholder: {
+      ...type.callout,
+      color: color.text.tertiary,
+    },
+    deleteSlot: {
+      paddingHorizontal: space[4],
+      paddingTop: space[6],
+    },
+    skeleton: {
+      padding: space[4],
+      gap: space[4],
+    },
+    notFound: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: space[2],
+      paddingHorizontal: space[4],
+    },
+    notFoundHeadline: {
+      ...type.title2,
+      color: color.text.primary,
+      marginTop: space[4],
+    },
+    notFoundBody: {
+      ...type.callout,
+      color: color.text.secondary,
+      textAlign: 'center',
+      marginBottom: space[4],
+    },
+  }),
+);

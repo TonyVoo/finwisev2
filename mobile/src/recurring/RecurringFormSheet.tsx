@@ -10,7 +10,8 @@ import { COPY } from '../copy/strings';
 import type { CategoryListItem, RecurringListItem } from '../db/queries';
 import { dateRowLabel, spokenDate } from '../lib/calendar';
 import { currencyDecimals } from '../lib/money';
-import { color, radius, space, type } from '../theme/tokens';
+import { radius, space, type } from '../theme/tokens';
+import { createStyles } from '../theme/ThemeProvider';
 import {
   type RecurringDraft,
   type RecurringErrors,
@@ -62,6 +63,7 @@ export function RecurringFormSheet({
   onSubmit,
   onDelete,
 }: RecurringFormSheetProps) {
+  const styles = useStyles();
   const decimals = currencyDecimals(currency);
   const [draft, setDraft] = useState<RecurringDraft | null>(null);
   const [errors, setErrors] = useState<RecurringErrors>({});
@@ -295,25 +297,27 @@ export function RecurringFormSheet({
   );
 }
 
-const styles = StyleSheet.create({
-  body: { gap: space[5], paddingBottom: space[4] },
-  label: { ...type.callout, color: color.text.secondary, marginBottom: space[2] },
-  hint: { ...type.callout, color: color.text.tertiary, marginTop: -space[3] },
-  error: { ...type.callout, color: color.danger.default, marginTop: space[1] },
-  value: { ...type.body, color: color.text.secondary },
-  check: { ...type.bodyStrong, color: color.primary.default },
-  segments: { flexDirection: 'row', gap: space[2] },
-  segment: {
-    flex: 1,
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: color.border.hairline,
-    backgroundColor: color.bg.surface,
-  },
-  segmentSelected: { backgroundColor: color.primary.subtle, borderColor: color.primary.default },
-  segmentText: { ...type.body, color: color.text.primary },
-  segmentTextSelected: { color: color.primary.pressed, fontWeight: '600' },
-});
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    body: { gap: space[5], paddingBottom: space[4] },
+    label: { ...type.callout, color: color.text.secondary, marginBottom: space[2] },
+    hint: { ...type.callout, color: color.text.tertiary, marginTop: -space[3] },
+    error: { ...type.callout, color: color.danger.default, marginTop: space[1] },
+    value: { ...type.body, color: color.text.secondary },
+    check: { ...type.bodyStrong, color: color.primary.default },
+    segments: { flexDirection: 'row', gap: space[2] },
+    segment: {
+      flex: 1,
+      minHeight: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: color.border.hairline,
+      backgroundColor: color.bg.surface,
+    },
+    segmentSelected: { backgroundColor: color.primary.subtle, borderColor: color.primary.default },
+    segmentText: { ...type.body, color: color.text.primary },
+    segmentTextSelected: { color: color.primary.pressed, fontWeight: '600' },
+  }),
+);

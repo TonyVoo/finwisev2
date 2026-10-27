@@ -11,7 +11,8 @@ import {
 import Feather from '@expo/vector-icons/Feather';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COPY } from '../copy/strings';
-import { HIT_SLOP_44, color, size, space, type } from '../theme/tokens';
+import { HIT_SLOP_44, size, space, type } from '../theme/tokens';
+import { createStyles, useColors } from '../theme/ThemeProvider';
 
 /**
  * The shell both auth forms sit in: a back-only app bar, a large title, and a scroll
@@ -38,6 +39,8 @@ export interface FormScreenProps {
 }
 
 export function FormScreen({ title, onBack, banner, children, testID }: FormScreenProps) {
+  const color = useColors();
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
 
   return (
@@ -78,32 +81,34 @@ export function FormScreen({ title, onBack, banner, children, testID }: FormScre
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: color.bg.canvas,
-  },
-  flex: {
-    flex: 1,
-  },
-  appBar: {
-    minHeight: size.appBarHeight,
-    justifyContent: 'center',
-    // The screen gutter is `space.4` on both edges, always (§3).
-    paddingHorizontal: space[4],
-  },
-  content: {
-    paddingHorizontal: space[4],
-    // Deliberately no `gap`: the spacing below the title is `space.6` and between fields
-    // is `space.4`, so one uniform stack gap would be wrong for one of them. Each child
-    // owns its own spacing instead.
-    gap: space[4],
-  },
-  title: {
-    ...type.title1,
-    color: color.text.primary,
-    // `space.6` below the title, per both screens' Layout block. `space.4` of it comes
-    // from the stack gap, so only the remainder is added here.
-    marginBottom: space[6] - space[4],
-  },
-});
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: color.bg.canvas,
+    },
+    flex: {
+      flex: 1,
+    },
+    appBar: {
+      minHeight: size.appBarHeight,
+      justifyContent: 'center',
+      // The screen gutter is `space.4` on both edges, always (§3).
+      paddingHorizontal: space[4],
+    },
+    content: {
+      paddingHorizontal: space[4],
+      // Deliberately no `gap`: the spacing below the title is `space.6` and between fields
+      // is `space.4`, so one uniform stack gap would be wrong for one of them. Each child
+      // owns its own spacing instead.
+      gap: space[4],
+    },
+    title: {
+      ...type.title1,
+      color: color.text.primary,
+      // `space.6` below the title, per both screens' Layout block. `space.4` of it comes
+      // from the stack gap, so only the remainder is added here.
+      marginBottom: space[6] - space[4],
+    },
+  }),
+);

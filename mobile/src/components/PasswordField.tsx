@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
 import { COPY } from '../copy/strings';
-import { HIT_SLOP_44, color } from '../theme/tokens';
+import { HIT_SLOP_44 } from '../theme/tokens';
+import { useColors } from '../theme/ThemeProvider';
 import { TextField, type TextFieldProps } from './TextField';
 
 /**
@@ -21,6 +22,7 @@ import { TextField, type TextFieldProps } from './TextField';
 export type PasswordFieldProps = Omit<TextFieldProps, 'secureTextEntry' | 'trailing'>;
 
 export function PasswordField(props: PasswordFieldProps) {
+  const color = useColors();
   const [revealed, setRevealed] = useState(false);
 
   return (

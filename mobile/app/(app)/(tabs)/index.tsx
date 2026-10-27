@@ -35,7 +35,8 @@ import { MonthSwitcher } from '@/month/MonthSwitcher';
 import { SyncIndicator } from '@/sync/SyncIndicator';
 import { usePullToRefresh } from '@/sync/usePullToRefresh';
 import { useSelectedMonth } from '@/month/MonthProvider';
-import { color, size, space, type } from '@/theme/tokens';
+import { size, space, type } from '@/theme/tokens';
+import { createStyles } from '@/theme/ThemeProvider';
 
 /**
  * Home - the expense list. `docs/design/04-expense-list.md`.
@@ -69,6 +70,7 @@ export const HOME_LIST_TEST_ID = 'home-list';
 const FAB_CLEARANCE = size.fab + space[4] + space[4];
 
 export default function ExpenseListScreen() {
+  const styles = useStyles();
   const router = useRouter();
   const showSnackbar = useSnackbar();
   const localWrite = useLocalWrite();
@@ -298,22 +300,24 @@ export default function ExpenseListScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: color.bg.canvas,
-  },
-  searchSummary: {
-    ...type.footnote,
-    color: color.text.secondary,
-    paddingHorizontal: space[4],
-    paddingBottom: space[2],
-  },
-  sectionHeader: {
-    ...type.caption,
-    color: color.text.tertiary,
-    backgroundColor: color.bg.canvas,
-    paddingHorizontal: space[4],
-    paddingVertical: space[2],
-  },
-});
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: color.bg.canvas,
+    },
+    searchSummary: {
+      ...type.footnote,
+      color: color.text.secondary,
+      paddingHorizontal: space[4],
+      paddingBottom: space[2],
+    },
+    sectionHeader: {
+      ...type.caption,
+      color: color.text.tertiary,
+      backgroundColor: color.bg.canvas,
+      paddingHorizontal: space[4],
+      paddingVertical: space[2],
+    },
+  }),
+);

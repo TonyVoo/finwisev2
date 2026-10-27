@@ -1,6 +1,7 @@
 import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { COPY } from '@/copy/strings';
 import { queryKeys } from '@/query/keys';
+import { META_KEYS, readMeta } from '@/db/meta';
 import type { Transport, TransportRequest } from '@/api/transport';
 import SettingsScreen from '../../app/(app)/settings/index';
 import { resetRouter, routerRecord } from '../support/router';
@@ -105,6 +106,22 @@ describe('the settings screen', () => {
     );
     await refreshReads();
   }
+
+  it('lets the person pick a theme, applies it at once and remembers it on the device', async () => {
+    await waitFor(() => expect(screen.getByTestId('settings-appearance')).toBeTruthy());
+    expect(screen.getByText(COPY.appearance.system)).toBeTruthy();
+
+    await fireEvent.press(screen.getByTestId('settings-appearance'));
+    await waitFor(() => expect(screen.getByTestId('theme-option-dark')).toBeTruthy());
+    await fireEvent.press(screen.getByTestId('theme-option-dark'));
+
+    // The row's value changes with it, so the screen is demonstrably re-rendered in the
+    // new theme and not merely told about it.
+    await waitFor(() => expect(screen.getByText(COPY.appearance.dark)).toBeTruthy());
+    await waitFor(async () =>
+      expect(await readMeta(mounted.database, META_KEYS.themePreference)).toBe('dark'),
+    );
+  });
 
   it('shows the account email, read-only, and a Log out button', async () => {
     await waitFor(() => expect(screen.getByText('ada@example.com')).toBeTruthy());

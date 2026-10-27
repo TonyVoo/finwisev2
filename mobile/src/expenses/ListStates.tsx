@@ -3,7 +3,8 @@ import Feather from '@expo/vector-icons/Feather';
 import { SkeletonBlock } from '../components/Chrome';
 import { Button } from '../components/Button';
 import { COPY, EMPTY_COPY, emptyMonthHeadline, goToMonthAction } from '../copy/strings';
-import { color, size, space, type } from '../theme/tokens';
+import { size, space, type } from '../theme/tokens';
+import { createStyles, useColors } from '../theme/ThemeProvider';
 
 /**
  * Home's non-default list states: `docs/design/04-expense-list.md` §States.
@@ -26,6 +27,8 @@ export const EMPTY_ILLUSTRATION_TEST_ID = 'empty-illustration';
 
 /** State `empty` - first run: no expenses anywhere in the database. */
 export function FirstRunEmpty({ onAddFirst }: { readonly onAddFirst: () => void }) {
+  const color = useColors();
+  const styles = useStyles();
   return (
     <View testID={FIRST_RUN_EMPTY_TEST_ID} style={styles.empty}>
       <Feather
@@ -69,6 +72,7 @@ export function MonthEmpty({
   isCurrentMonth,
   onGoToCurrentMonth,
 }: MonthEmptyProps) {
+  const styles = useStyles();
   return (
     <View testID={MONTH_EMPTY_TEST_ID} style={styles.empty}>
       <Text style={styles.headline} accessibilityRole="header">
@@ -91,6 +95,7 @@ export function MonthEmpty({
 
 /** A search that matched nothing - distinct from "no expenses", which says to add one. */
 export function SearchEmpty() {
+  const styles = useStyles();
   return (
     <View testID="empty-search" style={styles.empty}>
       <Text style={styles.headline} accessibilityRole="header">
@@ -109,6 +114,7 @@ export function SearchEmpty() {
  * (`02-offline-and-sync.md` §1). The screen owns that deadline; this just draws the rows.
  */
 export function ListSkeleton() {
+  const styles = useStyles();
   return (
     <View
       testID={LIST_SKELETON_TEST_ID}
@@ -127,36 +133,38 @@ export function ListSkeleton() {
   );
 }
 
-const styles = StyleSheet.create({
-  empty: {
-    alignItems: 'center',
-    paddingHorizontal: space[4],
-    paddingTop: space[10],
-    gap: space[2],
-  },
-  headline: {
-    ...type.title2,
-    color: color.text.primary,
-    textAlign: 'center',
-    marginTop: space[4],
-  },
-  body: {
-    ...type.callout,
-    color: color.text.secondary,
-    textAlign: 'center',
-    // §States: the first-run body is capped at 280 so it breaks into readable lines.
-    maxWidth: 280,
-    marginBottom: space[4],
-  },
-  skeletonRow: {
-    minHeight: size.rowMinHeight,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: color.bg.surface,
-    paddingHorizontal: space[4],
-    gap: space[3],
-  },
-  skeletonSpacer: {
-    flex: 1,
-  },
-});
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    empty: {
+      alignItems: 'center',
+      paddingHorizontal: space[4],
+      paddingTop: space[10],
+      gap: space[2],
+    },
+    headline: {
+      ...type.title2,
+      color: color.text.primary,
+      textAlign: 'center',
+      marginTop: space[4],
+    },
+    body: {
+      ...type.callout,
+      color: color.text.secondary,
+      textAlign: 'center',
+      // §States: the first-run body is capped at 280 so it breaks into readable lines.
+      maxWidth: 280,
+      marginBottom: space[4],
+    },
+    skeletonRow: {
+      minHeight: size.rowMinHeight,
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: color.bg.surface,
+      paddingHorizontal: space[4],
+      gap: space[3],
+    },
+    skeletonSpacer: {
+      flex: 1,
+    },
+  }),
+);

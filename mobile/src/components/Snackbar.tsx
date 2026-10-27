@@ -10,7 +10,8 @@ import {
 } from 'react';
 import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { HIT_SLOP_44, a11y, color, elevation, radius, size, space, type } from '../theme/tokens';
+import { HIT_SLOP_44, a11y, elevation, radius, size, space, type } from '../theme/tokens';
+import { createStyles } from '../theme/ThemeProvider';
 
 /**
  * The snackbar, as `docs/design/00-foundations.md` §6 specifies it, plus the one rule that
@@ -105,6 +106,7 @@ function SnackbarHost({
   readonly snackbar: ActiveSnackbar;
   readonly onDismiss: () => void;
 }) {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const [duration, setDuration] = useState<number | null>(null);
 
@@ -163,30 +165,32 @@ function SnackbarHost({
   );
 }
 
-const styles = StyleSheet.create({
-  snackbar: {
-    ...elevation[2],
-    position: 'absolute',
-    left: space[4],
-    right: space[4],
-    backgroundColor: color.bg.surface,
-    borderRadius: radius.md,
-    padding: space[4],
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space[3],
-  },
-  message: {
-    ...type.callout,
-    color: color.text.primary,
-    flex: 1,
-  },
-  action: {
-    minHeight: size.tapTargetMin,
-    justifyContent: 'center',
-  },
-  actionLabel: {
-    ...type.bodyStrong,
-    color: color.primary.default,
-  },
-});
+const useStyles = createStyles((color) =>
+  StyleSheet.create({
+    snackbar: {
+      ...elevation[2],
+      position: 'absolute',
+      left: space[4],
+      right: space[4],
+      backgroundColor: color.bg.surface,
+      borderRadius: radius.md,
+      padding: space[4],
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space[3],
+    },
+    message: {
+      ...type.callout,
+      color: color.text.primary,
+      flex: 1,
+    },
+    action: {
+      minHeight: size.tapTargetMin,
+      justifyContent: 'center',
+    },
+    actionLabel: {
+      ...type.bodyStrong,
+      color: color.primary.default,
+    },
+  }),
+);
