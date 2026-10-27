@@ -6,7 +6,7 @@ import { problems } from '../errors.ts';
 /**
  * Gate for every authenticated route.
  *
- * This is the only thing that ever sets `req.userId`, and the token is the only place it
+ * This is the only thing that ever sets `req.userId` and `req.dataOwnerId`, and the token is the only place it
  * comes from — see `docs/PLAN.md` §3 (Tenancy). No request body, query parameter or path
  * segment in this API carries a `userId`, so there is no way to point an endpoint at
  * another user's rows.
@@ -52,12 +52,18 @@ export const requireAuth: RequestHandler = (
       // answer is the same `token_invalid` that `GET /v1/me` has always given.
       const account = await getPrisma().user.findUnique({
         where: { id: userId },
-        select: { id: true },
+        select: {
+          id: true,
+          // The data scope, found in the same lookup: a household member reads and writes
+          // the owner's rows, everyone else their own.
+          householdMember: { select: { household: { select: { ownerId: true } } } },
+        },
       });
       if (account === null) {
         throw problems.tokenInvalid('Access token does not belong to an existing account.');
       }
       req.userId = userId;
+      req.dataOwnerId = account.householdMember?.household.ownerId ?? userId;
       next();
     })
     .catch(next);

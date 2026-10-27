@@ -9,6 +9,7 @@ import { categoriesRouter } from './routes/categories.ts';
 import { docsRouter } from './routes/docs.ts';
 import { expensesRouter } from './routes/expenses.ts';
 import { healthRouter } from './routes/health.ts';
+import { householdRouter } from './routes/household.ts';
 import { meRouter } from './routes/me.ts';
 import { ratesRouter } from './routes/rates.ts';
 import { syncRouter } from './routes/sync.ts';
@@ -77,6 +78,7 @@ export function createApp(): Express {
   const authed = Router();
   authed.use(requireAuth);
   authed.use(meRouter);
+  authed.use(householdRouter);
   authed.use(categoriesRouter);
   authed.use(expensesRouter);
   authed.use(ratesRouter);

@@ -3,6 +3,7 @@ import { disconnectPrisma } from '../src/db/client.ts';
 import { resetLoginRateLimitForTests } from '../src/middleware/loginRateLimit.ts';
 import { resetEmailVerificationRateLimitForTests } from '../src/middleware/emailVerificationRateLimit.ts';
 import { resetPasswordResetRateLimitForTests } from '../src/middleware/passwordResetRateLimit.ts';
+import { resetHouseholdJoinRateLimitForTests } from '../src/middleware/householdJoinRateLimit.ts';
 import { resetPasswordConfirmRateLimitForTests } from '../src/middleware/passwordConfirmRateLimit.ts';
 import { truncateAll } from './support/db.ts';
 
@@ -25,6 +26,7 @@ beforeEach(async () => {
   resetPasswordConfirmRateLimitForTests();
   resetPasswordResetRateLimitForTests();
   resetEmailVerificationRateLimitForTests();
+  resetHouseholdJoinRateLimitForTests();
 });
 
 // Without this the pool keeps the worker's event loop alive and vitest hangs on exit.

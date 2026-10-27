@@ -142,7 +142,7 @@ export const API_ROUTES = [
   },
   {
     method: 'delete',
-    path: '/v1/household/members/{userId}',
+    path: '/v1/household/members/{memberId}',
     operationId: 'removeHouseholdMember',
     auth: true,
     successStatus: 204,

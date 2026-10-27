@@ -24,7 +24,7 @@ import {
   sendEmailVerification,
 } from '../services/emailVerificationService.ts';
 import { sendJson } from '../http/respond.ts';
-import { userIdOf } from '../http/types.ts';
+import { dataOwnerIdOf, userIdOf } from '../http/types.ts';
 
 /**
  * `GET /v1/me` — the user the access token belongs to.
@@ -45,7 +45,20 @@ meRouter.get('/me', async (req: Request, res: Response) => {
     throw problems.tokenInvalid('Access token does not belong to an existing account.');
   }
 
-  sendJson(res, 200, MeResponse, { user: toWireUser(user) });
+  // While in a household the account works in the household's currency, because that is what
+  // every shared amount is in; its own currency is untouched and returns on leaving.
+  const dataOwnerId = dataOwnerIdOf(req);
+  const currency =
+    dataOwnerId === userId
+      ? user.currency
+      : ((
+          await getPrisma().user.findUnique({
+            where: { id: dataOwnerId },
+            select: { currency: true },
+          })
+        )?.currency ?? user.currency);
+
+  sendJson(res, 200, MeResponse, { user: { ...toWireUser(user), currency }, dataOwnerId });
 });
 
 /**

@@ -12,7 +12,7 @@ import { Router, type Request, type Response } from 'express';
 import { getPrisma } from '../db/client.ts';
 import { ResourceIdParams } from '../http/params.ts';
 import { sendJson } from '../http/respond.ts';
-import { userIdOf } from '../http/types.ts';
+import { dataOwnerIdOf } from '../http/types.ts';
 import {
   validateBody,
   validateParams,
@@ -42,7 +42,7 @@ expensesRouter.get(
   validateQuery(ExpenseListQuery),
   async (req: Request, res: Response) => {
     const query = validatedQuery(res, ExpenseListQuery);
-    const page = await listExpenses(getPrisma(), userIdOf(req), query);
+    const page = await listExpenses(getPrisma(), dataOwnerIdOf(req), query);
     sendJson(res, 200, ExpenseListResponse, page);
   },
 );
@@ -52,7 +52,7 @@ expensesRouter.post(
   validateBody(ExpenseCreateRequest),
   async (req: Request, res: Response) => {
     const body = req.body as ExpenseCreateRequest;
-    const data = await createExpense(getPrisma(), userIdOf(req), body);
+    const data = await createExpense(getPrisma(), dataOwnerIdOf(req), body);
     sendJson(res, 201, ExpenseResponse, { data });
   },
 );
@@ -64,7 +64,7 @@ expensesRouter.patch(
   async (req: Request, res: Response) => {
     const { id } = validatedParams(res, ResourceIdParams);
     const body = req.body as ExpenseUpdateRequest;
-    const data = await updateExpense(getPrisma(), userIdOf(req), id, body);
+    const data = await updateExpense(getPrisma(), dataOwnerIdOf(req), id, body);
     sendJson(res, 200, ExpenseResponse, { data });
   },
 );
@@ -74,7 +74,7 @@ expensesRouter.delete(
   validateParams(ResourceIdParams),
   async (req: Request, res: Response) => {
     const { id } = validatedParams(res, ResourceIdParams);
-    const data = await deleteExpense(getPrisma(), userIdOf(req), id);
+    const data = await deleteExpense(getPrisma(), dataOwnerIdOf(req), id);
     sendJson(res, 200, ExpenseResponse, { data });
   },
 );
@@ -86,7 +86,7 @@ expensesRouter.put(
   async (req: Request, res: Response) => {
     const { id } = validatedParams(res, ResourceIdParams);
     const body = req.body as ReceiptPutRequest;
-    const data = await putReceipt(getPrisma(), userIdOf(req), id, body.dataBase64);
+    const data = await putReceipt(getPrisma(), dataOwnerIdOf(req), id, body.dataBase64);
     sendJson(res, 200, ReceiptResponse, { data });
   },
 );
@@ -96,7 +96,7 @@ expensesRouter.get(
   validateParams(ResourceIdParams),
   async (req: Request, res: Response) => {
     const { id } = validatedParams(res, ResourceIdParams);
-    const data = await getReceipt(getPrisma(), userIdOf(req), id);
+    const data = await getReceipt(getPrisma(), dataOwnerIdOf(req), id);
     sendJson(res, 200, ReceiptResponse, { data });
   },
 );
@@ -106,12 +106,12 @@ expensesRouter.delete(
   validateParams(ResourceIdParams),
   async (req: Request, res: Response) => {
     const { id } = validatedParams(res, ResourceIdParams);
-    await deleteReceipt(getPrisma(), userIdOf(req), id);
+    await deleteReceipt(getPrisma(), dataOwnerIdOf(req), id);
     res.status(204).end();
   },
 );
 
 expensesRouter.get('/receipts', async (req: Request, res: Response) => {
-  const data = await listReceipts(getPrisma(), userIdOf(req));
+  const data = await listReceipts(getPrisma(), dataOwnerIdOf(req));
   sendJson(res, 200, ReceiptIndexResponse, { data });
 });

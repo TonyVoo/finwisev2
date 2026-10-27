@@ -17,6 +17,7 @@ import { getConfig } from '../config.ts';
 import type { Db } from '../db/client.ts';
 import { isUniqueViolation } from '../db/errors.ts';
 import { sendEmailVerification } from './emailVerificationService.ts';
+import { ownsHouseholdWithOthers } from './householdService.ts';
 import { toWireUser } from '../db/mappers.ts';
 import { nextRevisionBlock } from '../db/revision.ts';
 import { ApiProblem, problems } from '../errors.ts';
@@ -364,6 +365,14 @@ export async function changeEmail(db: Db, userId: string, input: ChangeEmailInpu
  */
 export async function deleteAccount(db: Db, userId: string, password: string): Promise<void> {
   await confirmPassword(db, userId, password);
+
+  // Deleting the owner deletes the shared data, so it waits until the household does.
+  if (await ownsHouseholdWithOthers(db, userId)) {
+    throw new ApiProblem(
+      'household_has_members',
+      'Delete your household before deleting your account.',
+    );
+  }
 
   await db.$transaction(async (tx) => {
     await tx.expense.deleteMany({ where: { userId } });

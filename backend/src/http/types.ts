@@ -15,6 +15,12 @@ declare global {
       requestId?: string;
       /** Set only by `requireAuth`. Absent on public routes. */
       userId?: string;
+      /**
+       * Whose rows the request reads and writes: the caller's own id, or - while they are in a
+       * household - the household owner's. Set only by `requireAuth`, from the database, never
+       * from the request.
+       */
+      dataOwnerId?: string;
     }
   }
 }
@@ -37,4 +43,18 @@ export function userIdOf(req: Request): string {
     );
   }
   return userId;
+}
+
+/**
+ * The id every data row of this request is scoped by. Differs from {@link userIdOf} only for a
+ * household member, whose identity is their own but whose books are the owner's.
+ */
+export function dataOwnerIdOf(req: Request): string {
+  const { dataOwnerId } = req;
+  if (!dataOwnerId) {
+    throw new Error(
+      'dataOwnerIdOf() called on a request that did not pass requireAuth - route is mis-wired',
+    );
+  }
+  return dataOwnerId;
 }

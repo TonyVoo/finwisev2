@@ -1136,7 +1136,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /v1/household/members/{userId}:
+  /v1/household/members/{memberId}:
     delete:
       operationId: removeHouseholdMember
       tags: [household]
@@ -1145,10 +1145,10 @@ paths:
         Owner only. Removes another member; their data scope returns to their own account. The
         owner cannot remove themselves (they delete the household).
       parameters:
-        - name: userId
+        - name: memberId
           in: path
           required: true
-          description: The member to remove.
+          description: The member to remove (their account id, as listed by `GET /v1/household`).
           schema: { $ref: '#/components/schemas/Uuid' }
       x-errorCodes:
         - validation_error

@@ -2,7 +2,7 @@ import { SyncPullQuery, SyncPullResponse, SyncPushResponse } from '@expense-trac
 import { Router, type Request, type Response } from 'express';
 import { getPrisma } from '../db/client.ts';
 import { sendJson } from '../http/respond.ts';
-import { userIdOf } from '../http/types.ts';
+import { dataOwnerIdOf } from '../http/types.ts';
 import { validateQuery, validatedQuery } from '../middleware/validate.ts';
 import { pullChanges } from '../services/syncPullService.ts';
 import { pushChanges } from '../services/syncPushService.ts';
@@ -22,13 +22,13 @@ export const syncRouter = Router();
 
 syncRouter.get('/sync', validateQuery(SyncPullQuery), async (req: Request, res: Response) => {
   const query = validatedQuery(res, SyncPullQuery);
-  const body = await pullChanges(getPrisma(), userIdOf(req), query);
+  const body = await pullChanges(getPrisma(), dataOwnerIdOf(req), query);
   sendJson(res, 200, SyncPullResponse, body);
 });
 
 syncRouter.post('/sync', async (req: Request, res: Response) => {
   const parsed = parsePushBatch(req.body);
-  const body = await pushChanges(getPrisma(), userIdOf(req), parsed);
+  const body = await pushChanges(getPrisma(), dataOwnerIdOf(req), parsed);
   // `200`, not `201`: a batch is not a resource, and whether anything was created is a
   // per-record question that `results[].status` answers.
   sendJson(res, 200, SyncPushResponse, body);

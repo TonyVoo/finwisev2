@@ -55,7 +55,7 @@ All authenticated. The household is addressed by the token, never by an id in th
 | `createHouseholdInvite` | `POST /v1/household/invite` | owner |
 | `joinHousehold` | `POST /v1/household/join` `{ code }` | a person in no household |
 | `leaveHousehold` | `POST /v1/household/leave` | member (not owner) |
-| `removeHouseholdMember` | `DELETE /v1/household/members/{userId}` | owner |
+| `removeHouseholdMember` | `DELETE /v1/household/members/{memberId}` | owner |
 
 `GET /v1/me` also returns `dataOwnerId`, so a device knows which scope its local store holds.
 

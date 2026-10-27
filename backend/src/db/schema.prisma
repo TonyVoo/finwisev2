@@ -61,6 +61,8 @@ model User {
   emailVerificationCode EmailVerificationCode?
   expenseReceipts ExpenseReceipt[]
   syncMutations   SyncMutation[]
+  ownedHousehold  Household?       @relation("HouseholdOwner")
+  householdMember HouseholdMember?
 
   @@map("users")
 }
@@ -348,4 +350,47 @@ model RefreshToken {
   /// Revoke-all-sessions and expired-token pruning both scan by user.
   @@index([userId])
   @@map("refresh_tokens")
+}
+
+/// A shared household (`docs/design/10-households.md`). Its data lives under the **owner's**
+/// user id: the household is only the answer to "whose rows does this member read and write".
+/// Creating one therefore moves nothing, and every synced table stays scoped by one `user_id`.
+model Household {
+  id        String   @id @db.Uuid
+  ownerId   String   @unique @map("owner_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  owner   User              @relation("HouseholdOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members HouseholdMember[]
+  invite  HouseholdInvite?
+
+  @@map("households")
+}
+
+/// One row per person in a household, the owner included. `user_id` is unique: a person is in
+/// at most one household at a time.
+model HouseholdMember {
+  householdId String   @map("household_id") @db.Uuid
+  userId      String   @unique @map("user_id") @db.Uuid
+  /// `owner` | `member`; a CHECK constraint holds it.
+  role        String   @db.VarChar(6)
+  joinedAt    DateTime @default(now()) @map("joined_at") @db.Timestamptz(3)
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([householdId, userId])
+  @@map("household_members")
+}
+
+/// The household's one live invite code, stored only as an HMAC. Single use: joining deletes it.
+model HouseholdInvite {
+  householdId String   @id @map("household_id") @db.Uuid
+  codeHash    String   @unique @map("code_hash") @db.Char(64)
+  expiresAt   DateTime @map("expires_at") @db.Timestamptz(3)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@map("household_invites")
 }
