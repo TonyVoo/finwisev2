@@ -34,7 +34,12 @@ async function seedEnglishDefaults(database: SqliteDatabase): Promise<void> {
     await database.runAsync(
       `INSERT INTO categories (id, name, color, isDefault, updatedAt, revision)
        VALUES (?, ?, ?, ?, '2026-10-01T00:00:00.000Z', 1)`,
-      [`c${index}`, seed.name, seed.color, seed.isDefault ? 1 : 0],
+      [
+        `0192f5a0-0000-7000-8000-00000000000${index}`,
+        seed.name,
+        seed.color,
+        seed.isDefault ? 1 : 0,
+      ],
     );
   }
 }
@@ -48,6 +53,8 @@ describe('offering Vietnamese names for the default categories', () => {
       transport,
       seed: async (database) => {
         await writeMeta(database, META_KEYS.languagePreference, language);
+        // Signing in as anyone but the store's owner wipes it, so seed it as this user's.
+        await writeMeta(database, META_KEYS.owner, authResponse().user.id);
         if (answered) await writeMeta(database, META_KEYS.categoryRenameAnswered, '1');
         if (seed) await seedEnglishDefaults(database);
       },
@@ -118,7 +125,10 @@ describe('offering Vietnamese names for the default categories', () => {
 
   it('leaves a category the person already renamed alone, and says only how many it will change', async () => {
     await mount({});
-    await mounted.database.runAsync("UPDATE categories SET name = 'Siêu thị' WHERE id = 'c1'", []);
+    await mounted.database.runAsync(
+      "UPDATE categories SET name = 'Siêu thị' WHERE id = '0192f5a0-0000-7000-8000-000000000001'",
+      [],
+    );
     fireEvent.press(await screen.findByTestId(ROW));
 
     expect(await screen.findByText(COPY.categoryRename.title.replace('{count}', '5'))).toBeTruthy();

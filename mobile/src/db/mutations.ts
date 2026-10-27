@@ -9,6 +9,7 @@ import {
   type QueuedMutation,
   applyLocalMutation,
   applyLocalMutationPlan,
+  applyLocalMutations,
 } from './write';
 
 /**
@@ -656,6 +657,31 @@ export async function deleteGoal(
   return await applyLocalMutation(
     database,
     { entity: 'goal', id, fields: { deletedAt: toTimestamp(stamp) } },
+    options,
+  );
+}
+
+/**
+ * Rename several categories at once: one transaction, one outbox entry per category, each
+ * carrying only `name`. All or none - a blank or over-long name rejects the whole batch
+ * before anything is written, so a half-renamed set never reaches the screen or the server.
+ *
+ * An ordinary edit in every other respect, so it syncs like one. Used for the one-time offer
+ * to give the untouched default categories Vietnamese names (`categories/renameDefaults.ts`).
+ */
+export async function renameCategories(
+  database: SqliteDatabase,
+  renames: readonly { readonly id: string; readonly to: string }[],
+  options: LocalMutationOptions = {},
+): Promise<readonly QueuedMutation[]> {
+  if (renames.length === 0) return [];
+  return await applyLocalMutations(
+    database,
+    renames.map(({ id, to }) => ({
+      entity: 'category' as const,
+      id,
+      fields: { name: to.trim() },
+    })),
     options,
   );
 }

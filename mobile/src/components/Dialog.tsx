@@ -29,6 +29,10 @@ export interface DialogProps {
   readonly onCancel: () => void;
   readonly cancelLabel?: string;
   readonly testID?: string;
+  /** Overrides the `-cancel` id when the dismissing answer has a name of its own. */
+  readonly cancelTestID?: string;
+  /** Primary for a dialog whose action destroys nothing (offering a rename, say). */
+  readonly confirmVariant?: 'destructive' | 'primary';
 }
 
 export function Dialog({
@@ -39,6 +43,8 @@ export function Dialog({
   onCancel,
   cancelLabel = COPY.common.cancel,
   testID,
+  cancelTestID,
+  confirmVariant = 'destructive',
 }: DialogProps) {
   const styles = useStyles();
   return (
@@ -73,7 +79,7 @@ export function Dialog({
           <View style={styles.actions}>
             <Button
               label={destructive.label}
-              variant="destructive"
+              variant={confirmVariant}
               fullWidth
               onPress={destructive.onPress}
               testID={testID === undefined ? undefined : `${testID}-confirm`}
@@ -83,7 +89,7 @@ export function Dialog({
               variant="secondary"
               fullWidth
               onPress={onCancel}
-              testID={testID === undefined ? undefined : `${testID}-cancel`}
+              testID={cancelTestID ?? (testID === undefined ? undefined : `${testID}-cancel`)}
             />
           </View>
         </Pressable>

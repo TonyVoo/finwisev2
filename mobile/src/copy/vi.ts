@@ -241,6 +241,8 @@ export const VIETNAMESE_COPY: CopyBundle = {
       recurringHint: 'Tiền nhà, gói đăng ký và các khoản định kỳ.',
       goals: 'Mục tiêu tiết kiệm',
       goalsHint: 'Tiết kiệm cho điều bạn muốn.',
+      renameCategories: 'Đổi tên danh mục mặc định',
+      renameCategoriesHint: 'Chuyển tên gốc sang tiếng Việt.',
       appearance: 'Giao diện',
       export: 'Xuất khoản chi',
       exportHint: 'Lưu mọi thứ bạn đã ghi thành tệp CSV.',
@@ -412,6 +414,13 @@ export const VIETNAMESE_COPY: CopyBundle = {
     error: { generic: 'Đã xảy ra lỗi từ phía chúng tôi. Hãy thử lại.' },
     session: { expired: 'Phiên đăng nhập của bạn đã hết hạn. Vui lòng đăng nhập lại.' },
 
+    categoryRename: {
+      title: 'Đổi tên {count} danh mục?',
+      body: 'Chỉ đổi những tên gốc bạn chưa sửa, trên mọi thiết bị của bạn.',
+      confirm: 'Đổi tên',
+      dismiss: 'Để sau',
+    },
+
     language: {
       title: 'Ngôn ngữ',
       system: 'Theo hệ thống',
@@ -556,6 +565,7 @@ export const VIETNAMESE_COPY: CopyBundle = {
       deletedMany: 'Đã xóa {name}. {count} khoản chi đã chuyển sang {fallbackName}.',
       deletedOne: 'Đã xóa {name}. 1 khoản chi đã chuyển sang {fallbackName}.',
       deletedNone: 'Đã xóa {name}.',
+      defaultsRenamed: 'Đã đổi tên danh mục.',
       blocked:
         'Không thể xóa {fallbackName}. Đây là nơi các khoản chi chuyển đến khi bạn xóa một danh mục.',
     },

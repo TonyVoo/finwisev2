@@ -7,10 +7,21 @@ import { AppBar, IconButton } from '@/components/Chrome';
 import { Dialog } from '@/components/Dialog';
 import { useSnackbar } from '@/components/Snackbar';
 import { Row, RowSubtitle, RowTitle } from '@/components/Row';
-import { COPY } from '@/copy/strings';
+import { planDefaultRenames } from '@/categories/renameDefaults';
+import { COPY, SNACK_COPY } from '@/copy/strings';
 import { useDatabase } from '@/db/DatabaseProvider';
+import { markCategoryRenameAnswered } from '@/db/onboarding';
+import { renameCategories } from '@/db/mutations';
+import { useLocalWrite } from '@/db/localWrite';
 import { exportExpenses, nativeExportDependencies } from '@/export/exportExpenses';
-import { useEmailVerified, usePendingRecordCount, useUserCurrency, useUserEmail } from '@/db/hooks';
+import {
+  useCategoryRenameAnswered,
+  useEmailVerified,
+  useLiveCategories,
+  usePendingRecordCount,
+  useUserCurrency,
+  useUserEmail,
+} from '@/db/hooks';
 import { LanguageSheet, languagePreferenceLabel } from '@/i18n/LanguageSheet';
 import { useLanguage } from '@/i18n/LanguageProvider';
 import { useAppLock } from '@/lock/AppLockProvider';
@@ -61,6 +72,29 @@ export default function SettingsScreen() {
   const [choosingLanguage, setChoosingLanguage] = useState(false);
   const language = useLanguage();
   const { preference } = useTheme();
+  const [offeringRename, setOfferingRename] = useState(false);
+  const categories = useLiveCategories();
+  const renameAnswered = useCategoryRenameAnswered();
+  const localWrite = useLocalWrite();
+  const renames =
+    language.language === 'vi' && renameAnswered.data === false
+      ? planDefaultRenames(categories.data ?? [], 'vi')
+      : [];
+
+  /** Read the categories afresh first, so the count in the dialog is what a yes will do. */
+  async function offerRename(): Promise<void> {
+    await categories.refetch();
+    setOfferingRename(true);
+  }
+
+  async function answerRename(rename: boolean): Promise<void> {
+    setOfferingRename(false);
+    await localWrite(async (db) => {
+      if (rename) await renameCategories(db, renames);
+      await markCategoryRenameAnswered(db);
+    });
+    if (rename) showSnackbar({ message: SNACK_COPY.category.defaultsRenamed });
+  }
 
   const hasUnsynced = (pending.data ?? 0) > 0;
 
@@ -192,6 +226,16 @@ export default function SettingsScreen() {
           >
             <RowTitle>{COPY.language.title}</RowTitle>
           </Row>
+          {renames.length > 0 ? (
+            <Row
+              testID="settings-rename-categories"
+              onPress={() => void offerRename()}
+              accessibilityLabel={`${COPY.settings.renameCategories}. ${COPY.settings.renameCategoriesHint}`}
+            >
+              <RowTitle>{COPY.settings.renameCategories}</RowTitle>
+              <RowSubtitle>{COPY.settings.renameCategoriesHint}</RowSubtitle>
+            </Row>
+          ) : null}
           <Row
             testID="settings-app-lock"
             onPress={() => void toggleLock()}
@@ -254,6 +298,18 @@ export default function SettingsScreen() {
 
       <ThemeSheet visible={choosingTheme} onClose={() => setChoosingTheme(false)} />
       <LanguageSheet visible={choosingLanguage} onClose={() => setChoosingLanguage(false)} />
+
+      <Dialog
+        visible={offeringRename}
+        testID="category-rename"
+        cancelTestID="category-rename-dismiss"
+        confirmVariant="primary"
+        title={COPY.categoryRename.title.replace('{count}', String(renames.length))}
+        body={COPY.categoryRename.body}
+        destructive={{ label: COPY.categoryRename.confirm, onPress: () => void answerRename(true) }}
+        cancelLabel={COPY.categoryRename.dismiss}
+        onCancel={() => void answerRename(false)}
+      />
 
       <Dialog
         visible={confirmingLogout}

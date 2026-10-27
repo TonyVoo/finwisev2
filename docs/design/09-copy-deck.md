@@ -598,3 +598,10 @@ them as proposals the Designer can reword; changing a row here means changing
 | `notFound.title` | `This screen does not exist.` | Not-found screen |
 | `notFound.action` | `Go to the start` | Not-found screen |
 | `boot.title` | `Expense Tracker could not start` | Start-up failure screen |
+| `settings.renameCategories` | `Rename default categories` | Settings row |
+| `settings.renameCategoriesHint` | `Switch the starter names to Vietnamese.` | Settings row, hint |
+| `categoryRename.title` | `Rename {count} categories?` | Settings, rename offer |
+| `categoryRename.body` | `Only the starter names you have not changed are renamed, on all your devices.` | Settings, rename offer |
+| `categoryRename.confirm` | `Rename` | Settings, rename offer, button |
+| `categoryRename.dismiss` | `Not now` | Settings, rename offer, button |
+| `category.defaultsRenamed` | `Categories renamed.` | snackbar |

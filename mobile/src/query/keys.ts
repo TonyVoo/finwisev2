@@ -94,6 +94,7 @@ export const queryKeys = {
   onboarding: {
     /** Whether Home should still offer to review the categories created at signup. */
     categoryReview: () => ['local', 'onboarding', 'categoryReview'] as const,
+    categoryRename: () => ['local', 'onboarding', 'categoryRename'] as const,
   },
 
   outbox: {

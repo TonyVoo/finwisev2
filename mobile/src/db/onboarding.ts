@@ -26,3 +26,19 @@ export async function clearCategoryReviewPending(executor: SqliteExecutor): Prom
 export async function readCategoryReviewPending(executor: SqliteExecutor): Promise<boolean> {
   return (await readMeta(executor, META_KEYS.categoryReviewPending)) === '1';
 }
+
+/**
+ * The one-time offer to give the untouched default categories Vietnamese names.
+ *
+ * Same shape as the review prompt above: a `meta` flag, not a synced record, because "I have
+ * been asked on this device" is a fact about this device. Both answers set it - the point is
+ * to be asked once - and an account whose categories were renamed on another device has
+ * nothing left to offer anyway, because those renames synced here.
+ */
+export async function markCategoryRenameAnswered(executor: SqliteExecutor): Promise<void> {
+  await writeMeta(executor, META_KEYS.categoryRenameAnswered, '1');
+}
+
+export async function readCategoryRenameAnswered(executor: SqliteExecutor): Promise<boolean> {
+  return (await readMeta(executor, META_KEYS.categoryRenameAnswered)) === '1';
+}

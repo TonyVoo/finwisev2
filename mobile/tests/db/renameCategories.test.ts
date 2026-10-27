@@ -23,7 +23,12 @@ describe('renaming categories in a batch', () => {
       await database.runAsync(
         `INSERT INTO categories (id, name, color, isDefault, updatedAt, revision)
          VALUES (?, ?, ?, ?, '2026-10-01T00:00:00.000Z', 1)`,
-        [`c${index}`, seed.name, seed.color, seed.isDefault ? 1 : 0],
+        [
+          `0192f5a0-0000-7000-8000-00000000000${index}`,
+          seed.name,
+          seed.color,
+          seed.isDefault ? 1 : 0,
+        ],
       );
     }
   });
@@ -37,19 +42,23 @@ describe('renaming categories in a batch', () => {
 
   it('renames each one and queues exactly one outbox entry per rename', async () => {
     await renameCategories(database, [
-      { id: 'c1', to: 'Tạp hóa' },
-      { id: 'c2', to: 'Di chuyển' },
+      { id: '0192f5a0-0000-7000-8000-000000000001', to: 'Tạp hóa' },
+      { id: '0192f5a0-0000-7000-8000-000000000002', to: 'Di chuyển' },
     ]);
 
     const names = Object.fromEntries(
       (await listLiveCategories(database)).map((c) => [c.id, c.name]),
     );
-    expect(names).toMatchObject({ c1: 'Tạp hóa', c2: 'Di chuyển', c3: 'Eating out' });
+    expect(names).toMatchObject({
+      '0192f5a0-0000-7000-8000-000000000001': 'Tạp hóa',
+      '0192f5a0-0000-7000-8000-000000000002': 'Di chuyển',
+      '0192f5a0-0000-7000-8000-000000000003': 'Eating out',
+    });
 
     const queue = await outbox();
     expect(queue.map((entry) => [entry.entity, entry.recordId])).toEqual([
-      ['category', 'c1'],
-      ['category', 'c2'],
+      ['category', '0192f5a0-0000-7000-8000-000000000001'],
+      ['category', '0192f5a0-0000-7000-8000-000000000002'],
     ]);
     // Only the name travels: the colour, budget and default flag are not this edit's to send.
     expect(queue.map((entry) => JSON.parse(entry.fields))).toEqual([
@@ -59,7 +68,9 @@ describe('renaming categories in a batch', () => {
   });
 
   it('can rename the undeletable default, which is found by its flag and not its name', async () => {
-    await renameCategories(database, [{ id: 'c0', to: 'Chưa phân loại' }]);
+    await renameCategories(database, [
+      { id: '0192f5a0-0000-7000-8000-000000000000', to: 'Chưa phân loại' },
+    ]);
     const list = await listLiveCategories(database);
     expect(list.find((category) => category.isDefault)?.name).toBe('Chưa phân loại');
   });
@@ -67,8 +78,8 @@ describe('renaming categories in a batch', () => {
   it('writes all of them or none, when one is refused', async () => {
     await expect(
       renameCategories(database, [
-        { id: 'c1', to: 'Tạp hóa' },
-        { id: 'c2', to: '   ' },
+        { id: '0192f5a0-0000-7000-8000-000000000001', to: 'Tạp hóa' },
+        { id: '0192f5a0-0000-7000-8000-000000000002', to: '   ' },
       ]),
     ).rejects.toThrow();
 

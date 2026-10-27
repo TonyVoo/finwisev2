@@ -4,7 +4,7 @@ import { queryKeys } from '../query/keys';
 import { type MonthKey, monthRange, stepMonth } from '../lib/calendar';
 import { TREND_MONTHS } from '../summary/trendModel';
 import { useDatabase } from './DatabaseProvider';
-import { readCategoryReviewPending } from './onboarding';
+import { readCategoryRenameAnswered, readCategoryReviewPending } from './onboarding';
 import { readEmailVerified, readUserCurrency, readUserEmail } from './user';
 import {
   type CategoryListItem,
@@ -350,6 +350,14 @@ export function useExpenseSearchSummary(
 }
 
 /** Whether Home should still offer the one-time "review your categories" prompt. */
+export function useCategoryRenameAnswered(): UseQueryResult<boolean> {
+  const database = useDatabase();
+  return useQuery({
+    queryKey: queryKeys.onboarding.categoryRename(),
+    queryFn: () => readCategoryRenameAnswered(database),
+  });
+}
+
 export function useCategoryReviewPending(): UseQueryResult<boolean> {
   const database = useDatabase();
   return useQuery({

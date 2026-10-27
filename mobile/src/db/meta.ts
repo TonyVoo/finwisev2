@@ -59,6 +59,12 @@ export const META_KEYS = {
    * switch the language someone reads their own phone in.
    */
   languagePreference: 'languagePreference',
+  /**
+   * `'1'` once the person has answered the one-time offer to rename the default categories
+   * into Vietnamese, either way. Wiped with the store: it is a fact about this account's
+   * categories, and the next account on the device is asked afresh.
+   */
+  categoryRenameAnswered: 'categoryRenameAnswered',
 } as const;
 
 export type MetaKey = (typeof META_KEYS)[keyof typeof META_KEYS];
@@ -72,6 +78,7 @@ export const WIPED_META_KEYS: readonly MetaKey[] = [
   META_KEYS.lastSyncedAt,
   META_KEYS.categoryReviewPending,
   META_KEYS.budgetNotified,
+  META_KEYS.categoryRenameAnswered,
 ];
 
 export async function readMeta(executor: SqliteExecutor, key: MetaKey): Promise<string | null> {

@@ -274,6 +274,8 @@ export const COPY = {
     recurringHint: 'Rent, subscriptions and other regular payments.',
     goals: 'Savings goals',
     goalsHint: 'Save towards something you want.',
+    renameCategories: 'Rename default categories',
+    renameCategoriesHint: 'Switch the starter names to Vietnamese.',
     appearance: 'Appearance',
     export: 'Export expenses',
     exportHint: 'Save everything you have recorded as a CSV file.',
@@ -452,6 +454,14 @@ export const COPY = {
    */
   error: { generic: 'Something went wrong on our end. Try again.' },
   session: { expired: 'Your session expired. Please log in again.' },
+
+  /** The one-time offer to rename untouched English default categories (`categories/renameDefaults.ts`). */
+  categoryRename: {
+    title: 'Rename {count} categories?',
+    body: 'Only the starter names you have not changed are renamed, on all your devices.',
+    confirm: 'Rename',
+    dismiss: 'Not now',
+  },
 
   /** The language choice, opened from Settings. The two names are endonyms in every language. */
   language: {
@@ -647,6 +657,7 @@ export const SNACK_COPY = {
     deletedMany: '{name} deleted. {count} expenses moved to {fallbackName}.',
     deletedOne: '{name} deleted. 1 expense moved to {fallbackName}.',
     deletedNone: '{name} deleted.',
+    defaultsRenamed: 'Categories renamed.',
     blocked: "{fallbackName} can't be deleted. It's where expenses go when you delete a category.",
   },
   amount: { max: 'That is the largest amount you can enter.' },
