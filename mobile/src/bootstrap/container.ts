@@ -9,6 +9,7 @@ import { createSecureTokenStore } from '../auth/tokenStore';
 import { type Clock, systemClock } from '../lib/clock';
 import { createSqliteLocalStore } from '../db/localStore';
 import { generateDueRecurring } from '../recurring/generate';
+import { syncBillReminders } from '../notifications/billReminders';
 import { META_KEYS, readMeta } from '../db/meta';
 import { type ThemePreference, parseThemePreference } from '../theme/ThemeProvider';
 import { openLocalDatabase } from '../db/open';
@@ -134,6 +135,7 @@ export async function createAppContainer(options: AppContainerOptions = {}): Pro
       if (session.getSnapshot().status !== 'authenticated') return;
       const created = await generateDueRecurring(database, { clock });
       if (created > 0) void queryClient.invalidateQueries({ queryKey: queryKeys.local() });
+      void syncBillReminders(database, clock()).catch(() => undefined);
     },
   });
 

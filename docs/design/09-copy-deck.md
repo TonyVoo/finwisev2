@@ -494,3 +494,5 @@ them as proposals the Designer can reword; changing a row here means changing
 | `home.balance.net` | `Net {amount}` | Home and Summary, line under the total |
 | `home.incomeLabel` | `income` | Home, spoken prefix on an income row |
 | `form.deleteIncome` | `Delete income` | Expense form, income mode |
+| `recurring.reminder.title` | `Due tomorrow` | Notification, day before a recurring expense |
+| `recurring.reminder.body` | `{name} · {amount}` | Notification, day before a recurring expense |

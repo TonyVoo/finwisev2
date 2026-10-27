@@ -44,15 +44,19 @@ export function shouldNotify(
   return alert !== null && notificationKey(month, alert) !== lastNotified;
 }
 
-async function ensureChannel(): Promise<void> {
+export async function ensureChannel(
+  id: string = BUDGET_CHANNEL,
+  name = 'Budget alerts',
+): Promise<void> {
   if (Platform.OS !== 'android') return;
-  await Notifications.setNotificationChannelAsync(BUDGET_CHANNEL, {
-    name: 'Budget alerts',
+  await Notifications.setNotificationChannelAsync(id, {
+    name,
     importance: Notifications.AndroidImportance.DEFAULT,
   });
 }
 
-async function hasPermission(): Promise<boolean> {
+/** Whether notifications are allowed, asking once if the system still lets us. */
+export async function hasPermission(): Promise<boolean> {
   const current = await Notifications.getPermissionsAsync();
   if (current.granted) return true;
   if (!current.canAskAgain) return false;

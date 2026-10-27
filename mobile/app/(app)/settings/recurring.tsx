@@ -8,6 +8,7 @@ import { SwipeToDelete } from '@/components/SwipeToDelete';
 import { useSnackbar } from '@/components/Snackbar';
 import { COPY, SNACK_COPY } from '@/copy/strings';
 import { useCategoriesWithCounts, useRecurringList, useUserCurrency } from '@/db/hooks';
+import { useDatabase } from '@/db/DatabaseProvider';
 import { useLocalWrite } from '@/db/localWrite';
 import {
   type NewRecurring,
@@ -17,6 +18,7 @@ import {
 } from '@/db/mutations';
 import type { RecurringListItem } from '@/db/queries';
 import { useSelectedMonth } from '@/month/MonthProvider';
+import { requestReminderPermission, syncBillReminders } from '@/notifications/billReminders';
 import { generateDueRecurring } from '@/recurring/generate';
 import { RecurringFormSheet } from '@/recurring/RecurringFormSheet';
 import { recurringNextLabel, recurringSummary, recurringTitle } from '@/recurring/recurringModel';
@@ -47,6 +49,7 @@ export default function RecurringScreen() {
   const categories = useCategoriesWithCounts();
   const currency = useUserCurrency().data ?? 'USD';
 
+  const database = useDatabase();
   const [editing, setEditing] = useState<RecurringListItem | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<RecurringListItem | null>(null);
@@ -64,10 +67,15 @@ export default function RecurringScreen() {
         }
         await generateDueRecurring(db);
       });
+      // Ask here, where the person has just set something up that a reminder is for, then
+      // schedule: the sync pass never prompts.
+      void requestReminderPermission()
+        .then(() => syncBillReminders(database))
+        .catch(() => undefined);
       setSheetOpen(false);
       showSnackbar({ message: SNACK_COPY.recurring.saved });
     },
-    [editing, currency, localWrite, showSnackbar],
+    [editing, currency, localWrite, showSnackbar, database],
   );
 
   const confirmDelete = useCallback(async () => {

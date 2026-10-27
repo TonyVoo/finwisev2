@@ -295,6 +295,8 @@ export const COPY = {
       noCategory: 'Add a category first.',
     },
     row: { next: 'Next {date}', ended: 'Ended' },
+    /** The notification sent the day before a recurring expense is due. */
+    reminder: { title: 'Due tomorrow', body: '{name} · {amount}' },
     create: 'Add',
     save: 'Save',
     delete: 'Delete recurring expense',
