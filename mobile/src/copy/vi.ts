@@ -286,6 +286,20 @@ export const VIETNAMESE_COPY: CopyBundle = {
       },
       create: 'Tạo hộ gia đình',
       join: 'Tham gia bằng mã',
+      createConfirm: {
+        title: 'Tạo hộ gia đình?',
+        body: 'Các khoản chi hiện tại của bạn sẽ chuyển vào hộ gia đình và được chia sẻ với những người bạn mời. Nếu sau này bạn rời đi, chúng vẫn ở lại với hộ gia đình.',
+        confirm: 'Tạo',
+      },
+      memberSheet: {
+        transfer: 'Chuyển quyền chủ hộ',
+        remove: 'Xóa khỏi hộ gia đình',
+      },
+      transfer: {
+        title: 'Chuyển quyền chủ hộ cho {email}?',
+        body: 'Họ có thể mời và xóa người, và xóa hộ gia đình. Bạn trở thành thành viên và có thể rời đi.',
+        confirm: 'Chuyển quyền',
+      },
       addedBy: 'Thêm bởi {name}',
       addedByYou: 'Bạn đã thêm',
       members: 'Thành viên',
@@ -333,10 +347,12 @@ export const VIETNAMESE_COPY: CopyBundle = {
         joined: 'Bạn đã tham gia hộ gia đình.',
         left: 'Bạn đã rời hộ gia đình.',
         removed: 'Đã xóa thành viên.',
+        transferred: 'Đã chuyển quyền chủ hộ.',
         deleted: 'Đã xóa hộ gia đình.',
       },
       a11y: {
         removeMember: 'Xóa {email}',
+        memberActions: 'Tùy chọn cho {email}',
       },
       error: {
         invalid_invite_code: 'Mã không đúng hoặc đã hết hạn.',

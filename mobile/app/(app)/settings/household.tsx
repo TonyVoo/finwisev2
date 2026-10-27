@@ -13,6 +13,7 @@ import { COPY } from '@/copy/strings';
 import { useUserEmail } from '@/db/hooks';
 import { InviteSheet } from '@/household/InviteSheet';
 import { JoinSheet } from '@/household/JoinSheet';
+import { MemberSheet } from '@/household/MemberSheet';
 import {
   PendingChangesError,
   householdErrorMessage,
@@ -33,8 +34,10 @@ import { createStyles } from '@/theme/ThemeProvider';
  */
 
 type Confirming =
+  | { readonly kind: 'create' }
   | { readonly kind: 'leave' }
   | { readonly kind: 'delete' }
+  | { readonly kind: 'transfer'; readonly member: HouseholdMember }
   | { readonly kind: 'remove'; readonly member: HouseholdMember };
 
 export default function HouseholdScreen() {
@@ -49,6 +52,8 @@ export default function HouseholdScreen() {
   const [joinError, setJoinError] = useState<string | undefined>(undefined);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<Confirming | null>(null);
+  /** The member whose action sheet is open. */
+  const [actingOn, setActingOn] = useState<HouseholdMember | null>(null);
   const [banner, setBanner] = useState<string | null>(null);
 
   const done = useCallback(
@@ -96,8 +101,15 @@ export default function HouseholdScreen() {
     const current = confirming;
     setConfirming(null);
     if (current === null) return;
-    if (current.kind === 'leave') {
+    if (current.kind === 'create') {
+      await attempt(actions.create, COPY.household.snack.created);
+    } else if (current.kind === 'leave') {
       await attempt(actions.leave, COPY.household.snack.left);
+    } else if (current.kind === 'transfer') {
+      await attempt(
+        () => actions.transfer(current.member.userId),
+        COPY.household.snack.transferred,
+      );
     } else if (current.kind === 'delete') {
       await attempt(actions.deleteHousehold, COPY.household.snack.deleted);
     } else {
@@ -157,7 +169,7 @@ export default function HouseholdScreen() {
             <View style={styles.actions}>
               <Button
                 label={COPY.household.create}
-                onPress={() => void attempt(actions.create, COPY.household.snack.created)}
+                onPress={() => setConfirming({ kind: 'create' })}
                 fullWidth
                 testID="household-create"
               />
@@ -187,13 +199,11 @@ export default function HouseholdScreen() {
                     key={member.userId}
                     testID={canRemove ? `household-member-${member.userId}` : undefined}
                     lastInGroup={index === data.members.length - 1}
-                    onPress={
-                      canRemove ? () => setConfirming({ kind: 'remove', member }) : undefined
-                    }
+                    onPress={canRemove ? () => setActingOn(member) : undefined}
                     accessibilityLabel={`${member.email}, ${COPY.household.role[member.role]}`}
                     accessibilityHint={
                       canRemove
-                        ? COPY.household.a11y.removeMember.replace('{email}', member.email)
+                        ? COPY.household.a11y.memberActions.replace('{email}', member.email)
                         : undefined
                     }
                   >
@@ -246,6 +256,18 @@ export default function HouseholdScreen() {
         onJoin={join}
       />
       <InviteSheet code={inviteCode} onClose={() => setInviteCode(null)} />
+      <MemberSheet
+        member={actingOn}
+        onClose={() => setActingOn(null)}
+        onTransfer={(member) => {
+          setActingOn(null);
+          setConfirming({ kind: 'transfer', member });
+        }}
+        onRemove={(member) => {
+          setActingOn(null);
+          setConfirming({ kind: 'remove', member });
+        }}
+      />
 
       <Dialog
         visible={confirming !== null}
@@ -253,6 +275,12 @@ export default function HouseholdScreen() {
         body={dialogBody(confirming)}
         destructive={{ label: dialogConfirmLabel(confirming), onPress: () => void confirm() }}
         onCancel={() => setConfirming(null)}
+        // Creating and handing over destroy nothing, so they are not drawn like a deletion.
+        confirmVariant={
+          confirming?.kind === 'create' || confirming?.kind === 'transfer'
+            ? 'primary'
+            : 'destructive'
+        }
         testID={`household-${confirming?.kind ?? 'leave'}-dialog`}
       />
     </View>
@@ -261,6 +289,10 @@ export default function HouseholdScreen() {
 
 function dialogTitle(confirming: Confirming | null): string {
   if (confirming === null) return '';
+  if (confirming.kind === 'create') return COPY.household.createConfirm.title;
+  if (confirming.kind === 'transfer') {
+    return COPY.household.transfer.title.replace('{email}', confirming.member.email);
+  }
   if (confirming.kind === 'leave') return COPY.household.leave.title;
   if (confirming.kind === 'delete') return COPY.household.delete.title;
   return COPY.household.remove.title.replace('{email}', confirming.member.email);
@@ -268,6 +300,8 @@ function dialogTitle(confirming: Confirming | null): string {
 
 function dialogBody(confirming: Confirming | null): string {
   if (confirming === null) return '';
+  if (confirming.kind === 'create') return COPY.household.createConfirm.body;
+  if (confirming.kind === 'transfer') return COPY.household.transfer.body;
   if (confirming.kind === 'leave') return COPY.household.leave.body;
   if (confirming.kind === 'delete') return COPY.household.delete.body;
   return COPY.household.remove.body;
@@ -275,6 +309,8 @@ function dialogBody(confirming: Confirming | null): string {
 
 function dialogConfirmLabel(confirming: Confirming | null): string {
   if (confirming === null) return '';
+  if (confirming.kind === 'create') return COPY.household.createConfirm.confirm;
+  if (confirming.kind === 'transfer') return COPY.household.transfer.confirm;
   if (confirming.kind === 'leave') return COPY.household.leave.confirm;
   if (confirming.kind === 'delete') return COPY.household.delete.confirm;
   return COPY.household.remove.confirm;

@@ -323,6 +323,20 @@ export const COPY = {
     },
     create: 'Create a household',
     join: 'Join with a code',
+    createConfirm: {
+      title: 'Create a household?',
+      body: 'Your current expenses move into the household and are shared with everyone you invite. If you leave later, they stay with the household.',
+      confirm: 'Create',
+    },
+    memberSheet: {
+      transfer: 'Make owner',
+      remove: 'Remove from household',
+    },
+    transfer: {
+      title: 'Make {email} the owner?',
+      body: 'They can invite and remove people, and delete the household. You become a member and can leave.',
+      confirm: 'Make owner',
+    },
     addedBy: 'Added by {name}',
     addedByYou: 'Added by you',
     members: 'Members',
@@ -370,10 +384,12 @@ export const COPY = {
       joined: 'You joined the household.',
       left: 'You left the household.',
       removed: 'Member removed.',
+      transferred: 'Ownership handed over.',
       deleted: 'Household deleted.',
     },
     a11y: {
       removeMember: 'Remove {email}',
+      memberActions: 'Actions for {email}',
     },
     error: {
       invalid_invite_code: 'That code is incorrect or has expired.',

@@ -15,6 +15,7 @@ jest.mock('expo-router');
 const ME = '0192f5a0-0000-7000-8000-00000000a001';
 const OWNER = '0192f5a0-0000-7000-8000-00000000b001';
 const HOUSEHOLD_ID = '0192f5a0-0000-7000-8000-00000000c001';
+const BOOK = '0192f5a0-0000-7000-8000-00000000d0b0';
 const hidden = { includeHiddenElements: true };
 
 function household(role: 'owner' | 'member'): Household {
@@ -66,7 +67,22 @@ function fakeServer(
           ownerId: ME,
           members: [household('owner').members[0]!],
         };
+        // The creator's books move into the household's own book.
+        state.scope = BOOK;
         return ok(201, { household: state.household });
+      case 'POST /v1/household/transfer': {
+        const current = state.household!;
+        state.household = {
+          ...current,
+          role: 'member',
+          ownerId: OWNER,
+          members: current.members.map((m) => ({
+            ...m,
+            role: m.userId === OWNER ? ('owner' as const) : ('member' as const),
+          })),
+        };
+        return ok(200, { household: state.household });
+      }
       case 'POST /v1/household/invite':
         return ok(201, { data: { code: 'K7QM4T2X', expiresAt: '2026-10-29T09:00:00.000Z' } });
       case 'POST /v1/household/join':
@@ -79,6 +95,7 @@ function fakeServer(
         return ok(204, undefined);
       case 'DELETE /v1/household':
         state.household = null;
+        state.scope = ME;
         return ok(204, undefined);
       case 'GET /v1/me':
         return ok(200, {
@@ -134,11 +151,39 @@ describe('a person in no household', () => {
     await waitFor(() => expect(screen.queryByTestId('household-create')).not.toBeNull());
 
     await pressOn('household-create');
+    // It moves their books in, so they are asked first, in plain words.
+    expect(screen.getByText(COPY.household.createConfirm.title)).toBeTruthy();
+    expect(server.calls()).not.toContain('POST /v1/household');
+    await pressOn('household-create-dialog-confirm');
 
     await waitFor(() => expect(screen.queryByText(COPY.household.snack.created)).not.toBeNull());
     expect(screen.getByText('ana@example.com')).toBeTruthy();
-    expect(screen.getAllByText(COPY.household.role.owner).length).toBeGreaterThan(0);
+    // "Owner", plus "You" once the device has learned who it is.
+    expect(screen.getByText(new RegExp(`^${COPY.household.role.owner}`))).toBeTruthy();
     expect(server.calls()).toContain('POST /v1/household');
+    // The device's books changed hands, so it asked who it is now and learned its new scope.
+    expect(server.calls()).toContain('GET /v1/me');
+  });
+
+  it('does not create while changes are waiting to sync, because the books move', async () => {
+    const server = fakeServer(null);
+    const mounted = await mount(server);
+    await waitFor(() => expect(screen.queryByTestId('household-create')).not.toBeNull());
+    await applyLocalMutation(
+      mounted.database,
+      {
+        entity: 'category',
+        id: '0192f5a0-0000-7000-8000-0000000000c9',
+        fields: { name: 'Pets', color: '#2F8044' },
+      },
+      { clock: () => new Date('2026-10-26T09:00:00.000Z') },
+    );
+
+    await pressOn('household-create');
+    await pressOn('household-create-dialog-confirm');
+
+    await waitFor(() => expect(screen.queryByText(COPY.household.syncFirst)).not.toBeNull());
+    expect(server.calls()).not.toContain('POST /v1/household');
   });
 });
 
@@ -236,6 +281,7 @@ describe('the owner of a household', () => {
     await waitFor(() => expect(screen.queryByTestId(`household-member-${OWNER}`)).not.toBeNull());
 
     await pressOn(`household-member-${OWNER}`);
+    await pressOn('household-member-remove');
     await waitFor(() =>
       expect(
         screen.queryByText(COPY.household.remove.title.replace('{email}', 'bao@example.com')),
@@ -245,6 +291,42 @@ describe('the owner of a household', () => {
 
     await waitFor(() => expect(screen.queryByText(COPY.household.snack.removed)).not.toBeNull());
     expect(server.calls()).toContain(`DELETE /v1/household/members/${OWNER}`);
+  });
+
+  it('offers the two things you can do to a member, in a sheet', async () => {
+    await mount(fakeServer(household('owner')));
+    await waitFor(() => expect(screen.queryByTestId(`household-member-${OWNER}`)).not.toBeNull());
+
+    await pressOn(`household-member-${OWNER}`);
+
+    expect(screen.getByTestId('household-member-transfer')).toBeTruthy();
+    expect(screen.getByTestId('household-member-remove')).toBeTruthy();
+  });
+
+  it('hands the household to a member after confirming, and becomes a member', async () => {
+    const server = fakeServer(household('owner'));
+    await mount(server);
+    await waitFor(() => expect(screen.queryByTestId(`household-member-${OWNER}`)).not.toBeNull());
+
+    await pressOn(`household-member-${OWNER}`);
+    await pressOn('household-member-transfer');
+    await waitFor(() =>
+      expect(
+        screen.queryByText(COPY.household.transfer.title.replace('{email}', 'bao@example.com')),
+      ).not.toBeNull(),
+    );
+    expect(server.calls()).not.toContain('POST /v1/household/transfer');
+    await pressOn('household-transfer-dialog-confirm');
+
+    await waitFor(() =>
+      expect(screen.queryByText(COPY.household.snack.transferred)).not.toBeNull(),
+    );
+    expect(server.calls()).toContain('POST /v1/household/transfer');
+    // No books moved, so the device did not need to ask whose they are.
+    expect(server.calls()).not.toContain('GET /v1/me');
+    // And the screen now shows the caller as a member: Leave instead of Delete.
+    await waitFor(() => expect(screen.queryByTestId('household-leave')).not.toBeNull());
+    expect(screen.queryByTestId('household-delete')).toBeNull();
   });
 
   it('deletes the household after confirming', async () => {
@@ -257,6 +339,8 @@ describe('the owner of a household', () => {
 
     await waitFor(() => expect(screen.queryByText(COPY.household.snack.deleted)).not.toBeNull());
     expect(server.calls()).toContain('DELETE /v1/household');
+    // The shared books went back to the owner: the device re-learns whose books it holds.
+    expect(server.calls()).toContain('GET /v1/me');
   });
 
   it('has no Leave button: the owner deletes instead', async () => {

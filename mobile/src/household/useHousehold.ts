@@ -21,6 +21,7 @@ import { reconcileDataScope } from './dataScope';
 
 /** Why an action did not happen, as the words to show. */
 export function householdErrorMessage(error: unknown): string {
+  if (error instanceof PendingChangesError) return error.message;
   if (error instanceof NetworkUnavailableError) return COPY.household.offline;
   if (error instanceof ApiRequestError) {
     const known = COPY.household.error as Readonly<Record<string, string>>;
@@ -66,6 +67,7 @@ export interface HouseholdActions {
   readonly join: (code: string) => Promise<HouseholdResponse>;
   readonly leave: () => Promise<void>;
   readonly removeMember: (memberId: string) => Promise<void>;
+  readonly transfer: (memberId: string) => Promise<HouseholdResponse>;
   readonly deleteHousehold: () => Promise<void>;
   readonly invite: () => Promise<string>;
 }
@@ -93,9 +95,17 @@ export function useHouseholdActions(): HouseholdActions {
     if ((await countPendingRecords(database)) > 0) throw new PendingChangesError();
   }, [database]);
 
+  // Creating moves the person's own books into the household's, so whose books this device
+  // holds changes, exactly as when joining: nothing unsent, then line the device up.
   const create = useMutation({
-    mutationFn: async () => await api.createHousehold(),
-    onSuccess: refreshHousehold,
+    mutationFn: async () => {
+      await requireNothingPending();
+      return await api.createHousehold();
+    },
+    onSuccess: async () => {
+      await moveDeviceToServerScope();
+      await refreshHousehold();
+    },
   });
   const join = useMutation({
     mutationFn: async (code: string) => {
@@ -121,8 +131,20 @@ export function useHouseholdActions(): HouseholdActions {
     mutationFn: async (memberId: string) => await api.removeHouseholdMember(memberId),
     onSuccess: refreshHousehold,
   });
+  // Deleting gives the shared books to the owner, so the owner's device changes books too.
   const dissolve = useMutation({
-    mutationFn: async () => await api.deleteHousehold(),
+    mutationFn: async () => {
+      await requireNothingPending();
+      await api.deleteHousehold();
+    },
+    onSuccess: async () => {
+      await moveDeviceToServerScope();
+      await refreshHousehold();
+    },
+  });
+  // Only a role changes hands: no rows move, so nobody's device needs to resync.
+  const transferOwnership = useMutation({
+    mutationFn: async (memberId: string) => await api.transferHousehold({ memberId }),
     onSuccess: refreshHousehold,
   });
   const invite = useMutation({
@@ -134,6 +156,7 @@ export function useHouseholdActions(): HouseholdActions {
     join: join.mutateAsync,
     leave: leave.mutateAsync,
     removeMember: removeMember.mutateAsync,
+    transfer: transferOwnership.mutateAsync,
     deleteHousehold: dissolve.mutateAsync,
     invite: invite.mutateAsync,
   };

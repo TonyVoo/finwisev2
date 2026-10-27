@@ -526,6 +526,16 @@ them as proposals the Designer can reword; changing a row here means changing
 | `household.empty.body` | `Keep one set of expenses with a partner or family. Everyone can see and add everything.` | Household screen |
 | `household.create` | `Create a household` | Household screen |
 | `household.join` | `Join with a code` | Household screen |
+| `household.createConfirm.title` | `Create a household?` | Household screen, confirm |
+| `household.createConfirm.body` | `Your current expenses move into the household and are shared with everyone you invite. If you leave later, they stay with the household.` | Household screen, confirm |
+| `household.createConfirm.confirm` | `Create` | Household screen, confirm |
+| `household.memberSheet.transfer` | `Make owner` | Household screen, member actions |
+| `household.memberSheet.remove` | `Remove from household` | Household screen, member actions |
+| `household.transfer.title` | `Make {email} the owner?` | Household screen, confirm |
+| `household.transfer.body` | `They can invite and remove people, and delete the household. You become a member and can leave.` | Household screen, confirm |
+| `household.transfer.confirm` | `Make owner` | Household screen, confirm |
+| `household.snack.transferred` | `Ownership handed over.` | Household screen, snackbar |
+| `household.a11y.memberActions` | `Actions for {email}` | Household screen, member row |
 | `household.addedBy` | `Added by {name}` | Expense row, in a shared household |
 | `household.addedByYou` | `Added by you` | Expense row, in a shared household |
 | `household.members` | `Members` | Household screen |
