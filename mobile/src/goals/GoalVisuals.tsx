@@ -34,7 +34,14 @@ export function GoalBar({
       return;
     }
     // Layout properties cannot use the native driver.
-    Animated.timing(width, { toValue: fill, duration: 400, useNativeDriver: false }).start();
+    const animation = Animated.timing(width, {
+      toValue: fill,
+      duration: 400,
+      useNativeDriver: false,
+    });
+    animation.start();
+    // A screen left mid-animation must not keep a timer running behind it.
+    return () => animation.stop();
   }, [fill, reduceMotion, width]);
 
   return (

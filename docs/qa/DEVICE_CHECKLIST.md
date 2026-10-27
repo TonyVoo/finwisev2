@@ -97,9 +97,30 @@ marked **(dev build)**.
 - [ ] **(dev build)** The camera / photo / Face ID permission prompts are in Vietnamese.
       Expo Go shows its own English prompts, so this cannot be checked there.
 
-## 10. Both platforms
+## 10. Look and feel (the polish pass)
 
-Do sections 1, 2, 4, 7 and 9 on **iOS and Android** if you have both. Things that differ most:
+Haptics and animation can only be judged by hand. Run this on a real phone.
+
+- [ ] **Keypad:** each key gives a light tick and dips slightly under your finger, then springs back.
+      The amount at the top gives a small pop as each digit lands or is deleted.
+- [ ] **Save** an expense: a success buzz as the screen closes. **Swipe-delete** one: a warning buzz.
+- [ ] Home: the month total counts up to its new value after you add or delete an expense.
+- [ ] Home, current month: a row of daily bars under the total, and an **On pace for ... this month**
+      line once something is spent. Neither shows for a past month's pace line.
+- [ ] Category badges show an **icon** on every list: expenses, the category picker, Categories,
+      Recurring and the Summary legend. Check a Vietnamese-named category (e.g. Tạp hóa) gets a cart.
+- [ ] Savings goals: each goal has a target badge (a green check once reached). **Add** money and
+      watch the bar ease to its new width, with a success buzz.
+- [ ] Turn on **Reduce Motion** (iOS: Accessibility → Motion; Android: Remove animations): the keypad
+      spring, amount pop, count-up and goal bar all stop moving. Haptics still fire.
+- [ ] Turn haptics off (iOS: Sounds & Haptics → System Haptics): nothing breaks, saves still work.
+- [ ] **Rename offer (Vietnamese):** on an account created in English, switch the language to
+      Tiếng Việt: a one-time offer to rename the untouched default categories appears. Accepting
+      renames only those you had not changed, and it syncs to a second device. Declining never asks again.
+
+## 11. Both platforms
+
+Do sections 1, 2, 4, 7, 9 and 10 on **iOS and Android** if you have both. Things that differ most:
 notification permission timing, the biometric prompt, the keyboard over the sheets, and the
 status bar and safe-area spacing.
 
