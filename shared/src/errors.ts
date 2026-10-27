@@ -16,6 +16,8 @@ export const ERROR_CODES = [
   'validation_error',
   /** 400 — body was not parseable JSON, or a required body was absent. */
   'malformed_request',
+  /** 400 — a password-reset code was wrong, expired, already used, or out of attempts. Deliberately does not say which, nor whether the email has an account. */
+  'invalid_reset_code',
   /** 400 — an opaque pagination `cursor` could not be decoded (truncated, tampered, or from an older server). */
   'invalid_cursor',
   /** 415 — `Content-Type` was not `application/json` on a request with a body. */
@@ -95,6 +97,7 @@ export type ApiError = z.infer<typeof ApiError>;
 export const ERROR_CODE_STATUS: Readonly<Record<ErrorCode, number>> = {
   validation_error: 400,
   malformed_request: 400,
+  invalid_reset_code: 400,
   invalid_cursor: 400,
   unsupported_media_type: 415,
   unauthorized: 401,

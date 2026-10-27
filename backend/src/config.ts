@@ -57,6 +57,16 @@ const EnvSchema = z.object({
   LOG_FORMAT: z.enum(['pretty', 'json', 'silent']).optional(),
 
   /**
+   * Outgoing email, for password-reset codes. Both or neither: with both set, codes are sent
+   * through Resend (https://resend.com); with neither, the code is written to the server log
+   * outside production - which is all local development needs - and in production nothing is
+   * sent and a warning says so. `MAIL_FROM` must be an address on a domain verified with the
+   * provider, e.g. `Expense Tracker <no-reply@yourdomain.com>`.
+   */
+  RESEND_API_KEY: z.string().min(1).optional(),
+  MAIL_FROM: z.string().min(3).optional(),
+
+  /**
    * How many reverse proxies sit in front of this process, or `false` for none.
    *
    * This is a rate-limiting setting, not a cosmetic one. `req.ip` is the socket's remote
@@ -109,6 +119,7 @@ function build() {
       accessTokenTtlSeconds: env.ACCESS_TOKEN_TTL_SECONDS,
     },
     refreshTokenTtlDays: env.REFRESH_TOKEN_TTL_DAYS,
+    mail: { resendApiKey: env.RESEND_API_KEY, from: env.MAIL_FROM },
     /** Express's `trust proxy` setting. See `TRUST_PROXY` above for why it matters. */
     trustProxy: env.TRUST_PROXY,
     logFormat: env.LOG_FORMAT ?? (isTest ? 'silent' : isProduction ? 'json' : 'pretty'),

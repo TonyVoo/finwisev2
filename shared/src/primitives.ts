@@ -69,6 +69,25 @@ export const LIMITS = {
    * login window.
    */
   PASSWORD_CONFIRM_MAX_FAILURES_PER_USER: 10,
+  /** Digits in a password-reset code. */
+  RESET_CODE_LENGTH: 6,
+  /** How long a reset code works, in minutes. */
+  RESET_CODE_TTL_MINUTES: 15,
+  /**
+   * Wrong guesses one reset code survives. At six digits a million codes are possible, so
+   * five guesses is a one-in-200,000 shot, and the code is dead after the fifth.
+   */
+  RESET_CODE_MAX_ATTEMPTS: 5,
+  /**
+   * Requests (`forgot-password`) per email, and per source address, per window - counted
+   * whatever the outcome, because the endpoint answers the same for every email and so a
+   * success and a miss cannot be told apart. Bounds both mail-bombing one inbox and
+   * enumerating addresses by volume. The window is the login window.
+   */
+  RESET_REQUEST_MAX_PER_EMAIL: 5,
+  RESET_REQUEST_MAX_PER_IP: 30,
+  /** `reset-password` attempts per source address per window, counted whatever the outcome. */
+  RESET_ATTEMPT_MAX_PER_IP: 30,
 } as const;
 
 /**

@@ -119,6 +119,7 @@ blank banner.
 | ------------------------ | ------------------------------------------------------------------------------------- | ------------------------------------------------ |
 | `validation_error`       | mapped per field from `details.issues`; unmapped paths fall back to `error.generic`   | field, else form banner                          |
 | `malformed_request`      | `Something went wrong on our end. Try again.`                                         | form banner                                      |
+| `invalid_reset_code`     | `That code is incorrect or has expired.`                                              | Reset password, Code field                       |
 | `invalid_cursor`         | _(never shown)_ — the client resets its cursor and retries silently                   | none                                             |
 | `unsupported_media_type` | `Something went wrong on our end. Try again.`                                         | form banner                                      |
 | `unauthorized`           | _(never shown)_ — triggers a token refresh, then a retry                              | none                                             |
@@ -350,6 +351,21 @@ them as proposals the Designer can reword; changing a row here means changing
 | `account.changePassword.same`     | `Choose a password different from your current one.`            | Change password, field error |
 | `account.changePassword.success`  | `Password changed.`                                             | Snackbar                   |
 | `account.changePassword.offline`  | `You need to be online to change your password.`                | Change password, banner    |
+| `login.forgot`                    | `Forgot password?`                                              | Log in, link               |
+| `forgotPassword.title`            | `Reset your password`                                           | Forgot password            |
+| `forgotPassword.hint`             | `Enter your email and we will send you a 6-digit code.`         | Forgot password            |
+| `forgotPassword.submit`           | `Send code`                                                     | Forgot password, button    |
+| `forgotPassword.offline`          | `You need to be online to reset your password.`                 | Forgot password, banner    |
+| `resetPassword.title`             | `Enter your code`                                               | Reset password             |
+| `resetPassword.hint`              | `If an account exists for {email}, we sent it a 6-digit code. It works for 15 minutes.` | Reset password |
+| `resetPassword.code`              | `Code`                                                          | Reset password, field      |
+| `resetPassword.newPassword`       | `New password`                                                  | Reset password, field      |
+| `resetPassword.submit`            | `Reset password`                                                | Reset password, button     |
+| `resetPassword.resend`            | `Send a new code`                                               | Reset password, link       |
+| `resetPassword.resent`            | `If that account exists, a new code is on its way.`             | Snackbar                   |
+| `resetPassword.invalidCode`       | `That code is incorrect or has expired.`                        | Reset password, field error |
+| `resetPassword.success`           | `Password changed. Log in with your new password.`              | Snackbar                   |
+| `resetPassword.offline`           | `You need to be online to reset your password.`                 | Reset password, banner     |
 | `account.changeEmail.title`       | `Change email`                                                  | Change email               |
 | `account.changeEmail.hint`        | `This is the address you log in with.`                          | Change email               |
 | `account.changeEmail.new`         | `New email`                                                     | Change email, field        |

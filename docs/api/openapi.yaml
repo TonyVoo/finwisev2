@@ -391,6 +391,106 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /v1/auth/forgot-password:
+    post:
+      operationId: forgotPassword
+      tags: [auth]
+      summary: Email a password-reset code
+      description: |
+        Sends a 6-digit code to the address, if an account uses it, and returns `204` either
+        way. **The response never says whether the address has an account**: a different
+        answer would turn this endpoint into a way to find out who is registered.
+
+        The code works for 15 minutes, for five wrong guesses, and once. Asking again
+        replaces any earlier code. Rate limited per email and per source address, counted
+        whatever the outcome (the outcomes are indistinguishable, so only volume can be
+        limited); `429` carries `Retry-After`.
+
+        Pair with `POST /v1/auth/reset-password`.
+      security: []
+      x-errorCodes:
+        - validation_error
+        - malformed_request
+        - unsupported_media_type
+        - rate_limited
+        - internal_error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ForgotPasswordRequest' }
+            example:
+              email: sam@example.com
+      responses:
+        '204':
+          description: Accepted. A code was sent if the account exists. No body.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/auth/reset-password:
+    post:
+      operationId: resetPassword
+      tags: [auth]
+      summary: Set a new password with an emailed code
+      description: |
+        Replaces the password if the code is right, and **ends every session of the account**
+        (all refresh tokens are revoked): whoever reset the password because of a suspected
+        compromise must not leave a stolen session alive. The caller is not signed in by
+        this call; they log in with the new password.
+
+        A wrong, expired, already-used or exhausted code is `400 invalid_reset_code`, and
+        the response does not say which, nor whether the email has an account. Each wrong
+        guess spends one of the code's five attempts.
+      security: []
+      x-errorCodes:
+        - validation_error
+        - malformed_request
+        - unsupported_media_type
+        - invalid_reset_code
+        - rate_limited
+        - internal_error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ResetPasswordRequest' }
+            example:
+              email: sam@example.com
+              code: '482916'
+              newPassword: correct-horse-battery
+      responses:
+        '204':
+          description: Password changed and every session ended. No body.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+        '400':
+          description: |
+            `validation_error` (malformed email, code or password), `malformed_request`, or
+            `invalid_reset_code` (the code did not work).
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              example:
+                error:
+                  code: invalid_reset_code
+                  message: That code is incorrect or has expired.
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /v1/me:
     get:
       operationId: getMe
@@ -1891,6 +1991,7 @@ components:
         |---|---|---|
         | `validation_error` | 400 | Body, query or path failed schema validation, including an unknown field. `details.issues` lists the offending paths. |
         | `malformed_request` | 400 | Body was not parseable JSON, or a required body was absent. |
+        | `invalid_reset_code` | 400 | A password-reset code was wrong, expired, already used or out of attempts. Does not say which, nor whether the email has an account. |
         | `invalid_cursor` | 400 | An opaque pagination `cursor` could not be decoded (truncated, tampered, or from an older server). |
         | `unsupported_media_type` | 415 | `Content-Type` was not `application/json` on a request with a body. |
         | `unauthorized` | 401 | No credentials presented (missing or non-Bearer `Authorization` header). |
@@ -1911,6 +2012,7 @@ components:
       enum:
         - validation_error
         - malformed_request
+        - invalid_reset_code
         - invalid_cursor
         - unsupported_media_type
         - unauthorized
@@ -2145,6 +2247,30 @@ components:
       required: [refreshToken]
       properties:
         refreshToken: { $ref: '#/components/schemas/RefreshToken' }
+
+    ForgotPasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [email]
+      properties:
+        email:
+          allOf:
+            - $ref: '#/components/schemas/Email'
+          description: >-
+            The account to send a reset code to. The response is the same whether or not an
+            account exists, so this cannot be used to find out.
+
+    ResetPasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [email, code, newPassword]
+      properties:
+        email: { $ref: '#/components/schemas/Email' }
+        code:
+          type: string
+          pattern: '^\d{6}$'
+          description: The 6-digit code from the reset email.
+        newPassword: { $ref: '#/components/schemas/Password' }
 
     TokenPair:
       type: object

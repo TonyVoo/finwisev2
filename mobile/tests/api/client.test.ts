@@ -90,15 +90,22 @@ describe('every client method', () => {
     ['login', (client) => client.login({ email: 'a@example.com', password: 'correct horse 42' })],
     ['refresh', (client) => client.refresh({ refreshToken: 'r' })],
     ['logout', (client) => client.logout({ refreshToken: 'r' })],
+    ['forgotPassword', (client) => client.forgotPassword({ email: 'a@example.com' })],
+    [
+      'resetPassword',
+      (client) =>
+        client.resetPassword({
+          email: 'a@example.com',
+          code: '123456',
+          newPassword: 'correct horse 42',
+        }),
+    ],
     ['getMe', (client) => client.getMe()],
     [
       'changePassword',
       (client) => client.changePassword({ currentPassword: 'a', newPassword: 'correct horse 42' }),
     ],
-    [
-      'changeEmail',
-      (client) => client.changeEmail({ email: 'b@example.com', password: 'a' }),
-    ],
+    ['changeEmail', (client) => client.changeEmail({ email: 'b@example.com', password: 'a' })],
     ['deleteAccount', (client) => client.deleteAccount({ password: 'a' })],
 
     ['listCategories', (client) => client.listCategories()],

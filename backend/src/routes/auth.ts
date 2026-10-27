@@ -1,10 +1,12 @@
 import {
   AuthResponse,
   DEFAULT_CURRENCY,
+  ForgotPasswordRequest,
   LoginRequest,
   LogoutRequest,
   RefreshRequest,
   RefreshResponse,
+  ResetPasswordRequest,
   SignupRequest,
 } from '@expense-tracker/shared';
 import { Router, type Request, type Response } from 'express';
@@ -16,8 +18,13 @@ import {
   recordLoginFailure,
   recordLoginSuccess,
 } from '../middleware/loginRateLimit.ts';
+import {
+  forgotPasswordRateLimit,
+  resetPasswordRateLimit,
+} from '../middleware/passwordResetRateLimit.ts';
 import { validateBody } from '../middleware/validate.ts';
 import { login, logout, refresh, signup } from '../services/authService.ts';
+import { requestPasswordReset, resetPassword } from '../services/passwordResetService.ts';
 
 /**
  * `/v1/auth/*` — the unauthenticated endpoints.
@@ -98,6 +105,33 @@ authRouter.post(
     // 204, per the contract, whether or not the token was valid: the client's goal is
     // "this session is over so I can clear local credentials", and an error would leave
     // the app stuck half-logged-out with no way forward.
+    res.status(204).end();
+  },
+);
+
+/**
+ * Ask for a reset code. `204` whether or not the email has an account, by design: the
+ * response must not be a way to find out. See `services/passwordResetService.ts`.
+ */
+authRouter.post(
+  '/auth/forgot-password',
+  validateBody(ForgotPasswordRequest),
+  forgotPasswordRateLimit,
+  async (req: Request, res: Response) => {
+    const body = req.body as ForgotPasswordRequest;
+    await requestPasswordReset(getPrisma(), body.email);
+    res.status(204).end();
+  },
+);
+
+/** Set a new password with the emailed code; ends every session of the account. */
+authRouter.post(
+  '/auth/reset-password',
+  validateBody(ResetPasswordRequest),
+  resetPasswordRateLimit,
+  async (req: Request, res: Response) => {
+    const body = req.body as ResetPasswordRequest;
+    await resetPassword(getPrisma(), body);
     res.status(204).end();
   },
 );

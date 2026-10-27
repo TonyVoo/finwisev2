@@ -8,8 +8,9 @@ Three screens in the `(auth)` route group. Flows: [`01-flows.md`](./01-flows.md)
 Everything after them is local-first. See [`02-offline-and-sync.md`](./02-offline-and-sync.md)
 §1.
 
-There is no "Forgot password?" link, no email verification, and no social login — see
-[`01-flows.md`](./01-flows.md) §6 for why each is absent.
+There is no email verification and no social login — see [`01-flows.md`](./01-flows.md) §6 for
+why each is absent. A "Forgot password?" link was added after the MVP: it opens a request screen
+(email → 6-digit code by email) and then a reset screen (code + new password); see §4.
 
 ---
 
@@ -269,8 +270,8 @@ Identical to §1.2 elements 1, 3-8 and 13-14, with these differences:
 | 7   | Password field | `TextField`, `secureTextEntry` | —              | `autoComplete="current-password"`, `textContentType="password"` |
 | 13  | Submit         | `Button` `primary`, full width | `Log in`       | Busy label `Log in, in progress`                                |
 
-There is **no** Currency field (it is fixed at signup) and **no** "Forgot password?" link
-([`01-flows.md`](./01-flows.md) §6).
+There is **no** Currency field (it is fixed at signup). Below the form is a **Forgot password?**
+link (§4).
 
 ### States
 
@@ -307,3 +308,20 @@ There is **no** Currency field (it is fixed at signup) and **no** "Forgot passwo
   `announceForAccessibility` on both platforms, and focus moves to the Email field so a
   screen-reader user lands somewhere useful rather than at the top of the screen.
 - `returnKeyType`: Email `next`, Password `go`.
+
+
+## 4. Forgot password (added after the MVP)
+
+Two screens, reached from the link under the Log in form. The mechanism is an emailed 6-digit code,
+not a link: a link needs a verified deep-link domain to open the app.
+
+1. **Reset your password** (`forgot-password`): one Email field and `Send code`. Whatever the
+   server says, the app moves on to the next screen - the server answers `204` for an email with no
+   account too, so there is nothing to react to and nothing to leak.
+2. **Enter your code** (`reset-password`): the code, a new password, and `Reset password`. The hint
+   names the address and says the code works for 15 minutes. `Send a new code` asks again.
+
+A wrong, expired or used code is a field error on the Code field (`That code is incorrect or has
+expired.`) and never says which. Five wrong guesses kill a code. On success every session of the
+account has ended, the app returns to Log in with the email filled in, and a snackbar says
+`Password changed. Log in with your new password.` Both screens need a connection and say so.

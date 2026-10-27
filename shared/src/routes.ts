@@ -47,6 +47,20 @@ export const API_ROUTES = [
     auth: false,
     successStatus: 204,
   },
+  {
+    method: 'post',
+    path: '/v1/auth/forgot-password',
+    operationId: 'forgotPassword',
+    auth: false,
+    successStatus: 204,
+  },
+  {
+    method: 'post',
+    path: '/v1/auth/reset-password',
+    operationId: 'resetPassword',
+    auth: false,
+    successStatus: 204,
+  },
   { method: 'get', path: '/v1/me', operationId: 'getMe', auth: true, successStatus: 200 },
   {
     method: 'delete',

@@ -52,6 +52,7 @@ model User {
   expenses        Expense[]
   recurringRules  RecurringRule[]
   refreshTokens   RefreshToken[]
+  passwordResetCode PasswordResetCode?
   syncMutations   SyncMutation[]
 
   @@map("users")
@@ -246,6 +247,21 @@ model SyncMutation {
 ///
 /// Tokens are single-use: refreshing stamps `revokedAt` on the presented token and
 /// issues a new one. Replaying an already-rotated token is therefore rejected.
+/// A pending password-reset code. At most one per user (a new request replaces it); the code
+/// is stored only as an HMAC, and dies on expiry, on the fifth wrong guess, or on use.
+model PasswordResetCode {
+  id        String   @id @db.Uuid
+  userId    String   @unique @map("user_id") @db.Uuid
+  codeHash  String   @map("code_hash") @db.Char(64)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(3)
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_reset_codes")
+}
+
 model RefreshToken {
   id        String    @id @db.Uuid
   userId    String    @map("user_id") @db.Uuid

@@ -112,5 +112,8 @@ export const problems = {
       undefined,
       retryAfterSeconds,
     ),
+  /** A reset code that did not work. One message for wrong, expired, used and exhausted. */
+  invalidResetCode: () =>
+    new ApiProblem('invalid_reset_code', 'That code is incorrect or has expired.'),
   internal: (message = 'Something went wrong.') => new ApiProblem('internal_error', message),
 } as const;

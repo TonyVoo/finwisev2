@@ -41,7 +41,27 @@ export const COPY = {
     loginInstead: 'Log in instead',
   },
 
-  login: { title: 'Welcome back', submit: 'Log in' },
+  login: { title: 'Welcome back', submit: 'Log in', forgot: 'Forgot password?' },
+
+  /** Forgot password (`docs/design/03-auth.md` §4): ask for a code, then use it. */
+  forgotPassword: {
+    title: 'Reset your password',
+    hint: 'Enter your email and we will send you a 6-digit code.',
+    submit: 'Send code',
+    offline: 'You need to be online to reset your password.',
+  },
+  resetPassword: {
+    title: 'Enter your code',
+    hint: 'If an account exists for {email}, we sent it a 6-digit code. It works for 15 minutes.',
+    code: 'Code',
+    newPassword: 'New password',
+    submit: 'Reset password',
+    resend: 'Send a new code',
+    resent: 'If that account exists, a new code is on its way.',
+    invalidCode: 'That code is incorrect or has expired.',
+    success: 'Password changed. Log in with your new password.',
+    offline: 'You need to be online to reset your password.',
+  },
 
   password: { show: 'Show password', hide: 'Hide password' },
 

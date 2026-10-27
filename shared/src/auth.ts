@@ -56,6 +56,23 @@ export const ChangePasswordRequest = z
     message: 'The new password must be different from the current one.',
   });
 
+export const ForgotPasswordRequest = z.strictObject({
+  email: Email.describe(
+    'The account to send a reset code to. The response is the same whether or not an account exists, so this cannot be used to find out.',
+  ),
+});
+
+export const ResetCode = z
+  .string()
+  .regex(new RegExp(`^\\d{${LIMITS.RESET_CODE_LENGTH}}$`), `Exactly ${LIMITS.RESET_CODE_LENGTH} digits.`)
+  .describe(`The ${LIMITS.RESET_CODE_LENGTH}-digit code from the reset email.`);
+
+export const ResetPasswordRequest = z.strictObject({
+  email: Email,
+  code: ResetCode,
+  newPassword: Password,
+});
+
 export const ChangeEmailRequest = z.strictObject({
   email: Email.describe(
     'The new sign-in email. Normalised like every other email; must not already belong to an account, and must differ from the current one.',
@@ -99,6 +116,8 @@ export const RefreshResponse = TokenPair;
 
 export type ChangePasswordRequest = z.infer<typeof ChangePasswordRequest>;
 export type ChangeEmailRequest = z.infer<typeof ChangeEmailRequest>;
+export type ForgotPasswordRequest = z.infer<typeof ForgotPasswordRequest>;
+export type ResetPasswordRequest = z.infer<typeof ResetPasswordRequest>;
 export type DeleteAccountRequest = z.infer<typeof DeleteAccountRequest>;
 export type SignupRequest = z.infer<typeof SignupRequest>;
 export type LoginRequest = z.infer<typeof LoginRequest>;

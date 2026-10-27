@@ -1,6 +1,7 @@
 import { afterAll, beforeEach } from 'vitest';
 import { disconnectPrisma } from '../src/db/client.ts';
 import { resetLoginRateLimitForTests } from '../src/middleware/loginRateLimit.ts';
+import { resetPasswordResetRateLimitForTests } from '../src/middleware/passwordResetRateLimit.ts';
 import { resetPasswordConfirmRateLimitForTests } from '../src/middleware/passwordConfirmRateLimit.ts';
 import { truncateAll } from './support/db.ts';
 
@@ -21,6 +22,7 @@ beforeEach(async () => {
    */
   resetLoginRateLimitForTests();
   resetPasswordConfirmRateLimitForTests();
+  resetPasswordResetRateLimitForTests();
 });
 
 // Without this the pool keeps the worker's event loop alive and vitest hangs on exit.

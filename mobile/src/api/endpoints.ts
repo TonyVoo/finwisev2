@@ -64,6 +64,8 @@ export const ENDPOINTS = {
   login: endpoint('login', AuthResponse),
   refresh: endpoint('refresh', RefreshResponse),
   logout: emptyEndpoint('logout'),
+  forgotPassword: emptyEndpoint('forgotPassword'),
+  resetPassword: emptyEndpoint('resetPassword'),
   getMe: endpoint('getMe', MeResponse),
   changePassword: endpoint('changePassword', TokenPair),
   changeEmail: endpoint('changeEmail', MeResponse),

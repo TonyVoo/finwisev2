@@ -56,7 +56,9 @@ export default function LoginScreen() {
       title={COPY.login.title}
       onBack={() => router.back()}
       testID="login"
-      banner={state.banner === null ? null : <FormBanner message={state.banner} testID="login-banner" />}
+      banner={
+        state.banner === null ? null : <FormBanner message={state.banner} testID="login-banner" />
+      }
     >
       <TextField
         label={COPY.signup.field.email}
@@ -101,6 +103,13 @@ export default function LoginScreen() {
         busy={form.busy}
         fullWidth
         testID="login-submit"
+      />
+      <Button
+        label={COPY.login.forgot}
+        variant="ghost"
+        onPress={() => router.push('/(auth)/forgot-password')}
+        fullWidth
+        testID="login-forgot"
       />
     </FormScreen>
   );

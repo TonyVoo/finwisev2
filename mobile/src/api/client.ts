@@ -6,6 +6,8 @@ import type {
   CategoryResponse,
   CategoryUpdateRequest,
   ChangeEmailRequest,
+  ForgotPasswordRequest,
+  ResetPasswordRequest,
   ChangePasswordRequest,
   DeleteAccountRequest,
   ExpenseCreateRequest,
@@ -52,6 +54,10 @@ export interface ApiClient {
   login(body: LoginRequest): Promise<AuthResponse>;
   refresh(body: RefreshRequest): Promise<RefreshResponse>;
   logout(body: LogoutRequest): Promise<void>;
+  /** Emails a reset code. 204 whether or not the account exists. */
+  forgotPassword(body: ForgotPasswordRequest): Promise<void>;
+  /** Sets a new password from the emailed code and ends every session. 204, no body. */
+  resetPassword(body: ResetPasswordRequest): Promise<void>;
   getMe(): Promise<MeResponse>;
   /** Replaces the password and ends every other session; returns this device's new pair. */
   changePassword(body: ChangePasswordRequest): Promise<TokenPair>;
@@ -132,6 +138,8 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     login: (body) => send(ENDPOINTS.login, { body }),
     refresh: (body) => send(ENDPOINTS.refresh, { body }),
     logout: (body) => send(ENDPOINTS.logout, { body }),
+    forgotPassword: (body) => send(ENDPOINTS.forgotPassword, { body }),
+    resetPassword: (body) => send(ENDPOINTS.resetPassword, { body }),
     getMe: () => send(ENDPOINTS.getMe),
     changePassword: (body) => send(ENDPOINTS.changePassword, { body }),
     changeEmail: (body) => send(ENDPOINTS.changeEmail, { body }),

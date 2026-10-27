@@ -81,7 +81,10 @@ describe('API-01 — tenancy: another user’s row is 404, never 403', () => {
     const attempts = [
       api().patch(`/v1/expenses/${expenseB.id}`).set('Authorization', a.auth).send({ note: 'x' }),
       api().delete(`/v1/expenses/${expenseB.id}`).set('Authorization', a.auth),
-      api().patch(`/v1/categories/${categoryB.id}`).set('Authorization', a.auth).send({ name: 'x' }),
+      api()
+        .patch(`/v1/categories/${categoryB.id}`)
+        .set('Authorization', a.auth)
+        .send({ name: 'x' }),
       api().delete(`/v1/categories/${categoryB.id}`).set('Authorization', a.auth),
     ];
 
@@ -127,15 +130,12 @@ describe('API-02 — no endpoint accepts a userId', () => {
       api()
         .post('/v1/auth/signup')
         .send({ email: uniqueEmail(), password: TEST_PASSWORD, userId: b.user.id }),
-      api()
-        .post('/v1/expenses')
-        .set('Authorization', a.auth)
-        .send({
-          categoryId: a.categories.Groceries!.id,
-          amountMinor: 500,
-          date: '2026-10-06',
-          userId: b.user.id,
-        }),
+      api().post('/v1/expenses').set('Authorization', a.auth).send({
+        categoryId: a.categories.Groceries!.id,
+        amountMinor: 500,
+        date: '2026-10-06',
+        userId: b.user.id,
+      }),
       api()
         .patch(`/v1/categories/${a.categories.Transport!.id}`)
         .set('Authorization', a.auth)
@@ -153,7 +153,10 @@ describe('API-02 — no endpoint accepts a userId', () => {
     expect(SERVER_OWNED_FIELDS).toContain('userId');
 
     const itemLevel = await push(a, [
-      { ...pushItem({ entity: 'expense', id: expenseA.id, fields: { note: 'ok' } }), userId: b.user.id },
+      {
+        ...pushItem({ entity: 'expense', id: expenseA.id, fields: { note: 'ok' } }),
+        userId: b.user.id,
+      },
     ]);
     expect(itemLevel.status).toBe(200);
     expect(itemLevel.body.results[0]!.status).toBe('invalid');
@@ -185,55 +188,63 @@ describe('API-03 — unknown fields are rejected everywhere', () => {
     const expense = await createExpense(user, { categoryId: user.categories.Groceries!.id });
     const category = user.categories.Transport!;
 
-    const shapes: ReadonlyArray<[string, Promise<{ status: number; body: unknown; headers: Record<string, string | undefined> }>]> =
+    const shapes: ReadonlyArray<
       [
-        [
-          'SignupRequest',
-          api().post('/v1/auth/signup').send({ email: uniqueEmail(), password: TEST_PASSWORD, nope: 1 }),
-        ],
-        [
-          'LoginRequest',
-          api().post('/v1/auth/login').send({ email: user.user.email, password: TEST_PASSWORD, nope: 1 }),
-        ],
-        [
-          'RefreshRequest',
-          api().post('/v1/auth/refresh').send({ refreshToken: user.refreshToken, nope: 1 }),
-        ],
-        [
-          'CategoryCreateRequest',
-          api().post('/v1/categories').set('Authorization', user.auth).send({ name: 'Books', nope: 1 }),
-        ],
-        [
-          'CategoryUpdateRequest',
-          api()
-            .patch(`/v1/categories/${category.id}`)
-            .set('Authorization', user.auth)
-            .send({ name: 'Commuting', nope: 1 }),
-        ],
-        [
-          'ExpenseCreateRequest',
-          api()
-            .post('/v1/expenses')
-            .set('Authorization', user.auth)
-            .send({ categoryId: category.id, amountMinor: 1, date: '2026-10-06', nope: 1 }),
-        ],
-        [
-          'ExpenseUpdateRequest',
-          api()
-            .patch(`/v1/expenses/${expense.id}`)
-            .set('Authorization', user.auth)
-            .send({ amountMinor: 2, nope: 1 }),
-        ],
-        [
-          'SyncPushRequest envelope',
-          api().post('/v1/sync').set('Authorization', user.auth).send({ changes: [], nope: 1 }),
-        ],
-        [
-          'GET /v1/expenses?nope=1',
-          api().get('/v1/expenses?nope=1').set('Authorization', user.auth),
-        ],
-        ['GET /v1/sync?nope=1', api().get('/v1/sync?nope=1').set('Authorization', user.auth)],
-      ] as never;
+        string,
+        Promise<{ status: number; body: unknown; headers: Record<string, string | undefined> }>,
+      ]
+    > = [
+      [
+        'SignupRequest',
+        api()
+          .post('/v1/auth/signup')
+          .send({ email: uniqueEmail(), password: TEST_PASSWORD, nope: 1 }),
+      ],
+      [
+        'LoginRequest',
+        api()
+          .post('/v1/auth/login')
+          .send({ email: user.user.email, password: TEST_PASSWORD, nope: 1 }),
+      ],
+      [
+        'RefreshRequest',
+        api().post('/v1/auth/refresh').send({ refreshToken: user.refreshToken, nope: 1 }),
+      ],
+      [
+        'CategoryCreateRequest',
+        api()
+          .post('/v1/categories')
+          .set('Authorization', user.auth)
+          .send({ name: 'Books', nope: 1 }),
+      ],
+      [
+        'CategoryUpdateRequest',
+        api()
+          .patch(`/v1/categories/${category.id}`)
+          .set('Authorization', user.auth)
+          .send({ name: 'Commuting', nope: 1 }),
+      ],
+      [
+        'ExpenseCreateRequest',
+        api()
+          .post('/v1/expenses')
+          .set('Authorization', user.auth)
+          .send({ categoryId: category.id, amountMinor: 1, date: '2026-10-06', nope: 1 }),
+      ],
+      [
+        'ExpenseUpdateRequest',
+        api()
+          .patch(`/v1/expenses/${expense.id}`)
+          .set('Authorization', user.auth)
+          .send({ amountMinor: 2, nope: 1 }),
+      ],
+      [
+        'SyncPushRequest envelope',
+        api().post('/v1/sync').set('Authorization', user.auth).send({ changes: [], nope: 1 }),
+      ],
+      ['GET /v1/expenses?nope=1', api().get('/v1/expenses?nope=1').set('Authorization', user.auth)],
+      ['GET /v1/sync?nope=1', api().get('/v1/sync?nope=1').set('Authorization', user.auth)],
+    ] as never;
 
     for (const [label, pending] of shapes) {
       const response = await pending;
@@ -374,7 +385,10 @@ describe('API-05 — the error envelope is the only non-2xx shape', () => {
           .set('Content-Type', 'application/json')
           .send('{'),
       ],
-      ['invalid_cursor', api().get('/v1/expenses?cursor=not-a-cursor').set('Authorization', user.auth)],
+      [
+        'invalid_cursor',
+        api().get('/v1/expenses?cursor=not-a-cursor').set('Authorization', user.auth),
+      ],
       [
         'unsupported_media_type',
         api()
@@ -410,14 +424,11 @@ describe('API-05 — the error envelope is the only non-2xx shape', () => {
       ],
       [
         'unknown_category',
-        api()
-          .post('/v1/expenses')
-          .set('Authorization', user.auth)
-          .send({
-            categoryId: other.categories.Groceries!.id,
-            amountMinor: 1,
-            date: '2026-10-06',
-          }),
+        api().post('/v1/expenses').set('Authorization', user.auth).send({
+          categoryId: other.categories.Groceries!.id,
+          amountMinor: 1,
+          date: '2026-10-06',
+        }),
       ],
       [
         'batch_too_large',
@@ -437,10 +448,7 @@ describe('API-05 — the error envelope is the only non-2xx shape', () => {
       // `/v1` paths exist. Deliberate, and recorded here because the case's wording
       // implies otherwise.
       ['unauthorized', api().get('/v1/no-such-route')],
-      [
-        'not_found',
-        api().get('/v1/no-such-route').set('Authorization', user.auth),
-      ],
+      ['not_found', api().get('/v1/no-such-route').set('Authorization', user.auth)],
     ];
 
     // Matched against the message and the details text rather than
@@ -515,26 +523,35 @@ describe('API-06 — Content-Type is enforced on requests with a body', () => {
 });
 
 describe('API-07 — auth is required on exactly the right operations', () => {
-  const PUBLIC = new Set(['getHealth', 'signup', 'login', 'refresh', 'logout']);
+  const PUBLIC = new Set([
+    'getHealth',
+    'signup',
+    'login',
+    'refresh',
+    'logout',
+    'forgotPassword',
+    'resetPassword',
+  ]);
 
   it('walks every route in the contract rather than a list kept by hand', async () => {
     // Driven off API_ROUTES so a route added to the contract cannot slip past this case.
-    expect(API_ROUTES.filter((route) => !route.auth).map((r) => r.operationId).sort()).toEqual(
-      [...PUBLIC].sort(),
-    );
+    expect(
+      API_ROUTES.filter((route) => !route.auth)
+        .map((r) => r.operationId)
+        .sort(),
+    ).toEqual([...PUBLIC].sort());
 
     for (const route of API_ROUTES) {
       const path = route.path.replace('{id}', '00000000-0000-7000-8000-000000000000');
-      const response = await api()[route.method](path).send(
-        route.method === 'get' || route.method === 'delete' ? undefined : {},
-      );
+      const response = await api()
+        [route.method](path)
+        .send(route.method === 'get' || route.method === 'delete' ? undefined : {});
 
       if (PUBLIC.has(route.operationId)) {
         // "Behaves normally" — reached the handler, so not an auth refusal.
-        expect(
-          response.status,
-          `${route.operationId} demanded a token it should not`,
-        ).not.toBe(401);
+        expect(response.status, `${route.operationId} demanded a token it should not`).not.toBe(
+          401,
+        );
       } else {
         expectEnvelope(response, 'unauthorized');
       }
@@ -561,7 +578,12 @@ describe('API-10 — GET /v1/sync query validation', () => {
     const user = await createUser();
     const get = (query: string) => api().get(`/v1/sync${query}`).set('Authorization', user.auth);
 
-    for (const query of ['?since=-1', '?since=abc', '?limit=0', `?limit=${LIMITS.SYNC_PULL_MAX_LIMIT + 1}`]) {
+    for (const query of [
+      '?since=-1',
+      '?since=abc',
+      '?limit=0',
+      `?limit=${LIMITS.SYNC_PULL_MAX_LIMIT + 1}`,
+    ]) {
       expectEnvelope(await get(query), 'validation_error');
     }
 
@@ -585,7 +607,8 @@ describe('API-10 — GET /v1/sync query validation', () => {
 describe('API-11 — GET /v1/expenses query validation', () => {
   it('rejects the out-of-range limits and every malformed value', async () => {
     const user = await createUser();
-    const get = (query: string) => api().get(`/v1/expenses${query}`).set('Authorization', user.auth);
+    const get = (query: string) =>
+      api().get(`/v1/expenses${query}`).set('Authorization', user.auth);
 
     for (const query of [
       '?limit=0',
