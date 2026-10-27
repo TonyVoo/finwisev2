@@ -13,7 +13,7 @@ import { CategoryDonut } from '@/summary/CategoryDonut';
 import { SpendLegend } from '@/summary/SpendLegend';
 import { InsightsCard } from '@/summary/InsightsCard';
 import { buildInsights } from '@/summary/insightsModel';
-import { stepMonth, monthLabel } from '@/lib/calendar';
+import { monthName, stepMonth } from '@/lib/calendar';
 import { SpendTrend } from '@/summary/SpendTrend';
 import { buildTrend } from '@/summary/trendModel';
 import { SummaryEmpty, SummarySkeleton } from '@/summary/SummaryStates';
@@ -153,7 +153,7 @@ export default function SummaryScreen() {
         {!pending && currencyCode !== null && previousSpend.data !== undefined ? (
           <InsightsCard
             insights={buildInsights(spend.data ?? [], previousSpend.data)}
-            previousLabel={monthLabel(previousMonth).split(' ')[0] ?? ''}
+            previousLabel={monthName(previousMonth)}
             currency={currencyCode}
           />
         ) : null}
