@@ -57,7 +57,10 @@ export function ExpenseRow({ item, today, onPress, onDelete, lastInGroup }: Expe
         testID={`expense-row-${item.id}`}
         onPress={onPress}
         lastInGroup={lastInGroup}
-        leading={<Swatch colorHex={rowCategoryColor(item)} />}
+        leading={<Swatch
+            colorHex={rowCategoryColor(item)}
+            name={item.categoryName ?? undefined}
+          />}
         accessibilityLabel={expenseRowLabel(item, today)}
         accessibilityHint={COPY.a11y.editExpense}
         // The gesture's screen-reader equivalent. Named `delete` because that is the

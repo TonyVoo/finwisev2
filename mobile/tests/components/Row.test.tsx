@@ -268,4 +268,18 @@ describe('Swatch', () => {
     const swatch = screen.getByTestId('swatch', { includeHiddenElements: true });
     expect(swatch.props.accessibilityElementsHidden).toBe(true);
   });
+
+  describe('Swatch with a category name', () => {
+    it('draws the category icon inside the colour', async () => {
+      await render(<Swatch colorHex="#2F8044" name="Groceries" />);
+
+      expect(screen.getByTestId('swatch-icon', { includeHiddenElements: true })).toBeTruthy();
+    });
+
+    it('stays a plain colour square without a name', async () => {
+      await render(<Swatch colorHex="#2F8044" />);
+
+      expect(screen.queryByTestId('swatch-icon', { includeHiddenElements: true })).toBeNull();
+    });
+  });
 });

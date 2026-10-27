@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
+import { categoryIcon } from '../categories/categoryIcon';
 import { displayCategoryColor, radius, size, space, type } from '../theme/tokens';
 import { createStyles, useColors, useTheme } from '../theme/ThemeProvider';
 
@@ -185,9 +186,12 @@ const useStyles = createStyles((color) =>
 export function Swatch({
   colorHex,
   diameter = size.swatch,
+  name,
 }: {
   readonly colorHex: string;
   readonly diameter?: number;
+  /** When given, the category's icon is drawn in white on the colour. */
+  readonly name?: string;
 }) {
   const { isDark } = useTheme();
   return (
@@ -203,7 +207,18 @@ export function Swatch({
         height: diameter,
         borderRadius: radius.sm,
         backgroundColor: displayCategoryColor(colorHex, isDark),
+        alignItems: 'center',
+        justifyContent: 'center',
       }}
-    />
+    >
+      {name === undefined ? null : (
+        <Feather
+          testID="swatch-icon"
+          name={categoryIcon(name)}
+          size={Math.round(diameter * 0.58)}
+          color="#FFFFFF"
+        />
+      )}
+    </View>
   );
 }

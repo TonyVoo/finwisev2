@@ -84,7 +84,7 @@ export function CategorySheet({
                   testID={`category-option-${category.id}`}
                   onPress={() => onSelect(category.id)}
                   lastInGroup={index === categories.length - 1}
-                  leading={<Swatch colorHex={category.color} />}
+                  leading={<Swatch colorHex={category.color} name={category.name} />}
                   accessibilityLabel={category.name}
                   // Carried as state, not only by the glyph: a check mark is a visual cue
                   // (`00-foundations.md` §8 rule 4).

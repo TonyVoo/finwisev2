@@ -262,7 +262,7 @@ function CategoryRow({
       onPress={onPress}
       chevron
       lastInGroup={lastInGroup}
-      leading={<Swatch colorHex={category.color} />}
+      leading={<Swatch colorHex={category.color} name={category.name} />}
       accessibilityLabel={categoryRowLabel(category)}
       accessibilityHint={COPY.a11y.editCategory}
       // The `isDefault` row exposes **no** delete action, so assistive technology is not

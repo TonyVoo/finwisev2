@@ -120,7 +120,10 @@ export default function RecurringScreen() {
               }}
               chevron
               lastInGroup={index === rows.length - 1}
-              leading={<Swatch colorHex={item.categoryColor ?? color.text.tertiary} />}
+              leading={<Swatch
+                  colorHex={item.categoryColor ?? color.text.tertiary}
+                  name={item.categoryName ?? undefined}
+                />}
               accessibilityLabel={`${recurringTitle(item, fallbackName)}, ${recurringSummary(item)}, ${recurringNextLabel(item, today)}`}
               accessibilityHint={COPY.a11y.editRecurring}
               accessibilityActions={[

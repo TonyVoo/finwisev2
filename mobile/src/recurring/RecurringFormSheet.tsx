@@ -149,7 +149,7 @@ export function RecurringFormSheet({
                   testID={`${RECURRING_CATEGORY_TEST_ID_PREFIX}-${category.id}`}
                   onPress={() => set({ categoryId: category.id })}
                   lastInGroup={index === categories.length - 1}
-                  leading={<Swatch colorHex={category.color} />}
+                  leading={<Swatch colorHex={category.color} name={category.name} />}
                   accessibilityLabel={category.name}
                   accessibilityState={{ selected: category.id === draft.categoryId }}
                   trailing={
