@@ -13,6 +13,8 @@ import { type NewGoal, createGoal, deleteGoal, depositToGoal, updateGoal } from 
 import type { GoalListItem } from '@/db/queries';
 import { DepositSheet } from '@/goals/DepositSheet';
 import { GoalFormSheet } from '@/goals/GoalFormSheet';
+import { GoalBadge, GoalBar } from '@/goals/GoalVisuals';
+import { savedHaptic } from '@/lib/haptics';
 import { goalAmounts, goalProgress, goalStatus } from '@/goals/goalModel';
 import { useSelectedMonth } from '@/month/MonthProvider';
 import { size, space, type } from '@/theme/tokens';
@@ -62,6 +64,7 @@ export default function GoalsScreen() {
       if (depositing === null) return;
       const target = depositing;
       await localWrite((db) => depositToGoal(db, target.id, amountMinor));
+      savedHaptic();
       setDepositing(null);
       showSnackbar({ message: SNACK_COPY.goal.deposited });
       AccessibilityInfo.announceForAccessibility(SNACK_COPY.goal.deposited);
@@ -110,6 +113,7 @@ export default function GoalsScreen() {
                 testID={`${GOAL_ROW_TEST_ID_PREFIX}-${item.id}`}
                 onPress={() => setDepositing(item)}
                 chevron
+                leading={<GoalBadge reached={progress.reached} />}
                 lastInGroup={index === rows.length - 1}
                 accessibilityLabel={`${item.name}, ${goalAmounts(item)}, ${progress.percent}%${status === null ? '' : `, ${status}`}`}
                 accessibilityHint={COPY.a11y.addToGoal}
@@ -123,19 +127,11 @@ export default function GoalsScreen() {
               >
                 <RowTitle>{item.name}</RowTitle>
                 <RowSubtitle>{`${goalAmounts(item)} · ${progress.percent}%`}</RowSubtitle>
-                <View
-                  style={styles.track}
+                <GoalBar
+                  fill={progress.fill}
+                  reached={progress.reached}
                   testID={`${GOAL_PROGRESS_TEST_ID_PREFIX}-${item.id}`}
-                  accessibilityElementsHidden
-                >
-                  <View
-                    style={[
-                      styles.fill,
-                      progress.reached ? styles.fillReached : null,
-                      { width: `${Math.round(progress.fill * 100)}%` },
-                    ]}
-                  />
-                </View>
+                />
                 {status === null ? null : <Text style={styles.status}>{status}</Text>}
               </Row>
             </SwipeToDelete>
@@ -206,15 +202,6 @@ const useStyles = createStyles((color) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: color.bg.canvas },
     list: { paddingBottom: size.fab + space[4] + space[4] },
-    track: {
-      height: 6,
-      borderRadius: 3,
-      backgroundColor: color.border.hairline,
-      overflow: 'hidden',
-      marginTop: space[2],
-    },
-    fill: { height: 6, backgroundColor: color.primary.default },
-    fillReached: { backgroundColor: color.success.default },
     status: { ...type.callout, color: color.text.secondary, marginTop: space[1] },
     empty: { padding: space[6], gap: space[2], alignItems: 'center' },
     emptyHeadline: { ...type.title1, color: color.text.primary, textAlign: 'center' },
