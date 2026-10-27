@@ -548,9 +548,10 @@ paths:
         verifying until it expires (at most 1h), after which `GET /v1/me` answers
         `401 token_invalid`. Refresh tokens die with the account immediately.
 
-        An account that **owns a household with other members** cannot be deleted: that would
-        delete the shared data. It is `409 household_has_members` until the household is
-        deleted (`DELETE /v1/household`). A member's own deletion just ends their membership.
+        An account that **owns a household with other members** cannot be deleted: the household
+        would be left with no owner. It is `409 household_has_members` until ownership is handed
+        over (`POST /v1/household/transfer`) or the household is deleted. A member's own deletion
+        just ends their membership, and a sole owner's takes the household and its books with it.
       x-errorCodes:
         - validation_error
         - malformed_request
@@ -1131,6 +1132,68 @@ paths:
                   message: The owner cannot leave the household; delete it instead.
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/household/transfer:
+    post:
+      operationId: transferHousehold
+      tags: [household]
+      summary: Hand the household to another member
+      description: |
+        Owner only. Makes `memberId` the owner and the caller a member. Only a role changes:
+        the shared rows live in the household's own book (`GET /v1/me` `dataOwnerId`), not in
+        anyone's account, so nothing moves and every device keeps its books. The former owner
+        can then leave, and delete their own account, like any member.
+
+        The target must be someone else in the caller's household: another account, or the
+        caller themselves, is `404 not_found` and `400 validation_error` respectively, and
+        nothing changes. Returns the household from the caller's (new) point of view.
+      x-errorCodes:
+        - validation_error
+        - malformed_request
+        - unsupported_media_type
+        - unauthorized
+        - token_expired
+        - token_invalid
+        - not_found
+        - not_in_household
+        - household_owner_only
+        - internal_error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/HouseholdTransferRequest' }
+            example: { memberId: '0192f5a0-0000-7000-8000-0000000000b2' }
+      responses:
+        '200':
+          description: Done. The caller is now a member.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HouseholdResponse' }
+              example: { household: { id: '0192f5a0-0000-7000-8000-0000000000b1', role: member, ownerId: '0192f5a0-0000-7000-8000-0000000000b2', currency: USD, members: [{ userId: '0192f5a0-0000-7000-8000-0000000000b2', email: bao@example.com, role: owner, joinedAt: '2026-10-27T09:00:00.000Z' }, { userId: '0192f5a0-0000-7000-8000-0000000000a1', email: ana@example.com, role: member, joinedAt: '2026-10-27T09:00:00.000Z' }] } }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: 'Only the owner can hand the household over. Code: `household_owner_only`.'
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              example:
+                error:
+                  code: household_owner_only
+                  message: Only the household owner can do that.
+        '404':
+          $ref: '#/components/responses/NotFound'
         '415':
           $ref: '#/components/responses/UnsupportedMediaType'
         '500':
@@ -2802,7 +2865,7 @@ components:
         | `not_in_household` | 404 | The person is in no household. |
         | `household_owner_only` | 403 | Only the household's owner may do this. |
         | `owner_cannot_leave` | 409 | The owner cannot leave their own household; they delete it instead. |
-        | `household_has_members` | 409 | An account that owns a household with other members cannot be deleted until the household is. |
+        | `household_has_members` | 409 | An account that owns a household with other members cannot be deleted until ownership is handed over or the household is deleted. |
         | `rates_unavailable` | 502 | The exchange-rate provider could not be reached or gave an unusable answer. Retry later, or enter the rate by hand. |
         | `internal_error` | 500 | Unexpected server fault. Never leaks internals; correlate via `X-Request-Id`. |
       enum:
@@ -2981,7 +3044,7 @@ components:
           allOf: [{ $ref: '#/components/schemas/Uuid' }]
           description: |
             Whose rows this account reads and writes: its own id, or - while it is in a
-            household - the household owner's. A device keeps its local store per data owner, so
+            household - the household's book. A device keeps its local store per data owner, so
             a change here means a clear and a resync. Absent from servers that predate
             households; treat absent as the account's own id.
         household:
@@ -3118,7 +3181,10 @@ components:
           description: The caller's own role.
         ownerId:
           allOf: [{ $ref: '#/components/schemas/Uuid' }]
-          description: The owner's user id, which is also the id every shared row is scoped by (`GET /v1/me` `dataOwnerId`).
+          description: |
+            The owner's account id. The owner is a role that can change hands
+            (`POST /v1/household/transfer`); it is not the id the shared rows are scoped by - the
+            household has a book of its own for that (`GET /v1/me` `dataOwnerId`).
         currency:
           allOf: [{ $ref: '#/components/schemas/CurrencyCode' }]
           description: "The household's currency: the owner's."
@@ -3169,6 +3235,15 @@ components:
       description: No fields. The household is the caller's and is found from the token.
       additionalProperties: false
       properties: {}
+
+    HouseholdTransferRequest:
+      type: object
+      additionalProperties: false
+      required: [memberId]
+      properties:
+        memberId:
+          allOf: [{ $ref: '#/components/schemas/Uuid' }]
+          description: The member to hand the household to - someone else in the caller's household.
 
     HouseholdJoinRequest:
       type: object

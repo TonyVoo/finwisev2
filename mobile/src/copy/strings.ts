@@ -381,7 +381,7 @@ export const COPY = {
       not_in_household: 'You are not in a household.',
       household_owner_only: 'Only the household owner can do that.',
       owner_cannot_leave: 'The owner cannot leave the household. Delete it instead.',
-      household_has_members: 'Delete your household before deleting your account.',
+      household_has_members: 'Transfer or delete your household before deleting your account.',
     },
   },
   goals: {

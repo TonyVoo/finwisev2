@@ -56,14 +56,14 @@ export const requireAuth: RequestHandler = (
           id: true,
           // The data scope, found in the same lookup: a household member reads and writes
           // the owner's rows, everyone else their own.
-          householdMember: { select: { household: { select: { ownerId: true } } } },
+          householdMember: { select: { household: { select: { scopeId: true } } } },
         },
       });
       if (account === null) {
         throw problems.tokenInvalid('Access token does not belong to an existing account.');
       }
       req.userId = userId;
-      req.dataOwnerId = account.householdMember?.household.ownerId ?? userId;
+      req.dataOwnerId = account.householdMember?.household.scopeId ?? userId;
       next();
     })
     .catch(next);

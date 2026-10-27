@@ -10,6 +10,13 @@ import { v7 as uuidv7 } from 'uuid';
 import { getConfig } from '../config.ts';
 import type { Db } from '../db/client.ts';
 import { isUniqueViolation } from '../db/errors.ts';
+import {
+  createBook,
+  ensureOwnDefaultCategory,
+  mergeBooks,
+  moveBooks,
+  unusablePasswordHash,
+} from './householdBooks.ts';
 import { ApiProblem, problems } from '../errors.ts';
 import { logger } from '../logger.ts';
 
@@ -54,7 +61,7 @@ async function loadHousehold(db: Db, userId: string): Promise<Household | null> 
         select: {
           id: true,
           ownerId: true,
-          owner: { select: { currency: true } },
+          book: { select: { currency: true } },
           members: {
             orderBy: { joinedAt: 'asc' },
             select: {
@@ -75,7 +82,7 @@ async function loadHousehold(db: Db, userId: string): Promise<Household | null> 
     id: household.id,
     role: membership.role as Household['role'],
     ownerId: household.ownerId,
-    currency: household.owner.currency,
+    currency: household.book.currency,
     members: household.members.map((member) => ({
       userId: member.userId,
       email: member.user.email,
@@ -94,10 +101,22 @@ export async function createHousehold(db: Db, userId: string): Promise<Household
     throw householdExists();
   }
 
+  const owner = await db.user.findUniqueOrThrow({
+    where: { id: userId },
+    select: { currency: true },
+  });
+  const passwordHash = await unusablePasswordHash();
+
   const id = uuidv7();
   try {
-    await db.household.create({
-      data: { id, ownerId: userId, members: { create: { userId, role: 'owner' } } },
+    await db.$transaction(async (tx) => {
+      // The creator's books go into the household's own book, so they belong to the household
+      // and not to the person: that is what lets ownership change hands later.
+      const scopeId = await createBook(tx, owner.currency, passwordHash);
+      await moveBooks(tx, userId, scopeId);
+      await tx.household.create({
+        data: { id, ownerId: userId, scopeId, members: { create: { userId, role: 'owner' } } },
+      });
     });
   } catch (error) {
     // Two concurrent creates by the same person: the unique indexes decide, and the loser
@@ -173,7 +192,10 @@ export async function leaveHousehold(db: Db, userId: string): Promise<void> {
   if (membership === null) throw notInHousehold();
   if (membership.role === 'owner') throw ownerCannotLeave();
 
-  await db.householdMember.delete({ where: { userId } });
+  await db.$transaction(async (tx) => {
+    await tx.householdMember.delete({ where: { userId } });
+    await ensureOwnDefaultCategory(tx, userId);
+  });
   logger.info('household left', { userId, householdId: membership.householdId });
 }
 
@@ -181,21 +203,91 @@ export async function removeMember(db: Db, ownerUserId: string, memberId: string
   const owner = await requireOwnerMembership(db, ownerUserId);
   if (memberId === ownerUserId) throw ownerCannotLeave();
 
-  const removed = await db.householdMember.deleteMany({
-    where: { userId: memberId, householdId: owner.householdId },
+  await db.$transaction(async (tx) => {
+    const removed = await tx.householdMember.deleteMany({
+      where: { userId: memberId, householdId: owner.householdId },
+    });
+    // Not a member of *this* household: the same 404 as an unknown id, so ids cannot be probed.
+    if (removed.count !== 1) throw problems.notFound('No such member.');
+    await ensureOwnDefaultCategory(tx, memberId);
   });
-  // Not a member of *this* household: the same 404 as an unknown id, so ids cannot be probed.
-  if (removed.count !== 1) throw problems.notFound('No such member.');
 
   logger.info('household member removed', { userId: ownerUserId, householdId: owner.householdId });
 }
 
 export async function deleteHousehold(db: Db, userId: string): Promise<void> {
   const owner = await requireOwnerMembership(db, userId);
-  // Members, the invite and the memberships go with it (cascade). The shared rows stay,
-  // under the owner's id, which is the owner's own books again.
-  await db.household.delete({ where: { id: owner.householdId } });
+
+  await db.$transaction(async (tx) => {
+    const household = await tx.household.findUniqueOrThrow({
+      where: { id: owner.householdId },
+      select: { id: true, ownerId: true, scopeId: true },
+    });
+    // The shared books go to the owner, merged into whatever books they already have. A
+    // household made before books existed was scoped by its owner already: nothing to move.
+    if (household.scopeId !== household.ownerId) {
+      await mergeBooks(tx, household.scopeId, household.ownerId);
+    }
+    // Members, the invite and the memberships go with it (cascade); the book is empty now.
+    await tx.household.delete({ where: { id: household.id } });
+    if (household.scopeId !== household.ownerId) {
+      await tx.user.delete({ where: { id: household.scopeId } });
+    }
+  });
   logger.info('household deleted', { userId, householdId: owner.householdId });
+}
+
+/**
+ * Hand the household to another member: they become the owner, the caller a member.
+ *
+ * Only a role changes - the rows live in the household's own book, not in anyone's account. (A
+ * household made before books existed is scoped by its owner's account, so it is given a book
+ * first, moving those rows once.)
+ */
+export async function transferHousehold(
+  db: Db,
+  ownerUserId: string,
+  memberId: string,
+): Promise<HouseholdResponse> {
+  const owner = await requireOwnerMembership(db, ownerUserId);
+  if (memberId === ownerUserId) {
+    throw new ApiProblem('validation_error', 'Choose another member to hand the household to.', {
+      issues: [{ path: 'memberId', message: 'must be another member of the household' }],
+    });
+  }
+  const passwordHash = await unusablePasswordHash();
+
+  await db.$transaction(async (tx) => {
+    const target = await tx.householdMember.findFirst({
+      where: { userId: memberId, householdId: owner.householdId },
+    });
+    // Not a member of *this* household: the same 404 as an unknown id.
+    if (target === null) throw problems.notFound('No such member.');
+
+    const household = await tx.household.findUniqueOrThrow({ where: { id: owner.householdId } });
+    if (household.scopeId === household.ownerId) {
+      const books = await tx.user.findUniqueOrThrow({
+        where: { id: household.ownerId },
+        select: { currency: true },
+      });
+      const scopeId = await createBook(tx, books.currency, passwordHash);
+      await moveBooks(tx, household.ownerId, scopeId);
+      await tx.household.update({ where: { id: household.id }, data: { scopeId } });
+    }
+
+    await tx.householdMember.update({
+      where: { householdId_userId: { householdId: owner.householdId, userId: ownerUserId } },
+      data: { role: 'member' },
+    });
+    await tx.householdMember.update({
+      where: { householdId_userId: { householdId: owner.householdId, userId: memberId } },
+      data: { role: 'owner' },
+    });
+    await tx.household.update({ where: { id: household.id }, data: { ownerId: memberId } });
+  });
+
+  logger.info('household transferred', { userId: ownerUserId, to: memberId });
+  return await getHousehold(db, ownerUserId);
 }
 
 /** True when the account owns a household that still has other people in it. */

@@ -366,15 +366,25 @@ export async function changeEmail(db: Db, userId: string, input: ChangeEmailInpu
 export async function deleteAccount(db: Db, userId: string, password: string): Promise<void> {
   await confirmPassword(db, userId, password);
 
-  // Deleting the owner deletes the shared data, so it waits until the household does.
+  // An owner cannot leave others without one: hand the household over, or delete it, first.
   if (await ownsHouseholdWithOthers(db, userId)) {
     throw new ApiProblem(
       'household_has_members',
-      'Delete your household before deleting your account.',
+      'Transfer or delete your household before deleting your account.',
     );
   }
 
   await db.$transaction(async (tx) => {
+    // A household with only its owner in it goes with them, books and all: nobody else could
+    // ever reach the rows. (Expenses first: they hold their categories in place.)
+    const owned = await tx.household.findUnique({
+      where: { ownerId: userId },
+      select: { scopeId: true },
+    });
+    if (owned !== null && owned.scopeId !== userId) {
+      await tx.expense.deleteMany({ where: { userId: owned.scopeId } });
+      await tx.user.delete({ where: { id: owned.scopeId } });
+    }
     await tx.expense.deleteMany({ where: { userId } });
     await tx.user.delete({ where: { id: userId } });
   });

@@ -63,6 +63,7 @@ model User {
   expenseReceipts ExpenseReceipt[]
   syncMutations   SyncMutation[]
   ownedHousehold  Household?       @relation("HouseholdOwner")
+  bookOf          Household?       @relation("HouseholdBook")
   householdMember HouseholdMember?
 
   @@map("users")
@@ -359,15 +360,18 @@ model RefreshToken {
   @@map("refresh_tokens")
 }
 
-/// A shared household (`docs/design/10-households.md`). Its data lives under the **owner's**
-/// user id: the household is only the answer to "whose rows does this member read and write".
-/// Creating one therefore moves nothing, and every synced table stays scoped by one `user_id`.
+/// A shared household (`docs/design/10-households.md`). Its data lives under a **book** of its own
+/// (`scope_id`): an account-like row no one can sign in to, so every synced table stays scoped by
+/// one `user_id` and ownership can change hands without moving a row. `owner_id` is only the owner
+/// *role*.
 model Household {
   id        String   @id @db.Uuid
   ownerId   String   @unique @map("owner_id") @db.Uuid
+  scopeId   String   @unique @map("scope_id") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
   owner   User              @relation("HouseholdOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  book    User              @relation("HouseholdBook", fields: [scopeId], references: [id], onDelete: Cascade)
   members HouseholdMember[]
   invite  HouseholdInvite?
 

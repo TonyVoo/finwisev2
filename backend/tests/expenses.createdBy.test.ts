@@ -42,9 +42,12 @@ describe('expenses.createdBy', () => {
     const expense = await createExpense(member, { categoryId: owner.defaultCategory.id });
 
     expect(expense.createdBy).toBe(member.user.id);
-    // The row lives in the owner's books.
+    // The row lives in the household's book: neither person's own account.
     const row = await getPrisma().expense.findUniqueOrThrow({ where: { id: expense.id } });
-    expect(row.userId).toBe(owner.user.id);
+    expect(row.userId).not.toBe(owner.user.id);
+    expect(row.userId).not.toBe(member.user.id);
+    const scope = (await api().get('/v1/me').set('Authorization', owner.auth)).body.dataOwnerId;
+    expect(row.userId).toBe(scope);
   });
 
   it('is the member when they create through sync, and the owner sees it on pull', async () => {

@@ -126,6 +126,7 @@ describe('every client method', () => {
     ['createHouseholdInvite', (client) => client.createHouseholdInvite()],
     ['joinHousehold', (client) => client.joinHousehold({ code: 'K7QM4T2X' })],
     ['leaveHousehold', (client) => client.leaveHousehold()],
+    ['transferHousehold', (client) => client.transferHousehold({ memberId: ID })],
     ['removeHouseholdMember', (client) => client.removeHouseholdMember(ID)],
 
     ['listCategories', (client) => client.listCategories()],

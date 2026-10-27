@@ -84,6 +84,7 @@ export const ENDPOINTS = {
   createHouseholdInvite: endpoint('createHouseholdInvite', HouseholdInviteResponse),
   joinHousehold: endpoint('joinHousehold', HouseholdResponse),
   leaveHousehold: emptyEndpoint('leaveHousehold'),
+  transferHousehold: endpoint('transferHousehold', HouseholdResponse),
   removeHouseholdMember: emptyEndpoint('removeHouseholdMember'),
 
   putReceipt: endpoint('putReceipt', ReceiptResponse),

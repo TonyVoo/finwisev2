@@ -809,7 +809,10 @@ describe('API-27 — a household, driven by two real clients', () => {
     // The member's identity is unchanged; their data scope is the owner's.
     const me = await member.client.getMe();
     expect(me.user.id).toBe(member.auth.user.id);
-    expect(me.dataOwnerId).toBe(owner.auth.user.id);
+    // ...and the household's book is nobody's own account.
+    expect(me.dataOwnerId).toBe((await owner.client.getMe()).dataOwnerId);
+    expect(me.dataOwnerId).not.toBe(owner.auth.user.id);
+    expect(me.dataOwnerId).not.toBe(member.auth.user.id);
     const seen = (await member.client.listExpenses()).data.map((e: Expense) => e.id);
     expect(seen).toContain(expense.id);
 
@@ -836,5 +839,21 @@ describe('API-27 — a household, driven by two real clients', () => {
     await expect(owner.client.leaveHousehold()).rejects.toMatchObject({
       code: 'owner_cannot_leave',
     });
+  });
+
+  it('hands the household over, and the former owner can then leave', async () => {
+    const owner = await signedIn();
+    const member = await signedIn();
+    await owner.client.createHousehold();
+    const { code } = (await owner.client.createHouseholdInvite()).data;
+    await member.client.joinHousehold({ code });
+
+    const handed = (await owner.client.transferHousehold({ memberId: member.auth.user.id }))
+      .household;
+
+    expect(handed).toMatchObject({ role: 'member', ownerId: member.auth.user.id });
+    expect((await member.client.getHousehold()).household?.role).toBe('owner');
+    await expect(owner.client.leaveHousehold()).resolves.toBeUndefined();
+    expect((await owner.client.getMe()).dataOwnerId).toBe(owner.auth.user.id);
   });
 });

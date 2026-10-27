@@ -43,7 +43,7 @@ export const Household = z.strictObject({
   id: Uuid,
   role: HouseholdRole.describe("The caller's own role."),
   ownerId: Uuid.describe(
-    "The owner's user id, which is also the id every shared row is scoped by (`GET /v1/me` `dataOwnerId`).",
+    "The owner's account id. The owner is a role that can change hands (`POST /v1/household/transfer`); it is not the id the shared rows are scoped by - the household has a book of its own for that (`GET /v1/me` `dataOwnerId`).",
   ),
   currency: CurrencyCode.describe("The household's currency: the owner's."),
   members: z.array(HouseholdMember),
@@ -67,6 +67,12 @@ export const HouseholdLeaveRequest = z.strictObject({});
 
 export const HouseholdJoinRequest = z.strictObject({ code: InviteCode });
 
+export const HouseholdTransferRequest = z.strictObject({
+  memberId: Uuid.describe(
+    "The member to hand the household to: their account id, as listed by `GET /v1/household`. Must be someone else in the caller's household.",
+  ),
+});
+
 export type HouseholdRole = z.infer<typeof HouseholdRole>;
 export type HouseholdMember = z.infer<typeof HouseholdMember>;
 export type Household = z.infer<typeof Household>;
@@ -77,6 +83,7 @@ export type HouseholdCreateRequest = z.infer<typeof HouseholdCreateRequest>;
 export type HouseholdInviteRequest = z.infer<typeof HouseholdInviteRequest>;
 export type HouseholdLeaveRequest = z.infer<typeof HouseholdLeaveRequest>;
 export type HouseholdJoinRequest = z.infer<typeof HouseholdJoinRequest>;
+export type HouseholdTransferRequest = z.infer<typeof HouseholdTransferRequest>;
 
 /**
  * `GET /v1/me`: who the token belongs to, and the books it works in.
@@ -87,7 +94,7 @@ export type HouseholdJoinRequest = z.infer<typeof HouseholdJoinRequest>;
 export const MeResponse = z.strictObject({
   user: User,
   dataOwnerId: Uuid.optional().describe(
-    "Whose rows this account reads and writes: its own id, or - while it is in a household - the household owner's. A device keeps its local store per data owner, so a change here means a clear and a resync. Absent from servers that predate households; treat absent as the account's own id.",
+    "Whose rows this account reads and writes: its own id, or - while it is in a household - the household's book. A device keeps its local store per data owner, so a change here means a clear and a resync. Absent from servers that predate households; treat absent as the account's own id.",
   ),
   household: Household.nullable()
     .optional()

@@ -158,7 +158,7 @@ blank banner.
 | `not_in_household`       | `You are not in a household.`                                                         | Household screen, banner                         |
 | `household_owner_only`   | `Only the household owner can do that.`                                               | Household screen, banner                         |
 | `owner_cannot_leave`     | `The owner cannot leave the household. Delete it instead.`                            | Household screen, banner                         |
-| `household_has_members`  | `Delete your household before deleting your account.`                                 | Delete account, banner                           |
+| `household_has_members`  | `Transfer or delete your household before deleting your account.`                                 | Delete account, banner                           |
 | `rates_unavailable`      | `Could not get today's exchange rate. Enter it yourself.`                             | Expense form, Rate field                         |
 | `internal_error`         | `Something went wrong on our end. Try again.`                                         | form banner                                      |
 
@@ -520,7 +520,7 @@ them as proposals the Designer can reword; changing a row here means changing
 | `household.error.not_in_household` | `You are not in a household.` | Household screen, banner |
 | `household.error.household_owner_only` | `Only the household owner can do that.` | Household screen, banner |
 | `household.error.owner_cannot_leave` | `The owner cannot leave the household. Delete it instead.` | Household screen, banner |
-| `household.error.household_has_members` | `Delete your household before deleting your account.` | Household screen, banner |
+| `household.error.household_has_members` | `Transfer or delete your household before deleting your account.` | Household screen, banner |
 | `household.title` | `Household` | Household screen |
 | `household.empty.headline` | `Share your books` | Household screen |
 | `household.empty.body` | `Keep one set of expenses with a partner or family. Everyone can see and add everything.` | Household screen |

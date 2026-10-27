@@ -141,6 +141,13 @@ export const API_ROUTES = [
     successStatus: 204,
   },
   {
+    method: 'post',
+    path: '/v1/household/transfer',
+    operationId: 'transferHousehold',
+    auth: true,
+    successStatus: 200,
+  },
+  {
     method: 'delete',
     path: '/v1/household/members/{memberId}',
     operationId: 'removeHouseholdMember',

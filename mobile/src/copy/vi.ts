@@ -344,7 +344,8 @@ export const VIETNAMESE_COPY: CopyBundle = {
         not_in_household: 'Bạn chưa ở trong hộ gia đình nào.',
         household_owner_only: 'Chỉ chủ hộ mới làm được việc này.',
         owner_cannot_leave: 'Chủ hộ không thể rời đi. Hãy xóa hộ gia đình thay vào đó.',
-        household_has_members: 'Hãy xóa hộ gia đình trước khi xóa tài khoản.',
+        household_has_members:
+          'Hãy chuyển quyền chủ hộ hoặc xóa hộ gia đình trước khi xóa tài khoản.',
       },
     },
     goals: {

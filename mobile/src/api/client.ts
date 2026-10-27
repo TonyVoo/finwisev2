@@ -21,6 +21,7 @@ import type {
   HouseholdInviteResponse,
   HouseholdJoinRequest,
   HouseholdResponse,
+  HouseholdTransferRequest,
   RatesQuery,
   RatesResponse,
   ReceiptIndexResponse,
@@ -101,6 +102,8 @@ export interface ApiClient {
   joinHousehold(body: HouseholdJoinRequest): Promise<HouseholdResponse>;
   /** A member leaves. 204. */
   leaveHousehold(): Promise<void>;
+  /** Owner only. Hands the household to another member; the caller becomes a member. */
+  transferHousehold(body: HouseholdTransferRequest): Promise<HouseholdResponse>;
   /** Owner only. 204. */
   removeHouseholdMember(memberId: string): Promise<void>;
 
@@ -202,6 +205,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     createHouseholdInvite: () => send(ENDPOINTS.createHouseholdInvite, { body: {} }),
     joinHousehold: (body) => send(ENDPOINTS.joinHousehold, { body }),
     leaveHousehold: () => send(ENDPOINTS.leaveHousehold, { body: {} }),
+    transferHousehold: (body) => send(ENDPOINTS.transferHousehold, { body }),
     removeHouseholdMember: (memberId) =>
       send(ENDPOINTS.removeHouseholdMember, { pathParams: { memberId } }),
 

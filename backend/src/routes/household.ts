@@ -5,6 +5,7 @@ import {
   HouseholdJoinRequest,
   HouseholdLeaveRequest,
   HouseholdResponse,
+  HouseholdTransferRequest,
   Uuid,
 } from '@expense-tracker/shared';
 import { Router, type Request, type Response } from 'express';
@@ -21,6 +22,7 @@ import {
   joinHousehold,
   leaveHousehold,
   removeMember,
+  transferHousehold,
 } from '../services/householdService.ts';
 import { problems } from '../errors.ts';
 
@@ -79,6 +81,20 @@ householdRouter.post(
   async (req: Request, res: Response) => {
     await leaveHousehold(getPrisma(), userIdOf(req));
     res.status(204).end();
+  },
+);
+
+householdRouter.post(
+  '/household/transfer',
+  validateBody(HouseholdTransferRequest),
+  async (req: Request, res: Response) => {
+    const body = req.body as HouseholdTransferRequest;
+    sendJson(
+      res,
+      200,
+      HouseholdResponse,
+      await transferHousehold(getPrisma(), userIdOf(req), body.memberId),
+    );
   },
 );
 

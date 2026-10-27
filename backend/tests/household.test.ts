@@ -315,9 +315,11 @@ describe('the shared data scope', () => {
     const asOwner = await api().get('/v1/me').set('Authorization', owner.auth);
 
     expect(asMember.body.user.id).toBe(member.user.id);
-    expect(asMember.body.dataOwnerId).toBe(owner.user.id);
+    // Both work in the household's book, which is nobody's own account.
+    expect(asMember.body.dataOwnerId).toBe(asOwner.body.dataOwnerId);
+    expect(asMember.body.dataOwnerId).not.toBe(member.user.id);
+    expect(asMember.body.dataOwnerId).not.toBe(owner.user.id);
     expect(asMember.body.user.currency).toBe('USD');
-    expect(asOwner.body.dataOwnerId).toBe(owner.user.id);
   });
 
   it('carries the household, with who is in it, on /v1/me for the app to label rows', async () => {

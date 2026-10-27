@@ -11,32 +11,46 @@ Two or more people keep one set of books. Decided with the product owner:
 
 ## How it works (the one idea)
 
-Every synced row is already scoped by one id (`user_id`). A household reuses **the owner's user
-id as the shared scope**:
+Every synced row is already scoped by one id (`user_id`). A household gets **a book of its own**:
+a hidden account-like record (`households.scope_id`) that no one can sign in to, and every shared
+row is scoped by *its* id.
 
 - A request has two ids. The **identity** is who you are (from the access token) and never
   changes. The **data scope** is whose rows you read and write: your own id, or - while you are a
-  member of a household - the **owner's** id.
-- Creating a household therefore moves nothing: the creator's rows are already under their id.
-- Joining switches a member's data scope to the owner's. The member's own rows stay where they
-  are, untouched and invisible, and reappear if they leave or the household is deleted.
-- Sync needs no change in kind: members share the owner's revision counter and tombstone
-  horizon, so they all read the same change stream.
+  member of a household - the household's book.
+- **Creating** a household moves the creator's current rows into the new book, in one
+  transaction, keeping their revisions (the book's counter continues from theirs). From then on
+  the books belong to the household, not to a person.
+- **Joining** switches a member's data scope to the book. Their own rows stay where they are,
+  untouched and invisible, and reappear if they leave or the household is deleted.
+- **Transferring** ownership changes only a role: nothing moves, because the rows were never
+  the owner's. That is the reason for a book of its own - the previous design stored the books
+  under the owner's account, so handing the household over would have meant moving rows into an
+  account that already has books of its own.
+- Sync needs no change in kind: members share the book's revision counter and tombstone horizon,
+  so they all read the same change stream.
 
 ### Consequences, stated plainly
 
-- **The household's currency is the owner's.** A member's own currency is unused while they are in.
-- **The owner cannot leave.** Their id *is* the scope. They can delete the household instead:
-  every member returns to their own private data, and the shared data stays with the owner.
-- **The owner cannot delete their account while others are in the household** (it would delete
-  the shared data). They delete the household first.
+- **The household's currency is fixed when it is created** (the creator's), whoever owns it later.
+- **The creator's old private books live in the household now.** If they later leave (after
+  transferring ownership) they start from fresh default categories; the history stays with the
+  household. Said in the confirm dialog.
+- **The owner cannot leave.** They transfer ownership first, then leave.
+- **Deleting the household gives the shared books to the owner**, merged into whatever books they
+  already have: categories with the same name are combined (case-insensitively), the rest are
+  added, and every moved row gets a fresh revision. Everyone else goes back to their own books.
+- **An owner cannot delete their account while others are in the household.** They transfer
+  ownership or delete the household first. A sole owner who deletes their account deletes the
+  household with it.
 - **A device switches scope by clearing its local store and resyncing**, which the app already
-  does whenever the signed-in data owner changes. Unsynced local changes are pushed first, or the
-  switch is refused with a clear message.
+  does whenever the data scope changes. Unsynced local changes are refused on the device that
+  acts (create, join, leave, delete) and discarded on a device that merely finds out.
 
 ## Data model
 
-- `households`: `id`, `owner_id` (unique, FK users), `created_at`.
+- `households`: `id`, `owner_id` (unique, FK users - the owner *role*), `scope_id` (unique, FK
+  users - the book; an account-like row with no sign-in), `created_at`.
 - `household_members`: `household_id`, `user_id` (unique - one household per person),
   `role` (`owner` | `member`), `joined_at`. The owner is a member row too.
 - `household_invites`: one live code per household: `household_id` (unique), `code_hash`
@@ -56,8 +70,12 @@ All authenticated. The household is addressed by the token, never by an id in th
 | `joinHousehold` | `POST /v1/household/join` `{ code }` | a person in no household |
 | `leaveHousehold` | `POST /v1/household/leave` | member (not owner) |
 | `removeHouseholdMember` | `DELETE /v1/household/members/{memberId}` | owner |
+| `transferHousehold` | `POST /v1/household/transfer` `{ memberId }` | owner |
 
 `GET /v1/me` also returns `dataOwnerId`, so a device knows which scope its local store holds.
+
+`transferHousehold` makes a member the owner and the caller a member; the target must be another
+member of the same household (`404 not_found` otherwise, and `400 validation_error` for the caller).
 
 Errors: `household_exists` (already in one), `not_in_household`, `household_owner_only`,
 `owner_cannot_leave`, `invalid_invite_code` (wrong, expired or used - one answer for all, so a
@@ -72,5 +90,4 @@ all end in the same place: the local store is cleared and resynced under the new
 
 ## Not in this version
 
-Per-expense "added by" attribution, transferring ownership, more than one household per person,
-and per-member private expenses.
+More than one household per person, and per-member private expenses.

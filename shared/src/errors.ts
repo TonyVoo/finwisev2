@@ -62,7 +62,7 @@ export const ERROR_CODES = [
   'household_owner_only',
   /** 409 — the owner cannot leave their own household; they delete it instead. */
   'owner_cannot_leave',
-  /** 409 — an account that owns a household with other members cannot be deleted until the household is. */
+  /** 409 — an account that owns a household with other members cannot be deleted until ownership is handed over or the household is deleted. */
   'household_has_members',
   /** 502 — the exchange-rate provider could not be reached or gave an unusable answer. Retry later, or enter the rate by hand. */
   'rates_unavailable',
