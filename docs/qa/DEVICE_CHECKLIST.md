@@ -75,6 +75,29 @@ marked **(dev build)**.
       never does. Add money: the "to go" amount in the next reminder is lower. Reach the target or
       delete the goal: no reminder fires.
 
+## 6b. Shared household
+
+Needs **two phones** (or a phone and a simulator) signed in to **two different accounts**, and the
+backend **restarted after pulling** (it adds three tables: `pnpm --filter backend migrate:deploy`).
+
+- [ ] Phone A: Settings -> **Household** -> **Create a household**. The members list shows A as
+      Owner and "You". Nothing about A's expenses changes.
+- [ ] Phone A: **Invite someone** shows an 8-character code once, with **Share code**. The share
+      sheet text includes the code.
+- [ ] Phone B (its own account, with a few of its own expenses): Household -> **Join with a code**.
+      A wrong code shows "That code is incorrect or has expired." and nothing changes.
+- [ ] Phone B with an unsynced change (airplane mode, add an expense, back online *before* it syncs)
+      is told to **sync first**; once synced, the correct code works.
+- [ ] After joining, B sees **A's** books and currency; B's own expenses are gone from view.
+      Add an expense on B: it appears on A after a sync, and the other way round.
+- [ ] The same code does **not** work a second time, or after 48 hours.
+- [ ] B: **Leave household**. B is back on its own books and currency, its own expenses are back, and
+      A still has everything B added while in.
+- [ ] A removes B while B is in: B's phone returns to its own books on its next sync (no crash, no
+      A data left behind).
+- [ ] A cannot leave (no Leave button) and **Delete household** returns everyone to their own books.
+- [ ] A cannot delete their account while B is in; the banner says to delete the household first.
+
 ## 7. App lock
 
 - [ ] Settings → **App lock**: turning it on asks for Face ID / fingerprint, and refuses cleanly if
