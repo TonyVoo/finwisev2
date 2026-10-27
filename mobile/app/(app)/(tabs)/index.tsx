@@ -13,6 +13,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
   useAnyExpensesExist,
   useCategoryReviewPending,
+  useMonthCategorySpend,
   useExpenseSearch,
   useExpenseSearchSummary,
   useLiveCategories,
@@ -22,7 +23,10 @@ import {
 } from '@/db/hooks';
 import { isSearchActive } from '@/db/queries';
 import { deleteExpense, restoreExpense } from '@/db/mutations';
+import { BudgetAlertBanner } from '@/expenses/BudgetAlertBanner';
 import { CategoryReviewBanner } from '@/expenses/CategoryReviewBanner';
+import { budgetAlert } from '@/summary/budgetAlerts';
+import { summariseMonth } from '@/summary/summaryModel';
 import { ExpenseRow } from '@/expenses/ExpenseRow';
 import { groupByDate } from '@/expenses/listModel';
 import { FirstRunEmpty, ListSkeleton, MonthEmpty, SearchEmpty } from '@/expenses/ListStates';
@@ -105,6 +109,13 @@ export default function ExpenseListScreen() {
   const database = useDatabase();
   const queryClient = useQueryClient();
   const reviewPending = useCategoryReviewPending();
+
+  // Budgets are a this-month question: telling someone in October that they overspent in
+  // March is history, not a warning. Dismissal is remembered by what was dismissed, so a
+  // second category going over brings the banner back.
+  const monthSpend = useMonthCategorySpend(month);
+  const [dismissedAlert, setDismissedAlert] = useState<string | null>(null);
+  const alert = isCurrent ? budgetAlert(summariseMonth(monthSpend.data ?? []).entries) : null;
   // Both answers clear it, so it is asked once. Not a `localWrite`: this is a fact about the
   // device, not a record, so there is nothing to sync.
   const answerCategoryReview = useCallback(
@@ -204,6 +215,14 @@ export default function ExpenseListScreen() {
       ) : (
         <MonthSwitcher onOpenPicker={() => router.push('/(app)/month-picker')} />
       )}
+
+      {alert !== null && alert.key !== dismissedAlert && !searchOpen ? (
+        <BudgetAlertBanner
+          alert={alert}
+          onOpen={() => router.navigate('/(app)/(tabs)/summary')}
+          onDismiss={() => setDismissedAlert(alert.key)}
+        />
+      ) : null}
 
       {reviewPending.data === true && !searchOpen ? (
         <CategoryReviewBanner

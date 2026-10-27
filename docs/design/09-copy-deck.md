@@ -419,3 +419,13 @@ them as proposals the Designer can reword; changing a row here means changing
 | `appearance.system` | `Match system` | Theme sheet, option and Settings row value |
 | `appearance.light` | `Light` | Theme sheet, option and Settings row value |
 | `appearance.dark` | `Dark` | Theme sheet, option and Settings row value |
+| `home.budgetAlert.overOne` | `Over budget` | Home, budget banner title (one category) |
+| `home.budgetAlert.overMany` | `{count} categories over budget` | Home, budget banner title |
+| `home.budgetAlert.nearOne` | `Close to budget` | Home, budget banner title (one category) |
+| `home.budgetAlert.nearMany` | `{count} categories close to budget` | Home, budget banner title |
+| `home.budgetAlert.bodyOver` | `{names}: spending is past the monthly budget.` | Home, budget banner body |
+| `home.budgetAlert.bodyNear` | `{names}: 80% or more of the monthly budget is used.` | Home, budget banner body |
+| `home.budgetAlert.and` | `{names} and {last}` | Home, budget banner, two or three names |
+| `home.budgetAlert.andMore` | `{names} and {count} more` | Home, budget banner, more than three names |
+| `home.budgetAlert.open` | `See summary` | Home, budget banner button |
+| `home.budgetAlert.dismiss` | `Dismiss` | Home, budget banner button |

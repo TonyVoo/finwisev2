@@ -58,6 +58,19 @@ export const COPY = {
       review: 'Review categories',
       dismiss: 'Not now',
     },
+    /** Home's heads-up about monthly budgets (`summary/budgetAlerts.ts`). */
+    budgetAlert: {
+      overOne: 'Over budget',
+      overMany: '{count} categories over budget',
+      nearOne: 'Close to budget',
+      nearMany: '{count} categories close to budget',
+      bodyOver: '{names}: spending is past the monthly budget.',
+      bodyNear: '{names}: 80% or more of the monthly budget is used.',
+      and: '{names} and {last}',
+      andMore: '{names} and {count} more',
+      open: 'See summary',
+      dismiss: 'Dismiss',
+    },
     search: {
       open: 'Search expenses',
       close: 'Close search',
