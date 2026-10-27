@@ -18,6 +18,9 @@ import type {
   ExpenseResponse,
   ExpenseUpdateRequest,
   HealthResponse,
+  HouseholdInviteResponse,
+  HouseholdJoinRequest,
+  HouseholdResponse,
   RatesQuery,
   RatesResponse,
   ReceiptIndexResponse,
@@ -86,6 +89,20 @@ export interface ApiClient {
   createExpense(body: ExpenseCreateRequest): Promise<ExpenseResponse>;
   updateExpense(id: string, body: ExpenseUpdateRequest): Promise<ExpenseResponse>;
   deleteExpense(id: string): Promise<ExpenseResponse>;
+
+  /** The household the caller is in, or `{ household: null }`. */
+  getHousehold(): Promise<HouseholdResponse>;
+  /** Starts a household with the caller as owner. Nothing is copied. */
+  createHousehold(): Promise<HouseholdResponse>;
+  /** Owner only. Members return to their own books. 204. */
+  deleteHousehold(): Promise<void>;
+  /** Owner only. A one-time code, shown once. */
+  createHouseholdInvite(): Promise<HouseholdInviteResponse>;
+  joinHousehold(body: HouseholdJoinRequest): Promise<HouseholdResponse>;
+  /** A member leaves. 204. */
+  leaveHousehold(): Promise<void>;
+  /** Owner only. 204. */
+  removeHouseholdMember(memberId: string): Promise<void>;
 
   /** Attaches or replaces the expense's receipt photo (base64 JPEG). */
   putReceipt(expenseId: string, body: ReceiptPutRequest): Promise<ReceiptResponse>;
@@ -178,6 +195,15 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     createExpense: (body) => send(ENDPOINTS.createExpense, { body }),
     updateExpense: (id, body) => send(ENDPOINTS.updateExpense, { pathParams: { id }, body }),
     deleteExpense: (id) => send(ENDPOINTS.deleteExpense, { pathParams: { id } }),
+
+    getHousehold: () => send(ENDPOINTS.getHousehold),
+    createHousehold: () => send(ENDPOINTS.createHousehold, { body: {} }),
+    deleteHousehold: () => send(ENDPOINTS.deleteHousehold),
+    createHouseholdInvite: () => send(ENDPOINTS.createHouseholdInvite, { body: {} }),
+    joinHousehold: (body) => send(ENDPOINTS.joinHousehold, { body }),
+    leaveHousehold: () => send(ENDPOINTS.leaveHousehold, { body: {} }),
+    removeHouseholdMember: (memberId) =>
+      send(ENDPOINTS.removeHouseholdMember, { pathParams: { memberId } }),
 
     putReceipt: (id, body) => send(ENDPOINTS.putReceipt, { pathParams: { id }, body }),
     getReceipt: (id) => send(ENDPOINTS.getReceipt, { pathParams: { id } }),

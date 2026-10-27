@@ -65,6 +65,13 @@ export const META_KEYS = {
    * categories, and the next account on the device is asked afresh.
    */
   categoryRenameAnswered: 'categoryRenameAnswered',
+  /**
+   * Whose rows this store holds: the signed-in account's own id, or - while it is in a
+   * household - the household owner's (`GET /v1/me` `dataOwnerId`). Distinct from
+   * {@link META_KEYS.owner}, which is who is *signed in*. Wiped with the store; absent means
+   * the account's own books.
+   */
+  dataScope: 'dataScope',
 } as const;
 
 export type MetaKey = (typeof META_KEYS)[keyof typeof META_KEYS];
@@ -79,6 +86,7 @@ export const WIPED_META_KEYS: readonly MetaKey[] = [
   META_KEYS.categoryReviewPending,
   META_KEYS.budgetNotified,
   META_KEYS.categoryRenameAnswered,
+  META_KEYS.dataScope,
 ];
 
 export async function readMeta(executor: SqliteExecutor, key: MetaKey): Promise<string | null> {

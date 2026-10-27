@@ -7,6 +7,8 @@ import {
   ExpenseListResponse,
   ExpenseResponse,
   HealthResponse,
+  HouseholdInviteResponse,
+  HouseholdResponse,
   RatesResponse,
   ReceiptIndexResponse,
   ReceiptResponse,
@@ -75,6 +77,14 @@ export const ENDPOINTS = {
   requestEmailVerification: emptyEndpoint('requestEmailVerification'),
   confirmEmailVerification: endpoint('confirmEmailVerification', MeResponse),
   deleteAccount: emptyEndpoint('deleteAccount'),
+
+  getHousehold: endpoint('getHousehold', HouseholdResponse),
+  createHousehold: endpoint('createHousehold', HouseholdResponse),
+  deleteHousehold: emptyEndpoint('deleteHousehold'),
+  createHouseholdInvite: endpoint('createHouseholdInvite', HouseholdInviteResponse),
+  joinHousehold: endpoint('joinHousehold', HouseholdResponse),
+  leaveHousehold: emptyEndpoint('leaveHousehold'),
+  removeHouseholdMember: emptyEndpoint('removeHouseholdMember'),
 
   putReceipt: endpoint('putReceipt', ReceiptResponse),
   getReceipt: endpoint('getReceipt', ReceiptResponse),

@@ -10,6 +10,7 @@ import { type Clock, systemClock } from '../lib/clock';
 import { createSqliteLocalStore } from '../db/localStore';
 import { generateDueRecurring } from '../recurring/generate';
 import { syncBillReminders } from '../notifications/billReminders';
+import { reconcileDataScope } from '../household/dataScope';
 import { syncGoalReminders } from '../notifications/goalReminders';
 import { META_KEYS, readMeta } from '../db/meta';
 import { type LanguagePreference, parseLanguagePreference } from '../i18n/language';
@@ -139,6 +140,11 @@ export async function createAppContainer(options: AppContainerOptions = {}): Pro
     syncReceipts: (guard) => syncReceipts({ database, api, guard }),
     beforeSync: async () => {
       if (session.getSnapshot().status !== 'authenticated') return;
+      // First, before anything is read or pushed: a device whose account moved to another
+      // data scope (joined or left a household, or was removed) must not push the old rows.
+      if ((await reconcileDataScope(database, api)) === 'switched') {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.local() });
+      }
       const created = await generateDueRecurring(database, { clock });
       if (created > 0) void queryClient.invalidateQueries({ queryKey: queryKeys.local() });
       void syncBillReminders(database, clock()).catch(() => undefined);
