@@ -1,6 +1,7 @@
 import type { Db } from '../db/client.ts';
 import { getPrisma } from '../db/client.ts';
 import { logger } from '../logger.ts';
+import { nextRevisionBlock } from '../db/revision.ts';
 import { TOMBSTONE_HORIZON_DAYS, tombstoneHorizon } from '../sync/resolver.ts';
 
 /**
@@ -41,6 +42,12 @@ export interface PruneResult {
   readonly ledgerEntries: number;
   /** Rows older than the horizon that could not be pruned yet; see below. */
   readonly categoriesRetained: number;
+  /**
+   * Live expenses moved off an expired category tombstone onto the default category, so
+   * that the tombstone could be collected. Non-zero only when a client never pushed the
+   * reassignment its category delete called for (`SYNC-44`).
+   */
+  readonly expensesReassigned: number;
   /** The watermark after this run. */
   readonly prunedThroughRevision: number;
 }
@@ -54,6 +61,15 @@ export interface PruneResult {
  * *live* expenses. A category tombstone with surviving expense tombstones therefore
  * cannot be removed yet, and is left for the next run rather than cascading, because
  * cascading would destroy spend history to tidy up a category.
+ *
+ * One case does not converge by waiting: a **live** expense never ages out, so a category
+ * tombstoned through sync while a live expense still pointed at it (the client that owed
+ * the reassignment was lost or wiped first - `GAP 2`) would be retained for the life of the
+ * account, and every full pull would carry it. Past the horizon those expenses are moved to
+ * the user's default category, with a fresh revision so every device pulls the move, and the
+ * tombstone is then collected. Only here, and only past the horizon: reassigning at delete
+ * time with `now` would beat the client's own pending edits in last-write-wins (`SYNC-46`),
+ * whereas 90 days on any such edit has long since lost its chance to arrive.
  *
  * The whole thing is one transaction so the watermark can never be advanced past rows
  * that were not actually deleted, which would strand clients for nothing.
@@ -85,6 +101,37 @@ export async function pruneTombstones(
       RETURNING "revision"
     `;
 
+    // Repair before the category delete: free expired tombstones of the live expenses that
+    // would otherwise hold them forever (see above). Skipped, and the category retained and
+    // counted, if the account somehow has no live default to move them to.
+    const stranded = await tx.$queryRaw<{ id: string }[]>`
+      SELECT "e"."id"
+        FROM "expenses" AS "e"
+        JOIN "categories" AS "c" ON "c"."id" = "e"."category_id"
+       WHERE "e"."user_id" = ${userId}::uuid
+         AND "e"."deleted_at" IS NULL
+         AND "c"."deleted_at" IS NOT NULL
+         AND "c"."deleted_at" < ${horizon}
+       ORDER BY "e"."id"
+    `;
+    let expensesReassigned = 0;
+    if (stranded.length > 0) {
+      const fallback = await tx.category.findFirst({
+        where: { userId, isDefault: true, deletedAt: null },
+      });
+      if (fallback) {
+        const revisions = await nextRevisionBlock(tx, userId, stranded.length);
+        const stamp = new Date();
+        for (const [index, { id }] of stranded.entries()) {
+          await tx.expense.update({
+            where: { id },
+            data: { categoryId: fallback.id, revision: revisions[index]!, updatedAt: stamp },
+          });
+        }
+        expensesReassigned = stranded.length;
+      }
+    }
+
     const categories = await tx.$queryRaw<{ revision: number }[]>`
       DELETE FROM "categories"
        WHERE "user_id" = ${userId}::uuid
@@ -113,6 +160,8 @@ export async function pruneTombstones(
     });
 
     const counter = await tx.revisionCounter.findUnique({ where: { userId } });
+    // Only *deleted* rows move the watermark. A reassigned expense is a live row that clients
+    // will pull by its new revision, so it must not be counted as pruned history.
     const deletedRevisions = [...expenses, ...recurring, ...categories].map((row) => row.revision);
     // The watermark is the *highest* revision destroyed, not a count: a client whose
     // `since` is at or above it has already seen every delete that was pruned, so it can
@@ -137,6 +186,7 @@ export async function pruneTombstones(
       recurring: recurring.length,
       ledgerEntries: ledgerEntries.count,
       categoriesRetained: retained,
+      expensesReassigned,
       prunedThroughRevision,
     };
   };
@@ -165,6 +215,9 @@ export async function pruneAllTombstones(now = new Date()): Promise<{
   categories: number;
   recurring: number;
   ledgerEntries: number;
+  /** Expired category tombstones still held after this run. An operator wants this at 0. */
+  categoriesRetained: number;
+  expensesReassigned: number;
 }> {
   const db = getPrisma();
   const horizon = tombstoneHorizon(now);
@@ -185,12 +238,16 @@ export async function pruneAllTombstones(now = new Date()): Promise<{
   let categories = 0;
   let recurring = 0;
   let ledgerEntries = 0;
+  let categoriesRetained = 0;
+  let expensesReassigned = 0;
   for (const { user_id: userId } of userIds) {
     const result = await pruneTombstones(db, userId, now);
     expenses += result.expenses;
     categories += result.categories;
     recurring += result.recurring;
     ledgerEntries += result.ledgerEntries;
+    categoriesRetained += result.categoriesRetained;
+    expensesReassigned += result.expensesReassigned;
   }
 
   logger.info('tombstones pruned', {
@@ -200,6 +257,16 @@ export async function pruneAllTombstones(now = new Date()): Promise<{
     categories,
     recurring,
     ledgerEntries,
+    categoriesRetained,
+    expensesReassigned,
   });
-  return { users: userIds.length, expenses, categories, recurring, ledgerEntries };
+  return {
+    users: userIds.length,
+    expenses,
+    categories,
+    recurring,
+    ledgerEntries,
+    categoriesRetained,
+    expensesReassigned,
+  };
 }

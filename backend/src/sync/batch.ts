@@ -9,6 +9,7 @@ import {
 } from '@expense-tracker/shared';
 import { z } from 'zod';
 import { ApiProblem, problems } from '../errors.ts';
+import { toIssues } from '../http/issues.ts';
 
 /**
  * Parsing a push batch.
@@ -94,16 +95,6 @@ export function canonicalJson(value: unknown): string {
 /** The ledger's payload fingerprint for one request item. */
 export function hashPushItem(raw: unknown): string {
   return createHash('sha256').update(canonicalJson(raw)).digest('hex');
-}
-
-/** Turn a zod failure into the contract's `details.issues`, rooted at the item. */
-function toIssues(error: z.ZodError): { issues: { path: string; message: string }[] } {
-  return {
-    issues: error.issues.map((issue) => ({
-      path: issue.path.map(String).join('.'),
-      message: issue.message,
-    })),
-  };
 }
 
 const SERVER_OWNED = new Set<string>(SERVER_OWNED_FIELDS);

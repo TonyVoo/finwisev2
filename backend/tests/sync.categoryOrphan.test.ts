@@ -211,7 +211,7 @@ describe('a category delete pushed without its reassignments', () => {
    * precondition, which a working repair makes false, so the case could not have gone
    * green against the fix it is asking for.
    */
-  it.fails('collects the tombstone once it is past the horizon', async () => {
+  it('collects the tombstone once it is past the horizon', async () => {
     const category = await createCategory('Coffee');
     await createExpense(user, { categoryId: category.id });
     await syncDeleteCategory(category.id);
@@ -241,7 +241,7 @@ describe('a category delete pushed without its reassignments', () => {
    * a repair that converges leaves nothing to retain, and the operator still needs the
    * number to be zero rather than absent.
    */
-  it.fails('reports retained categories from the scheduled aggregate', async () => {
+  it('reports retained categories from the scheduled aggregate', async () => {
     const category = await createCategory('Coffee');
     await createExpense(user, { categoryId: category.id });
     await syncDeleteCategory(category.id);

@@ -246,9 +246,10 @@ describe('API-03 — unknown fields are rejected everywhere', () => {
     }
   });
 
-  // Expected-fail: the contract says `path` is the handle, and for the one failure a
-// closed-schema API produces most often it is empty. Goes green when the fix lands.
-  it.fails('names the unexpected key in details.issues[].path, not only in the message', async () => {
+  // The contract says `path` is the handle, and for the one failure a closed-schema API
+  // produces most often - an unexpected key - zod leaves it empty and puts the key in `keys`.
+  // `toIssues` expands that into one entry per key.
+  it('names the unexpected key in details.issues[].path, not only in the message', async () => {
     const user = await createUser();
     const response = await api()
       .post('/v1/categories')

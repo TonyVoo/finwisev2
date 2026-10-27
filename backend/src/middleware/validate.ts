@@ -1,6 +1,7 @@
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import type { z } from 'zod';
 import { problems } from '../errors.ts';
+import { toIssues } from '../http/issues.ts';
 
 /**
  * Request validation, driven by the zod schemas in `@expense-tracker/shared`.
@@ -11,16 +12,6 @@ import { problems } from '../errors.ts';
  * instead of a silently-ignored field — a typo'd `ammountMinor` should fail, not
  * quietly write a zero.
  */
-
-/** Turn a zod failure into the contract's `details.issues` list. */
-function toIssues(error: z.ZodError): { issues: { path: string; message: string }[] } {
-  return {
-    issues: error.issues.map((issue) => ({
-      path: issue.path.map(String).join('.'),
-      message: issue.message,
-    })),
-  };
-}
 
 /**
  * Validate and replace `req.body`.
