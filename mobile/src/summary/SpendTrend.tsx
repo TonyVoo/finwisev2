@@ -119,7 +119,7 @@ const useStyles = createStyles((color) =>
     bar: { borderRadius: radius.sm, alignSelf: 'stretch' },
     barPair: { flexDirection: 'row', alignItems: 'flex-end', gap: 2 },
     barHalf: { flex: 1, alignSelf: 'auto' },
-    barIncome: { backgroundColor: color.success.default },
+    barIncome: { backgroundColor: color.info.default },
     barSelected: { backgroundColor: color.primary.default },
     barMuted: { backgroundColor: color.border.strong },
     label: { ...type.caption, color: color.text.tertiary, marginTop: space[2] },
