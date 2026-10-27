@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSessionController } from '@/auth/SessionProvider';
 import { Button } from '@/components/Button';
@@ -11,6 +11,7 @@ import { COPY } from '@/copy/strings';
 import { useDatabase } from '@/db/DatabaseProvider';
 import { exportExpenses, nativeExportDependencies } from '@/export/exportExpenses';
 import { useEmailVerified, usePendingRecordCount, useUserCurrency, useUserEmail } from '@/db/hooks';
+import { useAppLock } from '@/lock/AppLockProvider';
 import { space, type } from '@/theme/tokens';
 import { ThemeSheet, themePreferenceLabel } from '@/theme/ThemeSheet';
 import { createStyles, useColors, useTheme } from '@/theme/ThemeProvider';
@@ -42,6 +43,16 @@ export default function SettingsScreen() {
   const pending = usePendingRecordCount();
   const database = useDatabase();
   const showSnackbar = useSnackbar();
+  const appLock = useAppLock();
+  const toggleLock = async () => {
+    const result = await appLock.setEnabled(!appLock.enabled);
+    if (result.status === 'unavailable') showSnackbar({ message: COPY.lock.unavailable });
+    else if (result.status === 'failed') {
+      showSnackbar({
+        message: __DEV__ ? `${COPY.lock.notConfirmed} (${result.code})` : COPY.lock.notConfirmed,
+      });
+    }
+  };
   const [confirmingLogout, setConfirmingLogout] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [choosingTheme, setChoosingTheme] = useState(false);
@@ -165,6 +176,23 @@ export default function SettingsScreen() {
             trailing={<Text style={styles.value}>{themePreferenceLabel(preference)}</Text>}
           >
             <RowTitle>{COPY.settings.appearance}</RowTitle>
+          </Row>
+          <Row
+            testID="settings-app-lock"
+            onPress={() => void toggleLock()}
+            accessibilityLabel={`${COPY.lock.settingsRow}. ${COPY.lock.settingsHint}`}
+            accessibilityState={{ selected: appLock.enabled }}
+            trailing={
+              <Switch
+                value={appLock.enabled}
+                onValueChange={() => void toggleLock()}
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+              />
+            }
+          >
+            <RowTitle>{COPY.lock.settingsRow}</RowTitle>
+            <RowSubtitle>{COPY.lock.settingsHint}</RowSubtitle>
           </Row>
           <Row
             testID="settings-export"

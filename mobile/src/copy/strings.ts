@@ -275,6 +275,21 @@ export const COPY = {
     dark: 'Dark',
   },
 
+  /** The app lock: Face ID, a fingerprint or the device passcode on opening. */
+  lock: {
+    title: 'Expense Tracker is locked',
+    body: 'Unlock to see your expenses.',
+    unlock: 'Unlock',
+    reason: 'Unlock Expense Tracker',
+    enableReason: 'Turn on app lock',
+    disableReason: 'Turn off app lock',
+    failed: 'Could not unlock. Try again.',
+    notConfirmed: 'Could not confirm it is you, so app lock was not changed.',
+    unavailable: 'Set up Face ID, a fingerprint or a passcode on this device first.',
+    settingsRow: 'App lock',
+    settingsHint: 'Ask for Face ID or your passcode.',
+  },
+
   /** Savings goals: a target, what has been put towards it, and an optional deadline. */
   goals: {
     title: 'Savings goals',

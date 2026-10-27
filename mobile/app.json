@@ -19,6 +19,12 @@
       "expo-sqlite",
       "expo-notifications",
       [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Expense Tracker uses Face ID to keep your expenses private."
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "photosPermission": "Expense Tracker uses your photos so you can attach a receipt to an expense.",

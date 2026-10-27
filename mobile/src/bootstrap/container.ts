@@ -67,6 +67,8 @@ export interface AppContainer {
    * not in the wiped meta keys, so logging out leaves it alone.
    */
   readonly themePreference: ThemePreference;
+  /** Whether the app locks itself (`lock/AppLockProvider.tsx`). Read at boot, like the theme. */
+  readonly appLockEnabled: boolean;
 }
 
 export interface AppContainerOptions {
@@ -165,5 +167,7 @@ export async function createAppContainer(options: AppContainerOptions = {}): Pro
 
   const themePreference = parseThemePreference(await readMeta(database, META_KEYS.themePreference));
 
-  return { database, session, api, queryClient, clock, sync, themePreference };
+  const appLockEnabled = (await readMeta(database, META_KEYS.appLockEnabled)) === '1';
+
+  return { database, session, api, queryClient, clock, sync, themePreference, appLockEnabled };
 }

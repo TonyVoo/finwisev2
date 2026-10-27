@@ -5,6 +5,7 @@ import { DatabaseProvider } from '../db/DatabaseProvider';
 import { MonthProvider } from '../month/MonthProvider';
 import { SnackbarProvider } from '../components/Snackbar';
 import { SyncProvider } from '../sync/SyncProvider';
+import { AppLockProvider } from '../lock/AppLockProvider';
 import { META_KEYS, writeMeta } from '../db/meta';
 import { ThemeProvider } from '../theme/ThemeProvider';
 import type { ApiClient } from '../api/client';
@@ -64,7 +65,12 @@ export function AppProviders({ container, startSync = true, children }: AppProvi
                 sync once a write has settled. */}
               <SyncProvider engine={container.sync} enabled={startSync}>
                 <SnackbarProvider>
-                  <MonthProvider clock={container.clock}>{children}</MonthProvider>
+                  <AppLockProvider
+                    database={container.database}
+                    initialEnabled={container.appLockEnabled}
+                  >
+                    <MonthProvider clock={container.clock}>{children}</MonthProvider>
+                  </AppLockProvider>
                 </SnackbarProvider>
               </SyncProvider>
             </DatabaseProvider>

@@ -47,6 +47,12 @@ export const META_KEYS = {
    * previous account's spending.
    */
   budgetNotified: 'budgetNotified',
+  /**
+   * `'1'` while the app asks for Face ID, a fingerprint or the device passcode on opening.
+   * A property of this device, like the theme, so deliberately absent from
+   * {@link WIPED_META_KEYS}: signing out must not quietly turn a lock off.
+   */
+  appLockEnabled: 'appLockEnabled',
 } as const;
 
 export type MetaKey = (typeof META_KEYS)[keyof typeof META_KEYS];

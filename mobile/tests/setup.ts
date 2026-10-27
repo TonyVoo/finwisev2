@@ -56,6 +56,16 @@ beforeEach(() => {
   setFontScale(DEFAULT_FONT_SCALE);
 });
 
+// `expo-local-authentication` is native. Everything but the lock's own tests wants it to say
+// "available, and the person passed", which keeps a locked app from blocking a screen test.
+jest.mock('expo-local-authentication', () => ({
+  hasHardwareAsync: jest.fn(async () => true),
+  isEnrolledAsync: jest.fn(async () => true),
+  getEnrolledLevelAsync: jest.fn(async () => 2),
+  authenticateAsync: jest.fn(async () => ({ success: true })),
+  SecurityLevel: { NONE: 0, SECRET: 1, BIOMETRIC_WEAK: 2, BIOMETRIC_STRONG: 3 },
+}));
+
 // `expo-notifications` is native; the budget notifier is the only caller and its tests pass
 // their own fake, so everywhere else a no-op that reports permission as granted is enough.
 jest.mock('expo-notifications', () => ({

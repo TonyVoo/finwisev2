@@ -536,3 +536,14 @@ them as proposals the Designer can reword; changing a row here means changing
 | `goal.saved` | `Savings goal saved.` | Snackbar |
 | `goal.deposited` | `Added to your goal.` | Snackbar |
 | `goal.deleted` | `Savings goal deleted.` | Snackbar |
+| `lock.title` | `Expense Tracker is locked` | Lock screen, heading |
+| `lock.body` | `Unlock to see your expenses.` | Lock screen |
+| `lock.unlock` | `Unlock` | Lock screen, button |
+| `lock.reason` | `Unlock Expense Tracker` | System prompt, reason |
+| `lock.enableReason` | `Turn on app lock` | System prompt, reason |
+| `lock.disableReason` | `Turn off app lock` | System prompt, reason |
+| `lock.failed` | `Could not unlock. Try again.` | Lock screen, error |
+| `lock.unavailable` | `Set up Face ID, a fingerprint or a passcode on this device first.` | Settings, snackbar |
+| `lock.settingsRow` | `App lock` | Settings row |
+| `lock.settingsHint` | `Ask for Face ID or your passcode.` | Settings row, hint |
+| `lock.notConfirmed` | `Could not confirm it is you, so app lock was not changed.` | Settings, snackbar |
