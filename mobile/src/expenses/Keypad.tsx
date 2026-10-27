@@ -1,4 +1,5 @@
 import { getActiveIntlLocale } from '../i18n/language';
+import { keyHaptic } from '../lib/haptics';
 import { Animated, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useEffect, useRef } from 'react';
 import Feather from '@expo/vector-icons/Feather';
@@ -190,7 +191,10 @@ function Key({
   return (
     <Pressable
       testID={testID}
-      onPress={onPress}
+      onPress={() => {
+        keyHaptic();
+        onPress();
+      }}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       style={({ pressed }) => [

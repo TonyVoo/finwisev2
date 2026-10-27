@@ -63,6 +63,7 @@ import { NoteSheet } from './NoteSheet';
 import { RateSheet } from './RateSheet';
 import { hasEdits, saveState } from './formModel';
 import { getReceiptPicker, type PickOutcome } from '../receipts/receiptPicker';
+import { savedHaptic } from '../lib/haptics';
 import { ReceiptSheet } from '../receipts/ReceiptSheet';
 import { attachReceipt, detachReceipt, hasReceipt } from '../receipts/receiptStore';
 import { useReceipt } from '../receipts/useReceipt';
@@ -387,6 +388,7 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
         if (Object.keys(changes).length > 0) await updateExpense(db, expenseId, changes);
         await applyReceiptChange(db, expenseId, receiptChange);
       });
+      savedHaptic();
       router.back();
       showSnackbar({ message: SNACK_COPY.expense.updated });
       AccessibilityInfo.announceForAccessibility(SNACK_COPY.expense.updated);
@@ -406,6 +408,7 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
       });
       await applyReceiptChange(db, queued.recordId, receiptChange);
     });
+    savedHaptic();
     router.back();
 
     // Rule 9: a save outside the month Home is showing says which month it landed in,

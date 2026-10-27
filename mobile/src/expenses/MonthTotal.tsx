@@ -2,6 +2,8 @@ import { StyleSheet, Text, View } from 'react-native';
 import { SkeletonBlock } from '../components/Chrome';
 import { COPY, summaryExpenseCount } from '../copy/strings';
 import { formatMoney } from '../lib/money';
+import { useReduceMotion } from '../lib/useReduceMotion';
+import { useCountUp } from './useCountUp';
 import { SpendSparkline } from './SpendSparkline';
 import { space, type } from '../theme/tokens';
 import { createStyles } from '../theme/ThemeProvider';
@@ -73,6 +75,7 @@ export function MonthTotal({
   daysInMonth,
 }: MonthTotalProps) {
   const styles = useStyles();
+  const drawn = useCountUp(totalMinor, useReduceMotion());
   const label = isCurrentMonth ? COPY.home.total.current : COPY.home.total.other;
 
   if (totalMinor === undefined) {
@@ -105,7 +108,7 @@ export function MonthTotal({
       accessibilityLiveRegion="polite"
     >
       <Text style={styles.label}>{label}</Text>
-      <Text style={styles.amount}>{formatted}</Text>
+      <Text style={styles.amount}>{formatMoney(drawn ?? totalMinor, currency)}</Text>
       {balance === null ? null : (
         <Text testID={MONTH_BALANCE_TEST_ID} style={styles.count}>
           {balance}

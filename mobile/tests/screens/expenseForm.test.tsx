@@ -1,3 +1,4 @@
+import * as Haptics from 'expo-haptics';
 import { LIMITS } from '@expense-tracker/shared';
 import { act, screen, userEvent, waitFor } from '@testing-library/react-native';
 import { CONFIRM_COPY, COPY, SNACK_COPY, VALIDATION_COPY } from '@/copy/strings';
@@ -285,6 +286,20 @@ describe('the expense form', () => {
       await typeAmount('128450');
 
       expect(displayed()).toBe('$1,284.50');
+    });
+  });
+
+  describe('haptics', () => {
+    it('ticks on each key press and confirms a save', async () => {
+      jest.clearAllMocks();
+      const { database } = await mountAdd();
+
+      await typeAmount('12');
+      expect(Haptics.selectionAsync).toHaveBeenCalledTimes(2);
+
+      await userEvent.press(screen.getByTestId(SAVE_TEST_ID));
+      await waitFor(async () => expect(await outboxEntries(database)).toHaveLength(1));
+      expect(Haptics.notificationAsync).toHaveBeenCalledWith('success');
     });
   });
 

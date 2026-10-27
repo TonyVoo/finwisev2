@@ -40,6 +40,7 @@ import { useFirstPaintSkeleton } from '@/expenses/useFirstPaint';
 import { useAwaitingFirstSync } from '@/sync/useAwaitingFirstSync';
 import { daysInMonth as daysIn, monthLabel } from '@/lib/calendar';
 import { cumulativeSeries } from '@/expenses/spendPace';
+import { warnHaptic } from '@/lib/haptics';
 import { MonthSwitcher } from '@/month/MonthSwitcher';
 import { SyncIndicator } from '@/sync/SyncIndicator';
 import { usePullToRefresh } from '@/sync/usePullToRefresh';
@@ -180,6 +181,7 @@ export default function ExpenseListScreen() {
       // Committed first, announced second. The order is the rule: the snackbar reports
       // something that has already happened.
       await localWrite((database) => deleteExpense(database, id));
+      warnHaptic();
       AccessibilityInfo.announceForAccessibility(SNACK_COPY.expense.deleted);
 
       showSnackbar({
