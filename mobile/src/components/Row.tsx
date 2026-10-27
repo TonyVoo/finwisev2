@@ -132,10 +132,17 @@ export function RowTitle({ children }: { readonly children: ReactNode }) {
   );
 }
 
-export function RowSubtitle({ children }: { readonly children: ReactNode }) {
+export function RowSubtitle({
+  children,
+  lines = 1,
+}: {
+  readonly children: ReactNode;
+  /** One line by default; a screen with long hints (Settings) may allow more. */
+  readonly lines?: number;
+}) {
   const styles = useStyles();
   return (
-    <Text style={styles.subtitle} numberOfLines={1}>
+    <Text style={styles.subtitle} numberOfLines={lines}>
       {children}
     </Text>
   );

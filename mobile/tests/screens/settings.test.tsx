@@ -127,6 +127,27 @@ describe('the settings screen', () => {
     );
   });
 
+  it('gives every settings row a leading icon', async () => {
+    await waitFor(() => expect(screen.getByText('ada@example.com')).toBeTruthy());
+
+    const icons = [
+      'mail',
+      'dollar-sign',
+      'tag',
+      'repeat',
+      'target',
+      'moon',
+      'globe',
+      'lock',
+      'download',
+      'key',
+      'trash-2',
+    ];
+    for (const name of icons) {
+      expect(screen.getByTestId(`row-icon-${name}`, { includeHiddenElements: true })).toBeTruthy();
+    }
+  });
+
   it('shows the account email and a Log out button', async () => {
     await waitFor(() => expect(screen.getByText('ada@example.com')).toBeTruthy());
     expect(screen.getByText(COPY.settings.email)).toBeTruthy();

@@ -282,4 +282,16 @@ describe('Swatch', () => {
       expect(screen.queryByTestId('swatch-icon', { includeHiddenElements: true })).toBeNull();
     });
   });
+
+  describe('RowSubtitle lines', () => {
+    it('is one line by default, so a row keeps its height', async () => {
+      await render(<RowSubtitle>A long hint</RowSubtitle>);
+      expect(screen.getByText('A long hint').props.numberOfLines).toBe(1);
+    });
+
+    it('can allow more lines where a hint would otherwise be cut off', async () => {
+      await render(<RowSubtitle lines={2}>A long hint</RowSubtitle>);
+      expect(screen.getByText('A long hint').props.numberOfLines).toBe(2);
+    });
+  });
 });

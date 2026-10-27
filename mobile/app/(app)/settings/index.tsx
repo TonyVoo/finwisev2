@@ -6,6 +6,7 @@ import { Button } from '@/components/Button';
 import { AppBar, IconButton } from '@/components/Chrome';
 import { Dialog } from '@/components/Dialog';
 import { useSnackbar } from '@/components/Snackbar';
+import { IconBadge } from '@/components/IconBadge';
 import { Row, RowSubtitle, RowTitle } from '@/components/Row';
 import { planDefaultRenames } from '@/categories/renameDefaults';
 import { COPY, SNACK_COPY } from '@/copy/strings';
@@ -141,6 +142,7 @@ export default function SettingsScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <Row
           testID="settings-email"
+          leading={<IconBadge name="mail" />}
           onPress={() => router.push('/(app)/settings/change-email')}
           chevron
           accessibilityLabel={`${COPY.settings.email}, ${email.data ?? ''}`}
@@ -154,6 +156,7 @@ export default function SettingsScreen() {
         {emailVerified.data === false ? (
           <Row
             testID="settings-verify-email"
+            leading={<IconBadge name="check-circle" />}
             onPress={() => router.push('/(app)/settings/verify-email')}
             chevron
             accessibilityLabel={`${COPY.settings.verifyEmail}, ${COPY.settings.unverified}`}
@@ -166,17 +169,19 @@ export default function SettingsScreen() {
         {/* Read-only, with the reason stated: the currency is fixed at signup
           (`03-auth.md` §Behaviour rule 9), so this says so rather than looking tappable. */}
         <Row
+          leading={<IconBadge name="dollar-sign" />}
           accessibilityLabel={`${COPY.settings.currency}, ${currency.data ?? ''}. ${
             COPY.settings.currencyHint
           }`}
           trailing={<Text style={styles.value}>{currency.data ?? ''}</Text>}
         >
           <RowTitle>{COPY.settings.currency}</RowTitle>
-          <RowSubtitle>{COPY.settings.currencyHint}</RowSubtitle>
+          <RowSubtitle lines={2}>{COPY.settings.currencyHint}</RowSubtitle>
         </Row>
 
         <Row
           testID="settings-categories"
+          leading={<IconBadge name="tag" />}
           onPress={() => router.push('/(app)/settings/categories')}
           chevron
           accessibilityLabel={COPY.settings.categories}
@@ -186,28 +191,31 @@ export default function SettingsScreen() {
 
         <Row
           testID="settings-recurring"
+          leading={<IconBadge name="repeat" />}
           onPress={() => router.push('/(app)/settings/recurring')}
           chevron
           accessibilityLabel={`${COPY.settings.recurring}. ${COPY.settings.recurringHint}`}
         >
           <RowTitle>{COPY.settings.recurring}</RowTitle>
-          <RowSubtitle>{COPY.settings.recurringHint}</RowSubtitle>
+          <RowSubtitle lines={2}>{COPY.settings.recurringHint}</RowSubtitle>
         </Row>
 
         <Row
           testID="settings-goals"
+          leading={<IconBadge name="target" />}
           onPress={() => router.push('/(app)/settings/goals')}
           chevron
           lastInGroup
           accessibilityLabel={`${COPY.settings.goals}. ${COPY.settings.goalsHint}`}
         >
           <RowTitle>{COPY.settings.goals}</RowTitle>
-          <RowSubtitle>{COPY.settings.goalsHint}</RowSubtitle>
+          <RowSubtitle lines={2}>{COPY.settings.goalsHint}</RowSubtitle>
         </Row>
 
         <View style={styles.group}>
           <Row
             testID="settings-appearance"
+            leading={<IconBadge name="moon" />}
             onPress={() => setChoosingTheme(true)}
             chevron
             accessibilityLabel={`${COPY.settings.appearance}, ${themePreferenceLabel(preference)}`}
@@ -217,6 +225,7 @@ export default function SettingsScreen() {
           </Row>
           <Row
             testID="settings-language"
+            leading={<IconBadge name="globe" />}
             onPress={() => setChoosingLanguage(true)}
             chevron
             accessibilityLabel={`${COPY.language.title}, ${languagePreferenceLabel(language.preference)}`}
@@ -229,15 +238,17 @@ export default function SettingsScreen() {
           {renames.length > 0 ? (
             <Row
               testID="settings-rename-categories"
+              leading={<IconBadge name="edit-3" />}
               onPress={() => void offerRename()}
               accessibilityLabel={`${COPY.settings.renameCategories}. ${COPY.settings.renameCategoriesHint}`}
             >
               <RowTitle>{COPY.settings.renameCategories}</RowTitle>
-              <RowSubtitle>{COPY.settings.renameCategoriesHint}</RowSubtitle>
+              <RowSubtitle lines={2}>{COPY.settings.renameCategoriesHint}</RowSubtitle>
             </Row>
           ) : null}
           <Row
             testID="settings-app-lock"
+            leading={<IconBadge name="lock" />}
             onPress={() => void toggleLock()}
             accessibilityLabel={`${COPY.lock.settingsRow}. ${COPY.lock.settingsHint}`}
             accessibilityState={{ selected: appLock.enabled }}
@@ -251,23 +262,27 @@ export default function SettingsScreen() {
             }
           >
             <RowTitle>{COPY.lock.settingsRow}</RowTitle>
-            <RowSubtitle>{COPY.lock.settingsHint}</RowSubtitle>
+            <RowSubtitle lines={2}>{COPY.lock.settingsHint}</RowSubtitle>
           </Row>
           <Row
             testID="settings-export"
+            leading={<IconBadge name="download" />}
             onPress={() => void onExport()}
             lastInGroup
             accessibilityLabel={`${COPY.settings.export}. ${COPY.settings.exportHint}`}
             accessibilityState={{ disabled: exporting }}
           >
             <RowTitle>{COPY.settings.export}</RowTitle>
-            <RowSubtitle>{exporting ? COPY.export.busy : COPY.settings.exportHint}</RowSubtitle>
+            <RowSubtitle lines={2}>
+              {exporting ? COPY.export.busy : COPY.settings.exportHint}
+            </RowSubtitle>
           </Row>
         </View>
 
         <View style={styles.group}>
           <Row
             testID="settings-change-password"
+            leading={<IconBadge name="key" />}
             onPress={() => router.push('/(app)/settings/change-password')}
             chevron
             accessibilityLabel={COPY.settings.changePassword}
@@ -276,6 +291,7 @@ export default function SettingsScreen() {
           </Row>
           <Row
             testID="settings-delete-account"
+            leading={<IconBadge name="trash-2" tone="danger" />}
             onPress={() => router.push('/(app)/settings/delete-account')}
             chevron
             lastInGroup
