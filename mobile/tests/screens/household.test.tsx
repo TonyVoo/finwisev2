@@ -1,5 +1,6 @@
 import type { Household } from '@expense-tracker/shared';
-import { screen, waitFor } from '@testing-library/react-native';
+import { AppState } from 'react-native';
+import { act, screen, waitFor } from '@testing-library/react-native';
 import { COPY } from '@/copy/strings';
 import { applyLocalMutation } from '@/db/write';
 import HouseholdScreen from '../../app/(app)/settings/household';
@@ -288,6 +289,54 @@ describe('a member of a household', () => {
     expect(screen.queryByTestId('household-invite')).toBeNull();
     expect(screen.queryByTestId('household-delete')).toBeNull();
     expect(screen.queryByTestId(`household-member-${OWNER}`)).toBeNull();
+  });
+});
+
+describe('staying current', () => {
+  it('re-reads the household when the app comes back to the foreground', async () => {
+    const handlers: Array<(state: string) => void> = [];
+    jest.spyOn(AppState, 'addEventListener').mockImplementation((_type, handler) => {
+      handlers.push(handler as (state: string) => void);
+      return { remove: () => undefined };
+    });
+    const server = fakeServer(household('owner'));
+    await mount(server);
+    await waitFor(() => expect(screen.queryByText('bao@example.com')).not.toBeNull());
+    const reads = () => server.calls().filter((call) => call === 'GET /v1/household').length;
+    expect(reads()).toBe(1);
+
+    // Someone joined while the screen sat open in the background.
+    server.state.household = {
+      ...household('owner'),
+      members: [
+        ...household('owner').members,
+        {
+          userId: '0192f5a0-0000-7000-8000-00000000d001',
+          email: 'chi@example.com',
+          role: 'member' as const,
+          joinedAt: '2026-10-22T09:00:00.000Z',
+        },
+      ],
+    };
+    await act(async () => handlers.forEach((handler) => handler('active')));
+
+    await waitFor(() => expect(screen.queryByText('chi@example.com')).not.toBeNull());
+    expect(reads()).toBe(2);
+  });
+
+  it('does not re-read for the app going to the background', async () => {
+    const handlers: Array<(state: string) => void> = [];
+    jest.spyOn(AppState, 'addEventListener').mockImplementation((_type, handler) => {
+      handlers.push(handler as (state: string) => void);
+      return { remove: () => undefined };
+    });
+    const server = fakeServer(household('owner'));
+    await mount(server);
+    await waitFor(() => expect(screen.queryByText('bao@example.com')).not.toBeNull());
+
+    await act(async () => handlers.forEach((handler) => handler('background')));
+
+    expect(server.calls().filter((call) => call === 'GET /v1/household')).toHaveLength(1);
   });
 });
 

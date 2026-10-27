@@ -1,6 +1,7 @@
 import { type HouseholdResponse } from '@expense-tracker/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
+import { AppState } from 'react-native';
 import { ApiRequestError, NetworkUnavailableError } from '../api/errors';
 import { useApiClient } from '../bootstrap/AppProviders';
 import { COPY } from '../copy/strings';
@@ -38,7 +39,7 @@ export class PendingChangesError extends Error {
 
 export function useHousehold() {
   const api = useApiClient();
-  return useQuery({
+  const query = useQuery({
     queryKey: queryKeys.household(),
     queryFn: async () => (await api.getHousehold()).household,
     // Server state that other people change, so it is read afresh each time the screen opens.
@@ -46,6 +47,18 @@ export function useHousehold() {
     gcTime: 0,
     retry: false,
   });
+
+  // Other people change this while the screen sits open in the background: read it again
+  // whenever the app comes back to the foreground.
+  const { refetch } = query;
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void refetch();
+    });
+    return () => subscription.remove();
+  }, [refetch]);
+
+  return query;
 }
 
 export interface HouseholdActions {
