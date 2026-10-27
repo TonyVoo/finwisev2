@@ -374,6 +374,21 @@ export async function monthTotalMinor(database: SqliteDatabase, range: DateRange
   return row?.total ?? 0;
 }
 
+/** Spend per day across a month, oldest first; days with nothing spent are absent. */
+export async function monthDailySpend(
+  database: SqliteDatabase,
+  range: DateRange,
+): Promise<Array<{ date: string; totalMinor: number }>> {
+  return database.getAllAsync<{ date: string; totalMinor: number }>(
+    `SELECT e.date AS date, SUM(e.amountMinor) AS totalMinor
+       FROM expenses e
+      WHERE ${LIVE_IN_MONTH} AND ${SPEND}
+      GROUP BY e.date
+      ORDER BY e.date`,
+    [range.from, range.to],
+  );
+}
+
 /** A month's income, in minor units; 0 when there is none. */
 export async function monthIncomeMinor(
   database: SqliteDatabase,

@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { SkeletonBlock } from '../components/Chrome';
 import { COPY, summaryExpenseCount } from '../copy/strings';
 import { formatMoney } from '../lib/money';
+import { SpendSparkline } from './SpendSparkline';
 import { space, type } from '../theme/tokens';
 import { createStyles } from '../theme/ThemeProvider';
 
@@ -57,6 +58,9 @@ export interface MonthTotalProps {
    * most people log nothing here and the line would be noise.
    */
   readonly incomeMinor?: number;
+  /** Running spend per day so far; with `daysInMonth` it draws the month's sparkline. */
+  readonly series?: readonly number[];
+  readonly daysInMonth?: number;
 }
 
 export function MonthTotal({
@@ -65,6 +69,8 @@ export function MonthTotal({
   isCurrentMonth,
   count,
   incomeMinor,
+  series,
+  daysInMonth,
 }: MonthTotalProps) {
   const styles = useStyles();
   const label = isCurrentMonth ? COPY.home.total.current : COPY.home.total.other;
@@ -104,6 +110,9 @@ export function MonthTotal({
         <Text testID={MONTH_BALANCE_TEST_ID} style={styles.count}>
           {balance}
         </Text>
+      )}
+      {series === undefined || daysInMonth === undefined ? null : (
+        <SpendSparkline series={series} daysInMonth={daysInMonth} />
       )}
       {counted === null ? null : (
         <Text testID={MONTH_TOTAL_COUNT_TEST_ID} style={styles.count}>

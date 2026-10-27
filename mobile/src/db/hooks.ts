@@ -29,6 +29,7 @@ import {
   listLiveRecurring,
   listPendingChanges,
   monthCategorySpend,
+  monthDailySpend,
   monthTotalMinor,
   monthlyTotals,
   type MonthlyTotal,
@@ -124,6 +125,17 @@ export function useMonthTotal(month: MonthKey): UseQueryResult<number> {
   return useQuery({
     queryKey: queryKeys.expenses.monthTotal(month),
     queryFn: () => monthTotalMinor(database, monthRange(month)),
+  });
+}
+
+/** The selected month's spend per day: the Home sparkline's data. */
+export function useMonthDailySpend(
+  month: MonthKey,
+): UseQueryResult<Array<{ date: string; totalMinor: number }>> {
+  const database = useDatabase();
+  return useQuery({
+    queryKey: queryKeys.expenses.monthDailySpend(month),
+    queryFn: () => monthDailySpend(database, monthRange(month)),
   });
 }
 

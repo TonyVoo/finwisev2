@@ -18,6 +18,7 @@ import {
   useExpenseSearchSummary,
   useLiveCategories,
   useMonthExpenses,
+  useMonthDailySpend,
   useMonthIncome,
   useMonthTotal,
   useUserCurrency,
@@ -37,7 +38,8 @@ import { SearchBar } from '@/expenses/SearchBar';
 import { formatMoney } from '@/lib/money';
 import { useFirstPaintSkeleton } from '@/expenses/useFirstPaint';
 import { useAwaitingFirstSync } from '@/sync/useAwaitingFirstSync';
-import { monthLabel } from '@/lib/calendar';
+import { daysInMonth as daysIn, monthLabel } from '@/lib/calendar';
+import { cumulativeSeries } from '@/expenses/spendPace';
 import { MonthSwitcher } from '@/month/MonthSwitcher';
 import { SyncIndicator } from '@/sync/SyncIndicator';
 import { usePullToRefresh } from '@/sync/usePullToRefresh';
@@ -147,6 +149,11 @@ export default function ExpenseListScreen() {
   const expenses = useMonthExpenses(month);
   const total = useMonthTotal(month);
   const income = useMonthIncome(month);
+  const daily = useMonthDailySpend(month);
+  const monthDays = daysIn(month);
+  // The current month stops at today, so the bars do not flat-line into the future.
+  const shownDays = isCurrent ? Number(today.slice(8, 10)) : monthDays;
+  const series = daily.data === undefined ? undefined : cumulativeSeries(daily.data, month, shownDays);
   const anyExist = useAnyExpensesExist();
   const currency = useUserCurrency();
 
@@ -268,6 +275,8 @@ export default function ExpenseListScreen() {
           currency={currencyCode ?? ''}
           isCurrentMonth={isCurrent}
           incomeMinor={currencyCode === null || awaitingFirstSync ? undefined : income.data}
+          series={series}
+          daysInMonth={monthDays}
         />
       )}
 
