@@ -72,6 +72,8 @@ export const queryKeys = {
     currency: () => ['local', 'user', 'currency'] as const,
     /** The account's email, shown read-only on Settings. */
     email: () => ['local', 'user', 'email'] as const,
+    /** Whether that email is verified; Settings offers the check while it is not. */
+    emailVerified: () => ['local', 'user', 'emailVerified'] as const,
   },
 
   onboarding: {

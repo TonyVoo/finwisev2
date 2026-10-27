@@ -4,7 +4,7 @@ import { queryKeys } from '../query/keys';
 import { type MonthKey, monthRange } from '../lib/calendar';
 import { useDatabase } from './DatabaseProvider';
 import { readCategoryReviewPending } from './onboarding';
-import { readUserCurrency, readUserEmail } from './user';
+import { readEmailVerified, readUserCurrency, readUserEmail } from './user';
 import {
   type CategoryListItem,
   type CategorySpend,
@@ -247,6 +247,15 @@ export function useUserEmail(): UseQueryResult<string | null> {
   return useQuery({
     queryKey: queryKeys.user.email(),
     queryFn: () => readUserEmail(database),
+  });
+}
+
+/** Whether the account's email is verified, for Settings' Verify email row. */
+export function useEmailVerified(): UseQueryResult<boolean> {
+  const database = useDatabase();
+  return useQuery({
+    queryKey: queryKeys.user.emailVerified(),
+    queryFn: () => readEmailVerified(database),
   });
 }
 

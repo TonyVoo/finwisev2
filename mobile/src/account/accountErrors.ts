@@ -50,3 +50,30 @@ export function presentAccountError(
 
   return { passwordError: null, banner: GENERIC_ERROR };
 }
+
+export interface VerifyErrorPresentation {
+  readonly codeError: string | null;
+  readonly banner: string | null;
+}
+
+/**
+ * The same distinction for verify-email: a wrong, expired or used code is a field error
+ * (one sentence for all three), rate limiting and no network are banners, the rest generic.
+ */
+export function presentVerifyError(
+  error: unknown,
+  action: 'request' | 'confirm',
+): VerifyErrorPresentation {
+  if (error instanceof NetworkUnavailableError) {
+    return { codeError: null, banner: COPY.verifyEmail.offline };
+  }
+  if (error instanceof ApiRequestError) {
+    if (error.code === 'invalid_verification_code' && action === 'confirm') {
+      return { codeError: COPY.verifyEmail.invalidCode, banner: null };
+    }
+    if (error.code === 'rate_limited') {
+      return { codeError: null, banner: COPY.account.tooManyAttempts };
+    }
+  }
+  return { codeError: null, banner: GENERIC_ERROR };
+}

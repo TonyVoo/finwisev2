@@ -63,6 +63,19 @@ export const COPY = {
     offline: 'You need to be online to reset your password.',
   },
 
+  /** Email verification, opened from Settings while the address is unverified. */
+  verifyEmail: {
+    title: 'Verify your email',
+    hint: 'We sent a 6-digit code to {email}. It works for 15 minutes.',
+    code: 'Code',
+    submit: 'Verify',
+    resend: 'Send a new code',
+    resent: 'A new code is on its way.',
+    invalidCode: 'That code is incorrect or has expired.',
+    success: 'Email verified.',
+    offline: 'You need to be online to verify your email.',
+  },
+
   password: { show: 'Show password', hide: 'Hide password' },
 
   home: {
@@ -201,6 +214,8 @@ export const COPY = {
     appearance: 'Appearance',
     export: 'Export expenses',
     exportHint: 'Save everything you have recorded as a CSV file.',
+    verifyEmail: 'Verify email',
+    unverified: 'Unverified',
     changePassword: 'Change password',
     deleteAccount: 'Delete account',
     logout: 'Log out',

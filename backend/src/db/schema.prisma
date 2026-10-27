@@ -45,6 +45,10 @@ model User {
   /// The account's single currency, captured once at signup. No conversion in the MVP.
   currency String @db.Char(3)
 
+  /// Set when the person proves they can read mail sent to `email`. Cleared when the email
+  /// changes: it vouches for an address, not for the account.
+  emailVerifiedAt DateTime? @map("email_verified_at") @db.Timestamptz(3)
+
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
   revisionCounter RevisionCounter?
@@ -53,6 +57,7 @@ model User {
   recurringRules  RecurringRule[]
   refreshTokens   RefreshToken[]
   passwordResetCode PasswordResetCode?
+  emailVerificationCode EmailVerificationCode?
   syncMutations   SyncMutation[]
 
   @@map("users")
@@ -260,6 +265,21 @@ model PasswordResetCode {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("password_reset_codes")
+}
+
+/// A pending email-verification code. One per user, HMAC-only, same lifetime rules as a
+/// reset code. Deleted when the email changes, so a code can never confirm a different address.
+model EmailVerificationCode {
+  id        String   @id @db.Uuid
+  userId    String   @unique @map("user_id") @db.Uuid
+  codeHash  String   @map("code_hash") @db.Char(64)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(3)
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("email_verification_codes")
 }
 
 model RefreshToken {

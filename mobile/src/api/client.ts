@@ -9,6 +9,8 @@ import type {
   ForgotPasswordRequest,
   ResetPasswordRequest,
   ChangePasswordRequest,
+  RequestEmailVerificationRequest,
+  VerifyEmailRequest,
   DeleteAccountRequest,
   ExpenseCreateRequest,
   ExpenseListQuery,
@@ -63,6 +65,10 @@ export interface ApiClient {
   changePassword(body: ChangePasswordRequest): Promise<TokenPair>;
   /** Replaces the sign-in email (password re-entered); returns the updated user. */
   changeEmail(body: ChangeEmailRequest): Promise<MeResponse>;
+  /** Emails a 6-digit code to the account's address. 204; a no-op once verified. */
+  requestEmailVerification(body: RequestEmailVerificationRequest): Promise<void>;
+  /** Confirms the code; returns the updated user. */
+  confirmEmailVerification(body: VerifyEmailRequest): Promise<MeResponse>;
   /** Permanently deletes the account and all its data. 204, no body. */
   deleteAccount(body: DeleteAccountRequest): Promise<void>;
 
@@ -143,6 +149,8 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     getMe: () => send(ENDPOINTS.getMe),
     changePassword: (body) => send(ENDPOINTS.changePassword, { body }),
     changeEmail: (body) => send(ENDPOINTS.changeEmail, { body }),
+    requestEmailVerification: (body) => send(ENDPOINTS.requestEmailVerification, { body }),
+    confirmEmailVerification: (body) => send(ENDPOINTS.confirmEmailVerification, { body }),
     deleteAccount: (body) => send(ENDPOINTS.deleteAccount, { body }),
 
     listCategories: (query) => send(ENDPOINTS.listCategories, { query: toQuery(query) }),

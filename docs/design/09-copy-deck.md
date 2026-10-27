@@ -97,6 +97,8 @@ is no `(s)` anywhere.
 | `settings.currency.hint`          | `Set when you created your account.`         | Settings                          |
 | `settings.categories`             | `Categories`                                 | Settings                          |
 | `settings.logout`                 | `Log out`                                    | Settings                          |
+| `settings.verifyEmail`            | `Verify email`                               | Settings, row                     |
+| `settings.unverified`             | `Unverified`                                 | Settings, row value               |
 | `common.cancel`                   | `Cancel`                                     | dialogs                           |
 | `common.back`                     | `Back`                                       | a11y label                        |
 | `common.close`                    | `Close`                                      | a11y label                        |
@@ -119,6 +121,7 @@ blank banner.
 | ------------------------ | ------------------------------------------------------------------------------------- | ------------------------------------------------ |
 | `validation_error`       | mapped per field from `details.issues`; unmapped paths fall back to `error.generic`   | field, else form banner                          |
 | `malformed_request`      | `Something went wrong on our end. Try again.`                                         | form banner                                      |
+| `invalid_verification_code` | `That code is incorrect or has expired.`                                           | Verify email, Code field                         |
 | `invalid_reset_code`     | `That code is incorrect or has expired.`                                              | Reset password, Code field                       |
 | `invalid_cursor`         | _(never shown)_ — the client resets its cursor and retries silently                   | none                                             |
 | `unsupported_media_type` | `Something went wrong on our end. Try again.`                                         | form banner                                      |
@@ -366,6 +369,15 @@ them as proposals the Designer can reword; changing a row here means changing
 | `resetPassword.invalidCode`       | `That code is incorrect or has expired.`                        | Reset password, field error |
 | `resetPassword.success`           | `Password changed. Log in with your new password.`              | Snackbar                   |
 | `resetPassword.offline`           | `You need to be online to reset your password.`                 | Reset password, banner     |
+| `verifyEmail.title`               | `Verify your email`                                             | Verify email               |
+| `verifyEmail.hint`                | `We sent a 6-digit code to {email}. It works for 15 minutes.`   | Verify email               |
+| `verifyEmail.code`                | `Code`                                                          | Verify email, field        |
+| `verifyEmail.submit`              | `Verify`                                                        | Verify email, button       |
+| `verifyEmail.resend`              | `Send a new code`                                               | Verify email, link         |
+| `verifyEmail.resent`              | `A new code is on its way.`                                     | Snackbar                   |
+| `verifyEmail.invalidCode`         | `That code is incorrect or has expired.`                        | Verify email, field error  |
+| `verifyEmail.success`             | `Email verified.`                                               | Snackbar                   |
+| `verifyEmail.offline`             | `You need to be online to verify your email.`                   | Verify email, banner       |
 | `account.changeEmail.title`       | `Change email`                                                  | Change email               |
 | `account.changeEmail.hint`        | `This is the address you log in with.`                          | Change email               |
 | `account.changeEmail.new`         | `New email`                                                     | Change email, field        |

@@ -77,6 +77,20 @@ export const API_ROUTES = [
     successStatus: 200,
   },
   {
+    method: 'post',
+    path: '/v1/me/email-verification',
+    operationId: 'requestEmailVerification',
+    auth: true,
+    successStatus: 204,
+  },
+  {
+    method: 'post',
+    path: '/v1/me/email-verification/confirm',
+    operationId: 'confirmEmailVerification',
+    auth: true,
+    successStatus: 200,
+  },
+  {
     method: 'patch',
     path: '/v1/me/email',
     operationId: 'changeEmail',

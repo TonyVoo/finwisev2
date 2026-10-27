@@ -30,14 +30,15 @@ export interface UserRow {
   readonly id: string;
   readonly email: string;
   readonly currency: string;
+  readonly emailVerified: boolean;
   readonly createdAt: string;
 }
 
 export async function readUser(executor: SqliteExecutor): Promise<UserRow | null> {
-  return executor.getFirstAsync<UserRow>(
-    'SELECT id, email, currency, createdAt FROM user WHERE onlyRow = 1',
-    [],
-  );
+  const row = await executor.getFirstAsync<
+    Omit<UserRow, 'emailVerified'> & { emailVerified: number }
+  >('SELECT id, email, currency, emailVerified, createdAt FROM user WHERE onlyRow = 1', []);
+  return row === null ? null : { ...row, emailVerified: row.emailVerified === 1 };
 }
 
 /**
@@ -48,14 +49,15 @@ export async function readUser(executor: SqliteExecutor): Promise<UserRow | null
  */
 export async function writeUser(executor: SqliteExecutor, user: User): Promise<void> {
   await executor.runAsync(
-    `INSERT INTO user (onlyRow, id, email, currency, createdAt)
-          VALUES (1, ?, ?, ?, ?)
+    `INSERT INTO user (onlyRow, id, email, currency, emailVerified, createdAt)
+          VALUES (1, ?, ?, ?, ?, ?)
        ON CONFLICT (onlyRow) DO UPDATE SET
             id        = excluded.id,
             email     = excluded.email,
             currency  = excluded.currency,
+            emailVerified = excluded.emailVerified,
             createdAt = excluded.createdAt`,
-    [user.id, user.email, user.currency, user.createdAt],
+    [user.id, user.email, user.currency, user.emailVerified === true ? 1 : 0, user.createdAt],
   );
 }
 
@@ -82,4 +84,13 @@ export async function readUserEmail(database: SqliteDatabase): Promise<string | 
     [],
   );
   return row?.email ?? null;
+}
+
+/** Whether the account's email is verified. False when there is no user row. */
+export async function readEmailVerified(database: SqliteDatabase): Promise<boolean> {
+  const row = await database.getFirstAsync<{ emailVerified: number }>(
+    'SELECT emailVerified FROM user WHERE onlyRow = 1',
+    [],
+  );
+  return row?.emailVerified === 1;
 }

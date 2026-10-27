@@ -638,6 +638,105 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /v1/me/email-verification:
+    post:
+      operationId: requestEmailVerification
+      tags: [auth]
+      summary: Email a verification code to the account's address
+      description: |
+        Sends a 6-digit code to the account's **current** email and returns `204`. Asking
+        again replaces any earlier code. Already verified is a no-op `204`. The code works
+        for 15 minutes, for five wrong guesses, and once. Rate limited per account
+        (5 requests per window, every request counted); `429` carries `Retry-After`.
+
+        A code is bound to the address it was sent to: changing the email discards it.
+
+        Signup sends the first code itself, so a new account normally never calls this.
+      x-errorCodes:
+        - validation_error
+        - malformed_request
+        - unsupported_media_type
+        - unauthorized
+        - token_expired
+        - token_invalid
+        - rate_limited
+        - internal_error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RequestEmailVerificationRequest' }
+            example: {}
+      responses:
+        '204':
+          description: Accepted. A code was sent unless the account was already verified. No body.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/me/email-verification/confirm:
+    post:
+      operationId: confirmEmailVerification
+      tags: [auth]
+      summary: Confirm the emailed verification code
+      description: |
+        Marks the account's email verified if the code is right, and returns the updated
+        user. A wrong, expired, used or exhausted code is `400 invalid_verification_code`
+        and the response does not say which. Each wrong guess spends one of the code's five
+        attempts.
+      x-errorCodes:
+        - validation_error
+        - malformed_request
+        - unsupported_media_type
+        - unauthorized
+        - token_expired
+        - token_invalid
+        - invalid_verification_code
+        - internal_error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VerifyEmailRequest' }
+            example:
+              code: '482916'
+      responses:
+        '200':
+          description: Verified. The updated user, with emailVerified true.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MeResponse' }
+        '400':
+          description: |
+            `validation_error` (malformed code), `malformed_request`, or
+            `invalid_verification_code` (the code did not work).
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              example:
+                error:
+                  code: invalid_verification_code
+                  message: That code is incorrect or has expired.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /v1/me/email:
     patch:
       operationId: changeEmail
@@ -1991,6 +2090,7 @@ components:
         |---|---|---|
         | `validation_error` | 400 | Body, query or path failed schema validation, including an unknown field. `details.issues` lists the offending paths. |
         | `malformed_request` | 400 | Body was not parseable JSON, or a required body was absent. |
+        | `invalid_verification_code` | 400 | An email-verification code was wrong, expired, used or out of attempts. Does not say which. |
         | `invalid_reset_code` | 400 | A password-reset code was wrong, expired, already used or out of attempts. Does not say which, nor whether the email has an account. |
         | `invalid_cursor` | 400 | An opaque pagination `cursor` could not be decoded (truncated, tampered, or from an older server). |
         | `unsupported_media_type` | 415 | `Content-Type` was not `application/json` on a request with a body. |
@@ -2012,6 +2112,7 @@ components:
       enum:
         - validation_error
         - malformed_request
+        - invalid_verification_code
         - invalid_reset_code
         - invalid_cursor
         - unsupported_media_type
@@ -2158,6 +2259,13 @@ components:
           description: |
             The user's single currency, captured at signup and not changeable in the MVP.
             Every expense of this user uses it.
+        emailVerified:
+          type: boolean
+          description: |
+            Whether the account has proved it can read its email address (by a verification
+            code, or by completing a password reset). Absent from servers that predate
+            verification: treat absent as `false`. Verification is advisory - an unverified
+            account works in full. Changing the email makes it `false` again.
         createdAt: { $ref: '#/components/schemas/Timestamp' }
 
     MeResponse:
@@ -2247,6 +2355,22 @@ components:
       required: [refreshToken]
       properties:
         refreshToken: { $ref: '#/components/schemas/RefreshToken' }
+
+    RequestEmailVerificationRequest:
+      type: object
+      description: No fields. The account is the caller's and the address is its current one.
+      additionalProperties: false
+      properties: {}
+
+    VerifyEmailRequest:
+      type: object
+      additionalProperties: false
+      required: [code]
+      properties:
+        code:
+          type: string
+          pattern: '^\d{6}$'
+          description: The 6-digit code emailed by `POST /v1/me/email-verification`.
 
     ForgotPasswordRequest:
       type: object

@@ -11,6 +11,7 @@ import { logger } from '../logger.ts';
  */
 export interface Mailer {
   sendPasswordResetCode(to: string, code: string): Promise<void>;
+  sendEmailVerificationCode(to: string, code: string): Promise<void>;
 }
 
 function resetEmail(code: string): { subject: string; text: string } {
@@ -20,6 +21,16 @@ function resetEmail(code: string): { subject: string; text: string } {
       `Your password reset code is ${code}.\n\n` +
       `It works for ${LIMITS.RESET_CODE_TTL_MINUTES} minutes. If you did not ask to reset your ` +
       `password, ignore this email - your password has not been changed.`,
+  };
+}
+
+function verificationEmail(code: string): { subject: string; text: string } {
+  return {
+    subject: 'Verify your Expense Tracker email',
+    text:
+      `Your verification code is ${code}.\n\n` +
+      `It works for ${LIMITS.RESET_CODE_TTL_MINUTES} minutes. If you did not create an Expense ` +
+      `Tracker account, ignore this email.`,
   };
 }
 
@@ -37,6 +48,13 @@ export function createConsoleMailer(options: { revealCode: boolean }): Mailer {
         logger.warn('password reset requested but no mailer is configured; nothing was sent');
       }
     },
+    async sendEmailVerificationCode(to, code) {
+      if (options.revealCode) {
+        logger.info('email verification code (no mailer configured)', { to, code });
+      } else {
+        logger.warn('email verification requested but no mailer is configured; nothing was sent');
+      }
+    },
   };
 }
 
@@ -47,21 +65,23 @@ export function createResendMailer(options: {
   fetchImpl?: typeof fetch;
 }): Mailer {
   const doFetch = options.fetchImpl ?? fetch;
+  async function send(to: string, message: { subject: string; text: string }): Promise<void> {
+    const { subject, text } = message;
+    const response = await doFetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${options.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ from: options.from, to: [to], subject, text }),
+    });
+    if (!response.ok) {
+      throw new Error(`mail provider answered ${response.status}`);
+    }
+  }
   return {
-    async sendPasswordResetCode(to, code) {
-      const { subject, text } = resetEmail(code);
-      const response = await doFetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${options.apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ from: options.from, to: [to], subject, text }),
-      });
-      if (!response.ok) {
-        throw new Error(`mail provider answered ${response.status}`);
-      }
-    },
+    sendPasswordResetCode: (to, code) => send(to, resetEmail(code)),
+    sendEmailVerificationCode: (to, code) => send(to, verificationEmail(code)),
   };
 }
 

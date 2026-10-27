@@ -2,6 +2,8 @@ import {
   ChangeEmailRequest,
   ChangePasswordRequest,
   DeleteAccountRequest,
+  RequestEmailVerificationRequest,
+  VerifyEmailRequest,
   MeResponse,
   TokenPair,
 } from '@expense-tracker/shared';
@@ -14,8 +16,13 @@ import {
   recordPasswordConfirmFailure,
   recordPasswordConfirmSuccess,
 } from '../middleware/passwordConfirmRateLimit.ts';
+import { emailVerificationSendRateLimit } from '../middleware/emailVerificationRateLimit.ts';
 import { validateBody } from '../middleware/validate.ts';
 import { changeEmail, changePassword, deleteAccount } from '../services/authService.ts';
+import {
+  confirmEmailVerification,
+  sendEmailVerification,
+} from '../services/emailVerificationService.ts';
 import { sendJson } from '../http/respond.ts';
 import { userIdOf } from '../http/types.ts';
 
@@ -79,6 +86,26 @@ meRouter.patch(
     const userId = userIdOf(req);
     const body = req.body as ChangeEmailRequest;
     const user = await confirmed(userId, () => changeEmail(getPrisma(), userId, body));
+    sendJson(res, 200, MeResponse, { user });
+  },
+);
+
+meRouter.post(
+  '/me/email-verification',
+  validateBody(RequestEmailVerificationRequest),
+  emailVerificationSendRateLimit,
+  async (req: Request, res: Response) => {
+    await sendEmailVerification(getPrisma(), userIdOf(req));
+    res.status(204).end();
+  },
+);
+
+meRouter.post(
+  '/me/email-verification/confirm',
+  validateBody(VerifyEmailRequest),
+  async (req: Request, res: Response) => {
+    const body = req.body as VerifyEmailRequest;
+    const user = await confirmEmailVerification(getPrisma(), userIdOf(req), body.code);
     sendJson(res, 200, MeResponse, { user });
   },
 );

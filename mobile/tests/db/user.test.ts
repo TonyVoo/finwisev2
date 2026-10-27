@@ -24,6 +24,7 @@ const USER_A: User = {
   id: '0192f5a0-0000-7000-8000-00000000a001',
   email: 'ada@example.com',
   currency: 'USD',
+  emailVerified: false,
   createdAt: '2026-10-08T10:00:00.000Z',
 };
 
@@ -31,6 +32,7 @@ const USER_B: User = {
   id: '0192f5a0-0000-7000-8000-00000000b001',
   email: 'grace@example.com',
   currency: 'JPY',
+  emailVerified: false,
   createdAt: '2026-10-09T11:00:00.000Z',
 };
 
@@ -301,5 +303,13 @@ describe('through the session controller', () => {
     // previous one - not their expenses, and not their email either.
     await expect(readUser(database)).resolves.toBeNull();
     await expect(controller.getAccessToken()).resolves.toBeNull();
+  });
+
+  it('stores emailVerified, reading an absent wire field as unverified', async () => {
+    await writeUser(database, { ...USER_A, emailVerified: undefined });
+    await expect(readUser(database)).resolves.toMatchObject({ emailVerified: false });
+
+    await writeUser(database, { ...USER_A, emailVerified: true });
+    await expect(readUser(database)).resolves.toMatchObject({ emailVerified: true });
   });
 });

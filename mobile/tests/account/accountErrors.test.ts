@@ -1,4 +1,4 @@
-import { presentAccountError } from '@/account/accountErrors';
+import { presentAccountError, presentVerifyError } from '@/account/accountErrors';
 import { ApiRequestError, NetworkUnavailableError } from '@/api/errors';
 import { COPY, GENERIC_ERROR } from '@/copy/strings';
 
@@ -55,5 +55,34 @@ describe('presentAccountError', () => {
         banner: GENERIC_ERROR,
       });
     }
+  });
+});
+
+describe('presentVerifyError', () => {
+  it('puts a bad code on the Code field, only when confirming', () => {
+    expect(presentVerifyError(problem(400, 'invalid_verification_code'), 'confirm')).toEqual({
+      codeError: COPY.verifyEmail.invalidCode,
+      banner: null,
+    });
+    expect(presentVerifyError(problem(400, 'invalid_verification_code'), 'request')).toEqual({
+      codeError: null,
+      banner: GENERIC_ERROR,
+    });
+  });
+
+  it('names the blocked action offline, and shows throttling as a banner', () => {
+    expect(
+      presentVerifyError(new NetworkUnavailableError(new Error('down')), 'confirm').banner,
+    ).toBe(COPY.verifyEmail.offline);
+    expect(presentVerifyError(problem(429, 'rate_limited'), 'request').banner).toBe(
+      COPY.account.tooManyAttempts,
+    );
+  });
+
+  it('falls back to the generic banner', () => {
+    expect(presentVerifyError(problem(500, 'internal_error'), 'confirm')).toEqual({
+      codeError: null,
+      banner: GENERIC_ERROR,
+    });
   });
 });

@@ -88,6 +88,8 @@ export const LIMITS = {
   RESET_REQUEST_MAX_PER_IP: 30,
   /** `reset-password` attempts per source address per window, counted whatever the outcome. */
   RESET_ATTEMPT_MAX_PER_IP: 30,
+  /** Verification codes one account may request per window (each send counts). */
+  VERIFY_REQUEST_MAX_PER_USER: 5,
 } as const;
 
 /**

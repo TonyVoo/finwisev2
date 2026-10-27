@@ -135,7 +135,11 @@ export async function resetPassword(
     });
     if (consumed.count !== 1) throw problems.invalidResetCode();
 
-    await tx.user.update({ where: { id: user.id }, data: { passwordHash } });
+    // Reading the code proves the mailbox, so a reset also verifies the address.
+    await tx.user.update({
+      where: { id: user.id },
+      data: { passwordHash, emailVerifiedAt: user.emailVerifiedAt ?? now },
+    });
     await tx.refreshToken.updateMany({
       where: { userId: user.id, revokedAt: null },
       data: { revokedAt: now },

@@ -28,6 +28,7 @@ beforeEach(() => {
     async sendPasswordResetCode(to, code) {
       sent.push({ to, code });
     },
+    async sendEmailVerificationCode() {},
   };
   setMailerForTests(recording);
 });
@@ -105,6 +106,7 @@ describe('POST /v1/auth/forgot-password', () => {
   it('does not fail the request when the mail provider is down', async () => {
     setMailerForTests({
       sendPasswordResetCode: () => Promise.reject(new Error('provider down')),
+      sendEmailVerificationCode: async () => {},
     });
     const user = await signUp();
     expect((await forgot(user.user.email)).status).toBe(204);

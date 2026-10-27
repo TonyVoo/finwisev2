@@ -115,5 +115,8 @@ export const problems = {
   /** A reset code that did not work. One message for wrong, expired, used and exhausted. */
   invalidResetCode: () =>
     new ApiProblem('invalid_reset_code', 'That code is incorrect or has expired.'),
+  /** An email-verification code that did not work. Same single message as a reset code. */
+  invalidVerificationCode: () =>
+    new ApiProblem('invalid_verification_code', 'That code is incorrect or has expired.'),
   internal: (message = 'Something went wrong.') => new ApiProblem('internal_error', message),
 } as const;

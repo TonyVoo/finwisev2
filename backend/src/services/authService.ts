@@ -15,6 +15,7 @@ import {
 import { getConfig } from '../config.ts';
 import type { Db } from '../db/client.ts';
 import { isUniqueViolation } from '../db/errors.ts';
+import { sendEmailVerification } from './emailVerificationService.ts';
 import { toWireUser } from '../db/mappers.ts';
 import { nextRevisionBlock } from '../db/revision.ts';
 import { ApiProblem, problems } from '../errors.ts';
@@ -142,6 +143,14 @@ export async function signup(db: Db, input: SignupInput): Promise<AuthResponse> 
   // session failed, the correct recovery is a login, not an orphaned half-created user.
   const tokens = await issueSession(db, userId);
   logger.info('account created', { userId });
+
+  // Fire and forget: verification is non-blocking, and a mail failure must never fail signup.
+  void sendEmailVerification(db, userId).catch((error: unknown) => {
+    logger.error('signup verification email failed', {
+      userId,
+      message: error instanceof Error ? error.message : String(error),
+    });
+  });
 
   return { user, ...tokens };
 }
@@ -323,7 +332,11 @@ export async function changeEmail(db: Db, userId: string, input: ChangeEmailInpu
   }
 
   try {
-    const updated = await db.user.update({ where: { id: userId }, data: { email } });
+    // The new address is unproven, and a code mailed to the old one must not confirm it.
+    const updated = await db.$transaction(async (tx) => {
+      await tx.emailVerificationCode.deleteMany({ where: { userId } });
+      return tx.user.update({ where: { id: userId }, data: { email, emailVerifiedAt: null } });
+    });
     logger.info('email changed', { userId });
     return toWireUser(updated);
   } catch (error) {

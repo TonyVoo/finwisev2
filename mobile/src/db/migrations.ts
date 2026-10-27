@@ -255,6 +255,15 @@ DROP TABLE sync_rejections;
 ALTER TABLE sync_rejections_v6 RENAME TO sync_rejections;
 `;
 
+/**
+ * Whether the account's email is verified, kept beside the rest of the user row so Settings
+ * can show it offline. 0 until the server says otherwise: an old row (or an old server that
+ * never sends the field) reads as unverified, which only means Settings offers the check.
+ */
+const EMAIL_VERIFIED = `
+ALTER TABLE user ADD COLUMN emailVerified INTEGER NOT NULL DEFAULT 0 CHECK (emailVerified IN (0, 1));
+`;
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: 'initial-schema', up: INITIAL_SCHEMA },
   { version: 2, name: 'store-owner', up: STORE_OWNER },
@@ -262,6 +271,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 4, name: 'sync-rejections', up: SYNC_REJECTIONS },
   { version: 5, name: 'category-budget', up: CATEGORY_BUDGET },
   { version: 6, name: 'recurring', up: RECURRING },
+  { version: 7, name: 'email-verified', up: EMAIL_VERIFIED },
 ];
 
 /** Highest version `MIGRATIONS` can bring a database to. */

@@ -26,6 +26,7 @@ export function toWireUser(row: UserRow): WireUser {
     id: row.id,
     email: row.email,
     currency: row.currency,
+    emailVerified: row.emailVerifiedAt !== null,
     createdAt: row.createdAt.toISOString(),
   };
 }

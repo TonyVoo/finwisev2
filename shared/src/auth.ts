@@ -64,7 +64,10 @@ export const ForgotPasswordRequest = z.strictObject({
 
 export const ResetCode = z
   .string()
-  .regex(new RegExp(`^\\d{${LIMITS.RESET_CODE_LENGTH}}$`), `Exactly ${LIMITS.RESET_CODE_LENGTH} digits.`)
+  .regex(
+    new RegExp(`^\\d{${LIMITS.RESET_CODE_LENGTH}}$`),
+    `Exactly ${LIMITS.RESET_CODE_LENGTH} digits.`,
+  )
   .describe(`The ${LIMITS.RESET_CODE_LENGTH}-digit code from the reset email.`);
 
 export const ResetPasswordRequest = z.strictObject({
@@ -73,12 +76,21 @@ export const ResetPasswordRequest = z.strictObject({
   newPassword: Password,
 });
 
+/** No fields: the account is the caller's, and the address is its current one. */
+export const RequestEmailVerificationRequest = z.strictObject({});
+
+export const VerifyEmailRequest = z.strictObject({
+  code: ResetCode.describe(
+    "The 6-digit code emailed to the account's current address by `POST /v1/me/email-verification`.",
+  ),
+});
+
 export const ChangeEmailRequest = z.strictObject({
   email: Email.describe(
     'The new sign-in email. Normalised like every other email; must not already belong to an account, and must differ from the current one.',
   ),
   password: PresentedPassword.describe(
-    "The account password, re-entered: an email is what a password reset would be sent to, so a stolen access token alone must not be able to change it.",
+    'The account password, re-entered: an email is what a password reset would be sent to, so a stolen access token alone must not be able to change it.',
   ),
 });
 
@@ -116,6 +128,8 @@ export const RefreshResponse = TokenPair;
 
 export type ChangePasswordRequest = z.infer<typeof ChangePasswordRequest>;
 export type ChangeEmailRequest = z.infer<typeof ChangeEmailRequest>;
+export type RequestEmailVerificationRequest = z.infer<typeof RequestEmailVerificationRequest>;
+export type VerifyEmailRequest = z.infer<typeof VerifyEmailRequest>;
 export type ForgotPasswordRequest = z.infer<typeof ForgotPasswordRequest>;
 export type ResetPasswordRequest = z.infer<typeof ResetPasswordRequest>;
 export type DeleteAccountRequest = z.infer<typeof DeleteAccountRequest>;

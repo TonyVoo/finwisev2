@@ -40,6 +40,12 @@ export const User = z.strictObject({
   currency: CurrencyCode.describe(
     "The user's single currency, captured at signup. Every expense of this user defaults to it.",
   ),
+  emailVerified: z
+    .boolean()
+    .optional()
+    .describe(
+      'Whether the account has proved it can read its email address (by a verification code, or by completing a password reset). Absent from servers that predate verification; treat absent as `false`. Verification is advisory: an unverified account works in full.',
+    ),
   createdAt: Timestamp,
 });
 

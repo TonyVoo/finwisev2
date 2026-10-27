@@ -325,3 +325,20 @@ A wrong, expired or used code is a field error on the Code field (`That code is 
 expired.`) and never says which. Five wrong guesses kill a code. On success every session of the
 account has ended, the app returns to Log in with the email filled in, and a snackbar says
 `Password changed. Log in with your new password.` Both screens need a connection and say so.
+
+
+## 5. Email verification (added after the MVP)
+
+Non-blocking: an account works fully while unverified, and nothing in the app is gated on it.
+Signup mails a 6-digit code (fire and forget - a mail failure never fails signup).
+
+- **Settings** shows a `Verify email` row, value `Unverified`, only while the address is unverified.
+  It opens **Verify your email**: the Code field, `Verify`, and `Send a new code`.
+- The code works for 15 minutes, five wrong guesses kill it, and it is single use. A wrong, expired
+  or used code is one field error that never says which. Asking again replaces the code; sends are
+  limited per account.
+- Changing the email clears verification and drops any pending code, so a code mailed to the old
+  address can never confirm the new one. A successful password reset verifies the address, because
+  reading the reset code proves the mailbox.
+- The verified flag is cached in the local `user` row (schema v7) so Settings is right offline.
+  Both actions need a connection and say so.

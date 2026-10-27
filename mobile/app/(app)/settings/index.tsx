@@ -10,7 +10,7 @@ import { Row, RowSubtitle, RowTitle } from '@/components/Row';
 import { COPY } from '@/copy/strings';
 import { useDatabase } from '@/db/DatabaseProvider';
 import { exportExpenses, nativeExportDependencies } from '@/export/exportExpenses';
-import { usePendingRecordCount, useUserCurrency, useUserEmail } from '@/db/hooks';
+import { useEmailVerified, usePendingRecordCount, useUserCurrency, useUserEmail } from '@/db/hooks';
 import { space, type } from '@/theme/tokens';
 import { ThemeSheet, themePreferenceLabel } from '@/theme/ThemeSheet';
 import { createStyles, useColors, useTheme } from '@/theme/ThemeProvider';
@@ -38,6 +38,7 @@ export default function SettingsScreen() {
   const session = useSessionController();
   const currency = useUserCurrency();
   const email = useUserEmail();
+  const emailVerified = useEmailVerified();
   const pending = usePendingRecordCount();
   const database = useDatabase();
   const showSnackbar = useSnackbar();
@@ -98,6 +99,20 @@ export default function SettingsScreen() {
         >
           <RowTitle>{COPY.settings.email}</RowTitle>
         </Row>
+
+        {/* Only while unverified, and only once the local row has answered: `false` is not
+            `undefined`, and a row that flashes in then out on every open would be noise. */}
+        {emailVerified.data === false ? (
+          <Row
+            testID="settings-verify-email"
+            onPress={() => router.push('/(app)/settings/verify-email')}
+            chevron
+            accessibilityLabel={`${COPY.settings.verifyEmail}, ${COPY.settings.unverified}`}
+            trailing={<Text style={styles.value}>{COPY.settings.unverified}</Text>}
+          >
+            <RowTitle>{COPY.settings.verifyEmail}</RowTitle>
+          </Row>
+        ) : null}
 
         {/* Read-only, with the reason stated: the currency is fixed at signup
           (`03-auth.md` §Behaviour rule 9), so this says so rather than looking tappable. */}
