@@ -48,16 +48,18 @@ describe('MonthTotal pace line', () => {
     await render(<MonthTotal totalMinor={4000} currency="USD" isCurrentMonth paceMinor={12000} />);
 
     expect(screen.getByText('On pace for $120.00 this month')).toBeTruthy();
-    // An estimate, not a figure: the spoken label stays exactly the spec'd one.
-    expect(screen.getByTestId('month-total').props.accessibilityLabel).toBe(
-      'Total this month, $40.00',
-    );
+    // An estimate, not a figure: the spoken label stays exactly the spec'd one, and the pace
+    // is read after it as a hint, so VoiceOver users get it too.
+    const total = screen.getByTestId('month-total');
+    expect(total.props.accessibilityLabel).toBe('Total this month, $40.00');
+    expect(total.props.accessibilityHint).toBe('On pace for $120.00 this month');
   });
 
   it('is absent without a projection', async () => {
     await render(<MonthTotal totalMinor={4000} currency="USD" isCurrentMonth />);
 
     expect(screen.queryByText(/On pace for/)).toBeNull();
+    expect(screen.getByTestId('month-total').props.accessibilityHint).toBeUndefined();
   });
 });
 

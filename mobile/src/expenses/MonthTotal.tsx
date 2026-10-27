@@ -114,6 +114,8 @@ export function MonthTotal({
       accessibilityLabel={[label, formatted, counted, balance]
         .filter((part): part is string => part !== null)
         .join(', ')}
+      // The pace is an estimate, so it is a hint read after the exact figures, not part of them.
+      accessibilityHint={pace ?? undefined}
       accessibilityLiveRegion="polite"
     >
       <Text style={styles.label}>{label}</Text>
@@ -123,8 +125,6 @@ export function MonthTotal({
           {balance}
         </Text>
       )}
-      {/* An estimate, so it stays out of the spoken label (the spec'd label is exact figures
-          only); the sighted-only line is a hint, not a fact. */}
       {pace === null ? null : (
         <Text testID={MONTH_PACE_TEST_ID} style={styles.count}>
           {pace}
