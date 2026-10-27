@@ -133,8 +133,21 @@ export function Keypad({
  * integer (rule 2), so getting this wrong could only ever mislabel a key.
  */
 function decimalSeparator(): string {
-  const parts = new Intl.NumberFormat(undefined).formatToParts(1.1);
-  return parts.find((part) => part.type === 'decimal')?.value ?? '.';
+  // Not every JS engine ships `formatToParts` (Hermes on some builds does not), and a
+  // missing method must not take the whole form down over a key label.
+  try {
+    const parts = new Intl.NumberFormat(undefined).formatToParts(1.1);
+    const found = parts.find((part) => part.type === 'decimal')?.value;
+    if (found !== undefined) return found;
+  } catch {
+    // Fall through to the plain formatter.
+  }
+  try {
+    const formatted = (1.1).toLocaleString();
+    return formatted.replace(/[0-9\u0660-\u0669]/g, '').charAt(0) || '.';
+  } catch {
+    return '.';
+  }
 }
 
 function DigitKey({
