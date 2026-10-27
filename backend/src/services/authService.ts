@@ -297,6 +297,41 @@ export async function changePassword(
   return tokens;
 }
 
+export interface ChangeEmailInput {
+  readonly email: string;
+  readonly password: string;
+}
+
+/**
+ * Change the sign-in email and return the updated user.
+ *
+ * The password is re-checked first: an email is where a reset would be sent, so a stolen
+ * access token alone must not be enough to take the account over. Sessions are left alone -
+ * nothing in a token carries the email, and the person is still the same person.
+ *
+ * Uniqueness is decided by the database (`isUniqueViolation`), not by a read first: two
+ * people claiming one address at once must not both succeed.
+ */
+export async function changeEmail(db: Db, userId: string, input: ChangeEmailInput) {
+  const current = await confirmPassword(db, userId, input.password);
+  const email = normaliseEmail(input.email);
+
+  if (email === current.email) {
+    throw problems.validation('That is already the email on this account.', {
+      issues: [{ path: 'email', message: 'That is already the email on this account.' }],
+    });
+  }
+
+  try {
+    const updated = await db.user.update({ where: { id: userId }, data: { email } });
+    logger.info('email changed', { userId });
+    return toWireUser(updated);
+  } catch (error) {
+    if (isUniqueViolation(error, 'email')) throw problems.emailAlreadyExists();
+    throw error;
+  }
+}
+
 /**
  * Permanently delete the account and everything it owns.
  *

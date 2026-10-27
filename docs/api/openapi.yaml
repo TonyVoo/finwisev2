@@ -538,6 +538,74 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /v1/me/email:
+    patch:
+      operationId: changeEmail
+      tags: [auth]
+      summary: Change the sign-in email
+      description: |
+        Replaces the account email and returns the updated user. The caller must re-enter the
+        password, because an email is where a password reset would go: a wrong one is
+        `403 forbidden`, rate limited per account and shared with `POST /v1/me/password` and
+        `DELETE /v1/me`.
+
+        The address is normalised (trimmed, lowercased) like at signup. An address that
+        already belongs to an account is `409 email_already_exists`; the current address
+        again is `validation_error`.
+
+        Sessions are **not** ended: the account is the same account, and no token carries
+        the email. Other devices simply see the new address next time they read `GET /v1/me`.
+      x-errorCodes:
+        - validation_error
+        - malformed_request
+        - unsupported_media_type
+        - unauthorized
+        - token_expired
+        - token_invalid
+        - forbidden
+        - email_already_exists
+        - rate_limited
+        - internal_error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChangeEmailRequest' }
+            example:
+              email: sam.new@example.com
+              password: correct-horse-battery
+      responses:
+        '200':
+          description: Email changed. The updated user.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MeResponse' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: 'Another account already uses this email. Code: `email_already_exists`.'
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              example:
+                error:
+                  code: email_already_exists
+                  message: An account with that email already exists.
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /v1/categories:
     get:
       operationId: listCategories
@@ -1640,7 +1708,7 @@ components:
     Forbidden:
       description: |
         The caller is authenticated but this action was refused. Code: `forbidden`. Today the
-        only cause is a wrong password on `POST /v1/me/password` or `DELETE /v1/me`. It is a
+        only cause is a wrong password on `POST /v1/me/password`, `PATCH /v1/me/email` or `DELETE /v1/me`. It is a
         `403` and not a `401` on purpose: the session is valid, so a client must not refresh,
         retry or sign out because of it. Cross-tenant row access is still `404 not_found`.
       headers:
@@ -1831,7 +1899,7 @@ components:
         | `token_invalid` | 401 | Token signature/shape is bad, or the refresh token is unknown, revoked or already rotated. Re-login. |
         | `forbidden` | 403 | Authenticated, but this action was refused - today, a wrong password on `POST /v1/me/password` or `DELETE /v1/me`. Cross-tenant row access is `not_found`, not this. |
         | `not_found` | 404 | No such route, or no such row for this user. Cross-tenant reads are 404, not 403, so ids cannot be probed. |
-        | `email_already_exists` | 409 | Signup with an email that already has an account. |
+        | `email_already_exists` | 409 | Signup, or changing the email, to an address that already has an account. |
         | `category_name_taken` | 409 | Another live category of this user already has that name (case-insensitive). |
         | `category_not_deletable` | 409 | Attempt to delete the default `Uncategorized` category, which must always exist. |
         | `unknown_category` | 422 | `categoryId` does not name a live category of this user. Appears as a per-record `invalid` on sync. |
@@ -2038,6 +2106,25 @@ components:
           description: The account's current password, re-entered.
         newPassword: { $ref: '#/components/schemas/Password' }
       description: The new password must differ from the current one.
+
+    ChangeEmailRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email:
+          allOf:
+            - $ref: '#/components/schemas/Email'
+          description: >-
+            The new sign-in email. Normalised like every other email; must not already belong
+            to an account, and must differ from the current one.
+        password:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: >-
+            The account password, re-entered: an email is what a password reset would be sent
+            to, so a stolen access token alone must not be able to change it.
 
     DeleteAccountRequest:
       type: object

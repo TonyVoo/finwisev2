@@ -62,6 +62,13 @@ export const API_ROUTES = [
     auth: true,
     successStatus: 200,
   },
+  {
+    method: 'patch',
+    path: '/v1/me/email',
+    operationId: 'changeEmail',
+    auth: true,
+    successStatus: 200,
+  },
 
   {
     method: 'get',

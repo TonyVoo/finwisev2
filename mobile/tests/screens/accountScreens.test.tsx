@@ -3,7 +3,9 @@ import { NetworkUnavailableError } from '@/api/errors';
 import type { Transport, TransportRequest } from '@/api/transport';
 import { COPY, GENERIC_ERROR, VALIDATION_COPY } from '@/copy/strings';
 import { OWNER_KEY } from '@/db/localStore';
+import { queryKeys } from '@/query/keys';
 import ChangePasswordScreen from '../../app/(app)/settings/change-password';
+import ChangeEmailScreen from '../../app/(app)/settings/change-email';
 import DeleteAccountScreen from '../../app/(app)/settings/delete-account';
 import { resetRouter, routerRecord } from '../support/router';
 import {
@@ -78,6 +80,80 @@ describe('account screens', () => {
   }
 
   const accountRequests = () => requests.filter((r) => r.path.startsWith('/v1/me'));
+
+  describe('change email', () => {
+    async function fill(email: string, password: string): Promise<void> {
+      await typeInto('change-email-new', email);
+      await typeInto('change-email-password', password);
+    }
+
+    it('validates locally and sends nothing: malformed, same as current, no password', async () => {
+      await mountSignedIn(<ChangeEmailScreen />);
+      // The screen mounted before the sign-in wrote the user row; in the app it mounts after.
+      await act(async () => {
+        await mounted.container.queryClient.invalidateQueries({ queryKey: queryKeys.local() });
+      });
+
+      await fill('not-an-email', '');
+      await pressOn('change-email-submit');
+      expect(screen.getByText(VALIDATION_COPY.email.invalid)).toBeTruthy();
+      expect(screen.getByText(VALIDATION_COPY.password.empty)).toBeTruthy();
+
+      await fill('ADA@example.com', 'a-password-1');
+      await pressOn('change-email-submit');
+      expect(screen.getByText(COPY.account.changeEmail.same)).toBeTruthy();
+
+      expect(accountRequests()).toEqual([]);
+    });
+
+    it('sends the normalised email, rewrites the local user and goes back', async () => {
+      handler = async () =>
+        ok(200, { user: { ...authResponse().user, email: 'grace@example.com' } });
+      await mountSignedIn(<ChangeEmailScreen />);
+
+      await fill('  Grace@Example.com ', 'a-password-1');
+      await pressOn('change-email-submit');
+
+      await waitFor(() => expect(routerRecord.back).toBe(1));
+      expect(accountRequests()[0]).toMatchObject({
+        method: 'patch',
+        path: '/v1/me/email',
+        body: { email: 'grace@example.com', password: 'a-password-1' },
+      });
+      const row = await mounted.database.getFirstAsync<{ email: string }>(
+        'SELECT email FROM user',
+        [],
+      );
+      expect(row?.email).toBe('grace@example.com');
+      // Same account, same session.
+      expect(mounted.container.session.getSnapshot().status).toBe('authenticated');
+      expect(await mounted.container.session.getAccessToken()).toBe('access-1');
+    });
+
+    it('puts a taken address on the email field and a wrong password on its own', async () => {
+      handler = async () => apiError(409, 'email_already_exists');
+      await mountSignedIn(<ChangeEmailScreen />);
+      await fill('taken@example.com', 'a-password-1');
+      await pressOn('change-email-submit');
+      expect(await screen.findByText(COPY.account.changeEmail.taken)).toBeTruthy();
+      expect(routerRecord.back).toBe(0);
+
+      handler = async () => apiError(403, 'forbidden');
+      await pressOn('change-email-submit');
+      expect(await screen.findByText(COPY.account.wrongPassword)).toBeTruthy();
+      expect(mounted.container.session.getSnapshot().status).toBe('authenticated');
+    });
+
+    it('says the action needs a connection when offline', async () => {
+      handler = async () => {
+        throw new NetworkUnavailableError(new Error('network down'));
+      };
+      await mountSignedIn(<ChangeEmailScreen />);
+      await fill('grace@example.com', 'a-password-1');
+      await pressOn('change-email-submit');
+      expect(await screen.findByText(COPY.account.changeEmail.offline)).toBeTruthy();
+    });
+  });
 
   describe('change password', () => {
     async function fill(current: string, next: string, confirm: string): Promise<void> {

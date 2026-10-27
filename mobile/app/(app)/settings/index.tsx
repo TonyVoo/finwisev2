@@ -91,6 +91,8 @@ export default function SettingsScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <Row
           testID="settings-email"
+          onPress={() => router.push('/(app)/settings/change-email')}
+          chevron
           accessibilityLabel={`${COPY.settings.email}, ${email.data ?? ''}`}
           trailing={<Text style={styles.value}>{email.data ?? ''}</Text>}
         >

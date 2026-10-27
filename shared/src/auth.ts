@@ -56,6 +56,15 @@ export const ChangePasswordRequest = z
     message: 'The new password must be different from the current one.',
   });
 
+export const ChangeEmailRequest = z.strictObject({
+  email: Email.describe(
+    'The new sign-in email. Normalised like every other email; must not already belong to an account, and must differ from the current one.',
+  ),
+  password: PresentedPassword.describe(
+    "The account password, re-entered: an email is what a password reset would be sent to, so a stolen access token alone must not be able to change it.",
+  ),
+});
+
 export const DeleteAccountRequest = z.strictObject({
   password: PresentedPassword.describe(
     'The account password, re-entered. Deleting an account cannot be undone, so a stolen access token alone is not enough.',
@@ -89,6 +98,7 @@ export const AuthResponse = z.strictObject({
 export const RefreshResponse = TokenPair;
 
 export type ChangePasswordRequest = z.infer<typeof ChangePasswordRequest>;
+export type ChangeEmailRequest = z.infer<typeof ChangeEmailRequest>;
 export type DeleteAccountRequest = z.infer<typeof DeleteAccountRequest>;
 export type SignupRequest = z.infer<typeof SignupRequest>;
 export type LoginRequest = z.infer<typeof LoginRequest>;

@@ -66,6 +66,7 @@ export const ENDPOINTS = {
   logout: emptyEndpoint('logout'),
   getMe: endpoint('getMe', MeResponse),
   changePassword: endpoint('changePassword', TokenPair),
+  changeEmail: endpoint('changeEmail', MeResponse),
   deleteAccount: emptyEndpoint('deleteAccount'),
 
   listCategories: endpoint('listCategories', CategoryListResponse),

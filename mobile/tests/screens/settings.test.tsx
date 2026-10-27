@@ -123,7 +123,7 @@ describe('the settings screen', () => {
     );
   });
 
-  it('shows the account email, read-only, and a Log out button', async () => {
+  it('shows the account email and a Log out button', async () => {
     await waitFor(() => expect(screen.getByText('ada@example.com')).toBeTruthy());
     expect(screen.getByText(COPY.settings.email)).toBeTruthy();
     expect(screen.getByTestId('settings-logout')).toBeTruthy();
@@ -140,11 +140,13 @@ describe('the settings screen', () => {
     expect(mounted.container.session.getSnapshot().status).toBe('authenticated');
   });
 
-  it('opens Change password and Delete account', async () => {
+  it('opens Change email, Change password and Delete account', async () => {
+    fireEvent.press(await screen.findByTestId('settings-email'));
     fireEvent.press(await screen.findByTestId('settings-change-password'));
     fireEvent.press(await screen.findByTestId('settings-delete-account'));
 
     expect(routerRecord.push).toEqual([
+      '/(app)/settings/change-email',
       '/(app)/settings/change-password',
       '/(app)/settings/delete-account',
     ]);

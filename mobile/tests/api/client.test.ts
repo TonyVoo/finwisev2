@@ -95,6 +95,10 @@ describe('every client method', () => {
       'changePassword',
       (client) => client.changePassword({ currentPassword: 'a', newPassword: 'correct horse 42' }),
     ],
+    [
+      'changeEmail',
+      (client) => client.changeEmail({ email: 'b@example.com', password: 'a' }),
+    ],
     ['deleteAccount', (client) => client.deleteAccount({ password: 'a' })],
 
     ['listCategories', (client) => client.listCategories()],

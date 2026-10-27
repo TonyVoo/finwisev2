@@ -256,6 +256,17 @@ export const COPY = {
       success: 'Password changed.',
       offline: 'You need to be online to change your password.',
     },
+    changeEmail: {
+      title: 'Change email',
+      hint: 'This is the address you log in with.',
+      new: 'New email',
+      password: 'Password',
+      submit: 'Change email',
+      same: 'That is already your email.',
+      taken: 'That email is already registered.',
+      success: 'Email changed.',
+      offline: 'You need to be online to change your email.',
+    },
     deleteAccount: {
       title: 'Delete account',
       warning:

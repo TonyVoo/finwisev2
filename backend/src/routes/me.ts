@@ -1,4 +1,5 @@
 import {
+  ChangeEmailRequest,
   ChangePasswordRequest,
   DeleteAccountRequest,
   MeResponse,
@@ -14,7 +15,7 @@ import {
   recordPasswordConfirmSuccess,
 } from '../middleware/passwordConfirmRateLimit.ts';
 import { validateBody } from '../middleware/validate.ts';
-import { changePassword, deleteAccount } from '../services/authService.ts';
+import { changeEmail, changePassword, deleteAccount } from '../services/authService.ts';
 import { sendJson } from '../http/respond.ts';
 import { userIdOf } from '../http/types.ts';
 
@@ -67,6 +68,18 @@ meRouter.post(
     const body = req.body as ChangePasswordRequest;
     const tokens = await confirmed(userId, () => changePassword(getPrisma(), userId, body));
     sendJson(res, 200, TokenPair, tokens);
+  },
+);
+
+meRouter.patch(
+  '/me/email',
+  validateBody(ChangeEmailRequest),
+  passwordConfirmRateLimit,
+  async (req: Request, res: Response) => {
+    const userId = userIdOf(req);
+    const body = req.body as ChangeEmailRequest;
+    const user = await confirmed(userId, () => changeEmail(getPrisma(), userId, body));
+    sendJson(res, 200, MeResponse, { user });
   },
 );
 

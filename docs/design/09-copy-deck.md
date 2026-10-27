@@ -350,6 +350,15 @@ them as proposals the Designer can reword; changing a row here means changing
 | `account.changePassword.same`     | `Choose a password different from your current one.`            | Change password, field error |
 | `account.changePassword.success`  | `Password changed.`                                             | Snackbar                   |
 | `account.changePassword.offline`  | `You need to be online to change your password.`                | Change password, banner    |
+| `account.changeEmail.title`       | `Change email`                                                  | Change email               |
+| `account.changeEmail.hint`        | `This is the address you log in with.`                          | Change email               |
+| `account.changeEmail.new`         | `New email`                                                     | Change email, field        |
+| `account.changeEmail.password`    | `Password`                                                      | Change email, field        |
+| `account.changeEmail.submit`      | `Change email`                                                  | Change email, button       |
+| `account.changeEmail.same`        | `That is already your email.`                                   | Change email, field error  |
+| `account.changeEmail.taken`       | `That email is already registered.`                             | Change email, field error  |
+| `account.changeEmail.success`     | `Email changed.`                                                | Snackbar                   |
+| `account.changeEmail.offline`     | `You need to be online to change your email.`                   | Change email, banner       |
 | `account.deleteAccount.title`     | `Delete account`                                                | Delete account             |
 | `account.deleteAccount.warning`   | `This permanently deletes your account and every expense and category in it, on this device and on our server. It cannot be undone.` | Delete account |
 | `account.deleteAccount.password`  | `Password`                                                      | Delete account, field      |

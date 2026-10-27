@@ -24,6 +24,17 @@ describe('presentAccountError', () => {
     expect(COPY.account.changePassword.offline).not.toBe(COPY.account.deleteAccount.offline);
   });
 
+  it('puts a taken address on the email field, only for change-email', () => {
+    expect(presentAccountError(problem(409, 'email_already_exists'), 'changeEmail')).toEqual({
+      passwordError: null,
+      banner: null,
+      emailError: COPY.account.changeEmail.taken,
+    });
+    expect(presentAccountError(problem(409, 'email_already_exists'), 'deleteAccount').banner).toBe(
+      GENERIC_ERROR,
+    );
+  });
+
   it('keeps wrong-password, offline and throttled apart', () => {
     const wrong = presentAccountError(problem(403, 'forbidden'), 'deleteAccount');
     const offline = presentAccountError(new NetworkUnavailableError('x'), 'deleteAccount');

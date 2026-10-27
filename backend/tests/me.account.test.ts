@@ -30,6 +30,105 @@ function login(email: string, password: string) {
   return api().post('/v1/auth/login').send({ email, password });
 }
 
+function changeEmail(auth: string, body: unknown) {
+  return api()
+    .patch('/v1/me/email')
+    .set('Authorization', auth)
+    .send(body as object);
+}
+
+describe('PATCH /v1/me/email', () => {
+  it('changes the email, normalised, and the new one logs in while the old one does not', async () => {
+    const user = await createUser();
+
+    const response = await changeEmail(user.auth, {
+      email: '  New.Address@Example.COM ',
+      password: TEST_PASSWORD,
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.user.email).toBe('new.address@example.com');
+    expect((await login('new.address@example.com', TEST_PASSWORD)).status).toBe(200);
+    expect((await login(user.user.email, TEST_PASSWORD)).status).toBe(401);
+    const me = await api().get('/v1/me').set('Authorization', user.auth);
+    expect(me.body.user.email).toBe('new.address@example.com');
+  });
+
+  it('keeps every session signed in', async () => {
+    const user = await createUser();
+    await changeEmail(user.auth, { email: 'kept@example.com', password: TEST_PASSWORD });
+
+    const refreshed = await api()
+      .post('/v1/auth/refresh')
+      .send({ refreshToken: user.refreshToken });
+    expect(refreshed.status).toBe(200);
+  });
+
+  it('is 409 email_already_exists when another account has it, and changes nothing', async () => {
+    const user = await createUser();
+    const other = await createUser();
+
+    const response = await changeEmail(user.auth, {
+      email: other.user.email.toUpperCase(),
+      password: TEST_PASSWORD,
+    });
+
+    expect(response.status).toBe(409);
+    expect(response.body.error.code).toBe('email_already_exists');
+    expect((await login(user.user.email, TEST_PASSWORD)).status).toBe(200);
+  });
+
+  it('is validation_error for the address it already has', async () => {
+    const user = await createUser();
+    const response = await changeEmail(user.auth, {
+      email: user.user.email,
+      password: TEST_PASSWORD,
+    });
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe('validation_error');
+  });
+
+  it('is 403 forbidden for a wrong password, and changes nothing', async () => {
+    const user = await createUser();
+    const response = await changeEmail(user.auth, {
+      email: 'nope@example.com',
+      password: 'definitely-not-it',
+    });
+    expect(response.status).toBe(403);
+    expect(response.body.error.code).toBe('forbidden');
+    expect((await login(user.user.email, TEST_PASSWORD)).status).toBe(200);
+  });
+
+  it('shares the password-guessing budget with the other password-confirming endpoints', async () => {
+    const user = await createUser();
+    for (let i = 0; i < LIMITS.PASSWORD_CONFIRM_MAX_FAILURES_PER_USER; i += 1) {
+      const wrong = await changeEmail(user.auth, {
+        email: 'nope@example.com',
+        password: `wrong-password-${i}`,
+      });
+      expect(wrong.status).toBe(403);
+    }
+    const limited = await changeEmail(user.auth, {
+      email: 'nope@example.com',
+      password: TEST_PASSWORD,
+    });
+    expect(limited.status).toBe(429);
+    expect(limited.body.error.code).toBe('rate_limited');
+  });
+
+  it('rejects a malformed email and requires authentication', async () => {
+    const user = await createUser();
+    const bad = await changeEmail(user.auth, { email: 'not-an-email', password: TEST_PASSWORD });
+    expect(bad.status).toBe(400);
+    expect(bad.body.error.code).toBe('validation_error');
+
+    const anon = await api()
+      .patch('/v1/me/email')
+      .send({ email: 'a@example.com', password: TEST_PASSWORD });
+    expect(anon.status).toBe(401);
+  });
+});
+
 describe('POST /v1/me/password', () => {
   it('changes the password: the new one logs in, the old one does not', async () => {
     const user = await createUser();
