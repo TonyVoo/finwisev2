@@ -17,6 +17,7 @@
       "expo-router",
       "expo-background-task",
       "expo-sqlite",
+      "expo-notifications",
       [
         "expo-image-picker",
         {

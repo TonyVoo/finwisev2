@@ -41,6 +41,12 @@ export const META_KEYS = {
    * must not reset how the person likes their screen.
    */
   themePreference: 'themePreference',
+  /**
+   * The budget alert (`month:key`) last pushed as a notification, so the same situation is
+   * announced once rather than on every launch. Wiped with the store: it describes the
+   * previous account's spending.
+   */
+  budgetNotified: 'budgetNotified',
 } as const;
 
 export type MetaKey = (typeof META_KEYS)[keyof typeof META_KEYS];
@@ -53,6 +59,7 @@ export const WIPED_META_KEYS: readonly MetaKey[] = [
   META_KEYS.syncCursor,
   META_KEYS.lastSyncedAt,
   META_KEYS.categoryReviewPending,
+  META_KEYS.budgetNotified,
 ];
 
 export async function readMeta(executor: SqliteExecutor, key: MetaKey): Promise<string | null> {

@@ -55,3 +55,14 @@ jest.mock('@react-native-community/netinfo', () =>
 beforeEach(() => {
   setFontScale(DEFAULT_FONT_SCALE);
 });
+
+// `expo-notifications` is native; the budget notifier is the only caller and its tests pass
+// their own fake, so everywhere else a no-op that reports permission as granted is enough.
+jest.mock('expo-notifications', () => ({
+  getPermissionsAsync: jest.fn(async () => ({ granted: true, canAskAgain: true })),
+  requestPermissionsAsync: jest.fn(async () => ({ granted: true, canAskAgain: true })),
+  scheduleNotificationAsync: jest.fn(async () => 'id'),
+  setNotificationHandler: jest.fn(),
+  setNotificationChannelAsync: jest.fn(async () => null),
+  AndroidImportance: { DEFAULT: 3 },
+}));

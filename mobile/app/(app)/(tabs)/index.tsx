@@ -26,6 +26,7 @@ import { deleteExpense, restoreExpense } from '@/db/mutations';
 import { BudgetAlertBanner } from '@/expenses/BudgetAlertBanner';
 import { CategoryReviewBanner } from '@/expenses/CategoryReviewBanner';
 import { budgetAlert } from '@/summary/budgetAlerts';
+import { notifyBudgetAlert } from '@/notifications/budgetNotifier';
 import { summariseMonth } from '@/summary/summaryModel';
 import { ExpenseRow } from '@/expenses/ExpenseRow';
 import { groupByDate } from '@/expenses/listModel';
@@ -117,6 +118,12 @@ export default function ExpenseListScreen() {
   const monthSpend = useMonthCategorySpend(month);
   const [dismissedAlert, setDismissedAlert] = useState<string | null>(null);
   const alert = isCurrent ? budgetAlert(summariseMonth(monthSpend.data ?? []).entries) : null;
+  const alertKey = alert?.key ?? null;
+  useEffect(() => {
+    if (alert === null) return;
+    void notifyBudgetAlert(database, month, alert).catch(() => undefined);
+    // Keyed on the alert's own key: its object identity changes on every render.
+  }, [database, month, alertKey]);
   // Both answers clear it, so it is asked once. Not a `localWrite`: this is a fact about the
   // device, not a record, so there is nothing to sync.
   const answerCategoryReview = useCallback(

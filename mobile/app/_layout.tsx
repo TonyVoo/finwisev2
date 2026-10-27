@@ -4,6 +4,7 @@ import { Slot } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { installForegroundHandler } from '@/notifications/budgetNotifier';
 import { AppProviders } from '@/bootstrap/AppProviders';
 import { type AppContainer, createAppContainer } from '@/bootstrap/container';
 import {
@@ -28,6 +29,8 @@ import {
  * reaches the expense list just as fast as one on wifi, which is the point of the whole
  * architecture (`docs/PLAN.md` §Mobile).
  */
+
+installForegroundHandler();
 
 // Fire-and-forget: if the splash screen is already gone this rejects, and that is not
 // worth crashing a launch over.
