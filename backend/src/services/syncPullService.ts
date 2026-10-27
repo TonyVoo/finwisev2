@@ -6,7 +6,7 @@ import {
 } from '@expense-tracker/shared';
 import type { Db } from '../db/client.ts';
 import { getPrisma } from '../db/client.ts';
-import { toWireCategory, toWireExpense, toWireRecurringRule } from '../db/mappers.ts';
+import { toWireCategory, toWireExpense, toWireGoal, toWireRecurringRule } from '../db/mappers.ts';
 import { needsResync } from '../sync/resolver.ts';
 
 /**
@@ -76,13 +76,18 @@ async function readPage(
 
   const run = async (tx: Db): Promise<PageSnapshot> => {
     const counter = await tx.revisionCounter.findUnique({ where: { userId } });
-    const [categories, recurring, expenses] = await Promise.all([
+    const [categories, recurring, goals, expenses] = await Promise.all([
       tx.category.findMany({
         where: { userId, revision: { gt: since } },
         orderBy: { revision: 'asc' },
         take,
       }),
       tx.recurringRule.findMany({
+        where: { userId, revision: { gt: since } },
+        orderBy: { revision: 'asc' },
+        take,
+      }),
+      tx.goal.findMany({
         where: { userId, revision: { gt: since } },
         orderBy: { revision: 'asc' },
         take,
@@ -106,6 +111,10 @@ async function readPage(
       ...recurring.map((row) => ({
         revision: row.revision,
         change: { entity: 'recurring', record: toWireRecurringRule(row) } satisfies SyncChange,
+      })),
+      ...goals.map((row) => ({
+        revision: row.revision,
+        change: { entity: 'goal', record: toWireGoal(row) } satisfies SyncChange,
       })),
       ...expenses.map((row) => ({
         revision: row.revision,

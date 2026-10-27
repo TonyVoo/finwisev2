@@ -2,6 +2,7 @@ import {
   type CategorySyncFields,
   type RecurringSyncFields,
   type ExpenseSyncFields,
+  type GoalSyncFields,
   type SyncEntity,
   Uuid,
 } from '@expense-tracker/shared';
@@ -37,6 +38,7 @@ export type LocalMutation =
       readonly id: string;
       readonly fields: RecurringSyncFields;
     }
+  | { readonly entity: 'goal'; readonly id: string; readonly fields: GoalSyncFields }
   | { readonly entity: 'expense'; readonly id: string; readonly fields: ExpenseSyncFields };
 
 export interface LocalMutationOptions {

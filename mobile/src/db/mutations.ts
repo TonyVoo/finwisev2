@@ -1,4 +1,4 @@
-import { DEFAULT_CATEGORIES, UNCATEGORIZED_NAME } from '@expense-tracker/shared';
+import { DEFAULT_CATEGORIES, LIMITS, UNCATEGORIZED_NAME } from '@expense-tracker/shared';
 import { type Clock, systemClock, toTimestamp } from '../lib/clock';
 import { uuidv7 } from '../lib/uuidv7';
 import type { ExpenseDetail } from './queries';
@@ -533,6 +533,91 @@ export async function deleteRecurring(
   return await applyLocalMutation(
     database,
     { entity: 'recurring', id, fields: { deletedAt: toTimestamp(stamp) } },
+    options,
+  );
+}
+
+/** Everything a savings goal needs to exist. `savedMinor` is the starting balance. */
+export interface NewGoal {
+  readonly name: string;
+  readonly targetMinor: number;
+  readonly savedMinor: number;
+  readonly currency: string;
+  readonly deadline: string | null;
+}
+
+export async function createGoal(
+  database: SqliteDatabase,
+  goal: NewGoal,
+  options: LocalMutationOptions & { readonly id?: string } = {},
+): Promise<QueuedMutation> {
+  return await applyLocalMutation(
+    database,
+    {
+      entity: 'goal',
+      id: options.id ?? uuidv7(),
+      fields: {
+        name: goal.name.trim(),
+        targetMinor: goal.targetMinor,
+        savedMinor: goal.savedMinor,
+        currency: goal.currency,
+        ...(goal.deadline === null ? {} : { deadline: goal.deadline }),
+      },
+    },
+    options,
+  );
+}
+
+/** Change a goal. Only the named fields are written and queued. */
+export async function updateGoal(
+  database: SqliteDatabase,
+  id: string,
+  changes: Partial<Omit<NewGoal, 'currency'>>,
+  options: LocalMutationOptions = {},
+): Promise<QueuedMutation> {
+  return await applyLocalMutation(
+    database,
+    {
+      entity: 'goal',
+      id,
+      fields: {
+        ...changes,
+        ...(changes.name === undefined ? {} : { name: changes.name.trim() }),
+      },
+    },
+    options,
+  );
+}
+
+/**
+ * Record a deposit: the new total is the stored one plus the amount, read here rather than
+ * taken from the screen so two deposits in a row cannot both start from the same stale
+ * balance. Capped at the contract's largest amount instead of failing the write.
+ */
+export async function depositToGoal(
+  database: SqliteDatabase,
+  id: string,
+  amountMinor: number,
+  options: LocalMutationOptions = {},
+): Promise<QueuedMutation> {
+  const row = await database.getFirstAsync<{ savedMinor: number }>(
+    'SELECT savedMinor FROM goals WHERE id = ? AND deletedAt IS NULL',
+    [id],
+  );
+  const saved = Math.min((row?.savedMinor ?? 0) + amountMinor, LIMITS.AMOUNT_MINOR_MAX);
+  return await updateGoal(database, id, { savedMinor: saved }, options);
+}
+
+/** Delete a goal: a tombstone, like every other delete. */
+export async function deleteGoal(
+  database: SqliteDatabase,
+  id: string,
+  options: LocalMutationOptions = {},
+): Promise<QueuedMutation> {
+  const stamp = (options.clock ?? systemClock)();
+  return await applyLocalMutation(
+    database,
+    { entity: 'goal', id, fields: { deletedAt: toTimestamp(stamp) } },
     options,
   );
 }

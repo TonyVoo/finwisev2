@@ -255,6 +255,8 @@ export const COPY = {
     categories: 'Categories',
     recurring: 'Recurring expenses',
     recurringHint: 'Rent, subscriptions and other regular payments.',
+    goals: 'Savings goals',
+    goalsHint: 'Save towards something you want.',
     appearance: 'Appearance',
     export: 'Export expenses',
     exportHint: 'Save everything you have recorded as a CSV file.',
@@ -271,6 +273,50 @@ export const COPY = {
     system: 'Match system',
     light: 'Light',
     dark: 'Dark',
+  },
+
+  /** Savings goals: a target, what has been put towards it, and an optional deadline. */
+  goals: {
+    title: 'Savings goals',
+    fab: 'Add savings goal',
+    new: { title: 'New savings goal' },
+    edit: { title: 'Edit savings goal' },
+    field: {
+      name: 'Name',
+      target: 'Target',
+      saved: 'Saved so far',
+      deadline: 'Deadline (optional)',
+      deadlinePlaceholder: 'None',
+    },
+    deposit: {
+      title: 'Add to {name}',
+      amount: 'Amount',
+      add: 'Add',
+      editGoal: 'Edit goal',
+    },
+    row: {
+      amounts: '{saved} of {target}',
+      reached: 'Goal reached',
+      perMonth: 'Save {amount} a month to reach it by {date}',
+      pastDeadline: 'Deadline was {date}',
+    },
+    error: {
+      name: 'Enter a name for this goal.',
+      nameLong: 'That name is too long.',
+      amount: 'Enter an amount like 500 or 499.99.',
+      date: 'Enter a date like 2026-12-31.',
+    },
+    empty: {
+      headline: 'No savings goals yet',
+      body: 'Set a target for a holiday, a laptop or a rainy day, then add to it as you save.',
+    },
+    create: 'Add',
+    save: 'Save',
+    delete: 'Delete savings goal',
+    deleteDialog: {
+      title: 'Delete this goal?',
+      body: 'The goal and its progress are removed. Your expenses are not affected.',
+    },
   },
 
   /** Recurring expenses: rules the device turns into real expenses each week or month. */
@@ -497,6 +543,11 @@ export const SNACK_COPY = {
     updated: 'Changes saved.',
     deleted: 'Expense deleted.',
     restored: 'Expense restored.',
+  },
+  goal: {
+    saved: 'Savings goal saved.',
+    deposited: 'Added to your goal.',
+    deleted: 'Savings goal deleted.',
   },
   recurring: {
     saved: 'Recurring expense saved.',

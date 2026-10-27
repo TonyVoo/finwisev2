@@ -1816,7 +1816,7 @@ paths:
         ## Ordering within a batch
 
         The server applies all `category` items before all `recurring` items before all
-        `expense` items, so an expense created offline against a category created offline in
+        `goal` items before all `expense` items, so an expense created offline against a category created offline in
         the same session syncs in a single round trip. Clients should push in that order too; the server sorts
         internally either way, so the two cannot disagree.
 
@@ -2845,6 +2845,53 @@ components:
         lands on the 28th/29th in February and the 30th in April, and is back on the 31st
         in May - it does not drift).
 
+    Goal:
+      type: object
+      description: |
+        A savings goal as the server reports it.
+
+        Progress is **manual**: the device writes the new `savedMinor` when the person
+        records a deposit. It is not derived from income and spending. `savedMinor` is one
+        field two devices can both write, so concurrent deposits resolve by last-write-wins;
+        a deposit is not an increment on the wire.
+      additionalProperties: false
+      required:
+        - id
+        - name
+        - targetMinor
+        - savedMinor
+        - currency
+        - deadline
+        - createdAt
+        - updatedAt
+        - deletedAt
+        - revision
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        name:
+          type: string
+          minLength: 1
+          maxLength: 60
+          description: Display name, 1-60 characters after trimming.
+        targetMinor:
+          type: integer
+          minimum: 1
+          maximum: 999999999999
+          description: Target in minor units. Greater than zero.
+        savedMinor:
+          allOf: [{ $ref: '#/components/schemas/AmountMinor' }]
+          description: Amount put towards the goal so far. May exceed the target.
+        currency: { $ref: '#/components/schemas/CurrencyCode' }
+        deadline:
+          oneOf:
+            - { $ref: '#/components/schemas/CalendarDate' }
+            - type: 'null'
+          description: Day the person wants to have reached the goal by.
+        createdAt: { $ref: '#/components/schemas/CreatedAt' }
+        updatedAt: { $ref: '#/components/schemas/UpdatedAt' }
+        deletedAt: { $ref: '#/components/schemas/DeletedAt' }
+        revision: { $ref: '#/components/schemas/Revision' }
+
     RecurringRule:
       type: object
       description: |
@@ -3068,6 +3115,16 @@ components:
         entity: { const: recurring }
         record: { $ref: '#/components/schemas/RecurringRule' }
 
+    GoalSyncChange:
+      type: object
+      title: Goal change
+      description: A changed savings goal, as delivered by `GET /v1/sync`.
+      additionalProperties: false
+      required: [entity, record]
+      properties:
+        entity: { const: goal }
+        record: { $ref: '#/components/schemas/Goal' }
+
     ExpenseSyncChange:
       type: object
       title: Expense change
@@ -3085,17 +3142,19 @@ components:
         is the only way a delete crosses the wire.
 
         `entity` also fixes the order the server applies a batch in: all `category` items,
-        then all `recurring` items, then all `expense` items — so an expense created offline
+        then all `recurring` items, then all `goal` items, then all `expense` items — so an expense created offline
         against a category created offline syncs in one round trip.
       oneOf:
         - { $ref: '#/components/schemas/CategorySyncChange' }
         - { $ref: '#/components/schemas/RecurringSyncChange' }
+        - { $ref: '#/components/schemas/GoalSyncChange' }
         - { $ref: '#/components/schemas/ExpenseSyncChange' }
       discriminator:
         propertyName: entity
         mapping:
           category: '#/components/schemas/CategorySyncChange'
           recurring: '#/components/schemas/RecurringSyncChange'
+          goal: '#/components/schemas/GoalSyncChange'
           expense: '#/components/schemas/ExpenseSyncChange'
 
     SyncPullResponse:
@@ -3188,6 +3247,32 @@ components:
             "no note" in the database.
         deletedAt: { $ref: '#/components/schemas/DeletedAt' }
 
+    GoalSyncFields:
+      type: object
+      description: |
+        Mutable goal fields in a push. Same upsert/merge semantics as `CategorySyncFields`.
+        To create a goal that does not exist yet, `name` and `targetMinor` are required.
+        `savedMinor` defaults to 0 on create. `deadline: null` removes the deadline. Set
+        `deletedAt` to delete; `null` to undelete.
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 60
+        targetMinor:
+          type: integer
+          minimum: 1
+          maximum: 999999999999
+        savedMinor: { $ref: '#/components/schemas/AmountMinor' }
+        currency: { $ref: '#/components/schemas/CurrencyCode' }
+        deadline:
+          oneOf:
+            - { $ref: '#/components/schemas/CalendarDate' }
+            - type: 'null'
+        deletedAt: { $ref: '#/components/schemas/DeletedAt' }
+
     RecurringSyncFields:
       type: object
       description: |
@@ -3202,7 +3287,6 @@ components:
       minProperties: 1
       properties:
         categoryId: { $ref: '#/components/schemas/Uuid' }
-        kind: { $ref: '#/components/schemas/EntryKind' }
         amountMinor: { $ref: '#/components/schemas/AmountMinor' }
         currency: { $ref: '#/components/schemas/CurrencyCode' }
         note:
@@ -3273,6 +3357,19 @@ components:
         clientMutationId: { $ref: '#/components/schemas/ClientMutationId' }
         fields: { $ref: '#/components/schemas/RecurringSyncFields' }
 
+    GoalSyncPushItem:
+      type: object
+      title: Goal push item
+      description: An upsert of one savings goal.
+      additionalProperties: false
+      required: [entity, id, updatedAt, clientMutationId, fields]
+      properties:
+        entity: { const: goal }
+        id: { $ref: '#/components/schemas/SyncPushItemId' }
+        updatedAt: { $ref: '#/components/schemas/SyncPushUpdatedAt' }
+        clientMutationId: { $ref: '#/components/schemas/ClientMutationId' }
+        fields: { $ref: '#/components/schemas/GoalSyncFields' }
+
     ExpenseSyncPushItem:
       type: object
       title: Expense push item
@@ -3293,12 +3390,14 @@ components:
       oneOf:
         - { $ref: '#/components/schemas/CategorySyncPushItem' }
         - { $ref: '#/components/schemas/RecurringSyncPushItem' }
+        - { $ref: '#/components/schemas/GoalSyncPushItem' }
         - { $ref: '#/components/schemas/ExpenseSyncPushItem' }
       discriminator:
         propertyName: entity
         mapping:
           category: '#/components/schemas/CategorySyncPushItem'
           recurring: '#/components/schemas/RecurringSyncPushItem'
+          goal: '#/components/schemas/GoalSyncPushItem'
           expense: '#/components/schemas/ExpenseSyncPushItem'
 
     SyncPushRequest:
@@ -3396,6 +3495,28 @@ components:
             `conflict_server_wins` alike. `null` only for an `invalid` item whose row does
             not exist server-side.
 
+    GoalSyncPushResult:
+      type: object
+      title: Goal push result
+      description: The outcome of one goal upsert, plus the authoritative server row.
+      additionalProperties: false
+      required: [entity, clientMutationId, id, status, idempotentReplay, error, record]
+      properties:
+        entity: { const: goal }
+        clientMutationId: { $ref: '#/components/schemas/SyncPushEchoedMutationId' }
+        id: { $ref: '#/components/schemas/Uuid' }
+        status: { $ref: '#/components/schemas/SyncPushStatus' }
+        idempotentReplay: { $ref: '#/components/schemas/SyncPushIdempotentReplay' }
+        error: { $ref: '#/components/schemas/SyncPushError' }
+        record:
+          oneOf:
+            - { $ref: '#/components/schemas/Goal' }
+            - type: 'null'
+          description: |
+            The authoritative server row after the batch — present for `applied` and
+            `conflict_server_wins` alike. `null` only for an `invalid` item whose row does
+            not exist server-side.
+
     ExpenseSyncPushResult:
       type: object
       title: Expense push result
@@ -3430,12 +3551,14 @@ components:
       oneOf:
         - { $ref: '#/components/schemas/CategorySyncPushResult' }
         - { $ref: '#/components/schemas/RecurringSyncPushResult' }
+        - { $ref: '#/components/schemas/GoalSyncPushResult' }
         - { $ref: '#/components/schemas/ExpenseSyncPushResult' }
       discriminator:
         propertyName: entity
         mapping:
           category: '#/components/schemas/CategorySyncPushResult'
           recurring: '#/components/schemas/RecurringSyncPushResult'
+          goal: '#/components/schemas/GoalSyncPushResult'
           expense: '#/components/schemas/ExpenseSyncPushResult'
 
     SyncPushResponse:

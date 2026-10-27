@@ -2,12 +2,14 @@ import type {
   CalendarDate,
   Category as WireCategory,
   Expense as WireExpense,
+  Goal as WireGoal,
   RecurringRule as WireRecurringRule,
   User as WireUser,
 } from '@expense-tracker/shared';
 import type {
   Category as CategoryRow,
   Expense as ExpenseRow,
+  Goal as GoalRow,
   RecurringRule as RecurringRuleRow,
   User as UserRow,
 } from './generated/client.ts';
@@ -92,6 +94,21 @@ export function toWireRecurringRule(row: RecurringRuleRow): WireRecurringRule {
     frequency: row.frequency as WireRecurringRule['frequency'],
     startDate: toCalendarDate(row.startDate),
     endDate: row.endDate === null ? null : toCalendarDate(row.endDate),
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    deletedAt: row.deletedAt?.toISOString() ?? null,
+    revision: row.revision,
+  };
+}
+
+export function toWireGoal(row: GoalRow): WireGoal {
+  return {
+    id: row.id,
+    name: row.name,
+    targetMinor: Number(row.targetMinor),
+    savedMinor: Number(row.savedMinor),
+    currency: row.currency,
+    deadline: row.deadline === null ? null : toCalendarDate(row.deadline),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     deletedAt: row.deletedAt?.toISOString() ?? null,

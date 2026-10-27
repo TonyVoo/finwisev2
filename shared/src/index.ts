@@ -20,6 +20,7 @@ export * from './auth.js';
 export * from './category.js';
 export * from './expense.js';
 export * from './receipt.js';
+export * from './goal.js';
 export * from './recurring.js';
 export * from './sync.js';
 export * from './health.js';

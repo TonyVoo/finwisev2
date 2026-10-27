@@ -76,6 +76,11 @@ export const queryKeys = {
     live: () => ['local', 'recurring', 'live'] as const,
   },
 
+  goals: {
+    all: () => ['local', 'goals'] as const,
+    live: () => ['local', 'goals', 'live'] as const,
+  },
+
   user: {
     /** The currency every amount on every screen is formatted in. */
     currency: () => ['local', 'user', 'currency'] as const,

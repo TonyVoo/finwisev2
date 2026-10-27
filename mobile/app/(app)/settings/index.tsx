@@ -139,11 +139,21 @@ export default function SettingsScreen() {
           testID="settings-recurring"
           onPress={() => router.push('/(app)/settings/recurring')}
           chevron
-          lastInGroup
           accessibilityLabel={`${COPY.settings.recurring}. ${COPY.settings.recurringHint}`}
         >
           <RowTitle>{COPY.settings.recurring}</RowTitle>
           <RowSubtitle>{COPY.settings.recurringHint}</RowSubtitle>
+        </Row>
+
+        <Row
+          testID="settings-goals"
+          onPress={() => router.push('/(app)/settings/goals')}
+          chevron
+          lastInGroup
+          accessibilityLabel={`${COPY.settings.goals}. ${COPY.settings.goalsHint}`}
+        >
+          <RowTitle>{COPY.settings.goals}</RowTitle>
+          <RowSubtitle>{COPY.settings.goalsHint}</RowSubtitle>
         </Row>
 
         <View style={styles.group}>

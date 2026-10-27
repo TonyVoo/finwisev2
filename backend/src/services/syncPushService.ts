@@ -5,6 +5,8 @@ import {
   type CategorySyncFields,
   type Expense as WireExpense,
   type ExpenseSyncFields,
+  type Goal as WireGoal,
+  type GoalSyncFields,
   type RecurringRule as WireRecurringRule,
   type RecurringSyncFields,
   type SyncEntity,
@@ -20,6 +22,7 @@ import {
   fromCalendarDate,
   toWireCategory,
   toWireExpense,
+  toWireGoal,
   toWireRecurringRule,
 } from '../db/mappers.ts';
 import { nextRevision } from '../db/revision.ts';
@@ -32,6 +35,7 @@ import { accountCurrency, requireAccountCurrency } from './expenseService.ts';
 import type {
   Category as CategoryRow,
   Expense as ExpenseRow,
+  Goal as GoalRow,
   Prisma,
   RecurringRule as RecurringRuleRow,
 } from '../db/generated/client.ts';
@@ -60,10 +64,12 @@ type RecordFor<E extends SyncEntity> = E extends 'category'
   ? WireCategory
   : E extends 'recurring'
     ? WireRecurringRule
-    : WireExpense;
+    : E extends 'goal'
+      ? WireGoal
+      : WireExpense;
 
 /** Any row the sync can report. */
-type WireRecord = WireCategory | WireExpense | WireRecurringRule;
+type WireRecord = WireCategory | WireExpense | WireRecurringRule | WireGoal;
 
 /** What applying (or declining to apply) one item produced. */
 interface Outcome {
@@ -279,6 +285,88 @@ async function applyExpenseItem(
   // A tombstone keeps no photo (see `deleteExpense`).
   if (deletedAt !== null) await tx.expenseReceipt.deleteMany({ where: { expenseId: existing.id } });
   return applied(toWireExpense(updated));
+}
+
+// ---------------------------------------------------------------------------
+// Savings goal
+// ---------------------------------------------------------------------------
+
+async function applyGoalItem(
+  tx: Db,
+  userId: string,
+  item: Extract<SyncPushItem, { entity: 'goal' }>,
+  now: Date,
+): Promise<Outcome> {
+  const fields: GoalSyncFields = item.fields;
+  const existing: GoalRow | null = await tx.goal.findUnique({ where: { id: item.id } });
+  if (existing && existing.userId !== userId) throw idAlreadyInUse();
+
+  const incomingUpdatedAt = clampPushedUpdatedAt(item.updatedAt, now, {
+    userId,
+    entity: 'goal',
+    id: item.id,
+  });
+
+  if (!existing) {
+    const { name, targetMinor } = fields;
+    if (name === undefined || targetMinor === undefined) {
+      throw requiredToCreate(
+        'goal',
+        [
+          name === undefined ? 'name' : undefined,
+          targetMinor === undefined ? 'targetMinor' : undefined,
+        ].filter((field): field is string => field !== undefined),
+      );
+    }
+    const currency = requireAccountCurrency(fields.currency, await accountCurrency(tx, userId));
+    const deadline = fields.deadline ?? null;
+    const deletedAt = fields.deletedAt === undefined ? null : toDate(fields.deletedAt);
+
+    const revision = await nextRevision(tx, userId);
+    const created = await tx.goal.create({
+      data: {
+        id: item.id,
+        userId,
+        name,
+        targetMinor: BigInt(targetMinor),
+        savedMinor: BigInt(fields.savedMinor ?? 0),
+        currency,
+        deadline: deadline === null ? null : fromCalendarDate(deadline),
+        createdAt: now,
+        updatedAt: incomingUpdatedAt,
+        deletedAt,
+        revision,
+      },
+    });
+    return applied(toWireGoal(created));
+  }
+
+  if (decideLww({ incomingUpdatedAt, storedUpdatedAt: existing.updatedAt }) !== 'applied') {
+    return conflict(toWireGoal(existing));
+  }
+
+  if (fields.currency !== undefined) {
+    requireAccountCurrency(fields.currency, await accountCurrency(tx, userId));
+  }
+
+  const deletedAt = fields.deletedAt === undefined ? existing.deletedAt : toDate(fields.deletedAt);
+  const revision = await nextRevision(tx, userId);
+  const updated = await tx.goal.update({
+    where: { id: existing.id },
+    data: {
+      ...(fields.name === undefined ? {} : { name: fields.name }),
+      ...(fields.targetMinor === undefined ? {} : { targetMinor: BigInt(fields.targetMinor) }),
+      ...(fields.savedMinor === undefined ? {} : { savedMinor: BigInt(fields.savedMinor) }),
+      ...(fields.currency === undefined ? {} : { currency: fields.currency }),
+      ...(fields.deadline === undefined
+        ? {}
+        : { deadline: fields.deadline === null ? null : fromCalendarDate(fields.deadline) }),
+      deletedAt,
+      updatedAt: incomingUpdatedAt,
+      revision,
+    },
+  });
+  return applied(toWireGoal(updated));
 }
 
 // ---------------------------------------------------------------------------
@@ -535,6 +623,10 @@ async function currentRecord(
     const row = await tx.recurringRule.findFirst({ where: { id, userId } });
     return row ? toWireRecurringRule(row) : null;
   }
+  if (entity === 'goal') {
+    const row = await tx.goal.findFirst({ where: { id, userId } });
+    return row ? toWireGoal(row) : null;
+  }
   if (entity === 'category') {
     const row = await tx.category.findFirst({ where: { id, userId } });
     return row ? toWireCategory(row) : null;
@@ -632,6 +724,9 @@ function buildResult(args: {
       record: args.outcome.record as RecordFor<'recurring'> | null,
     };
   }
+  if (args.entity === 'goal') {
+    return { entity: 'goal', ...base, record: args.outcome.record as RecordFor<'goal'> | null };
+  }
   return { entity: 'expense', ...base, record: args.outcome.record as RecordFor<'expense'> | null };
 }
 
@@ -718,6 +813,8 @@ async function attemptItem(
             return applyCategoryItem(tx, userId, parsed.item, now);
           case 'recurring':
             return applyRecurringItem(tx, userId, parsed.item, now);
+          case 'goal':
+            return applyGoalItem(tx, userId, parsed.item, now);
           default:
             return applyExpenseItem(tx, userId, parsed.item, now);
         }
@@ -786,6 +883,7 @@ async function attemptItem(
 const PRIMARY_KEY_TABLE: Readonly<Record<SyncEntity, string>> = {
   category: 'categories',
   recurring: 'recurring_rules',
+  goal: 'goals',
   expense: 'expenses',
 };
 

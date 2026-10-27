@@ -14,6 +14,7 @@ import {
   type ExpenseListItem,
   type ExpenseSearch,
   type PendingChange,
+  type GoalListItem,
   type RecurringListItem,
   anyExpensesExist,
   coloursInUse,
@@ -35,6 +36,7 @@ import {
   searchExpenses,
   monthIncomeMinor,
   monthlyIncomeTotals,
+  listLiveGoals,
   searchSummary,
 } from './queries';
 
@@ -220,6 +222,15 @@ export function useRecurringList(): UseQueryResult<readonly RecurringListItem[]>
   return useQuery({
     queryKey: queryKeys.recurring.live(),
     queryFn: () => listLiveRecurring(database),
+  });
+}
+
+/** The savings-goal list. */
+export function useGoalsList(): UseQueryResult<readonly GoalListItem[]> {
+  const database = useDatabase();
+  return useQuery({
+    queryKey: queryKeys.goals.live(),
+    queryFn: () => listLiveGoals(database),
   });
 }
 

@@ -1,6 +1,7 @@
 import {
   CategorySyncFields,
   ExpenseSyncFields,
+  GoalSyncFields,
   RecurringSyncFields,
   type SyncEntity,
 } from '@expense-tracker/shared';
@@ -49,6 +50,21 @@ export interface ExpenseRow {
   readonly revision: number;
 }
 
+/** A row of the local `goals` table (migration 10). */
+export interface GoalRow {
+  readonly id: string;
+  readonly name: string;
+  readonly targetMinor: number;
+  readonly savedMinor: number;
+  readonly currency: string;
+  /** Calendar date `YYYY-MM-DD`, or null for no deadline. */
+  readonly deadline: string | null;
+  readonly createdAt: string | null;
+  readonly updatedAt: string;
+  readonly deletedAt: string | null;
+  readonly revision: number;
+}
+
 /** A row of the local `recurring` table (migration 6). */
 export interface RecurringRow {
   readonly id: string;
@@ -69,6 +85,7 @@ export interface RecurringRow {
 export interface LocalRowByEntity {
   readonly category: CategoryRow;
   readonly recurring: RecurringRow;
+  readonly goal: GoalRow;
   readonly expense: ExpenseRow;
 }
 
@@ -147,9 +164,19 @@ const RECURRING_SPEC: EntitySpec = {
   parseFields: (fields) => RecurringSyncFields.parse(fields),
 };
 
+const GOAL_SPEC: EntitySpec = {
+  entity: 'goal',
+  table: 'goals',
+  mutableColumns: ['name', 'targetMinor', 'savedMinor', 'currency', 'deadline', 'deletedAt'],
+  requiredOnCreate: ['name', 'targetMinor', 'currency'],
+  insertDefaults: { savedMinor: 0, deadline: null, createdAt: null, deletedAt: null, revision: 0 },
+  parseFields: (fields) => GoalSyncFields.parse(fields),
+};
+
 export const ENTITY_SPECS: Readonly<Record<SyncEntity, EntitySpec>> = {
   category: CATEGORY_SPEC,
   recurring: RECURRING_SPEC,
+  goal: GOAL_SPEC,
   expense: EXPENSE_SPEC,
 };
 

@@ -111,6 +111,8 @@ function toChange(result: SyncPushResult): SyncChange | null {
       return { entity: 'category', record: result.record };
     case 'recurring':
       return { entity: 'recurring', record: result.record };
+    case 'goal':
+      return { entity: 'goal', record: result.record };
     case 'expense':
       return { entity: 'expense', record: result.record };
   }

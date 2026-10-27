@@ -503,3 +503,36 @@ them as proposals the Designer can reword; changing a row here means changing
 | `summary.insights.overspent` | `You have spent {amount} more than you earned this month.` | Summary, insights card |
 | `summary.trend.spent` | `Spent` | Summary, trend legend |
 | `summary.trend.income` | `Income` | Summary, trend legend |
+| `settings.goals` | `Savings goals` | Settings row |
+| `settings.goalsHint` | `Save towards something you want.` | Settings row, hint |
+| `goals.title` | `Savings goals` | Goals screen title |
+| `goals.fab` | `Add savings goal` | Goals screen, add button |
+| `goals.new.title` | `New savings goal` | Goal sheet, create |
+| `goals.edit.title` | `Edit savings goal` | Goal sheet, edit |
+| `goals.field.name` | `Name` | Goal sheet |
+| `goals.field.target` | `Target` | Goal sheet |
+| `goals.field.saved` | `Saved so far` | Goal sheet, edit |
+| `goals.field.deadline` | `Deadline (optional)` | Goal sheet |
+| `goals.field.deadlinePlaceholder` | `None` | Goal sheet, no deadline set |
+| `goals.deposit.title` | `Add to {name}` | Deposit sheet |
+| `goals.deposit.amount` | `Amount` | Deposit sheet |
+| `goals.deposit.add` | `Add` | Deposit sheet, button |
+| `goals.deposit.editGoal` | `Edit goal` | Deposit sheet, button |
+| `goals.row.amounts` | `{saved} of {target}` | Goal row |
+| `goals.row.reached` | `Goal reached` | Goal row, status |
+| `goals.row.perMonth` | `Save {amount} a month to reach it by {date}` | Goal row, status |
+| `goals.row.pastDeadline` | `Deadline was {date}` | Goal row, status |
+| `goals.error.name` | `Enter a name for this goal.` | Goal sheet, validation |
+| `goals.error.nameLong` | `That name is too long.` | Goal sheet, validation |
+| `goals.error.amount` | `Enter an amount like 500 or 499.99.` | Goal sheet, validation |
+| `goals.error.date` | `Enter a date like 2026-12-31.` | Goal sheet, validation |
+| `goals.empty.headline` | `No savings goals yet` | Goals screen, empty |
+| `goals.empty.body` | `Set a target for a holiday, a laptop or a rainy day, then add to it as you save.` | Goals screen, empty |
+| `goals.create` | `Add` | Goal sheet, create button |
+| `goals.save` | `Save` | Goal sheet, save button |
+| `goals.delete` | `Delete savings goal` | Goal sheet, button |
+| `goals.deleteDialog.title` | `Delete this goal?` | Delete dialog |
+| `goals.deleteDialog.body` | `The goal and its progress are removed. Your expenses are not affected.` | Delete dialog |
+| `goal.saved` | `Savings goal saved.` | Snackbar |
+| `goal.deposited` | `Added to your goal.` | Snackbar |
+| `goal.deleted` | `Savings goal deleted.` | Snackbar |

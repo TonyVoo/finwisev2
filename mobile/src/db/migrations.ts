@@ -296,6 +296,66 @@ ALTER TABLE expenses ADD COLUMN kind TEXT NOT NULL DEFAULT 'expense'
   CHECK (kind IN ('expense', 'income'));
 `;
 
+/**
+ * Savings goals: the goals table, and the two CHECKs that name the entities, rebuilt the same
+ * way migration 6 did for recurring rules (create, copy, drop, rename, recreate the indexes),
+ * carrying the undrained queue and the AUTOINCREMENT high-water mark across.
+ *
+ * Progress is manual, so `savedMinor` is just a column the device writes on a deposit; the
+ * target is at least 1 and the saved amount never negative, as on the server.
+ */
+const GOALS = `
+CREATE TABLE goals (
+  id          TEXT    NOT NULL PRIMARY KEY,
+  name        TEXT    NOT NULL,
+  targetMinor INTEGER NOT NULL CHECK (targetMinor >= 1),
+  savedMinor  INTEGER NOT NULL DEFAULT 0 CHECK (savedMinor >= 0),
+  currency    TEXT    NOT NULL,
+  deadline    TEXT,
+  createdAt   TEXT,
+  updatedAt   TEXT    NOT NULL,
+  deletedAt   TEXT,
+  revision    INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX idx_goals_live ON goals (deletedAt, name);
+
+CREATE TABLE outbox_v10 (
+  seq              INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+  entity           TEXT    NOT NULL CHECK (entity IN ('category', 'recurring', 'goal', 'expense')),
+  recordId         TEXT    NOT NULL,
+  fields           TEXT    NOT NULL,
+  updatedAt        TEXT    NOT NULL,
+  clientMutationId TEXT    NOT NULL UNIQUE,
+  queuedAt         TEXT    NOT NULL,
+  attempts         INTEGER NOT NULL DEFAULT 0,
+  lastError        TEXT
+);
+INSERT INTO outbox_v10 (seq, entity, recordId, fields, updatedAt, clientMutationId, queuedAt, attempts, lastError)
+  SELECT seq, entity, recordId, fields, updatedAt, clientMutationId, queuedAt, attempts, lastError
+    FROM outbox;
+DELETE FROM sqlite_sequence WHERE name = 'outbox_v10';
+INSERT INTO sqlite_sequence (name, seq)
+  SELECT 'outbox_v10', COALESCE(MAX(seq), 0) FROM sqlite_sequence WHERE name = 'outbox';
+DROP TABLE outbox;
+ALTER TABLE outbox_v10 RENAME TO outbox;
+CREATE INDEX idx_outbox_entity_seq ON outbox (entity, seq);
+CREATE INDEX idx_outbox_record ON outbox (entity, recordId);
+
+CREATE TABLE sync_rejections_v10 (
+  entity     TEXT NOT NULL CHECK (entity IN ('category', 'recurring', 'goal', 'expense')),
+  recordId   TEXT NOT NULL,
+  code       TEXT NOT NULL,
+  message    TEXT NOT NULL,
+  rejectedAt TEXT NOT NULL,
+  PRIMARY KEY (entity, recordId)
+);
+INSERT INTO sync_rejections_v10 (entity, recordId, code, message, rejectedAt)
+  SELECT entity, recordId, code, message, rejectedAt FROM sync_rejections;
+DROP TABLE sync_rejections;
+ALTER TABLE sync_rejections_v10 RENAME TO sync_rejections;
+`;
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: 'initial-schema', up: INITIAL_SCHEMA },
   { version: 2, name: 'store-owner', up: STORE_OWNER },
@@ -306,6 +366,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 7, name: 'email-verified', up: EMAIL_VERIFIED },
   { version: 8, name: 'receipts', up: RECEIPTS },
   { version: 9, name: 'entry-kind', up: ENTRY_KIND },
+  { version: 10, name: 'savings-goals', up: GOALS },
 ];
 
 /** Highest version `MIGRATIONS` can bring a database to. */

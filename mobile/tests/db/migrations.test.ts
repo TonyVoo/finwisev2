@@ -38,6 +38,7 @@ describe('migrate', () => {
     expect(tables.map((table) => table.name)).toEqual([
       'categories',
       'expenses',
+      'goals',
       'meta',
       'outbox',
       'receipts',

@@ -55,6 +55,7 @@ model User {
   categories      Category[]
   expenses        Expense[]
   recurringRules  RecurringRule[]
+  goals           Goal[]
   refreshTokens   RefreshToken[]
   passwordResetCode PasswordResetCode?
   emailVerificationCode EmailVerificationCode?
@@ -203,6 +204,29 @@ model RecurringRule {
   @@map("recurring_rules")
 }
 
+/// A savings goal. Syncable. Progress is manual: the device writes the new `savedMinor`
+/// when the person records a deposit (see `shared/src/goal.ts`).
+model Goal {
+  id     String @id @db.Uuid
+  userId String @map("user_id") @db.Uuid
+
+  name        String  @db.VarChar(60)
+  targetMinor BigInt  @map("target_minor")
+  savedMinor  BigInt  @default(0) @map("saved_minor")
+  currency    String  @db.Char(3)
+  deadline    DateTime? @db.Date
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime  @map("updated_at") @db.Timestamptz(3)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)
+  revision  Int
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, revision])
+  @@map("goals")
+}
+
 /// The idempotency ledger for `POST /v1/sync`: one row per `clientMutationId`.
 ///
 /// A push retried after a dropped response must be a no-op that replays the original
@@ -219,7 +243,7 @@ model SyncMutation {
   userId           String @map("user_id") @db.Uuid
   clientMutationId String @map("client_mutation_id") @db.Uuid
 
-  /// `category` | `recurring` | `expense`. Not a Prisma enum: the wire values are owned by
+  /// `category` | `recurring` | `goal` | `expense`. Not a Prisma enum: the wire values are owned by
   /// `SYNC_ENTITIES` in `shared/`, and a second enum here could disagree with it.
   entity String @db.VarChar(16)
 

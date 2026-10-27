@@ -66,6 +66,18 @@ export const SERVER_COLUMNS: Readonly<Record<SyncEntity, readonly string[]>> = {
     'deletedAt',
     'revision',
   ],
+  goal: [
+    'id',
+    'name',
+    'targetMinor',
+    'savedMinor',
+    'currency',
+    'deadline',
+    'createdAt',
+    'updatedAt',
+    'deletedAt',
+    'revision',
+  ],
   expense: [
     'id',
     'categoryId',

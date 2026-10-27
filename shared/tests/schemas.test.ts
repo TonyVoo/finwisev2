@@ -332,8 +332,8 @@ describe('sync push shapes', () => {
     expect(SyncPushRequest.safeParse({ changes: atLimit }).success).toBe(true);
   });
 
-  it('applies categories, then recurring rules, then expenses', () => {
-    expect(SYNC_APPLY_ORDER).toEqual(['category', 'recurring', 'expense']);
+  it('applies categories, then recurring rules, then goals, then expenses', () => {
+    expect(SYNC_APPLY_ORDER).toEqual(['category', 'recurring', 'goal', 'expense']);
     expect([...SYNC_APPLY_ORDER].sort()).toEqual([...SYNC_ENTITIES].sort());
   });
 });

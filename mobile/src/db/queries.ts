@@ -864,3 +864,29 @@ export async function listLiveRecurring(
   );
   return rows.map((row) => ({ ...row, pending: row.pending === 1 }));
 }
+
+/** A savings goal as the list consumes it: the row plus its local sync state. */
+export interface GoalListItem {
+  readonly id: string;
+  readonly name: string;
+  readonly targetMinor: number;
+  readonly savedMinor: number;
+  readonly currency: string;
+  readonly deadline: string | null;
+  readonly pending: boolean;
+}
+
+/** Every live goal, soonest deadline first (no deadline last), then by name. */
+export async function listLiveGoals(database: SqliteDatabase): Promise<readonly GoalListItem[]> {
+  const rows = await database.getAllAsync<Omit<GoalListItem, 'pending'> & { pending: number }>(
+    `SELECT g.id, g.name, g.targetMinor, g.savedMinor, g.currency, g.deadline,
+            EXISTS (
+              SELECT 1 FROM outbox o WHERE o.entity = 'goal' AND o.recordId = g.id
+            ) AS pending
+       FROM goals g
+      WHERE g.deletedAt IS NULL
+      ORDER BY g.deadline IS NULL, g.deadline, g.name COLLATE NOCASE, g.id`,
+    [],
+  );
+  return rows.map((row) => ({ ...row, pending: row.pending === 1 }));
+}

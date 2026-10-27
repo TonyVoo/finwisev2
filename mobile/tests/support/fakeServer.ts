@@ -1,6 +1,7 @@
 import type {
   Category,
   Expense,
+  Goal,
   RecurringRule,
   SyncChange,
   SyncPullResponse,
@@ -46,6 +47,7 @@ export interface FakeSyncServer {
   category(id: string): Category | undefined;
   expense(id: string): Expense | undefined;
   recurring(id: string): RecurringRule | undefined;
+  goal(id: string): Goal | undefined;
   /** Rows the server holds, live and tombstoned, oldest revision first. */
   snapshot(): ReadonlyArray<SyncChange>;
 }
@@ -63,6 +65,7 @@ export function createFakeSyncServer(options: FakeSyncServerOptions = {}): FakeS
   const categories = new Map<string, Category>();
   const expenses = new Map<string, Expense>();
   const rules = new Map<string, RecurringRule>();
+  const goals = new Map<string, Goal>();
   const replays = new Map<string, SyncPushResult>();
   const requests: TransportRequest[] = [];
   let revision = 0;
@@ -71,6 +74,7 @@ export function createFakeSyncServer(options: FakeSyncServerOptions = {}): FakeS
     const rows: SyncChange[] = [
       ...[...categories.values()].map((record) => ({ entity: 'category' as const, record })),
       ...[...rules.values()].map((record) => ({ entity: 'recurring' as const, record })),
+      ...[...goals.values()].map((record) => ({ entity: 'goal' as const, record })),
       ...[...expenses.values()].map((record) => ({ entity: 'expense' as const, record })),
     ];
     return rows.sort((left, right) => left.record.revision - right.record.revision);
@@ -103,6 +107,9 @@ export function createFakeSyncServer(options: FakeSyncServerOptions = {}): FakeS
     }
     if (item.entity === 'recurring') {
       return { ...base, entity: 'recurring', record: rules.get(item.id) ?? null };
+    }
+    if (item.entity === 'goal') {
+      return { ...base, entity: 'goal', record: goals.get(item.id) ?? null };
     }
     return { ...base, entity: 'expense', record: expenses.get(item.id) ?? null };
   }
@@ -209,6 +216,51 @@ export function createFakeSyncServer(options: FakeSyncServerOptions = {}): FakeS
     return applied(item, { entity: 'recurring', record: merged });
   }
 
+  function applyGoal(item: Extract<SyncPushRequest['changes'][number], { entity: 'goal' }>) {
+    const stored = goals.get(item.id);
+
+    if (stored === undefined) {
+      const { name, targetMinor } = item.fields;
+      if (name === undefined || targetMinor === undefined) {
+        return invalid(item, 'name and targetMinor are required to create a goal');
+      }
+      revision += 1;
+      const created: Goal = {
+        id: item.id,
+        name,
+        targetMinor,
+        savedMinor: item.fields.savedMinor ?? 0,
+        currency: item.fields.currency ?? 'USD',
+        deadline: item.fields.deadline ?? null,
+        createdAt: item.updatedAt,
+        updatedAt: item.updatedAt,
+        deletedAt: item.fields.deletedAt ?? null,
+        revision,
+      };
+      goals.set(item.id, created);
+      return applied(item, { entity: 'goal', record: created });
+    }
+
+    if (item.updatedAt <= stored.updatedAt) {
+      return conflict(item, { entity: 'goal', record: stored });
+    }
+
+    revision += 1;
+    const merged: Goal = {
+      ...stored,
+      name: item.fields.name ?? stored.name,
+      targetMinor: item.fields.targetMinor ?? stored.targetMinor,
+      savedMinor: item.fields.savedMinor ?? stored.savedMinor,
+      currency: item.fields.currency ?? stored.currency,
+      deadline: item.fields.deadline === undefined ? stored.deadline : item.fields.deadline,
+      deletedAt: item.fields.deletedAt === undefined ? stored.deletedAt : item.fields.deletedAt,
+      updatedAt: item.updatedAt,
+      revision,
+    };
+    goals.set(item.id, merged);
+    return applied(item, { entity: 'goal', record: merged });
+  }
+
   function applyExpense(item: Extract<SyncPushRequest['changes'][number], { entity: 'expense' }>) {
     const stored = expenses.get(item.id);
 
@@ -281,7 +333,7 @@ export function createFakeSyncServer(options: FakeSyncServerOptions = {}): FakeS
   function push(body: SyncPushRequest): SyncPushResponse {
     // Categories before expenses, as the contract says the server sorts internally - so a
     // client that sent them the other way round still gets a usable answer.
-    const rank = { category: 0, recurring: 1, expense: 2 } as const;
+    const rank = { category: 0, recurring: 1, goal: 2, expense: 3 } as const;
     const items = [...body.changes].sort((left, right) => rank[left.entity] - rank[right.entity]);
 
     const byMutation = new Map<string, SyncPushResult>();
@@ -297,7 +349,9 @@ export function createFakeSyncServer(options: FakeSyncServerOptions = {}): FakeS
           ? applyCategory(item)
           : item.entity === 'recurring'
             ? applyRecurring(item)
-            : applyExpense(item);
+            : item.entity === 'goal'
+              ? applyGoal(item)
+              : applyExpense(item);
       replays.set(item.clientMutationId, result);
       byMutation.set(item.clientMutationId, result);
     }
@@ -336,6 +390,7 @@ export function createFakeSyncServer(options: FakeSyncServerOptions = {}): FakeS
     category: (id) => categories.get(id),
     expense: (id) => expenses.get(id),
     recurring: (id) => rules.get(id),
+    goal: (id) => goals.get(id),
     snapshot: () => ordered(),
   };
 }

@@ -462,10 +462,10 @@ describe('sync contract parity', () => {
     it('documents categories-before-expenses batch ordering', () => {
       expect(push.description as string).toMatch(/Ordering within a batch/i);
       expect(push.description as string).toMatch(
-        /all `category` items before all `recurring` items before all\s+`expense` items/i,
+        /all `category` items before all `recurring` items before all\s+`goal` items before all `expense` items/i,
       );
       expect((schemas.SyncChange as Json).description as string).toMatch(
-        /all `category` items,\s+then all `recurring` items, then all `expense` items/i,
+        /all `category` items,\s+then all `recurring` items, then all `goal` items, then all `expense` items/i,
       );
     });
 
