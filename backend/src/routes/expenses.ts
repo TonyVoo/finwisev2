@@ -12,7 +12,7 @@ import { Router, type Request, type Response } from 'express';
 import { getPrisma } from '../db/client.ts';
 import { ResourceIdParams } from '../http/params.ts';
 import { sendJson } from '../http/respond.ts';
-import { dataOwnerIdOf } from '../http/types.ts';
+import { dataOwnerIdOf, userIdOf } from '../http/types.ts';
 import {
   validateBody,
   validateParams,
@@ -52,7 +52,7 @@ expensesRouter.post(
   validateBody(ExpenseCreateRequest),
   async (req: Request, res: Response) => {
     const body = req.body as ExpenseCreateRequest;
-    const data = await createExpense(getPrisma(), dataOwnerIdOf(req), body);
+    const data = await createExpense(getPrisma(), dataOwnerIdOf(req), body, userIdOf(req));
     sendJson(res, 201, ExpenseResponse, { data });
   },
 );

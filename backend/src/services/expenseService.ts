@@ -135,6 +135,8 @@ export async function createExpense(
   db: Db,
   userId: string,
   input: ExpenseCreateRequest,
+  /** Who is adding it. Differs from `userId` (whose books) for a household member. */
+  actorId: string = userId,
 ): Promise<WireExpense> {
   const id = input.id ?? uuidv7();
   const now = new Date();
@@ -158,6 +160,7 @@ export async function createExpense(
       data: {
         id,
         userId,
+        createdBy: actorId,
         categoryId: input.categoryId,
         kind: input.kind ?? 'expense',
         amountMinor: BigInt(input.amountMinor),

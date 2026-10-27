@@ -1566,6 +1566,7 @@ paths:
                     originalCurrency: null
                     date: '2026-10-05'
                     note: Weekly shop
+                    createdBy: '0192f3a0-0000-7f1e-9b2d-0000000000aa'
                     createdAt: '2026-10-05T18:02:11.000Z'
                     updatedAt: '2026-10-05T18:02:11.000Z'
                     deletedAt: null
@@ -1755,6 +1756,7 @@ paths:
                   originalCurrency: null
                   date: '2026-10-05'
                   note: Weekly shop
+                  createdBy: '0192f3a0-0000-7f1e-9b2d-0000000000aa'
                   createdAt: '2026-10-05T18:02:11.000Z'
                   updatedAt: '2026-10-06T09:15:00.000Z'
                   deletedAt: '2026-10-06T09:15:00.000Z'
@@ -2140,6 +2142,7 @@ paths:
                           originalCurrency: null
                           date: '2026-10-06'
                           note: null
+                          createdBy: '0192f3a0-0000-7f1e-9b2d-0000000000aa'
                           createdAt: '2026-10-06T13:05:00.000Z'
                           updatedAt: '2026-10-06T13:05:00.000Z'
                           deletedAt: null
@@ -2171,6 +2174,7 @@ paths:
                           originalCurrency: null
                           date: '2026-10-06'
                           note: null
+                          createdBy: '0192f3a0-0000-7f1e-9b2d-0000000000aa'
                           createdAt: '2026-10-06T13:05:00.000Z'
                           updatedAt: '2026-10-06T15:00:00.000Z'
                           deletedAt: '2026-10-06T15:00:00.000Z'
@@ -2387,6 +2391,7 @@ paths:
                           originalCurrency: null
                           date: '2026-10-06'
                           note: Flat white
+                          createdBy: '0192f3a0-0000-7f1e-9b2d-0000000000aa'
                           createdAt: '2026-10-06T13:05:00.000Z'
                           updatedAt: '2026-10-06T13:05:00.000Z'
                           deletedAt: null
@@ -2413,6 +2418,7 @@ paths:
                           originalCurrency: null
                           date: '2026-10-06'
                           note: Flat white, large
+                          createdBy: '0192f3a0-0000-7f1e-9b2d-0000000000aa'
                           createdAt: '2026-10-06T13:05:00.000Z'
                           updatedAt: '2026-10-06T14:30:00.000Z'
                           deletedAt: null
@@ -3422,6 +3428,7 @@ components:
         - originalCurrency
         - date
         - note
+        - createdBy
         - createdAt
         - updatedAt
         - deletedAt
@@ -3461,6 +3468,16 @@ components:
             - { $ref: '#/components/schemas/ExpenseNote' }
             - type: 'null'
           description: Free-text note, or `null` when the user did not write one.
+        createdBy:
+          oneOf:
+            - { $ref: '#/components/schemas/Uuid' }
+            - type: 'null'
+          description: |
+            Who added it: the account that made the request, which in a household is not the
+            owner whose books it is in. Server-assigned and immutable - a client that sends it
+            gets `validation_error` over REST and a per-record `immutable_field` on sync. `null`
+            for a row from before this was recorded, or once that account is deleted (the
+            expense stays).
         createdAt: { $ref: '#/components/schemas/CreatedAt' }
         updatedAt: { $ref: '#/components/schemas/UpdatedAt' }
         deletedAt: { $ref: '#/components/schemas/DeletedAt' }

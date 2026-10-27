@@ -32,6 +32,7 @@ const row = {
   originalCurrency: 'EUR',
   date: '2026-10-06',
   note: null,
+  createdBy: UUID_V7,
   createdAt: NOW,
   updatedAt: NOW,
   deletedAt: null,

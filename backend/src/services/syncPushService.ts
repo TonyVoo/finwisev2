@@ -195,6 +195,7 @@ async function applyExpenseItem(
   userId: string,
   item: Extract<SyncPushItem, { entity: 'expense' }>,
   now: Date,
+  actorId: string,
 ): Promise<Outcome> {
   const fields: ExpenseSyncFields = item.fields;
   const existing: ExpenseRow | null = await tx.expense.findUnique({ where: { id: item.id } });
@@ -241,6 +242,7 @@ async function applyExpenseItem(
       data: {
         id: item.id,
         userId,
+        createdBy: actorId,
         categoryId,
         kind: fields.kind ?? 'expense',
         amountMinor: BigInt(amountMinor),
@@ -776,6 +778,7 @@ async function attemptItem(
   parsed: ParsedPushItem,
   now: Date,
   savepointTag: string,
+  actorId: string,
 ): Promise<SyncPushResult> {
   const { identity, payloadHash } = parsed;
   const { entity, id, clientMutationId } = identity;
@@ -843,7 +846,7 @@ async function attemptItem(
           case 'goal':
             return applyGoalItem(tx, userId, parsed.item, now);
           default:
-            return applyExpenseItem(tx, userId, parsed.item, now);
+            return applyExpenseItem(tx, userId, parsed.item, now, actorId);
         }
       }),
     );
@@ -951,9 +954,10 @@ async function applyOne(
   userId: string,
   parsed: ParsedPushItem,
   now: Date,
+  actorId: string,
 ): Promise<SyncPushResult> {
   try {
-    return await attemptItem(tx, userId, parsed, now, 'first');
+    return await attemptItem(tx, userId, parsed, now, 'first', actorId);
   } catch (error) {
     if (!(error instanceof LostCreateRace)) throw error;
     logger.info('sync push lost a create race; retrying the item', {
@@ -961,7 +965,7 @@ async function applyOne(
       recordId: error.recordId,
       clientMutationId: parsed.identity.clientMutationId,
     });
-    return attemptItem(tx, userId, parsed, now, 'retry');
+    return attemptItem(tx, userId, parsed, now, 'retry', actorId);
   }
 }
 
@@ -1000,6 +1004,8 @@ export async function pushChanges(
   db: Db,
   userId: string,
   parsed: ParsedPushItem[],
+  /** The account that made the request; `userId` is whose books it writes to. */
+  actorId: string = userId,
 ): Promise<SyncPushResponse> {
   const now = new Date();
 
@@ -1008,7 +1014,7 @@ export async function pushChanges(
     // Categories before expenses, so an expense created offline against a category
     // created offline in the same session lands in this one round trip.
     for (const { index, item } of inApplyOrder(parsed, (entry) => entry.identity.entity)) {
-      results.push({ index, result: await applyOne(tx, userId, item, now) });
+      results.push({ index, result: await applyOne(tx, userId, item, now, actorId) });
     }
     // Back into request order: the client matches results to its outbox positionally as
     // well as by `clientMutationId`.

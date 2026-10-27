@@ -322,7 +322,7 @@ describe('API-03 — unknown fields are rejected everywhere', () => {
 });
 
 describe('API-04 — server-owned fields cannot be set by the client', () => {
-  it('is per-record immutable_field on the sync path, for each of the four', async () => {
+  it('is per-record immutable_field on the sync path, for each server-owned field', async () => {
     const user = await createUser();
     const expense = await createExpense(user, { categoryId: user.categories.Groceries!.id });
 
@@ -331,6 +331,8 @@ describe('API-04 — server-owned fields cannot be set by the client', () => {
       createdAt: '2020-01-01T00:00:00.000Z',
       id: expense.id,
       userId: user.user.id,
+      // Who added it: assigned from the request's own account, never from the payload.
+      createdBy: user.user.id,
     };
 
     for (const field of SERVER_OWNED_FIELDS) {

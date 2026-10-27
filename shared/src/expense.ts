@@ -97,6 +97,9 @@ export const Expense = z.strictObject({
   ...OriginalAmountFields,
   date: CalendarDate,
   note: ExpenseNote.nullable(),
+  createdBy: Uuid.nullable().describe(
+    'Who added it: the account that made the request, which in a household is not the owner whose books it is in. Server-assigned and immutable; `null` for a row from before this was recorded, or once that account is deleted.',
+  ),
 });
 
 export const ExpenseCreateRequest = z

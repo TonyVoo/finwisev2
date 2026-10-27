@@ -21,7 +21,7 @@ export const SYNCABLE_SHAPE = {
 } as const;
 
 /** Fields the client may never set directly. Attempting to sets `immutable_field`. */
-export const SERVER_OWNED_FIELDS = ['id', 'userId', 'createdAt', 'revision'] as const;
+export const SERVER_OWNED_FIELDS = ['id', 'userId', 'createdAt', 'revision', 'createdBy'] as const;
 
 export type ServerOwnedField = (typeof SERVER_OWNED_FIELDS)[number];
 

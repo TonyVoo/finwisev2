@@ -76,6 +76,7 @@ export function toWireExpense(row: ExpenseRow): WireExpense {
     currency: row.currency,
     originalAmountMinor: row.originalAmountMinor === null ? null : Number(row.originalAmountMinor),
     originalCurrency: row.originalCurrency,
+    createdBy: row.createdBy,
     date: toCalendarDate(row.date),
     note: row.note,
     createdAt: row.createdAt.toISOString(),
