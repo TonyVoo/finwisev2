@@ -1,4 +1,5 @@
 import type { ApiClient } from '../api/client';
+import { ApiRequestError, NetworkUnavailableError } from '../api/errors';
 import { type Clock, systemClock, toTimestamp } from '../lib/clock';
 import { countPendingRecords } from '../db/queries';
 import type { SqliteDatabase } from '../db/sqlite';
@@ -134,7 +135,23 @@ export interface SyncEngine {
   refreshPending(): Promise<void>;
 }
 
+/**
+ * What a failure says, for the dev console and the dev-only line in the sync sheet.
+ *
+ * The bare message is not enough to tell the three common causes apart: "could not reach
+ * the server" is both a wrong base URL and a backend that is down, and a server that
+ * answers 500 (an unapplied migration) has a message the server chose. So the HTTP status
+ * and code lead when there is one, and a network failure appends the transport's own
+ * reason ("Network request failed", a timeout, a refused connection).
+ */
 function messageOf(error: unknown): string {
+  if (error instanceof ApiRequestError) {
+    return `HTTP ${error.status} ${error.code}: ${error.message}`;
+  }
+  if (error instanceof NetworkUnavailableError) {
+    const cause = error.cause instanceof Error ? error.cause.message : String(error.cause ?? '');
+    return cause === '' ? error.message : `${error.message} (${cause})`;
+  }
   return error instanceof Error ? error.message : String(error);
 }
 

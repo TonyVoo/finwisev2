@@ -6,6 +6,7 @@ import { COPY } from '@/copy/strings';
 import { useMonthCategorySpend, useUserCurrency } from '@/db/hooks';
 import { MonthTotal } from '@/expenses/MonthTotal';
 import { useFirstPaintSkeleton } from '@/expenses/useFirstPaint';
+import { useAwaitingFirstSync } from '@/sync/useAwaitingFirstSync';
 import { MonthSwitcher } from '@/month/MonthSwitcher';
 import { useSelectedMonth } from '@/month/MonthProvider';
 import { CategoryDonut } from '@/summary/CategoryDonut';
@@ -82,7 +83,9 @@ export default function SummaryScreen() {
   // currency, and formatting an amount without one would put a dollar sign in front of a
   // euro figure - so both hold the whole screen on its skeleton (`db/hooks.ts`).
   const currencyCode = currency.data ?? null;
-  const pending = showSkeleton || currencyCode === null;
+  // Also held while no sync has ever completed and nothing is local (`useAwaitingFirstSync`).
+  const awaitingFirstSync = useAwaitingFirstSync();
+  const pending = showSkeleton || currencyCode === null || awaitingFirstSync;
 
   return (
     <View style={styles.screen}>

@@ -9,6 +9,7 @@ import {
   readCategoryReviewPending,
 } from '@/db/onboarding';
 import { writeUser } from '@/db/user';
+import { writeLastSyncedAt } from '@/sync/cursor';
 import type { SqliteDatabase } from '@/db/sqlite';
 import ExpenseListScreen from '../../app/(app)/(tabs)/index';
 import { resetRouter, routerRecord } from '../support/router';
@@ -56,6 +57,9 @@ async function seedUser(database: SqliteDatabase, currency = 'USD'): Promise<voi
     currency,
     createdAt: '2026-10-01T00:00:00.000Z',
   });
+  // An account that has synced before: an empty store is then a true empty, not "not loaded
+  // yet" (`useAwaitingFirstSync`).
+  await writeLastSyncedAt(database, '2026-10-16T08:00:00.000Z');
 }
 
 /** A month with four expenses across three days, as the spec's own layout draws it. */

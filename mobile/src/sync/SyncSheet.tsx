@@ -3,6 +3,7 @@ import type { ColorTokens } from '../theme/tokens';
 import { StyleSheet, Text, View } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
 import { Button } from '../components/Button';
+import { resolveApiBaseUrl } from '../api/config';
 import { Sheet } from '../components/Sheet';
 import {
   COPY,
@@ -113,6 +114,16 @@ export function SyncSheet({ visible, status, onClose, onRetry, now }: SyncSheetP
         )}
       </Text>
 
+      {/* Development builds only: the pill says "Sync failed" whatever the cause, and the
+          three usual ones (wrong base URL, backend down, a migration not applied) need
+          telling apart without a Metro terminal in reach. Never in a release build, where
+          the URL and a server's message are not the user's business. */}
+      {state === 'error' && __DEV__ && process.env.NODE_ENV !== 'test' ? (
+        <Text style={styles.devDetail} selectable testID="sync-sheet-dev-detail">
+          {`${status.lastError ?? 'No error recorded'}\n${devBaseUrl()}`}
+        </Text>
+      ) : null}
+
       {state === 'error' ? (
         <Button
           label={COPY.common.tryAgain}
@@ -125,6 +136,15 @@ export function SyncSheet({ visible, status, onClose, onRetry, now }: SyncSheetP
       ) : null}
     </Sheet>
   );
+}
+
+/** The base URL this build calls, or why there is none - for the dev-only error detail. */
+function devBaseUrl(): string {
+  try {
+    return `API: ${resolveApiBaseUrl()}`;
+  } catch (error) {
+    return error instanceof Error ? error.message : 'API: not configured';
+  }
 }
 
 /**
@@ -236,6 +256,10 @@ const useStyles = createStyles((color) =>
       textAlign: 'right',
     },
     more: {
+      ...type.footnote,
+      color: color.text.tertiary,
+    },
+    devDetail: {
       ...type.footnote,
       color: color.text.tertiary,
     },

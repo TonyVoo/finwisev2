@@ -1,11 +1,11 @@
-import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { createExpense, deleteExpense, updateExpense } from '@/db/mutations';
 import { writeUser } from '@/db/user';
 import type { SqliteDatabase } from '@/db/sqlite';
 import type { SyncStatus } from '@/sync/engine';
 import { SyncSheet } from '@/sync/SyncSheet';
 import { categoryId, expenseId, seedCategory, seedExpense } from '../support/seed';
-import { mountScreen } from '../support/mount';
+import { type MountedScreen, mountScreen } from '../support/mount';
 
 /**
  * The sync detail sheet: `docs/design/02-offline-and-sync.md` §4.
@@ -29,6 +29,19 @@ const BASE: SyncStatus = {
 
 const NOW = new Date('2026-10-16T12:00:00.000Z');
 
+/**
+ * The database each case opened, closed after it (`afterEach` below). Left open, it is a
+ * live SQLite handle that keeps the jest worker from exiting - the `TVO-21` hang, which
+ * every other suite here avoids by doing exactly this.
+ */
+let mounted: MountedScreen | null = null;
+
+afterEach(async () => {
+  await cleanup();
+  mounted?.database.close();
+  mounted = null;
+});
+
 async function mountSheet(
   status: Partial<SyncStatus>,
   options: {
@@ -38,7 +51,7 @@ async function mountSheet(
 ): Promise<jest.Mock> {
   const onRetry = options.onRetry ?? jest.fn(async () => undefined);
 
-  await mountScreen(
+  mounted = await mountScreen(
     <SyncSheet
       visible
       status={{ ...BASE, ...status }}

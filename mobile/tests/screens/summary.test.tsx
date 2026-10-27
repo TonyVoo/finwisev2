@@ -3,6 +3,7 @@ import { COPY, EMPTY_COPY } from '@/copy/strings';
 import { createExpense } from '@/db/mutations';
 import type { SqliteDatabase } from '@/db/sqlite';
 import { writeUser } from '@/db/user';
+import { writeLastSyncedAt } from '@/sync/cursor';
 import { MONTH_TOTAL_TEST_ID } from '@/expenses/MonthTotal';
 import { MONTH_NEXT_TEST_ID, MONTH_PREVIOUS_TEST_ID } from '@/month/MonthSwitcher';
 import { DONUT_CENTRE_TEST_ID, DONUT_TEST_ID } from '@/summary/CategoryDonut';
@@ -56,6 +57,9 @@ async function seedUser(database: SqliteDatabase, currency = 'USD'): Promise<voi
     currency,
     createdAt: '2026-10-01T00:00:00.000Z',
   });
+  // An account that has synced before: an empty store is then a true empty, not "not loaded
+  // yet" (`useAwaitingFirstSync`).
+  await writeLastSyncedAt(database, '2026-10-16T08:00:00.000Z');
 }
 
 /**

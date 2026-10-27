@@ -34,6 +34,7 @@ import { MonthTotal } from '@/expenses/MonthTotal';
 import { SearchBar } from '@/expenses/SearchBar';
 import { formatMoney } from '@/lib/money';
 import { useFirstPaintSkeleton } from '@/expenses/useFirstPaint';
+import { useAwaitingFirstSync } from '@/sync/useAwaitingFirstSync';
 import { monthLabel } from '@/lib/calendar';
 import { MonthSwitcher } from '@/month/MonthSwitcher';
 import { SyncIndicator } from '@/sync/SyncIndicator';
@@ -142,9 +143,13 @@ export default function ExpenseListScreen() {
 
   // The skeleton covers the frame or two before the first read returns, and is abandoned
   // after 300ms whatever happens - see `useFirstPaintSkeleton`.
-  const showSkeleton = useFirstPaintSkeleton(
-    expenses.isPending || total.isPending || anyExist.isPending || currency.isPending,
-  );
+  // Longer than that while no sync has ever completed and nothing is held locally: an empty
+  // store there is "not loaded yet", not "no expenses" (`useAwaitingFirstSync`).
+  const awaitingFirstSync = useAwaitingFirstSync();
+  const showSkeleton =
+    useFirstPaintSkeleton(
+      expenses.isPending || total.isPending || anyExist.isPending || currency.isPending,
+    ) || awaitingFirstSync;
 
   const rows = searching ? (searchRows.data ?? []) : (expenses.data ?? []);
   const sections = groupByDate(rows, today);
@@ -250,7 +255,7 @@ export default function ExpenseListScreen() {
         // The total renders above the list and outside it, so it stays put while the rows
         // scroll - and so a paginated list can never be mistaken for its source (rule 3).
         <MonthTotal
-          totalMinor={currencyCode === null ? undefined : total.data}
+          totalMinor={currencyCode === null || awaitingFirstSync ? undefined : total.data}
           currency={currencyCode ?? ''}
           isCurrentMonth={isCurrent}
         />

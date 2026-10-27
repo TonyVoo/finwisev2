@@ -14,6 +14,9 @@ export const queryKeys = {
   /** Everything read out of SQLite, i.e. the whole cache. See `localWrite.ts`. */
   local: () => ['local'] as const,
 
+  /** When the last sync completed, as persisted - what tells "empty" from "not loaded yet". */
+  lastSyncedAt: () => ['local', 'sync', 'lastSyncedAt'] as const,
+
   categories: {
     all: () => ['local', 'categories'] as const,
     live: () => ['local', 'categories', 'live'] as const,
