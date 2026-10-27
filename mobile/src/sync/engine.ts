@@ -207,6 +207,12 @@ export function createSyncEngine(deps: SyncEngineDependencies): SyncEngine {
       // the literal condition for pill state 6 - "failed **while online**". Offline, the
       // failure carries no information the user needs and state 4 already says what is
       // happening.
+      // The pill only says "could not reach the server", whatever went wrong. In development
+      // the real reason (wrong base URL, backend down, an unapplied migration answering 500)
+      // goes to the Metro terminal, which is where someone debugging it is looking.
+      if (__DEV__ && process.env.NODE_ENV !== 'test') {
+        console.warn(`[sync] ${trigger} failed:`, messageOf(error));
+      }
       publish({ lastAttemptFailed: reachability.current(), lastError: messageOf(error) });
       return { status: 'failed', trigger, push, pull, error };
     } finally {

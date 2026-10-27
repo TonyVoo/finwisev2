@@ -246,3 +246,21 @@ export function dateRowLabel(date: CalendarDate, today: CalendarDate, locale?: s
 export function spokenDate(date: CalendarDate, locale?: string): string {
   return formatDate(date, { day: 'numeric', month: 'long', year: 'numeric' }, locale);
 }
+
+/**
+ * Which column a date sits in on a Monday-first week: 0 = Monday ... 6 = Sunday.
+ *
+ * Pure UTC arithmetic on the integers, so no device zone can move a date to another
+ * weekday. (`getUTCDay` is Sunday = 0, hence the shift.)
+ */
+export function weekdayIndex(date: CalendarDate): number {
+  return (utcInstant(date).getUTCDay() + 6) % 7;
+}
+
+/** Single-letter weekday headers for a Monday-first grid, in the given locale. */
+export function weekdayInitials(locale?: string): readonly string[] {
+  // 2026-10-26 is a Monday; any Monday would do.
+  return Array.from({ length: 7 }, (_unused, index) =>
+    formatDate(stepDay('2026-10-26', index), { weekday: 'narrow' }, locale),
+  );
+}

@@ -16,6 +16,8 @@ import {
   spokenDate,
   stepDay,
   stepMonth,
+  weekdayIndex,
+  weekdayInitials,
 } from '../lib/calendar';
 import { HIT_SLOP_44, color, radius, size, space, type } from '../theme/tokens';
 
@@ -237,7 +239,24 @@ function DayGrid({
         </Pressable>
       </View>
 
+      {/* Decorative: every day button already carries its full spoken date. */}
+      <View
+        style={styles.days}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        {weekdayInitials().map((initial, index) => (
+          <View key={index} style={styles.weekday}>
+            <Text style={styles.weekdayLabel}>{initial}</Text>
+          </View>
+        ))}
+      </View>
+
       <View style={styles.days}>
+        {/* Blank cells push day 1 under its weekday. */}
+        {Array.from({ length: weekdayIndex(calendarDate(year, monthNumber, 1)) }, (_unused, i) => (
+          <View key={`blank-${i}`} style={styles.day} />
+        ))}
         {Array.from({ length: days }, (_unused, index) => {
           const date = calendarDate(year, monthNumber, index + 1);
           // Rule 9: a date in the future is rejected. "An expense that has not happened
@@ -258,6 +277,7 @@ function DayGrid({
               accessibilityState={{ selected: isSelected, disabled: future }}
               style={[
                 styles.day,
+                styles.dayFilled,
                 isSelected ? styles.daySelected : null,
                 future ? styles.dayDisabled : null,
               ]}
@@ -313,8 +333,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: radius.sm,
-    backgroundColor: color.bg.surface,
   },
+  dayFilled: { backgroundColor: color.bg.surface },
+  weekday: { width: '13%', alignItems: 'center' },
+  weekdayLabel: { ...type.caption, color: color.text.tertiary },
   daySelected: {
     backgroundColor: color.primary.default,
   },

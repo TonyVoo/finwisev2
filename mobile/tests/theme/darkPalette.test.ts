@@ -1,3 +1,4 @@
+import type * as TokensModule from '@/theme/tokens';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
@@ -135,7 +136,7 @@ describe('scheme resolution', () => {
         addChangeListener: () => ({ remove: () => undefined }),
       }));
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const tokens = require('@/theme/tokens') as typeof import('@/theme/tokens');
+      const tokens = require('@/theme/tokens') as typeof TokensModule;
       expect(tokens.isDark).toBe(true);
       expect(tokens.color.bg.canvas).toBe('#0F1115');
     });

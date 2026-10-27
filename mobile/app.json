@@ -13,7 +13,18 @@
     "android": {
       "package": "com.expensetracker.app"
     },
-    "plugins": ["expo-router", "expo-background-task", "expo-sqlite"],
+    "plugins": [
+      "expo-router",
+      "expo-background-task",
+      "expo-sqlite",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#F7F8FA",
+          "dark": { "backgroundColor": "#0F1115" }
+        }
+      ]
+    ],
     "experiments": {
       "typedRoutes": true
     },

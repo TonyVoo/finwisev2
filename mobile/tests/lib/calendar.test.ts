@@ -14,6 +14,8 @@ import {
   stepDay,
   stepMonth,
   todayCalendarDate,
+  weekdayIndex,
+  weekdayInitials,
 } from '@/lib/calendar';
 
 /**
@@ -274,5 +276,19 @@ describe('building a date from picker components', () => {
     expect(calendarDate(2026, 1, 2)).toBe('2026-01-02');
     expect(calendarDate(2026, 12, 31)).toBe('2026-12-31');
     expect(calendarDate(876, 3, 4)).toBe('0876-03-04');
+  });
+});
+
+describe('weekday layout helpers', () => {
+  it('numbers weekdays Monday-first', () => {
+    // 2026-10-26 is a Monday, 2026-10-25 a Sunday.
+    expect(weekdayIndex('2026-10-26')).toBe(0);
+    expect(weekdayIndex('2026-10-25')).toBe(6);
+    expect(weekdayIndex('2026-10-01')).toBe(3); // Thursday
+  });
+
+  it('offers seven headers in a Monday-first order', () => {
+    const initials = weekdayInitials('en-US');
+    expect(initials).toEqual(['M', 'T', 'W', 'T', 'F', 'S', 'S']);
   });
 });
