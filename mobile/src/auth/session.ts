@@ -269,7 +269,7 @@ export function createSessionController(options: SessionControllerOptions): Sess
     },
 
     async signIn(auth) {
-      // Before `persist`, never after. `persist` publishes `authenticated`, the route
+      // Adopt before the publish, never after. The publish `authenticated`, the route
       // guards then let the tab bar mount, and its screens read SQLite on their first
       // frame - so a store adopted afterwards is a store the new user has already been
       // shown the previous user's expenses out of. Adopting first also means a failure
@@ -281,11 +281,26 @@ export function createSessionController(options: SessionControllerOptions): Sess
       // That matters for the same reason the ordering does: the first screen behind the
       // gate formats amounts with `user.currency`, and a store that is adopted but has no
       // profile yet would render that frame with no currency at all.
-      await localStore.adopt(auth.user.id, auth.user);
+      //
+      // But the tokens are written before the adopt (`AUTH-20`): `adopt` is the destructive
+      // step - for a different user it deletes the previous account's undrained work - and a
+      // keystore that cannot store the tokens must not be what triggers it. A failed write
+      // throws here with the previous account's data untouched; a failed adopt takes the
+      // freshly written tokens back out, so the store never claims a session whose rows were
+      // not made safe to read.
+      const next = sessionFromTokenPair(auth, auth.user.id, clock());
+      await tokenStore.write(next);
+      try {
+        await localStore.adopt(auth.user.id, auth.user);
+      } catch (error) {
+        await tokenStore.clear().catch(() => undefined);
+        throw error;
+      }
       // After `adopt`, so a failed adoption leaves the old session's requests retryable,
-      // and before `persist`, so every listener woken by the publish already sees it.
+      // and before the publish, so every listener woken by it already sees the new epoch.
       epoch += 1;
-      await persist(sessionFromTokenPair(auth, auth.user.id, clock()));
+      session = next;
+      publish({ status: 'authenticated', expired: false });
     },
 
     async adoptTokenPair(pair) {

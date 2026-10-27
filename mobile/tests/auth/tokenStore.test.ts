@@ -73,10 +73,10 @@ describe('createSecureTokenStore', () => {
   // stored under its own key rather than as one JSON blob.
   it('uses one key per value', async () => {
     await store.write(sessionFromTokenPair(PAIR, USER_ID, ISSUED_AT));
+    // The owner travels inside both values (AUTH-21), so there is no third key to disagree.
     expect([...mocked.__store.keys()].sort()).toEqual([
       'expenseTracker.accessToken',
       'expenseTracker.refreshToken',
-      'expenseTracker.userId',
     ]);
   });
 
@@ -109,25 +109,50 @@ describe('createSecureTokenStore', () => {
      * expenses (`TVO-16`). One login costs the user nothing: the rows stay, and
      * `localStore.adopt` keeps them when the same user comes back.
      */
-    it('reads as no session when the user id is missing', async () => {
-      await store.write(sessionFromTokenPair(PAIR, USER_ID, ISSUED_AT));
-      mocked.__store.delete('expenseTracker.userId');
+    it('reads as no session when the owner is missing from the refresh token', async () => {
+      mocked.__store.set(
+        'expenseTracker.refreshToken',
+        JSON.stringify({ token: 'r', expiresAt: 1 }),
+      );
 
       await expect(store.read()).resolves.toBeNull();
     });
 
-    it('reads as no session when the user id is empty', async () => {
-      await store.write(sessionFromTokenPair(PAIR, USER_ID, ISSUED_AT));
-      mocked.__store.set('expenseTracker.userId', '');
+    it('reads as no session when the owner is empty', async () => {
+      mocked.__store.set(
+        'expenseTracker.refreshToken',
+        JSON.stringify({ token: 'r', expiresAt: 1, userId: '' }),
+      );
 
       await expect(store.read()).resolves.toBeNull();
     });
 
-    it('reads as no session when the stored expiry is not a number', async () => {
+    it('still reads a session stored by an older build, whose owner had its own key', async () => {
       mocked.__store.set('expenseTracker.userId', USER_ID);
       mocked.__store.set(
         'expenseTracker.refreshToken',
-        JSON.stringify({ token: 'r', expiresAt: 'soon' }),
+        JSON.stringify({ token: 'r-old', expiresAt: 5 }),
+      );
+
+      await expect(store.read()).resolves.toMatchObject({ userId: USER_ID, refreshToken: 'r-old' });
+    });
+
+    it("ignores an access token that belongs to a different owner than the refresh token", async () => {
+      await store.write(sessionFromTokenPair(PAIR, USER_ID, ISSUED_AT));
+      mocked.__store.set(
+        'expenseTracker.accessToken',
+        JSON.stringify({ token: 'someone-elses', expiresAt: 9e15, userId: 'other-user' }),
+      );
+
+      const session = await store.read();
+      expect(session?.userId).toBe(USER_ID);
+      expect(session?.accessToken).toBe('');
+    });
+
+    it('reads as no session when the stored expiry is not a number', async () => {
+      mocked.__store.set(
+        'expenseTracker.refreshToken',
+        JSON.stringify({ token: 'r', expiresAt: 'soon', userId: USER_ID }),
       );
       await expect(store.read()).resolves.toBeNull();
     });

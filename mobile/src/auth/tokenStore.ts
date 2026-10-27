@@ -46,6 +46,13 @@ const SECURE_STORE_OPTIONS: SecureStore.SecureStoreOptions = {
 interface StoredToken {
   readonly token: string;
   readonly expiresAt: number;
+  /**
+   * Whose token this is. Carried *inside* each value so that the owner and a token can
+   * never disagree: they are one `setItemAsync`, not independent writes that a failure
+   * can split (`AUTH-21`). Absent on values written before this field existed, in which
+   * case the legacy {@link USER_KEY} value is the owner.
+   */
+  readonly userId?: string;
 }
 
 function parseStoredToken(raw: string | null): StoredToken | null {
@@ -56,7 +63,9 @@ function parseStoredToken(raw: string | null): StoredToken | null {
       typeof parsed === 'object' &&
       parsed !== null &&
       typeof (parsed as StoredToken).token === 'string' &&
-      Number.isFinite((parsed as StoredToken).expiresAt)
+      Number.isFinite((parsed as StoredToken).expiresAt) &&
+      ((parsed as StoredToken).userId === undefined ||
+        typeof (parsed as StoredToken).userId === 'string')
     ) {
       return parsed as StoredToken;
     }
@@ -69,7 +78,7 @@ function parseStoredToken(raw: string | null): StoredToken | null {
 export function createSecureTokenStore(): TokenStore {
   return {
     async read(): Promise<StoredSession | null> {
-      const [access, refresh, userId] = await Promise.all([
+      const [access, refresh, legacyUserId] = await Promise.all([
         SecureStore.getItemAsync(ACCESS_KEY, SECURE_STORE_OPTIONS),
         SecureStore.getItemAsync(REFRESH_KEY, SECURE_STORE_OPTIONS),
         SecureStore.getItemAsync(USER_KEY, SECURE_STORE_OPTIONS),
@@ -87,9 +96,21 @@ export function createSecureTokenStore(): TokenStore {
       // guessing wrong is showing one account another account's expenses. The cost of
       // being strict is one login, and it loses nothing - the rows stay on disk, and
       // `localStore.adopt` keeps them if the same user comes back.
-      if (userId === null || userId.length === 0) return null;
+      //
+      // The owner is the one written with the refresh token. The separate key is only a
+      // fallback for a session stored by an older build.
+      const userId = refreshToken.userId ?? legacyUserId;
+      if (userId === null || userId === undefined || userId.length === 0) return null;
 
-      const accessToken = parseStoredToken(access);
+      // An access token stamped with a different owner is the other half of a write that
+      // failed part-way. It is not usable, and it is recoverable: treated as absent, the
+      // first request refreshes with the (consistent) refresh token.
+      const parsedAccess = parseStoredToken(access);
+      const accessToken =
+        parsedAccess !== null &&
+        (parsedAccess.userId === undefined || parsedAccess.userId === userId)
+          ? parsedAccess
+          : null;
       return {
         userId,
         // An absent or corrupt access token is recoverable: the first request 401s and
@@ -103,25 +124,27 @@ export function createSecureTokenStore(): TokenStore {
     },
 
     async write(session: StoredSession): Promise<void> {
-      await Promise.all([
-        SecureStore.setItemAsync(USER_KEY, session.userId, SECURE_STORE_OPTIONS),
-        SecureStore.setItemAsync(
-          ACCESS_KEY,
-          JSON.stringify({
-            token: session.accessToken,
-            expiresAt: session.accessTokenExpiresAt,
-          } satisfies StoredToken),
-          SECURE_STORE_OPTIONS,
-        ),
-        SecureStore.setItemAsync(
-          REFRESH_KEY,
-          JSON.stringify({
-            token: session.refreshToken,
-            expiresAt: session.refreshTokenExpiresAt,
-          } satisfies StoredToken),
-          SECURE_STORE_OPTIONS,
-        ),
-      ]);
+      // Access first, refresh last: the refresh token is what makes a session a session, so
+      // it is the commit point. Whichever write fails, `read()` sees either the old session
+      // whole or the new one whole - never one user's owner with another's tokens.
+      await SecureStore.setItemAsync(
+        ACCESS_KEY,
+        JSON.stringify({
+          token: session.accessToken,
+          expiresAt: session.accessTokenExpiresAt,
+          userId: session.userId,
+        } satisfies StoredToken),
+        SECURE_STORE_OPTIONS,
+      );
+      await SecureStore.setItemAsync(
+        REFRESH_KEY,
+        JSON.stringify({
+          token: session.refreshToken,
+          expiresAt: session.refreshTokenExpiresAt,
+          userId: session.userId,
+        } satisfies StoredToken),
+        SECURE_STORE_OPTIONS,
+      );
     },
 
     async clear(): Promise<void> {

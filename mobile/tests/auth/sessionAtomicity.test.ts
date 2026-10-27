@@ -16,7 +16,7 @@ import { createTestDatabase, type TestDatabase } from '../support/sqlite';
  * `sessionTeardown.test.ts` covers the rule — a different owner wipes, the same owner
  * keeps, a forced clear keeps — by counting rows. This file covers the two places that
  * rule is only as good as the order it runs in, and it is separate because those cases
- * are **known defects**: `it.failing` passes while the bug is present and turns red the
+ * were **known defects**, written `it.failing` so they passed while the bug was present and turned red the
  * moment it is fixed. Flip them to `it` then rather than deleting them; the assertion is
  * already the one the fix has to satisfy.
  *
@@ -155,7 +155,7 @@ describe('signing in as a different user', () => {
    * property its sibling file asserts — nothing is published before the store is safe to
    * read — and takes the destructive step out of the failure path.
    */
-  it.failing(
+  it(
     'keeps the previous account data when the sign-in cannot store its tokens',
     async () => {
       const controller = createSessionController({
@@ -202,7 +202,7 @@ describe('signing in as a different user', () => {
    * travels with it cannot disagree with it. The per-value size limit that split these
    * keys apart is not in danger from one uuid.
    */
-  it.failing('never reads back a session whose owner disagrees with its tokens', async () => {
+  it('never reads back a session whose owner disagrees with its tokens', async () => {
     const store = createSecureTokenStore();
     await store.write(sessionFromTokenPair(tokenPair('user-a'), USER_A, ISSUED_AT));
 
