@@ -562,3 +562,36 @@ describe('applyLocalMutation', () => {
     });
   });
 });
+
+describe('repairing a refused create', () => {
+  it('sends the whole row when an unsynced row has nothing queued', async () => {
+    const database = createTestDatabase();
+    await migrate(database);
+    await database.runAsync(
+      `INSERT INTO categories (id, name, color, isDefault, updatedAt, revision)
+       VALUES ('0192f5a0-0000-7000-8000-000000000001', 'Groceries', '#2F8044', 0, '2026-10-08T10:00:00.000Z', 1)`,
+      [],
+    );
+    await database.runAsync(
+      `INSERT INTO expenses (id, categoryId, kind, amountMinor, currency, date, updatedAt, revision)
+       VALUES ('0192f5a0-0000-7000-8000-0000000000e1', '0192f5a0-0000-7000-8000-000000000001', 'income', 1500, 'USD', '2026-10-08', '2026-10-08T10:00:00.000Z', 0)`,
+      [],
+    );
+
+    await applyLocalMutation(database, {
+      entity: 'expense',
+      id: '0192f5a0-0000-7000-8000-0000000000e1',
+      fields: { amountMinor: 1600 },
+    });
+
+    const entry = await database.getFirstAsync<{ fields: string }>('SELECT fields FROM outbox', []);
+    expect(JSON.parse(entry!.fields)).toMatchObject({
+      categoryId: '0192f5a0-0000-7000-8000-000000000001',
+      kind: 'income',
+      amountMinor: 1600,
+      currency: 'USD',
+      date: '2026-10-08',
+    });
+    database.close();
+  });
+});

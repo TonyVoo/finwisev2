@@ -7,7 +7,7 @@ import {
 } from '@expense-tracker/shared';
 import { type Clock, systemClock, toTimestamp } from '../lib/clock';
 import { uuidv7 } from '../lib/uuidv7';
-import { entitySpec } from './entities';
+import { type EntitySpec, entitySpec } from './entities';
 import type { SqliteBindValue, SqliteDatabase, SqliteExecutor } from './sqlite';
 
 /**
@@ -211,6 +211,7 @@ export async function applyLocalMutationPlan(
         throw new EmptyLocalMutationError(mutation.entity, recordId);
       }
 
+      let outboxFields: Record<string, unknown> = fields;
       const created = !(await rowExists(txn, spec.table, recordId));
       if (created) {
         const missing = spec.requiredOnCreate.filter((column) => !(column in fields));
@@ -220,6 +221,12 @@ export async function applyLocalMutationPlan(
         await insertRow(txn, spec.table, recordId, updatedAt, spec.insertDefaults, fields);
       } else {
         await updateRow(txn, spec.table, recordId, updatedAt, changed, fields);
+        // A row the server has never seen (revision 0) has to be sent whole. Its create may
+        // have been refused and dropped from the outbox, so an edit carrying only the
+        // changed fields would reach the server as an incomplete create and be refused
+        // again - a repair that can never succeed.
+        const whole = await wholeRowFields(txn, spec, recordId);
+        if (whole !== null) outboxFields = { ...whole, ...fields };
       }
 
       // One idempotency key per mutation, minted once and both stored and returned, so a
@@ -229,7 +236,7 @@ export async function applyLocalMutationPlan(
       const seq = await enqueue(txn, {
         entity: mutation.entity,
         recordId,
-        fields,
+        fields: outboxFields,
         updatedAt,
         clientMutationId,
         queuedAt: updatedAt,
@@ -247,6 +254,33 @@ export async function applyLocalMutationPlan(
   });
 
   return queued;
+}
+
+/**
+ * Every mutable column of a row the server has never seen, or null once it has (revision
+ * above 0). Validated through the entity's own field schema, so what it returns is exactly
+ * what a create would have sent.
+ */
+async function wholeRowFields(
+  txn: SqliteExecutor,
+  spec: EntitySpec,
+  id: string,
+): Promise<Record<string, unknown> | null> {
+  const row = await txn.getFirstAsync<Record<string, unknown>>(
+    `SELECT * FROM ${spec.table} WHERE id = ?`,
+    [id],
+  );
+  if (row === null || row.revision !== 0) return null;
+  // Something still queued will carry the create ahead of this edit, so a partial edit is
+  // fine. Only a row with nothing queued - its create refused and dropped - needs sending whole.
+  const queued = await txn.getFirstAsync<{ one: number }>(
+    'SELECT 1 AS one FROM outbox WHERE entity = ? AND recordId = ? LIMIT 1',
+    [spec.entity, id],
+  );
+  if (queued !== null) return null;
+  const whole: Record<string, unknown> = {};
+  for (const column of spec.mutableColumns) whole[column] = row[column];
+  return definedFields(spec.parseFields(whole));
 }
 
 async function rowExists(txn: SqliteExecutor, table: string, id: string): Promise<boolean> {
