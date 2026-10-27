@@ -91,6 +91,11 @@ backend **restarted after pulling** (it adds three tables: `pnpm --filter backen
 - [ ] After joining, B sees **A's** books and currency; B's own expenses are gone from view.
       Add an expense on B: it appears on A after a sync, and the other way round.
 - [ ] The same code does **not** work a second time, or after 48 hours.
+- [ ] **Who added it:** in a household, each new expense on Home reads "... - Added by <name>" (the
+      part of their email before the @), and "Added by you" on your own. Rows from before the
+      household, and any row with no recorded author, show nothing extra. A solo account never sees
+      the line. VoiceOver/TalkBack read it as part of the row.
+- [ ] Airplane mode: the "Added by" lines still show (the names are kept on the phone).
 - [ ] B: **Leave household**. B is back on its own books and currency, its own expenses are back, and
       A still has everything B added while in.
 - [ ] A removes B while B is in: B's phone returns to its own books on its next sync (no crash, no
