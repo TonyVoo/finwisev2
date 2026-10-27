@@ -115,11 +115,11 @@ export function expenseRowLabel(
       : [COPY.home.paidIn.replace('{amount}', originalLabel(item, locale) ?? '')]),
     ...(item.note === null || item.note.trim().length === 0 ? [] : [item.note]),
     dayLabel(item.date, today, locale),
-    ...(item.pending ? ['not synced yet'] : []),
+    ...(item.pending ? [COPY.a11y.notSyncedYet] : []),
     // Deck §8: the row's composed label ends with `, could not sync` when the server
     // refused it. Appended rather than substituted, because the amount and the day are
     // still what the row is about.
-    ...(item.needsAttention ? ['could not sync'] : []),
+    ...(item.needsAttention ? [COPY.a11y.couldNotSync] : []),
   ];
 
   return parts.join(', ');

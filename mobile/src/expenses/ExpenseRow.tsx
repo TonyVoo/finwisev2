@@ -59,10 +59,10 @@ export function ExpenseRow({ item, today, onPress, onDelete, lastInGroup }: Expe
         lastInGroup={lastInGroup}
         leading={<Swatch colorHex={rowCategoryColor(item)} />}
         accessibilityLabel={expenseRowLabel(item, today)}
-        accessibilityHint="Double tap to edit this expense."
+        accessibilityHint={COPY.a11y.editExpense}
         // The gesture's screen-reader equivalent. Named `delete` because that is the
         // standard action name both platforms surface in their own UI.
-        accessibilityActions={[{ name: 'delete', label: 'Delete expense' }]}
+        accessibilityActions={[{ name: 'delete', label: COPY.a11y.deleteExpense }]}
         onAccessibilityAction={(event) => {
           if (event.nativeEvent.actionName === 'delete') onDelete();
         }}

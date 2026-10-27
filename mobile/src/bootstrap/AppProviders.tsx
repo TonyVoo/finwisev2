@@ -5,6 +5,7 @@ import { DatabaseProvider } from '../db/DatabaseProvider';
 import { MonthProvider } from '../month/MonthProvider';
 import { SnackbarProvider } from '../components/Snackbar';
 import { SyncProvider } from '../sync/SyncProvider';
+import { LanguageProvider } from '../i18n/LanguageProvider';
 import { AppLockProvider } from '../lock/AppLockProvider';
 import { META_KEYS, writeMeta } from '../db/meta';
 import { ThemeProvider } from '../theme/ThemeProvider';
@@ -69,7 +70,14 @@ export function AppProviders({ container, startSync = true, children }: AppProvi
                     database={container.database}
                     initialEnabled={container.appLockEnabled}
                   >
-                    <MonthProvider clock={container.clock}>{children}</MonthProvider>
+                    <MonthProvider clock={container.clock}>
+                      <LanguageProvider
+                        database={container.database}
+                        initialPreference={container.languagePreference}
+                      >
+                        {children}
+                      </LanguageProvider>
+                    </MonthProvider>
                   </AppLockProvider>
                 </SnackbarProvider>
               </SyncProvider>

@@ -568,7 +568,7 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
               leading={<Feather name="globe" size={20} color={color.text.tertiary} />}
               trailing={<Text style={styles.valueText}>{entryCode}</Text>}
               accessibilityLabel={`${COPY.form.currency.row}, ${entryCode}`}
-              accessibilityHint="Double tap to pay in another currency."
+              accessibilityHint={COPY.a11y.payInOtherCurrency}
             >
               <RowTitle>{COPY.form.currency.row}</RowTitle>
             </Row>
@@ -589,7 +589,7 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
                   </Text>
                 }
                 accessibilityLabel={`${COPY.form.rate.label}, ${rateText}`}
-                accessibilityHint="Double tap to type your own exchange rate."
+                accessibilityHint={COPY.a11y.typeRate}
               >
                 <RowTitle>{COPY.form.rate.label}</RowTitle>
                 {rateStatus === 'failed' && rateText === '' ? (
@@ -620,7 +620,7 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
                 )
               }
               accessibilityLabel={`${COPY.form.field.category}, ${chosenCategory?.name ?? ''}`}
-              accessibilityHint="Double tap to change category."
+              accessibilityHint={COPY.a11y.changeCategory}
             >
               <RowTitle>{COPY.form.field.category}</RowTitle>
             </Row>

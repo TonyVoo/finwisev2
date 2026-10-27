@@ -7,7 +7,9 @@ import {
 } from '@/auth/formState';
 import { validateLogin, validateSignup } from '@/auth/validation';
 import { ApiRequestError, NetworkUnavailableError } from '@/api/errors';
-import { GENERIC_ERROR, VALIDATION_COPY } from '@/copy/strings';
+import { COPY, VALIDATION_COPY } from '@/copy/strings';
+
+const GENERIC_ERROR = COPY.error.generic;
 
 /**
  * Validation *timing* - `docs/design/03-auth.md` §1.2 rule 2.

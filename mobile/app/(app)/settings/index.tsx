@@ -11,6 +11,8 @@ import { COPY } from '@/copy/strings';
 import { useDatabase } from '@/db/DatabaseProvider';
 import { exportExpenses, nativeExportDependencies } from '@/export/exportExpenses';
 import { useEmailVerified, usePendingRecordCount, useUserCurrency, useUserEmail } from '@/db/hooks';
+import { LanguageSheet, languagePreferenceLabel } from '@/i18n/LanguageSheet';
+import { useLanguage } from '@/i18n/LanguageProvider';
 import { useAppLock } from '@/lock/AppLockProvider';
 import { space, type } from '@/theme/tokens';
 import { ThemeSheet, themePreferenceLabel } from '@/theme/ThemeSheet';
@@ -56,6 +58,8 @@ export default function SettingsScreen() {
   const [confirmingLogout, setConfirmingLogout] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [choosingTheme, setChoosingTheme] = useState(false);
+  const [choosingLanguage, setChoosingLanguage] = useState(false);
+  const language = useLanguage();
   const { preference } = useTheme();
 
   const hasUnsynced = (pending.data ?? 0) > 0;
@@ -178,6 +182,17 @@ export default function SettingsScreen() {
             <RowTitle>{COPY.settings.appearance}</RowTitle>
           </Row>
           <Row
+            testID="settings-language"
+            onPress={() => setChoosingLanguage(true)}
+            chevron
+            accessibilityLabel={`${COPY.language.title}, ${languagePreferenceLabel(language.preference)}`}
+            trailing={
+              <Text style={styles.value}>{languagePreferenceLabel(language.preference)}</Text>
+            }
+          >
+            <RowTitle>{COPY.language.title}</RowTitle>
+          </Row>
+          <Row
             testID="settings-app-lock"
             onPress={() => void toggleLock()}
             accessibilityLabel={`${COPY.lock.settingsRow}. ${COPY.lock.settingsHint}`}
@@ -238,6 +253,7 @@ export default function SettingsScreen() {
       </ScrollView>
 
       <ThemeSheet visible={choosingTheme} onClose={() => setChoosingTheme(false)} />
+      <LanguageSheet visible={choosingLanguage} onClose={() => setChoosingLanguage(false)} />
 
       <Dialog
         visible={confirmingLogout}

@@ -53,6 +53,12 @@ export const META_KEYS = {
    * {@link WIPED_META_KEYS}: signing out must not quietly turn a lock off.
    */
   appLockEnabled: 'appLockEnabled',
+  /**
+   * `system`, `en` or `vi`: the language chosen in Settings. A property of this device, like
+   * the theme, so deliberately absent from {@link WIPED_META_KEYS}: signing out must not
+   * switch the language someone reads their own phone in.
+   */
+  languagePreference: 'languagePreference',
 } as const;
 
 export type MetaKey = (typeof META_KEYS)[keyof typeof META_KEYS];

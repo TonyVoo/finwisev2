@@ -2,6 +2,7 @@ import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { formatMoney } from '../lib/money';
 import { space, type } from '../theme/tokens';
 import { createStyles } from '../theme/ThemeProvider';
+import { COPY } from '../copy/strings';
 
 /**
  * The amount, and the one reserved line beneath it:
@@ -58,7 +59,7 @@ export function AmountDisplay({ amountMinor, currency, muted, error, hint }: Amo
         // keypad that announced only the digit pressed would leave a non-sighted user
         // unable to tell what the value is, which is the one thing that matters here
         // (§Accessibility rule 2).
-        accessibilityLabel={`Amount, ${formatted}`}
+        accessibilityLabel={COPY.a11y.amount.replace('{amount}', formatted)}
         accessibilityLiveRegion="polite"
         // Never truncated: a clipped amount is worse than a taller line.
         numberOfLines={1}

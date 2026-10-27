@@ -264,11 +264,13 @@ function CategoryRow({
       lastInGroup={lastInGroup}
       leading={<Swatch colorHex={category.color} />}
       accessibilityLabel={categoryRowLabel(category)}
-      accessibilityHint="Double tap to edit this category."
+      accessibilityHint={COPY.a11y.editCategory}
       // The `isDefault` row exposes **no** delete action, so assistive technology is not
       // offered one that always fails (§5 rule 3).
       accessibilityActions={
-        category.isDefault ? undefined : [{ name: 'delete', label: `Delete ${category.name}` }]
+        category.isDefault
+          ? undefined
+          : [{ name: 'delete', label: COPY.a11y.deleteNamed.replace('{name}', category.name) }]
       }
       onAccessibilityAction={(event) => {
         if (event.nativeEvent.actionName === 'delete') onDelete();

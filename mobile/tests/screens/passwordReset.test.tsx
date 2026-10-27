@@ -1,7 +1,7 @@
 import { screen, waitFor } from '@testing-library/react-native';
 import { NetworkUnavailableError } from '@/api/errors';
 import type { Transport, TransportRequest } from '@/api/transport';
-import { COPY, GENERIC_ERROR, VALIDATION_COPY } from '@/copy/strings';
+import { COPY, VALIDATION_COPY } from '@/copy/strings';
 import ForgotPasswordScreen from '../../app/(auth)/forgot-password';
 import LoginScreen from '../../app/(auth)/login';
 import ResetPasswordScreen from '../../app/(auth)/reset-password';
@@ -15,6 +15,8 @@ import {
   typeInto,
   type MountedScreen,
 } from '../support/mount';
+
+const GENERIC_ERROR = COPY.error.generic;
 
 jest.mock('expo-router');
 

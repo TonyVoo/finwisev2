@@ -80,7 +80,7 @@ export default function MonthPickerScreen() {
           hitSlop={HIT_SLOP_44}
           accessibilityRole="button"
           // Names the destination, not the direction (§A11y rule 2).
-          accessibilityLabel={`Previous year, ${year - 1}`}
+          accessibilityLabel={COPY.a11y.previousYear.replace('{year}', String(year - 1))}
           style={styles.yearArrow}
         >
           <Feather name="chevron-left" size={20} color={color.text.primary} />
@@ -95,7 +95,7 @@ export default function MonthPickerScreen() {
           onPress={() => setYear((current) => current + 1)}
           hitSlop={HIT_SLOP_44}
           accessibilityRole="button"
-          accessibilityLabel={`Next year, ${year + 1}`}
+          accessibilityLabel={COPY.a11y.nextYear.replace('{year}', String(year + 1))}
           style={styles.yearArrow}
         >
           <Feather name="chevron-right" size={20} color={color.text.primary} />

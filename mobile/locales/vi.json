@@ -1,0 +1,7 @@
+{
+  "ios": {
+    "NSCameraUsageDescription": "Expense Tracker dùng máy ảnh để bạn chụp hóa đơn đính kèm vào khoản chi.",
+    "NSPhotoLibraryUsageDescription": "Expense Tracker dùng thư viện ảnh để bạn đính kèm hóa đơn vào khoản chi.",
+    "NSFaceIDUsageDescription": "Expense Tracker dùng Face ID để giữ riêng tư các khoản chi của bạn."
+  }
+}

@@ -1,7 +1,9 @@
 import type { ErrorCode, ErrorDetails } from '@expense-tracker/shared';
 import { ApiRequestError, NetworkUnavailableError, ResponseShapeError } from '@/api/errors';
 import { presentAuthError } from '@/auth/authErrors';
-import { GENERIC_ERROR, OFFLINE_COPY } from '@/copy/strings';
+import { COPY, OFFLINE_COPY } from '@/copy/strings';
+
+const GENERIC_ERROR = COPY.error.generic;
 
 /**
  * What a failed signup or login says to the user.

@@ -1,6 +1,6 @@
 import type { ErrorCode } from '@expense-tracker/shared';
 import { ApiRequestError, NetworkUnavailableError } from '../api/errors';
-import { GENERIC_ERROR, OFFLINE_COPY } from '../copy/strings';
+import { COPY, OFFLINE_COPY } from '../copy/strings';
 
 /**
  * Turns a failed signup or login into what the user sees.
@@ -48,7 +48,7 @@ const BANNER_ONLY = (banner: string): AuthErrorPresentation => ({
  * Codes with copy of their own on an auth screen.
  *
  * Everything else - including the five the deck marks *never shown*, which reaching here
- * would mean a client bug rather than a copy gap - falls back to {@link GENERIC_ERROR}.
+ * would mean a client bug rather than a copy gap - falls back to {@link COPY.error.generic}.
  * The deck's rule 4 is the load-bearing one: an unrecognised code from a newer server
  * must render the generic copy, never the raw code.
  */
@@ -85,7 +85,7 @@ export function presentAuthError(error: unknown, screen: AuthScreen): AuthErrorP
   if (!(error instanceof ApiRequestError)) {
     // A ResponseShapeError or a programming fault. The user cannot act on either, and
     // neither is their doing.
-    return BANNER_ONLY(GENERIC_ERROR);
+    return BANNER_ONLY(COPY.error.generic);
   }
 
   if (error.code === 'email_already_exists') {
@@ -110,10 +110,10 @@ export function presentAuthError(error: unknown, screen: AuthScreen): AuthErrorP
     const nothingPlaced = Object.keys(fieldErrors).length === 0;
     return {
       fieldErrors,
-      banner: unplaced || nothingPlaced ? GENERIC_ERROR : null,
+      banner: unplaced || nothingPlaced ? COPY.error.generic : null,
       offerLogin: false,
     };
   }
 
-  return BANNER_ONLY(BANNER_COPY[error.code as ErrorCode] ?? GENERIC_ERROR);
+  return BANNER_ONLY(BANNER_COPY[error.code as ErrorCode] ?? COPY.error.generic);
 }

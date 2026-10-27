@@ -1,3 +1,5 @@
+import { COPY } from '../copy/strings';
+import { getActiveIntlLocale } from '../i18n/language';
 /**
  * Calendar arithmetic on the zone-less `YYYY-MM-DD` strings the app stores.
  *
@@ -155,7 +157,10 @@ function formatDate(
   options: Intl.DateTimeFormatOptions,
   locale?: string,
 ): string {
-  return new Intl.DateTimeFormat(locale, { ...options, timeZone: 'UTC' }).format(utcInstant(date));
+  return new Intl.DateTimeFormat(locale ?? getActiveIntlLocale(), {
+    ...options,
+    timeZone: 'UTC',
+  }).format(utcInstant(date));
 }
 
 /**
@@ -186,7 +191,23 @@ export function monthLabel(key: MonthKey, locale?: string): string {
  * what the switcher bar wants).
  */
 export function monthName(key: MonthKey, locale?: string): string {
-  return formatDate(`${key}-01`, { month: 'long' }, locale);
+  const name = formatDate(`${key}-01`, { month: 'long' }, locale);
+  // Vietnamese writes a bare month as `Tháng 10`, capitalised like a heading, but this is
+  // always spliced into a sentence (`so với tháng 9`), where it is lower case.
+  return resolvedLanguage(locale) === 'vi' ? name.charAt(0).toLowerCase() + name.slice(1) : name;
+}
+
+/** The language `Intl` will actually use for `locale`, or for the active one when none is given. */
+function resolvedLanguage(locale?: string): string {
+  try {
+    return (
+      new Intl.DateTimeFormat(locale ?? getActiveIntlLocale())
+        .resolvedOptions()
+        .locale.split('-')[0] ?? ''
+    );
+  } catch {
+    return '';
+  }
 }
 
 /** `MMM`, e.g. `Oct` - a cell in the month picker grid. */
@@ -208,8 +229,8 @@ export function monthSpokenLabel(key: MonthKey, locale?: string): string {
  * which is what `today` carries in.
  */
 export function dayLabel(date: CalendarDate, today: CalendarDate, locale?: string): string {
-  if (date === today) return 'Today';
-  if (date === stepDay(today, -1)) return 'Yesterday';
+  if (date === today) return COPY.home.section.today;
+  if (date === stepDay(today, -1)) return COPY.home.section.yesterday;
 
   const sameYear = date.slice(0, 4) === today.slice(0, 4);
   return formatDayWithWeekday(
@@ -227,8 +248,8 @@ export function dayLabel(date: CalendarDate, today: CalendarDate, locale?: strin
  * header, this row is the only place the chosen date is shown.
  */
 export function dateRowLabel(date: CalendarDate, today: CalendarDate, locale?: string): string {
-  if (date === today) return 'Today';
-  if (date === stepDay(today, -1)) return 'Yesterday';
+  if (date === today) return COPY.home.section.today;
+  if (date === stepDay(today, -1)) return COPY.home.section.yesterday;
   return formatDayWithWeekday(
     date,
     { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' },

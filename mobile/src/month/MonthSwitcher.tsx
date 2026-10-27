@@ -6,6 +6,7 @@ import { monthLabel, stepMonth } from '../lib/calendar';
 import { SNACK_COPY } from '../copy/strings';
 import { useSnackbar } from '../components/Snackbar';
 import { useSelectedMonth } from './MonthProvider';
+import { COPY } from '../copy/strings';
 
 /**
  * The month switcher bar: `docs/design/05-month-switcher.md` §The bar.
@@ -70,7 +71,7 @@ export function MonthSwitcher({ onOpenPicker }: MonthSwitcherProps) {
         onPress={onOpenPicker}
         accessibilityRole="button"
         accessibilityLabel={label}
-        accessibilityHint="Double tap to jump to another month."
+        accessibilityHint={COPY.a11y.jumpToMonth}
         style={styles.label}
       >
         {/* Grows taller rather than truncating: `October 2026` must stay readable at every

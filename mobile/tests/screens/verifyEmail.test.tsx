@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { NetworkUnavailableError } from '@/api/errors';
 import type { Transport, TransportRequest } from '@/api/transport';
-import { COPY, GENERIC_ERROR } from '@/copy/strings';
+import { COPY } from '@/copy/strings';
 import { readEmailVerified } from '@/db/user';
 import { queryKeys } from '@/query/keys';
 import SettingsScreen from '../../app/(app)/settings/index';
@@ -17,6 +17,8 @@ import {
   typeInto,
   type MountedScreen,
 } from '../support/mount';
+
+const GENERIC_ERROR = COPY.error.generic;
 
 jest.mock('expo-router');
 

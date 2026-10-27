@@ -1,3 +1,5 @@
+import { getActiveIntlLocale } from '../i18n/language';
+
 /**
  * Turning `amountMinor` into something a person reads.
  *
@@ -51,7 +53,7 @@ export function formatMoney(amountMinor: number, currency: string, locale?: stri
  */
 export function formatAmountOnly(amountMinor: number, currency: string, locale?: string): string {
   const decimals = currencyDecimals(currency, locale);
-  return new Intl.NumberFormat(locale, {
+  return new Intl.NumberFormat(locale ?? getActiveIntlLocale(), {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   }).format(toFormattable(amountMinor, decimals));
@@ -78,7 +80,10 @@ function toFormattable(amountMinor: number, decimals: number): number {
  */
 const formatters = new Map<string, Intl.NumberFormat>();
 
-function formatterFor(currency: string, locale?: string): Intl.NumberFormat {
+function formatterFor(currency: string, requested?: string): Intl.NumberFormat {
+  // The chosen language's locale when the caller named none, so every amount in the app
+  // follows the language setting without each call site having to pass it.
+  const locale = requested ?? getActiveIntlLocale();
   const key = `${locale ?? ''}|${currency}`;
   const cached = formatters.get(key);
   if (cached !== undefined) return cached;

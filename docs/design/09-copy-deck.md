@@ -558,3 +558,43 @@ them as proposals the Designer can reword; changing a row here means changing
 | `form.rate.failed` | `Could not get today's exchange rate. Enter it yourself.` | Expense form, rate field |
 | `form.rate.needed` | `Enter the exchange rate.` | Expense form, Save hint |
 | `form.rate.invalid` | `Enter a rate like 1.0823.` | Expense form, rate field error |
+| `language.title` | `Language` | Language sheet and Settings row |
+| `language.system` | `Match system` | Language sheet and Settings row |
+| `language.en` | `English` | Language sheet and Settings row |
+| `language.vi` | `Tiếng Việt` | Language sheet and Settings row |
+| `currencyNames.USD` | `US Dollar` | Currency pickers |
+| `currencyNames.EUR` | `Euro` | Currency pickers |
+| `currencyNames.GBP` | `British Pound` | Currency pickers |
+| `currencyNames.JPY` | `Japanese Yen` | Currency pickers |
+| `currencyNames.CAD` | `Canadian Dollar` | Currency pickers |
+| `currencyNames.AUD` | `Australian Dollar` | Currency pickers |
+| `currencyNames.CHF` | `Swiss Franc` | Currency pickers |
+| `currencyNames.INR` | `Indian Rupee` | Currency pickers |
+| `currencyNames.BRL` | `Brazilian Real` | Currency pickers |
+| `currencyNames.MXN` | `Mexican Peso` | Currency pickers |
+| `a11y.jumpToMonth` | `Double tap to jump to another month.` | Screen-reader text |
+| `a11y.editExpense` | `Double tap to edit this expense.` | Screen-reader text |
+| `a11y.deleteExpense` | `Delete expense` | Screen-reader text |
+| `a11y.payInOtherCurrency` | `Double tap to pay in another currency.` | Screen-reader text |
+| `a11y.typeRate` | `Double tap to type your own exchange rate.` | Screen-reader text |
+| `a11y.changeCategory` | `Double tap to change category.` | Screen-reader text |
+| `a11y.editCategory` | `Double tap to edit this category.` | Screen-reader text |
+| `a11y.editRecurring` | `Double tap to edit this recurring expense.` | Screen-reader text |
+| `a11y.addToGoal` | `Double tap to add money to this goal.` | Screen-reader text |
+| `a11y.deleteNamed` | `Delete {name}` | Screen-reader text |
+| `a11y.previousMonth` | `Previous month, {month}` | Screen-reader text |
+| `a11y.nextMonth` | `Next month, {month}` | Screen-reader text |
+| `a11y.previousYear` | `Previous year, {year}` | Screen-reader text |
+| `a11y.nextYear` | `Next year, {year}` | Screen-reader text |
+| `a11y.amount` | `Amount, {amount}` | Screen-reader text |
+| `a11y.doubleTapToChange` | `Double tap to change.` | Screen-reader text |
+| `a11y.notSyncedYet` | `not synced yet` | Screen-reader text |
+| `a11y.couldNotSync` | `could not sync` | Screen-reader text |
+| `a11y.cannotBeDeleted` | `cannot be deleted` | Screen-reader text |
+| `a11y.noExpenses` | `No expenses` | Screen-reader text |
+| `a11y.expenseOne` | `1 expense` | Screen-reader text |
+| `a11y.expenseMany` | `{count} expenses` | Screen-reader text |
+| `notFound.headerTitle` | `Not found` | Not-found screen |
+| `notFound.title` | `This screen does not exist.` | Not-found screen |
+| `notFound.action` | `Go to the start` | Not-found screen |
+| `boot.title` | `Expense Tracker could not start` | Start-up failure screen |

@@ -21,6 +21,7 @@ import {
   DEFAULT_CURRENCY_CODE,
   currencyAccessibilityLabel,
   currencyLabel,
+  currencyName,
 } from '@/lib/currencies';
 import { HIT_SLOP_44, radius, size, space, type } from '@/theme/tokens';
 import { createStyles, useColors } from '@/theme/ThemeProvider';
@@ -185,12 +186,12 @@ export default function SignupScreen() {
               accessibilityRole="button"
               // The hyphen in the visible label is dropped for the reader, which would
               // otherwise say "USD minus US Dollar".
-              accessibilityLabel={`${option.code} ${option.name}`}
+              accessibilityLabel={`${option.code} ${currencyName(option.code) ?? option.name}`}
               accessibilityState={{ selected }}
               style={styles.option}
               testID={`currency-${option.code}`}
             >
-              <Text style={styles.optionLabel}>{`${option.code} - ${option.name}`}</Text>
+              <Text style={styles.optionLabel}>{currencyLabel(option.code)}</Text>
               {/* The trailing check is a visual confirmation; `accessibilityState`
                   above is what a screen reader reads. */}
               {selected ? <Feather name="check" size={20} color={color.primary.default} /> : null}

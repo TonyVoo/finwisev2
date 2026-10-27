@@ -7,7 +7,11 @@
  * diffed without a translation step. `tests/copy/strings.test.ts` asserts every string
  * below still appears in the deck.
  *
- * English only in the MVP, so these are plain constants rather than an i18n runtime.
+ * These are the **English** source. The Vietnamese bundle (`copy/vi.ts`) has exactly the same
+ * shape, and `i18n/apply.ts` swaps the text in place, so every `COPY.x.y` read below this
+ * line - including the formatters at the bottom - follows the language setting with no other
+ * change. `tests/i18n/` asserts the two bundles agree on every key and every `{placeholder}`.
+ *
  * The deck's voice rules show up as data: sentence case everywhere, terminal punctuation
  * on sentences and none on labels or buttons.
  */
@@ -438,6 +442,73 @@ export const COPY = {
     tooManyAttempts: 'Too many attempts. Try again in a moment.',
   },
 
+  /**
+   * The fallbacks the client cannot place on a field (§2.1 note 1), and the Welcome banner
+   * after a refresh failure cleared the session. In `COPY` rather than loose constants so a
+   * language switch reaches them like every other string.
+   *
+   * `error.generic` names the server deliberately: the user did nothing wrong, and a vague
+   * "Something went wrong" invites them to doubt their own input.
+   */
+  error: { generic: 'Something went wrong on our end. Try again.' },
+  session: { expired: 'Your session expired. Please log in again.' },
+
+  /** The language choice, opened from Settings. The two names are endonyms in every language. */
+  language: {
+    title: 'Language',
+    system: 'Match system',
+    en: 'English',
+    vi: 'Tiếng Việt',
+  },
+
+  /** The closed list of currencies the app offers, by code (`lib/currencies.ts`). */
+  currencyNames: {
+    USD: 'US Dollar',
+    EUR: 'Euro',
+    GBP: 'British Pound',
+    JPY: 'Japanese Yen',
+    CAD: 'Canadian Dollar',
+    AUD: 'Australian Dollar',
+    CHF: 'Swiss Franc',
+    INR: 'Indian Rupee',
+    BRL: 'Brazilian Real',
+    MXN: 'Mexican Peso',
+  },
+
+  /** What a screen reader says that the screen does not show: hints, actions, row suffixes. */
+  a11y: {
+    jumpToMonth: 'Double tap to jump to another month.',
+    editExpense: 'Double tap to edit this expense.',
+    deleteExpense: 'Delete expense',
+    payInOtherCurrency: 'Double tap to pay in another currency.',
+    typeRate: 'Double tap to type your own exchange rate.',
+    changeCategory: 'Double tap to change category.',
+    editCategory: 'Double tap to edit this category.',
+    editRecurring: 'Double tap to edit this recurring expense.',
+    addToGoal: 'Double tap to add money to this goal.',
+    deleteNamed: 'Delete {name}',
+    previousMonth: 'Previous month, {month}',
+    nextMonth: 'Next month, {month}',
+    previousYear: 'Previous year, {year}',
+    nextYear: 'Next year, {year}',
+    amount: 'Amount, {amount}',
+    doubleTapToChange: 'Double tap to change.',
+    notSyncedYet: 'not synced yet',
+    couldNotSync: 'could not sync',
+    cannotBeDeleted: 'cannot be deleted',
+    noExpenses: 'No expenses',
+    expenseOne: '1 expense',
+    expenseMany: '{count} expenses',
+  },
+
+  /** Screens outside the main flow. */
+  notFound: {
+    headerTitle: 'Not found',
+    title: 'This screen does not exist.',
+    action: 'Go to the start',
+  },
+  boot: { title: 'Expense Tracker could not start' },
+
   /** The log out dialog (`09-copy-deck.md`). The body depends on whether the outbox is empty. */
   logout: {
     title: 'Log out?',
@@ -490,17 +561,6 @@ export const OFFLINE_COPY = {
   signup: 'You need to be online to create an account.',
   login: 'You need to be online to log in.',
 } as const;
-
-/**
- * §2.1 note 1 - the fallback for anything the client cannot place on a field.
- *
- * It names the server deliberately: the user did nothing wrong, and a vague "Something
- * went wrong" invites them to doubt their own input.
- */
-export const GENERIC_ERROR = 'Something went wrong on our end. Try again.';
-
-/** The Welcome banner after a refresh failure cleared the session (§2.1, `token_invalid`). */
-export const SESSION_EXPIRED = 'Your session expired. Please log in again.';
 
 /**
  * §6 — empty states.

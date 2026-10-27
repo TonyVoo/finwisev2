@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Slot } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
+import { COPY } from '@/copy/strings';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { installForegroundHandler } from '@/notifications/budgetNotifier';
 import { AppProviders } from '@/bootstrap/AppProviders';
@@ -112,7 +113,7 @@ function BootError({ message }: { readonly message: string }) {
   const styles = useStyles();
   return (
     <View style={styles.boot}>
-      <Text style={styles.bootTitle}>Expense Tracker could not start</Text>
+      <Text style={styles.bootTitle}>{COPY.boot.title}</Text>
       <Text style={styles.bootDetail}>{message}</Text>
     </View>
   );

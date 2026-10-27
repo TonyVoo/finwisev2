@@ -90,6 +90,22 @@ EXPO_PUBLIC_API_BASE_URL=http://localhost:3000 npx expo start --android
   connect to Expo CLI" — the already-loaded app keeps working. Serving Metro over
   `adb reverse tcp:8081 tcp:8081` avoids it.
 
+## Languages
+
+The app speaks English and Vietnamese. **Settings → Language** offers *Match system* (the
+default: Vietnamese on a Vietnamese phone, English on any other), *English* and *Tiếng Việt*.
+Dates, months and money follow the choice too, so `11,19 US$` and `tháng 10` appear in
+Vietnamese. The choice is stored on the device and survives signing out.
+
+All interface text lives in [`mobile/src/copy/strings.ts`](mobile/src/copy/strings.ts) (English,
+the source) and [`mobile/src/copy/vi.ts`](mobile/src/copy/vi.ts) (Vietnamese). `vi.ts` is typed as
+the English shape, so a missing key does not compile, and `mobile/tests/i18n/` checks that every
+key and every `{placeholder}` agrees. To add a language: copy `vi.ts`, translate it, register it
+in `mobile/src/i18n/language.ts` and `apply.ts`, and add its name to `COPY.language`.
+
+Not translated: category names (they are your data, seeded in English at signup) and the
+server's own error messages (the app shows its own wording for every error code).
+
 ## Checks
 
 ```bash

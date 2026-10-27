@@ -16,6 +16,12 @@ import '@testing-library/react-native';
 // about the environment shifts.
 process.env.NODE_ENV = 'test';
 
+// The language the app picks for a `system` preference comes from the phone's locale, which
+// in a test is whatever the machine running it is set to. Pinned, so a suite written against
+// the English copy gives the same answer on a Vietnamese laptop.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+require('../src/i18n/language').setDeviceLocaleOverride('en-US');
+
 // `expo-secure-store` is a native module with no JS fallback under jest. The token
 // store is the only thing that touches it, so a tiny in-memory stand-in is enough to
 // exercise the real adapter (key names, round-tripping, delete-on-clear).

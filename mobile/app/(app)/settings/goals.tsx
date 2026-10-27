@@ -112,8 +112,10 @@ export default function GoalsScreen() {
                 chevron
                 lastInGroup={index === rows.length - 1}
                 accessibilityLabel={`${item.name}, ${goalAmounts(item)}, ${progress.percent}%${status === null ? '' : `, ${status}`}`}
-                accessibilityHint="Double tap to add money to this goal."
-                accessibilityActions={[{ name: 'delete', label: `Delete ${item.name}` }]}
+                accessibilityHint={COPY.a11y.addToGoal}
+                accessibilityActions={[
+                  { name: 'delete', label: COPY.a11y.deleteNamed.replace('{name}', item.name) },
+                ]}
                 onAccessibilityAction={(event) => {
                   if (event.nativeEvent.actionName === 'delete') setPendingDelete(item);
                 }}

@@ -1,5 +1,5 @@
 import { ApiRequestError, NetworkUnavailableError } from '../api/errors';
-import { COPY, GENERIC_ERROR } from '../copy/strings';
+import { COPY } from '../copy/strings';
 
 /**
  * Turns a failed forgot-password or reset-password request into what the user sees.
@@ -33,5 +33,5 @@ export function presentResetError(error: unknown, action: ResetAction): ResetErr
       return { codeError: null, banner: COPY.account.tooManyAttempts };
     }
   }
-  return { codeError: null, banner: GENERIC_ERROR };
+  return { codeError: null, banner: COPY.error.generic };
 }

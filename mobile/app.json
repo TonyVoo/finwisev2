@@ -47,6 +47,9 @@
     },
     "extra": {
       "apiBaseUrl": null
+    },
+    "locales": {
+      "vi": "./locales/vi.json"
     }
   }
 }

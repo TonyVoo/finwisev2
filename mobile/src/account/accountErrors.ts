@@ -1,5 +1,5 @@
 import { ApiRequestError, NetworkUnavailableError } from '../api/errors';
-import { COPY, GENERIC_ERROR } from '../copy/strings';
+import { COPY } from '../copy/strings';
 
 /**
  * Turns a failed change-password, change-email or delete-account request into what the user sees.
@@ -48,7 +48,7 @@ export function presentAccountError(
     }
   }
 
-  return { passwordError: null, banner: GENERIC_ERROR };
+  return { passwordError: null, banner: COPY.error.generic };
 }
 
 export interface VerifyErrorPresentation {
@@ -75,5 +75,5 @@ export function presentVerifyError(
       return { codeError: null, banner: COPY.account.tooManyAttempts };
     }
   }
-  return { codeError: null, banner: GENERIC_ERROR };
+  return { codeError: null, banner: COPY.error.generic };
 }

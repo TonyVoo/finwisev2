@@ -1,6 +1,7 @@
 import Feather from '@expo/vector-icons/Feather';
 import { Tabs } from 'expo-router';
 import { useColors } from '@/theme/ThemeProvider';
+import { COPY } from '@/copy/strings';
 
 /**
  * The two tabs of the MVP: the expense list and the monthly summary.
@@ -31,14 +32,14 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Expenses',
+          title: COPY.home.title,
           tabBarIcon: ({ color: tint, size }) => <Feather name="list" size={size} color={tint} />,
         }}
       />
       <Tabs.Screen
         name="summary"
         options={{
-          title: 'Summary',
+          title: COPY.summary.title,
           tabBarIcon: ({ color: tint, size }) => (
             <Feather name="pie-chart" size={size} color={tint} />
           ),

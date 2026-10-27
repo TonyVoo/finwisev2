@@ -1,3 +1,5 @@
+import { COPY } from '../copy/strings';
+
 /**
  * The currencies signup offers.
  *
@@ -53,13 +55,22 @@ export const CURRENCY_OPTIONS: readonly CurrencyOption[] = [
  */
 export const DEFAULT_CURRENCY_CODE = 'USD';
 
+/**
+ * A currency's name in the current language, or the English one in `CURRENCY_OPTIONS` if the
+ * bundle has none. Read at call time, so it follows a language switch.
+ */
+export function currencyName(code: string): string | null {
+  const names = COPY.currencyNames as Readonly<Record<string, string>>;
+  return names[code] ?? CURRENCY_OPTIONS.find((candidate) => candidate.code === code)?.name ?? null;
+}
+
 /** The `{code} - {name}` label the select row and the sheet rows both render. */
 export function currencyLabel(code: string): string {
-  const option = CURRENCY_OPTIONS.find((candidate) => candidate.code === code);
+  const name = currencyName(code);
   // An unknown code still renders as itself rather than as a blank row. It cannot come
   // from the picker, but it can come from a `user` row written by a future version that
   // offers more currencies than this one.
-  return option === undefined ? code : `${option.code} - ${option.name}`;
+  return name === null ? code : `${code} - ${name}`;
 }
 
 /**
@@ -70,7 +81,7 @@ export function currencyLabel(code: string): string {
  * what the row says.
  */
 export function currencyAccessibilityLabel(code: string, fieldLabel: string): string {
-  const option = CURRENCY_OPTIONS.find((candidate) => candidate.code === code);
-  const spoken = option === undefined ? code : `${option.code} ${option.name}`;
-  return `${fieldLabel}, ${spoken}. Double tap to change.`;
+  const name = currencyName(code);
+  const spoken = name === null ? code : `${code} ${name}`;
+  return `${fieldLabel}, ${spoken}. ${COPY.a11y.doubleTapToChange}`;
 }

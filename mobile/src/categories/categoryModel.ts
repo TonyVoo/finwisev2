@@ -1,4 +1,5 @@
 import type { CategoryWithCount } from '../db/queries';
+import { COPY } from '../copy/strings';
 
 /**
  * What a category row says out loud: `docs/design/07-categories.md` §5 rules 1 and 2.
@@ -19,9 +20,9 @@ import type { CategoryWithCount } from '../db/queries';
  * stumble.
  */
 export function expenseCountLabel(count: number): string {
-  if (count === 0) return 'No expenses';
-  if (count === 1) return '1 expense';
-  return `${count} expenses`;
+  if (count === 0) return COPY.a11y.noExpenses;
+  if (count === 1) return COPY.a11y.expenseOne;
+  return COPY.a11y.expenseMany.replace('{count}', String(count));
 }
 
 /**
@@ -35,7 +36,7 @@ export function categoryRowLabel(category: CategoryWithCount): string {
   return [
     category.name,
     expenseCountLabel(category.expenseCount),
-    ...(category.pending ? ['not synced yet'] : []),
-    ...(category.isDefault ? ['cannot be deleted'] : []),
+    ...(category.pending ? [COPY.a11y.notSyncedYet] : []),
+    ...(category.isDefault ? [COPY.a11y.cannotBeDeleted] : []),
   ].join(', ');
 }

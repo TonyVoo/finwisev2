@@ -1,6 +1,8 @@
 import { ApiRequestError, NetworkUnavailableError } from '@/api/errors';
 import { presentResetError } from '@/auth/resetErrors';
-import { COPY, GENERIC_ERROR } from '@/copy/strings';
+import { COPY } from '@/copy/strings';
+
+const GENERIC_ERROR = COPY.error.generic;
 
 const problem = (status: number, code: ApiRequestError['code']) =>
   new ApiRequestError({ status, code, message: `${code} from the test` });

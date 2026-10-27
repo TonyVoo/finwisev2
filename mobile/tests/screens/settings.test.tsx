@@ -109,7 +109,11 @@ describe('the settings screen', () => {
 
   it('lets the person pick a theme, applies it at once and remembers it on the device', async () => {
     await waitFor(() => expect(screen.getByTestId('settings-appearance')).toBeTruthy());
-    expect(screen.getByText(COPY.appearance.system)).toBeTruthy();
+    // Both the Appearance and the Language row start as "Match system", so look at the
+    // Appearance row by its own label.
+    expect(
+      screen.getByLabelText(`${COPY.settings.appearance}, ${COPY.appearance.system}`),
+    ).toBeTruthy();
 
     await fireEvent.press(screen.getByTestId('settings-appearance'));
     await waitFor(() => expect(screen.getByTestId('theme-option-dark')).toBeTruthy());

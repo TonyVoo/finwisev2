@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSession } from '@/auth/SessionProvider';
 import { Button } from '@/components/Button';
 import { FormBanner } from '@/components/FormBanner';
-import { COPY, SESSION_EXPIRED } from '@/copy/strings';
+import { COPY } from '@/copy/strings';
 import { space, type } from '@/theme/tokens';
 import { createStyles, useColors } from '@/theme/ThemeProvider';
 
@@ -50,7 +50,7 @@ export default function WelcomeScreen() {
       {expired && !dismissed ? (
         // Above the app name, and first in the focus order (§1.1 Accessibility).
         <View style={styles.banner}>
-          <FormBanner message={SESSION_EXPIRED} tone="info" testID="session-expired" />
+          <FormBanner message={COPY.session.expired} tone="info" testID="session-expired" />
         </View>
       ) : null}
 

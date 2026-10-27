@@ -122,9 +122,15 @@ export default function RecurringScreen() {
               lastInGroup={index === rows.length - 1}
               leading={<Swatch colorHex={item.categoryColor ?? color.text.tertiary} />}
               accessibilityLabel={`${recurringTitle(item, fallbackName)}, ${recurringSummary(item)}, ${recurringNextLabel(item, today)}`}
-              accessibilityHint="Double tap to edit this recurring expense."
+              accessibilityHint={COPY.a11y.editRecurring}
               accessibilityActions={[
-                { name: 'delete', label: `Delete ${recurringTitle(item, fallbackName)}` },
+                {
+                  name: 'delete',
+                  label: COPY.a11y.deleteNamed.replace(
+                    '{name}',
+                    recurringTitle(item, fallbackName),
+                  ),
+                },
               ]}
               onAccessibilityAction={(event) => {
                 if (event.nativeEvent.actionName === 'delete') setPendingDelete(item);

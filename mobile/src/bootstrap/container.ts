@@ -11,6 +11,7 @@ import { createSqliteLocalStore } from '../db/localStore';
 import { generateDueRecurring } from '../recurring/generate';
 import { syncBillReminders } from '../notifications/billReminders';
 import { META_KEYS, readMeta } from '../db/meta';
+import { type LanguagePreference, parseLanguagePreference } from '../i18n/language';
 import { type ThemePreference, parseThemePreference } from '../theme/ThemeProvider';
 import { openLocalDatabase } from '../db/open';
 import type { SqliteDatabase } from '../db/sqlite';
@@ -69,6 +70,8 @@ export interface AppContainer {
   readonly themePreference: ThemePreference;
   /** Whether the app locks itself (`lock/AppLockProvider.tsx`). Read at boot, like the theme. */
   readonly appLockEnabled: boolean;
+  /** The language chosen in Settings (`i18n/LanguageProvider.tsx`). Read at boot, like the theme. */
+  readonly languagePreference: LanguagePreference;
 }
 
 export interface AppContainerOptions {
@@ -169,5 +172,19 @@ export async function createAppContainer(options: AppContainerOptions = {}): Pro
 
   const appLockEnabled = (await readMeta(database, META_KEYS.appLockEnabled)) === '1';
 
-  return { database, session, api, queryClient, clock, sync, themePreference, appLockEnabled };
+  const languagePreference = parseLanguagePreference(
+    await readMeta(database, META_KEYS.languagePreference),
+  );
+
+  return {
+    database,
+    session,
+    api,
+    queryClient,
+    clock,
+    sync,
+    themePreference,
+    appLockEnabled,
+    languagePreference,
+  };
 }

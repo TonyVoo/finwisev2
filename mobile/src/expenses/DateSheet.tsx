@@ -209,7 +209,10 @@ function DayGrid({
           disabled={!canGoPrevious}
           hitSlop={HIT_SLOP_44}
           accessibilityRole="button"
-          accessibilityLabel={`Previous month, ${monthLabel(stepMonth(month, -1))}`}
+          accessibilityLabel={COPY.a11y.previousMonth.replace(
+            '{month}',
+            monthLabel(stepMonth(month, -1)),
+          )}
           accessibilityState={{ disabled: !canGoPrevious }}
           style={styles.gridArrow}
         >
@@ -230,7 +233,10 @@ function DayGrid({
           disabled={!canGoNext}
           hitSlop={HIT_SLOP_44}
           accessibilityRole="button"
-          accessibilityLabel={`Next month, ${monthLabel(stepMonth(month, 1))}`}
+          accessibilityLabel={COPY.a11y.nextMonth.replace(
+            '{month}',
+            monthLabel(stepMonth(month, 1)),
+          )}
           accessibilityState={{ disabled: !canGoNext }}
           style={styles.gridArrow}
         >

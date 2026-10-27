@@ -1,3 +1,4 @@
+import { getActiveIntlLocale } from '../i18n/language';
 import { Animated, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useEffect, useRef } from 'react';
 import Feather from '@expo/vector-icons/Feather';
@@ -136,14 +137,14 @@ function decimalSeparator(): string {
   // Not every JS engine ships `formatToParts` (Hermes on some builds does not), and a
   // missing method must not take the whole form down over a key label.
   try {
-    const parts = new Intl.NumberFormat(undefined).formatToParts(1.1);
+    const parts = new Intl.NumberFormat(getActiveIntlLocale()).formatToParts(1.1);
     const found = parts.find((part) => part.type === 'decimal')?.value;
     if (found !== undefined) return found;
   } catch {
     // Fall through to the plain formatter.
   }
   try {
-    const formatted = (1.1).toLocaleString();
+    const formatted = (1.1).toLocaleString(getActiveIntlLocale());
     return formatted.replace(/[0-9\u0660-\u0669]/g, '').charAt(0) || '.';
   } catch {
     return '.';

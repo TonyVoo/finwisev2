@@ -1,8 +1,10 @@
 import { screen } from '@testing-library/react-native';
-import { COPY, OFFLINE_COPY, SESSION_EXPIRED } from '@/copy/strings';
+import { COPY, OFFLINE_COPY } from '@/copy/strings';
 import WelcomeScreen from '../../app/(auth)/welcome';
 import { resetRouter, routerRecord } from '../support/router';
 import { mountWithSession, pressOn } from '../support/mount';
+
+const SESSION_EXPIRED = COPY.session.expired;
 
 jest.mock('expo-router');
 

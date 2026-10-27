@@ -4,10 +4,8 @@ import {
   CONFIRM_COPY,
   COPY,
   EMPTY_COPY,
-  GENERIC_ERROR,
   OFFLINE_COPY,
   RELATIVE_TIME_COPY,
-  SESSION_EXPIRED,
   SNACK_COPY,
   SYNC_COPY,
   VALIDATION_COPY,
@@ -55,8 +53,6 @@ const ALL_STRINGS: Array<[string, string]> = [
   ...flatten(COPY),
   ...flatten(VALIDATION_COPY, ['validate']),
   ...flatten(OFFLINE_COPY, ['offline']),
-  ...flatten({ generic: GENERIC_ERROR }, ['error']),
-  ...flatten({ expired: SESSION_EXPIRED }, ['session']),
   // The templated strings are checked here too, braces and all. That is the reason they are
   // stored as deck-shaped templates rather than assembled from fragments by their
   // formatters: a sentence built out of pieces would put most of its wording beyond this
@@ -206,8 +202,8 @@ describe('copy strings are transcribed from the design docs', () => {
     const sentences = [
       ...flatten(VALIDATION_COPY),
       ...flatten(OFFLINE_COPY),
-      ['error.generic', GENERIC_ERROR] as [string, string],
-      ['session.expired', SESSION_EXPIRED] as [string, string],
+      ['error.generic', COPY.error.generic] as [string, string],
+      ['session.expired', COPY.session.expired] as [string, string],
     ];
     for (const [key, text] of sentences) {
       expect({ [key]: text.endsWith('.') }).toEqual({ [key]: true });

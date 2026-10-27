@@ -1,3 +1,4 @@
+import { getActiveIntlLocale } from '../i18n/language';
 import { RELATIVE_TIME_COPY } from '../copy/strings';
 
 /**
@@ -50,7 +51,7 @@ export function relativeTime(at: Date, now: Date, locale?: string): string {
     return days === 1 ? copy.dayAgo : fill(copy.daysAgo, days);
   }
 
-  const date = new Intl.DateTimeFormat(locale, {
+  const date = new Intl.DateTimeFormat(locale ?? getActiveIntlLocale(), {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
