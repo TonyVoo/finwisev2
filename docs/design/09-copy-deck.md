@@ -61,6 +61,7 @@ is no `(s)` anywhere.
 | `summary.title`                   | `Summary`                                    | Summary                           |
 | `summary.count`                   | `{count} expenses`                           | Summary                           |
 | `summary.count.one`               | `1 expense`                                  | Summary                           |
+| `summary.trend.title`             | `Last 6 months`                              | Summary, trend card heading       |
 | `form.title.add`                  | `Add expense`                                | Expense form                      |
 | `form.title.edit`                 | `Edit expense`                               | Expense form                      |
 | `form.field.category`             | `Category`                                   | Expense form                      |

@@ -51,6 +51,8 @@ export const queryKeys = {
      * disagree with each other.
      */
     monthByCategory: (month: string) => ['local', 'expenses', 'monthByCategory', month] as const,
+    /** Spend per month over the six months ending at the given one - the Summary's trend. */
+    trend: (endMonth: string) => ['local', 'expenses', 'trend', endMonth] as const,
     /** A search over every month. The text and category are part of the key. */
     search: (text: string, categoryId: string | null) =>
       ['local', 'expenses', 'search', text, categoryId] as const,

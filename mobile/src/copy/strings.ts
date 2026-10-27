@@ -128,6 +128,8 @@ export const COPY = {
      * block renders in the empty state too (`08-monthly-summary.md` state `empty`).
      */
     count: { many: '{count} expenses', one: '1 expense' },
+    /** The trend card: spend per month over the six months ending at the selected one. */
+    trend: { title: 'Last 6 months' },
   },
 
   form: {

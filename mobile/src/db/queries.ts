@@ -465,6 +465,37 @@ export async function monthCategorySpend(
   );
 }
 
+/** One month's total, for the trend chart. */
+export interface MonthlyTotal {
+  readonly month: string;
+  readonly totalMinor: number;
+}
+
+/**
+ * Live spend per calendar month across `[fromMonth, toMonth]` (`YYYY-MM`, inclusive).
+ *
+ * Months with no expenses are simply absent; the caller fills the gaps, because "no row"
+ * and "zero" are the same fact here and the chart needs every month in the window anyway.
+ * Soft-deleted rows are excluded exactly as in {@link monthTotalMinor}, and the grouping
+ * is on the raw `date` string like {@link monthsWithExpenses}.
+ */
+export async function monthlyTotals(
+  database: SqliteDatabase,
+  fromMonth: string,
+  toMonth: string,
+): Promise<readonly MonthlyTotal[]> {
+  const rows = await database.getAllAsync<{ ym: string; total: number }>(
+    `SELECT substr(e.date, 1, 7) AS ym, SUM(e.amountMinor) AS total
+       FROM expenses e
+      WHERE e.deletedAt IS NULL
+        AND substr(e.date, 1, 7) BETWEEN ? AND ?
+      GROUP BY ym
+      ORDER BY ym`,
+    [fromMonth, toMonth],
+  );
+  return rows.map((row) => ({ month: row.ym, totalMinor: row.total }));
+}
+
 /**
  * Whether the user has any live expense at all, in any month.
  *
@@ -774,9 +805,7 @@ export interface RecurringListItem {
 export async function listLiveRecurring(
   database: SqliteDatabase,
 ): Promise<readonly RecurringListItem[]> {
-  const rows = await database.getAllAsync<
-    Omit<RecurringListItem, 'pending'> & { pending: number }
-  >(
+  const rows = await database.getAllAsync<Omit<RecurringListItem, 'pending'> & { pending: number }>(
     `SELECT r.id, r.categoryId, c.name AS categoryName, c.color AS categoryColor,
             r.amountMinor, r.currency, r.note, r.frequency, r.startDate, r.endDate,
             EXISTS (

@@ -8,6 +8,7 @@ import { MONTH_TOTAL_TEST_ID } from '@/expenses/MonthTotal';
 import { MONTH_NEXT_TEST_ID, MONTH_PREVIOUS_TEST_ID } from '@/month/MonthSwitcher';
 import { DONUT_CENTRE_TEST_ID, DONUT_TEST_ID } from '@/summary/CategoryDonut';
 import { LEGEND_ROW_TEST_ID_PREFIX, LEGEND_TEST_ID } from '@/summary/SpendLegend';
+import { TREND_BAR_TEST_ID_PREFIX, TREND_TEST_ID } from '@/summary/SpendTrend';
 import { SUMMARY_EMPTY_TEST_ID } from '@/summary/SummaryStates';
 import { categoryColor } from '@/theme/tokens';
 import SummaryScreen from '../../app/(app)/(tabs)/summary';
@@ -477,5 +478,38 @@ describe('with no network available at all', () => {
 
     expect(totalLabel()).toBe('Total this month, $1,284.50, 7 expenses');
     expect(requests).toEqual([]);
+  });
+});
+
+describe('the trend card', () => {
+  it('shows six months ending at the selected one, each bar labelled with its amount', async () => {
+    await mountSummary(seedOctober);
+
+    expect(screen.queryByTestId(TREND_TEST_ID)).not.toBeNull();
+    const bars = screen.queryAllByTestId(new RegExp(`^${TREND_BAR_TEST_ID_PREFIX}-`));
+    expect(bars.map((bar) => bar.props.accessibilityLabel as string)).toEqual([
+      'May 2026, $0.00',
+      'June 2026, $0.00',
+      'July 2026, $0.00',
+      'August 2026, $0.00',
+      'September 2026, $9,999.00',
+      'October 2026, $1,284.50',
+    ]);
+  });
+
+  it('is left out when only one month has spend', async () => {
+    await mountSummary(async (database) => {
+      await seedUser(database);
+      await seedFallbackCategory(database);
+      await seedCategory(database, { id: HOUSING, name: 'Housing', color: categoryColor.blue });
+      await seedExpense(database, {
+        id: expenseId(1),
+        categoryId: HOUSING,
+        amountMinor: 1000,
+        date: '2026-10-02',
+      });
+    });
+
+    expect(screen.queryByTestId(TREND_TEST_ID)).toBeNull();
   });
 });

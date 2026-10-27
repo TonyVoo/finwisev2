@@ -173,3 +173,17 @@ month`. Hint: `Double tap to see these expenses.`
    skipped entirely, which is intended.
 8. The filter chip from rule 8 is `role="button"` with the label
    `Filtered by {name}. Double tap to clear.`
+
+
+## Trend card (added after the MVP)
+
+Below the legend (and below the empty state), a card titled `Last 6 months`: one bar per calendar
+month for the six months ending at the selected one, oldest first. The selected month is the solid
+`primary` bar, the others the muted `border.strong` tint; a month with no spend keeps a 2px stub so
+six slots always show. Month labels are the short names (`Oct`).
+
+- Computed from local SQLite like everything else here (`monthlyTotals`), soft-deleted rows excluded,
+  pending expenses included. No network, no error state.
+- Shown only when at least two of the six months hold spend - one bar compares to nothing.
+- Unlike the donut it is accessible: each bar is one element labelled `{Month Year}, {amount}`.
+- Stepping the month switcher moves the window, so the card always ends at the month on screen.

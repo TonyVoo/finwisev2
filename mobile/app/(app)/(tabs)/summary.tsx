@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AppBar } from '@/components/Chrome';
 import { COPY } from '@/copy/strings';
-import { useMonthCategorySpend, useUserCurrency } from '@/db/hooks';
+import { useMonthCategorySpend, useSpendTrend, useUserCurrency } from '@/db/hooks';
 import { MonthTotal } from '@/expenses/MonthTotal';
 import { useFirstPaintSkeleton } from '@/expenses/useFirstPaint';
 import { useAwaitingFirstSync } from '@/sync/useAwaitingFirstSync';
@@ -11,6 +11,8 @@ import { MonthSwitcher } from '@/month/MonthSwitcher';
 import { useSelectedMonth } from '@/month/MonthProvider';
 import { CategoryDonut } from '@/summary/CategoryDonut';
 import { SpendLegend } from '@/summary/SpendLegend';
+import { SpendTrend } from '@/summary/SpendTrend';
+import { buildTrend } from '@/summary/trendModel';
 import { SummaryEmpty, SummarySkeleton } from '@/summary/SummaryStates';
 import { summariseMonth } from '@/summary/summaryModel';
 import { SyncIndicator } from '@/sync/SyncIndicator';
@@ -72,12 +74,14 @@ export default function SummaryScreen() {
 
   const spend = useMonthCategorySpend(month);
   const currency = useUserCurrency();
+  const trendRows = useSpendTrend(month);
 
   // The frame or two before the first read returns, abandoned after 300ms whatever happens
   // - after that the honest answer is `empty`, not `loading` (`useFirstPaintSkeleton`).
   const showSkeleton = useFirstPaintSkeleton(spend.isPending || currency.isPending);
 
   const summary = summariseMonth(spend.data ?? []);
+  const trend = buildTrend(trendRows.data ?? [], month);
 
   // `undefined` while the read is in flight, `null` when there is no user row. Neither is a
   // currency, and formatting an amount without one would put a dollar sign in front of a
@@ -138,6 +142,12 @@ export default function SummaryScreen() {
         ) : (
           <SummaryEmpty />
         )}
+
+        {/* Below the month's own figures, and shown even for an empty month: "nothing this month"
+            is context the trend gives. Held back until there are two months to compare. */}
+        {!pending && currencyCode !== null && trend.isWorthShowing ? (
+          <SpendTrend trend={trend} currency={currencyCode} />
+        ) : null}
       </ScrollView>
     </View>
   );

@@ -1,7 +1,8 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { LIMITS } from '@expense-tracker/shared';
 import { queryKeys } from '../query/keys';
-import { type MonthKey, monthRange } from '../lib/calendar';
+import { type MonthKey, monthRange, stepMonth } from '../lib/calendar';
+import { TREND_MONTHS } from '../summary/trendModel';
 import { useDatabase } from './DatabaseProvider';
 import { readCategoryReviewPending } from './onboarding';
 import { readEmailVerified, readUserCurrency, readUserEmail } from './user';
@@ -28,6 +29,8 @@ import {
   listPendingChanges,
   monthCategorySpend,
   monthTotalMinor,
+  monthlyTotals,
+  type MonthlyTotal,
   monthsWithExpenses,
   searchExpenses,
   searchSummary,
@@ -134,6 +137,15 @@ export function useMonthCategorySpend(month: MonthKey): UseQueryResult<readonly 
   return useQuery({
     queryKey: queryKeys.expenses.monthByCategory(month),
     queryFn: () => monthCategorySpend(database, monthRange(month)),
+  });
+}
+
+/** Per-month spend for the trend chart: the {@link TREND_MONTHS} months ending at `month`. */
+export function useSpendTrend(month: MonthKey): UseQueryResult<readonly MonthlyTotal[]> {
+  const database = useDatabase();
+  return useQuery({
+    queryKey: queryKeys.expenses.trend(month),
+    queryFn: () => monthlyTotals(database, stepMonth(month, -(TREND_MONTHS - 1)), month),
   });
 }
 
