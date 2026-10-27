@@ -67,6 +67,13 @@ marked **(dev build)**.
 - [ ] Create a goal with a deadline. The row shows "Save X a month to reach it by …".
 - [ ] Add money to it; the bar and percentage move. Reach the target: it shows "Goal reached".
 - [ ] Delete it; check it also disappears on a second device after a sync.
+- [ ] **Goal reminders** fire at 09:00 local. Save a goal with a deadline 2 days out and set the
+      phone's clock to just before 09:00 the day before: expect "Goal due tomorrow" with
+      "Name · X to go". A deadline 8 days out with the clock just before 09:00 a week ahead gives
+      "Goal due in a week".
+- [ ] Saving a goal **with a deadline** asks for notification permission once; a goal without one
+      never does. Add money: the "to go" amount in the next reminder is lower. Reach the target or
+      delete the goal: no reminder fires.
 
 ## 7. App lock
 
