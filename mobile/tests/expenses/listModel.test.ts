@@ -47,6 +47,7 @@ function item(overrides: Partial<ExpenseListItem> = {}): ExpenseListItem {
   return {
     id: 'e1',
     categoryId: 'c1',
+    kind: 'expense',
     categoryName: 'Groceries',
     categoryColor: '#22C55E',
     fallbackName: 'Uncategorized',

@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AppBar } from '@/components/Chrome';
 import { COPY } from '@/copy/strings';
-import { useMonthCategorySpend, useSpendTrend, useUserCurrency } from '@/db/hooks';
+import { useMonthCategorySpend, useMonthIncome, useSpendTrend, useUserCurrency } from '@/db/hooks';
 import { MonthTotal } from '@/expenses/MonthTotal';
 import { useFirstPaintSkeleton } from '@/expenses/useFirstPaint';
 import { useAwaitingFirstSync } from '@/sync/useAwaitingFirstSync';
@@ -78,6 +78,7 @@ export default function SummaryScreen() {
   const spend = useMonthCategorySpend(month);
   const currency = useUserCurrency();
   const trendRows = useSpendTrend(month);
+  const income = useMonthIncome(month);
   const previousMonth = stepMonth(month, -1);
   const previousSpend = useMonthCategorySpend(previousMonth);
 
@@ -125,6 +126,7 @@ export default function SummaryScreen() {
           currency={currencyCode ?? ''}
           isCurrentMonth={isCurrent}
           count={pending ? undefined : summary.expenseCount}
+          incomeMinor={pending ? undefined : income.data}
         />
 
         {pending ? (

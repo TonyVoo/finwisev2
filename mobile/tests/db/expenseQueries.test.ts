@@ -118,6 +118,7 @@ describe('expense and category reads', () => {
         {
           id: ids.e1,
           categoryId: ids.groceries,
+          kind: 'expense',
           categoryName: 'Groceries',
           categoryColor: '#2F8044',
           fallbackName: 'Uncategorized',
@@ -364,6 +365,7 @@ describe('expense and category reads', () => {
       expect(await findExpense(database, ids.e1)).toEqual({
         id: ids.e1,
         categoryId: ids.groceries,
+        kind: 'expense',
         amountMinor: 1250,
         currency: 'USD',
         date: '2026-10-09',

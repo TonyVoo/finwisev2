@@ -30,6 +30,8 @@ import {
 /** Everything an expense needs to exist. `note` is optional; the rest is not. */
 export interface NewExpense {
   readonly categoryId: string;
+  /** Defaults to `expense`. */
+  readonly kind?: 'expense' | 'income';
   readonly amountMinor: number;
   readonly currency: string;
   readonly date: string;
@@ -37,7 +39,10 @@ export interface NewExpense {
 }
 
 /** The editable fields of an expense, as a draft the form holds. */
-export type ExpenseDraft = Omit<NewExpense, 'note'> & { readonly note: string | null };
+export type ExpenseDraft = Omit<NewExpense, 'note' | 'kind'> & {
+  readonly kind: 'expense' | 'income';
+  readonly note: string | null;
+};
 
 /**
  * A note as it is stored: trimmed, and `null` rather than `''` when nothing is left.
@@ -71,6 +76,7 @@ export async function createExpense(
       id: options.id ?? uuidv7(),
       fields: {
         categoryId: expense.categoryId,
+        kind: expense.kind ?? 'expense',
         amountMinor: expense.amountMinor,
         currency: expense.currency,
         date: expense.date,
@@ -96,6 +102,7 @@ export function changedExpenseFields(
 ): Partial<ExpenseDraft> {
   const changed: Record<string, unknown> = {};
   if (draft.categoryId !== stored.categoryId) changed.categoryId = draft.categoryId;
+  if (draft.kind !== stored.kind) changed.kind = draft.kind;
   if (draft.amountMinor !== stored.amountMinor) changed.amountMinor = draft.amountMinor;
   if (draft.currency !== stored.currency) changed.currency = draft.currency;
   if (draft.date !== stored.date) changed.date = draft.date;

@@ -55,6 +55,7 @@ export function serverCategory(overrides: Partial<Category> & { id: string }): C
 export function serverExpense(overrides: Partial<Expense> & { id: string }): Expense {
   return {
     categoryId: categoryId(1),
+    kind: 'expense',
     amountMinor: 1250,
     currency: 'USD',
     date: '2026-10-08',

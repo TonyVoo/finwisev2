@@ -18,6 +18,7 @@ import {
   useExpenseSearchSummary,
   useLiveCategories,
   useMonthExpenses,
+  useMonthIncome,
   useMonthTotal,
   useUserCurrency,
 } from '@/db/hooks';
@@ -145,6 +146,7 @@ export default function ExpenseListScreen() {
 
   const expenses = useMonthExpenses(month);
   const total = useMonthTotal(month);
+  const income = useMonthIncome(month);
   const anyExist = useAnyExpensesExist();
   const currency = useUserCurrency();
 
@@ -265,6 +267,7 @@ export default function ExpenseListScreen() {
           totalMinor={currencyCode === null || awaitingFirstSync ? undefined : total.data}
           currency={currencyCode ?? ''}
           isCurrentMonth={isCurrent}
+          incomeMinor={currencyCode === null || awaitingFirstSync ? undefined : income.data}
         />
       )}
 

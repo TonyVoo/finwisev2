@@ -34,9 +34,11 @@ export interface ExportExpense {
   readonly currency: string;
   readonly categoryName: string;
   readonly note: string | null;
+  /** Defaults to `expense`. Income rows are marked in the trailing Type column. */
+  readonly kind?: 'expense' | 'income';
 }
 
-export const CSV_HEADER = ['Date', 'Amount', 'Currency', 'Category', 'Note'] as const;
+export const CSV_HEADER = ['Date', 'Amount', 'Currency', 'Category', 'Note', 'Type'] as const;
 
 const BOM = '﻿';
 const EOL = '\r\n';
@@ -75,6 +77,7 @@ export function buildExpensesCsv(
       csvText(expense.currency),
       csvText(expense.categoryName),
       csvText(expense.note ?? ''),
+      expense.kind ?? 'expense',
     ].join(','),
   );
   return BOM + [CSV_HEADER.join(','), ...records].join(EOL) + EOL;

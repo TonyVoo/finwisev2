@@ -221,6 +221,7 @@ export function createFakeSyncServer(options: FakeSyncServerOptions = {}): FakeS
       const created: Expense = {
         id: item.id,
         categoryId,
+        kind: item.fields.kind ?? 'expense',
         amountMinor,
         currency: currency ?? 'USD',
         date,
@@ -242,6 +243,7 @@ export function createFakeSyncServer(options: FakeSyncServerOptions = {}): FakeS
     const merged: Expense = {
       ...stored,
       categoryId: item.fields.categoryId ?? stored.categoryId,
+      kind: item.fields.kind ?? stored.kind,
       amountMinor: item.fields.amountMinor ?? stored.amountMinor,
       currency: item.fields.currency ?? stored.currency,
       date: item.fields.date ?? stored.date,

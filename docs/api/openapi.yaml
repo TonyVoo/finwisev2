@@ -1168,6 +1168,7 @@ paths:
                 data:
                   - id: 0192f3b1-0000-7f1e-9b2d-000000000001
                     categoryId: 0192f3a0-7c3a-7f1e-9b2d-000000000001
+                    kind: expense
                     amountMinor: 1234
                     currency: USD
                     date: '2026-10-05'
@@ -1237,6 +1238,7 @@ paths:
             example:
               id: 0192f3b1-0000-7f1e-9b2d-000000000002
               categoryId: 0192f3a0-7c3a-7f1e-9b2d-000000000001
+              kind: expense
               amountMinor: 1234
               currency: USD
               date: '2026-10-06'
@@ -1351,6 +1353,7 @@ paths:
                 data:
                   id: 0192f3b1-0000-7f1e-9b2d-000000000001
                   categoryId: 0192f3a0-7c3a-7f1e-9b2d-000000000001
+                  kind: expense
                   amountMinor: 1234
                   currency: USD
                   date: '2026-10-05'
@@ -1662,6 +1665,7 @@ paths:
                         record:
                           id: 0192f3b1-0000-7f1e-9b2d-000000000001
                           categoryId: 0192f3a0-7c3a-7f1e-9b2d-000000000002
+                          kind: expense
                           amountMinor: 450
                           currency: USD
                           date: '2026-10-06'
@@ -1690,6 +1694,7 @@ paths:
                         record:
                           id: 0192f3b1-0000-7f1e-9b2d-000000000001
                           categoryId: 0192f3a0-7c3a-7f1e-9b2d-000000000002
+                          kind: expense
                           amountMinor: 450
                           currency: USD
                           date: '2026-10-06'
@@ -1859,6 +1864,7 @@ paths:
                   clientMutationId: 0192f400-0000-7f1e-9b2d-00000000000b
                   fields:
                     categoryId: 0192f3a0-7c3a-7f1e-9b2d-000000000002
+                    kind: expense
                     amountMinor: 450
                     date: '2026-10-06'
                     note: Flat white
@@ -1902,6 +1908,7 @@ paths:
                         record:
                           id: 0192f3b1-0000-7f1e-9b2d-000000000003
                           categoryId: 0192f3a0-7c3a-7f1e-9b2d-000000000002
+                          kind: expense
                           amountMinor: 450
                           currency: USD
                           date: '2026-10-06'
@@ -1925,6 +1932,7 @@ paths:
                         record:
                           id: 0192f3b1-0000-7f1e-9b2d-000000000003
                           categoryId: 0192f3a0-7c3a-7f1e-9b2d-000000000002
+                          kind: expense
                           amountMinor: 900
                           currency: USD
                           date: '2026-10-06'
@@ -2775,6 +2783,14 @@ components:
         A note that trims to nothing is not an error — it is stored as `null`.
       examples: ['Weekly shop']
 
+    EntryKind:
+      type: string
+      enum: [expense, income]
+      description: |
+        `expense` (money out) or `income` (money in). Optional on create, defaulting to
+        `expense`. Income shares the expenses table so it syncs the same way; spend totals
+        count `expense` rows only.
+
     Expense:
       type: object
       description: |
@@ -2786,6 +2802,7 @@ components:
       required:
         - id
         - categoryId
+        - kind
         - amountMinor
         - currency
         - date
@@ -2801,6 +2818,7 @@ components:
           description: |
             Owning category. Always a live category of the same user; reassigned to the
             `Uncategorized` default if its category is deleted.
+        kind: { $ref: '#/components/schemas/EntryKind' }
         amountMinor: { $ref: '#/components/schemas/AmountMinor' }
         currency: { $ref: '#/components/schemas/CurrencyCode' }
         date:
@@ -2899,6 +2917,7 @@ components:
           allOf: [{ $ref: '#/components/schemas/Uuid' }]
           description: |
             Must name a live category of this user, otherwise `422 unknown_category`.
+        kind: { $ref: '#/components/schemas/EntryKind' }
         amountMinor: { $ref: '#/components/schemas/AmountMinor' }
         currency:
           allOf: [{ $ref: '#/components/schemas/CurrencyCode' }]
@@ -2925,6 +2944,7 @@ components:
       minProperties: 1
       properties:
         categoryId: { $ref: '#/components/schemas/Uuid' }
+        kind: { $ref: '#/components/schemas/EntryKind' }
         amountMinor: { $ref: '#/components/schemas/AmountMinor' }
         currency: { $ref: '#/components/schemas/CurrencyCode' }
         date: { $ref: '#/components/schemas/CalendarDate' }
@@ -3154,6 +3174,7 @@ components:
       minProperties: 1
       properties:
         categoryId: { $ref: '#/components/schemas/Uuid' }
+        kind: { $ref: '#/components/schemas/EntryKind' }
         amountMinor: { $ref: '#/components/schemas/AmountMinor' }
         currency: { $ref: '#/components/schemas/CurrencyCode' }
         date: { $ref: '#/components/schemas/CalendarDate' }
@@ -3181,6 +3202,7 @@ components:
       minProperties: 1
       properties:
         categoryId: { $ref: '#/components/schemas/Uuid' }
+        kind: { $ref: '#/components/schemas/EntryKind' }
         amountMinor: { $ref: '#/components/schemas/AmountMinor' }
         currency: { $ref: '#/components/schemas/CurrencyCode' }
         note:

@@ -130,6 +130,7 @@ describe('two devices diverging offline', () => {
       {
         id: expenseId,
         categoryId: user.defaultCategory.id,
+        kind: 'expense',
         amountMinor: 450,
         currency: user.user.currency,
         date: '2026-10-09',
@@ -263,6 +264,7 @@ describe('two devices diverging offline', () => {
     const seed: Expense = {
       id,
       categoryId: user.defaultCategory.id,
+      kind: 'expense',
       amountMinor: 450,
       currency: user.user.currency,
       date: '2026-10-09',
@@ -343,6 +345,7 @@ describe('two devices diverging offline', () => {
             clientMutationId: uuidv7(),
             fields: {
               categoryId: user.defaultCategory.id,
+              kind: 'expense',
               amountMinor: 100 + i,
               date: '2026-10-09',
               note: `${label} ${i}`,
@@ -351,6 +354,7 @@ describe('two devices diverging offline', () => {
           {
             id,
             categoryId: user.defaultCategory.id,
+            kind: 'expense',
             amountMinor: 100 + i,
             currency: user.user.currency,
             date: '2026-10-09',
@@ -396,6 +400,7 @@ describe('two devices diverging offline', () => {
       {
         id: expenseId,
         categoryId,
+        kind: 'expense',
         amountMinor: 450,
         currency: user.user.currency,
         date: '2026-10-09',

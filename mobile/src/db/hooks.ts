@@ -33,6 +33,7 @@ import {
   type MonthlyTotal,
   monthsWithExpenses,
   searchExpenses,
+  monthIncomeMinor,
   searchSummary,
 } from './queries';
 
@@ -120,6 +121,15 @@ export function useMonthTotal(month: MonthKey): UseQueryResult<number> {
   return useQuery({
     queryKey: queryKeys.expenses.monthTotal(month),
     queryFn: () => monthTotalMinor(database, monthRange(month)),
+  });
+}
+
+/** The selected month's income, in minor units. */
+export function useMonthIncome(month: MonthKey): UseQueryResult<number> {
+  const database = useDatabase();
+  return useQuery({
+    queryKey: queryKeys.expenses.monthIncome(month),
+    queryFn: () => monthIncomeMinor(database, monthRange(month)),
   });
 }
 

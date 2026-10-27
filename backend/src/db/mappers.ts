@@ -66,6 +66,7 @@ export function toWireExpense(row: ExpenseRow): WireExpense {
   return {
     id: row.id,
     categoryId: row.categoryId,
+    kind: row.kind as WireExpense['kind'],
     // `amount_minor` is `bigint` in Postgres because the contract's maximum overflows
     // `int4`. It is still exact as a JS number (well under 2^53), and the wire type is
     // an integer, so the narrowing happens here, once, at the boundary.

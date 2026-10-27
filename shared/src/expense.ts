@@ -37,12 +37,21 @@ export const ExpenseNoteInput = ExpenseNote.nullable().transform((value) =>
   value === '' ? null : value,
 );
 
+/**
+ * Whether a row is money out or money in. Income lives in the same table as expenses so it
+ * syncs, exports and attaches receipts the same way; every spend total filters on `expense`.
+ */
+export const EntryKind = z
+  .enum(['expense', 'income'])
+  .describe('`expense` (money out) or `income` (money in). Defaults to `expense`.');
+
 /** An expense row as the server reports it. */
 export const Expense = z.strictObject({
   ...SYNCABLE_SHAPE,
   categoryId: Uuid.describe(
     'Owning category. Always a live category of the same user; reassigned to the `Uncategorized` default if its category is deleted.',
   ),
+  kind: EntryKind,
   amountMinor: AmountMinor,
   currency: CurrencyCode,
   date: CalendarDate,
@@ -54,6 +63,7 @@ export const ExpenseCreateRequest = z.strictObject({
     'Optional client-minted UUIDv7. Supply it so a row created offline keeps its identity; omit it and the server mints one.',
   ),
   categoryId: Uuid,
+  kind: EntryKind.optional(),
   amountMinor: AmountMinor,
   currency: CurrencyCode.optional().describe(
     "Defaults to the user's currency when omitted. In the MVP it must equal it; anything else is a validation_error.",
@@ -65,6 +75,7 @@ export const ExpenseCreateRequest = z.strictObject({
 export const ExpenseUpdateRequest = z
   .strictObject({
     categoryId: Uuid.optional(),
+    kind: EntryKind.optional(),
     amountMinor: AmountMinor.optional(),
     currency: CurrencyCode.optional(),
     date: CalendarDate.optional(),
@@ -128,6 +139,7 @@ export const ExpenseResponse = z.strictObject({
   data: Expense,
 });
 
+export type EntryKind = z.infer<typeof EntryKind>;
 export type ExpenseNote = z.infer<typeof ExpenseNote>;
 export type ExpenseNoteInput = z.infer<typeof ExpenseNoteInput>;
 export type Expense = z.infer<typeof Expense>;

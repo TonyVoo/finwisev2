@@ -7,6 +7,7 @@ import { Button } from '../components/Button';
 import { Dialog } from '../components/Dialog';
 import { Row, RowTitle, Swatch } from '../components/Row';
 import { useSnackbar } from '../components/Snackbar';
+import { KindToggle } from './KindToggle';
 import { CategoryFormSheet, type CategoryDraft } from '../categories/CategoryFormSheet';
 import {
   CONFIRM_COPY,
@@ -160,6 +161,7 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
       if (stored.isPending || stored.data === null || stored.data === undefined) return;
       const seeded: ExpenseDraft = {
         categoryId: stored.data.categoryId,
+        kind: stored.data.kind,
         amountMinor: stored.data.amountMinor,
         currency: stored.data.currency,
         date: stored.data.date,
@@ -178,6 +180,7 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
       // `Add a category first.` - so the user can reach the picker and create one.
       const seeded: ExpenseDraft = {
         categoryId: '',
+        kind: 'expense',
         amountMinor: 0,
         currency: currencyCode,
         date: today,
@@ -189,6 +192,7 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
     }
     const seeded: ExpenseDraft = {
       categoryId: preselected,
+      kind: 'expense',
       amountMinor: 0,
       currency: currencyCode,
       date: today,
@@ -293,6 +297,7 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
     await localWrite(async (db) => {
       const queued = await createExpense(db, {
         categoryId: live.categoryId,
+        kind: live.kind,
         amountMinor: live.amountMinor,
         currency: live.currency,
         date: live.date,
@@ -394,7 +399,15 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
   return (
     <View testID={EXPENSE_FORM_TEST_ID} style={styles.screen}>
       <AppBar
-        title={isEdit ? COPY.form.title.edit : COPY.form.title.add}
+        title={
+          live?.kind === 'income'
+            ? isEdit
+              ? COPY.form.title.editIncome
+              : COPY.form.title.addIncome
+            : isEdit
+              ? COPY.form.title.edit
+              : COPY.form.title.add
+        }
         centred
         leading={
           <IconButton
@@ -428,6 +441,12 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
         <FormSkeleton />
       ) : (
         <>
+          <KindToggle
+            value={live.kind}
+            onChange={(kind) =>
+              setDraft((current) => (current === null ? current : { ...current, kind }))
+            }
+          />
           <AmountDisplay
             amountMinor={live.amountMinor}
             currency={currencyCode ?? ''}

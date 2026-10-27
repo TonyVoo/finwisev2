@@ -318,6 +318,7 @@ describe('the expense form', () => {
       expect(entryAt(queued, 0).entity).toBe('expense');
       expect(JSON.parse(entryAt(queued, 0).fields)).toEqual({
         categoryId: FALLBACK,
+        kind: 'expense',
         amountMinor: 1250,
         currency: 'USD',
         date: '2026-10-14',

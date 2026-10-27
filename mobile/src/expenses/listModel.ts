@@ -1,4 +1,5 @@
 import { UNCATEGORIZED_NAME } from '@expense-tracker/shared';
+import { COPY } from '../copy/strings';
 import { CATEGORY_RESERVED_COLOR } from '../theme/tokens';
 import { type CalendarDate, dayLabel } from '../lib/calendar';
 import { formatMoney } from '../lib/money';
@@ -98,6 +99,7 @@ export function expenseRowLabel(
 ): string {
   const parts = [
     rowCategoryName(item),
+    ...(item.kind === 'income' ? [COPY.home.incomeLabel] : []),
     formatMoney(item.amountMinor, item.currency, locale),
     ...(item.note === null || item.note.trim().length === 0 ? [] : [item.note]),
     dayLabel(item.date, today, locale),

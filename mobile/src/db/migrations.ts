@@ -287,6 +287,15 @@ CREATE TABLE receipts (
 );
 `;
 
+/**
+ * Income: `kind` on `expenses`. Income shares the table so it syncs, exports and attaches
+ * receipts like any entry; every spend total filters on `kind = 'expense'`.
+ */
+const ENTRY_KIND = `
+ALTER TABLE expenses ADD COLUMN kind TEXT NOT NULL DEFAULT 'expense'
+  CHECK (kind IN ('expense', 'income'));
+`;
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: 'initial-schema', up: INITIAL_SCHEMA },
   { version: 2, name: 'store-owner', up: STORE_OWNER },
@@ -296,6 +305,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 6, name: 'recurring', up: RECURRING },
   { version: 7, name: 'email-verified', up: EMAIL_VERIFIED },
   { version: 8, name: 'receipts', up: RECEIPTS },
+  { version: 9, name: 'entry-kind', up: ENTRY_KIND },
 ];
 
 /** Highest version `MIGRATIONS` can bring a database to. */

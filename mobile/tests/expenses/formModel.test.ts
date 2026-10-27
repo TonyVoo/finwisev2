@@ -16,6 +16,7 @@ import { hasEdits, saveState } from '@/expenses/formModel';
 const STORED: ExpenseDetail = {
   id: 'e1',
   categoryId: 'c1',
+  kind: 'expense',
   amountMinor: 1250,
   currency: 'USD',
   date: '2026-10-14',
@@ -25,6 +26,7 @@ const STORED: ExpenseDetail = {
 function draft(overrides: Partial<ExpenseDraft> = {}): ExpenseDraft {
   return {
     categoryId: 'c1',
+    kind: 'expense',
     amountMinor: 1250,
     currency: 'USD',
     date: '2026-10-14',

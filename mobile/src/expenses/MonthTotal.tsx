@@ -36,6 +36,7 @@ import { createStyles } from '../theme/ThemeProvider';
 export const MONTH_TOTAL_TEST_ID = 'month-total';
 export const MONTH_TOTAL_SKELETON_TEST_ID = 'month-total-skeleton';
 export const MONTH_TOTAL_COUNT_TEST_ID = 'month-total-count';
+export const MONTH_BALANCE_TEST_ID = 'month-total-balance';
 
 export interface MonthTotalProps {
   /** In minor units. `undefined` while the first SQLite read is in flight. */
@@ -51,9 +52,20 @@ export interface MonthTotalProps {
    * for it. Zero is a value and renders: the empty state shows `$0.00` with `0 expenses`.
    */
   readonly count?: number;
+  /**
+   * The month's income. Shown, with the net (income minus spend), only when above zero:
+   * most people log nothing here and the line would be noise.
+   */
+  readonly incomeMinor?: number;
 }
 
-export function MonthTotal({ totalMinor, currency, isCurrentMonth, count }: MonthTotalProps) {
+export function MonthTotal({
+  totalMinor,
+  currency,
+  isCurrentMonth,
+  count,
+  incomeMinor,
+}: MonthTotalProps) {
   const styles = useStyles();
   const label = isCurrentMonth ? COPY.home.total.current : COPY.home.total.other;
 
@@ -70,6 +82,10 @@ export function MonthTotal({ totalMinor, currency, isCurrentMonth, count }: Mont
 
   const formatted = formatMoney(totalMinor, currency);
   const counted = count === undefined ? null : summaryExpenseCount(count);
+  const balance =
+    incomeMinor === undefined || incomeMinor <= 0
+      ? null
+      : `${COPY.home.balance.income.replace('{amount}', formatMoney(incomeMinor, currency))} · ${COPY.home.balance.net.replace('{amount}', formatMoney(incomeMinor - totalMinor, currency))}`;
 
   return (
     <View
@@ -77,13 +93,18 @@ export function MonthTotal({ totalMinor, currency, isCurrentMonth, count }: Mont
       style={styles.block}
       // One element: the caption, the figure and the count are meaningless apart.
       accessible
-      accessibilityLabel={
-        counted === null ? `${label}, ${formatted}` : `${label}, ${formatted}, ${counted}`
-      }
+      accessibilityLabel={[label, formatted, counted, balance]
+        .filter((part): part is string => part !== null)
+        .join(', ')}
       accessibilityLiveRegion="polite"
     >
       <Text style={styles.label}>{label}</Text>
       <Text style={styles.amount}>{formatted}</Text>
+      {balance === null ? null : (
+        <Text testID={MONTH_BALANCE_TEST_ID} style={styles.count}>
+          {balance}
+        </Text>
+      )}
       {counted === null ? null : (
         <Text testID={MONTH_TOTAL_COUNT_TEST_ID} style={styles.count}>
           {counted}

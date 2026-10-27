@@ -69,6 +69,7 @@ export const SERVER_COLUMNS: Readonly<Record<SyncEntity, readonly string[]>> = {
   expense: [
     'id',
     'categoryId',
+    'kind',
     'amountMinor',
     'currency',
     'date',

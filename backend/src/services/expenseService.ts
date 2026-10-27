@@ -127,6 +127,7 @@ export async function createExpense(
         id,
         userId,
         categoryId: input.categoryId,
+        kind: input.kind ?? 'expense',
         amountMinor: BigInt(input.amountMinor),
         currency,
         date: fromCalendarDate(input.date),
@@ -169,6 +170,7 @@ export async function updateExpense(
       where: { id: existing.id },
       data: {
         ...(patch.categoryId === undefined ? {} : { categoryId: patch.categoryId }),
+        ...(patch.kind === undefined ? {} : { kind: patch.kind }),
         ...(patch.amountMinor === undefined ? {} : { amountMinor: BigInt(patch.amountMinor) }),
         ...(patch.currency === undefined ? {} : { currency: patch.currency }),
         ...(patch.date === undefined ? {} : { date: fromCalendarDate(patch.date) }),

@@ -68,11 +68,12 @@ export function ExpenseRow({ item, today, onPress, onDelete, lastInGroup }: Expe
             {item.needsAttention ? <NeedsAttentionGlyph /> : item.pending ? <PendingGlyph /> : null}
             <Text
               testID={`${EXPENSE_AMOUNT_TEST_ID_PREFIX}-${item.id}`}
-              style={styles.amount}
+              style={[styles.amount, item.kind === 'income' ? styles.income : null]}
               // The amount must never truncate or ellipsise: "a clipped amount is worse
               // than a taller row" (§Accessibility rule 4).
               numberOfLines={1}
             >
+              {item.kind === 'income' ? '+' : ''}
               {formatMoney(item.amountMinor, item.currency)}
             </Text>
           </View>
@@ -105,6 +106,7 @@ const useStyles = createStyles((color) =>
       color: color.text.primary,
       fontVariant: ['tabular-nums'],
     },
+    income: { color: color.success.default },
     needsAttention: {
       ...type.footnote,
       color: color.danger.default,

@@ -51,6 +51,7 @@ const CATEGORY = {
 const EXPENSE = {
   id: '0192f5a0-0000-7000-8000-0000000000aa',
   categoryId: CATEGORY.id,
+  kind: 'expense',
   amountMinor: 1234,
   currency: 'USD',
   date: '2026-10-08',

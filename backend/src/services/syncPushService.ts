@@ -229,6 +229,7 @@ async function applyExpenseItem(
         id: item.id,
         userId,
         categoryId,
+        kind: fields.kind ?? 'expense',
         amountMinor: BigInt(amountMinor),
         currency,
         date: fromCalendarDate(date),
@@ -263,6 +264,7 @@ async function applyExpenseItem(
     where: { id: existing.id },
     data: {
       categoryId,
+      ...(fields.kind === undefined ? {} : { kind: fields.kind }),
       ...(fields.amountMinor === undefined ? {} : { amountMinor: BigInt(fields.amountMinor) }),
       ...(fields.currency === undefined ? {} : { currency: fields.currency }),
       ...(fields.date === undefined ? {} : { date: fromCalendarDate(fields.date) }),

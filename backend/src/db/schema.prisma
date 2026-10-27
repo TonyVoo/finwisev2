@@ -134,6 +134,9 @@ model Expense {
   userId     String @map("user_id") @db.Uuid
   categoryId String @map("category_id") @db.Uuid
 
+  /// `expense` or `income`; held by a CHECK constraint (Prisma cannot express it).
+  kind String @default("expense") @db.VarChar(7)
+
   /// Integer minor units (1234 = 12.34 USD). `bigint` because the contract allows
   /// up to 999_999_999_999, which overflows `int4`. Still exact as a JS number
   /// (well under 2^53); the row mapper narrows it at the wire boundary.

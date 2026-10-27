@@ -193,6 +193,7 @@ describe('applyLocalMutation', () => {
         {
           id: EXPENSE_ID,
           categoryId: CATEGORY_ID,
+          kind: 'expense',
           amountMinor: 1234,
           currency: 'USD',
           date: '2026-10-08',

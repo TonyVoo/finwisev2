@@ -229,6 +229,7 @@ export interface DateRange {
 export interface ExpenseListItem {
   readonly id: string;
   readonly categoryId: string;
+  readonly kind: 'expense' | 'income';
   /**
    * The live category's name, or null when `categoryId` resolves to nothing.
    *
@@ -263,6 +264,12 @@ export interface ExpenseListItem {
 
 /** `WHERE` shared by a month's page and its total, so the two cannot disagree. */
 const LIVE_IN_MONTH = 'e.deletedAt IS NULL AND e.date BETWEEN ? AND ?';
+
+/**
+ * Every spend total counts money out only. Income lives in the same table (migration 9), so
+ * a query that sums `amountMinor` without this would add salary to the month's spending.
+ */
+const SPEND = "e.kind = 'expense'";
 
 /**
  * One page of a month's expenses, newest day first.
@@ -306,6 +313,7 @@ async function selectExpenseItems(
   >(
     `SELECT e.id,
             e.categoryId,
+            e.kind,
             e.amountMinor,
             e.currency,
             e.date,
@@ -355,7 +363,20 @@ async function selectExpenseItems(
  */
 export async function monthTotalMinor(database: SqliteDatabase, range: DateRange): Promise<number> {
   const row = await database.getFirstAsync<{ total: number | null }>(
-    `SELECT SUM(e.amountMinor) AS total FROM expenses e WHERE ${LIVE_IN_MONTH}`,
+    `SELECT SUM(e.amountMinor) AS total FROM expenses e WHERE ${LIVE_IN_MONTH} AND ${SPEND}`,
+    [range.from, range.to],
+  );
+  return row?.total ?? 0;
+}
+
+/** A month's income, in minor units; 0 when there is none. */
+export async function monthIncomeMinor(
+  database: SqliteDatabase,
+  range: DateRange,
+): Promise<number> {
+  const row = await database.getFirstAsync<{ total: number | null }>(
+    `SELECT SUM(e.amountMinor) AS total FROM expenses e
+      WHERE ${LIVE_IN_MONTH} AND e.kind = 'income'`,
     [range.from, range.to],
   );
   return row?.total ?? 0;
@@ -458,7 +479,7 @@ export async function monthCategorySpend(
           WHERE isDefault = 1 AND deletedAt IS NULL
           ORDER BY id LIMIT 1
        ) f ON 1 = 1
-      WHERE ${LIVE_IN_MONTH}
+      WHERE ${LIVE_IN_MONTH} AND ${SPEND}
       GROUP BY COALESCE(c.id, f.id)
       ORDER BY totalMinor DESC, name COLLATE NOCASE`,
     [range.from, range.to],
@@ -488,6 +509,7 @@ export async function monthlyTotals(
     `SELECT substr(e.date, 1, 7) AS ym, SUM(e.amountMinor) AS total
        FROM expenses e
       WHERE e.deletedAt IS NULL
+        AND ${SPEND}
         AND substr(e.date, 1, 7) BETWEEN ? AND ?
       GROUP BY ym
       ORDER BY ym`,
@@ -534,6 +556,7 @@ export async function monthsWithExpenses(database: SqliteDatabase): Promise<read
 export interface ExpenseDetail {
   readonly id: string;
   readonly categoryId: string;
+  readonly kind: 'expense' | 'income';
   readonly amountMinor: number;
   readonly currency: string;
   readonly date: string;
@@ -552,7 +575,7 @@ export async function findExpense(
   id: string,
 ): Promise<ExpenseDetail | null> {
   return await database.getFirstAsync<ExpenseDetail>(
-    `SELECT id, categoryId, amountMinor, currency, date, note
+    `SELECT id, categoryId, kind, amountMinor, currency, date, note
        FROM expenses
       WHERE id = ? AND deletedAt IS NULL`,
     [id],
@@ -576,7 +599,7 @@ export async function lastUsedCategoryId(database: SqliteDatabase): Promise<stri
     `SELECT e.categoryId
        FROM expenses e
        JOIN categories c ON c.id = e.categoryId AND c.deletedAt IS NULL
-      WHERE e.deletedAt IS NULL
+      WHERE e.deletedAt IS NULL AND e.kind = 'expense'
       ORDER BY e.id DESC
       LIMIT 1`,
     [],
@@ -667,6 +690,7 @@ export async function listPendingChanges(
 
 /** One live expense as the CSV export reads it. */
 export interface ExportRow {
+  readonly kind: 'expense' | 'income';
   readonly date: string;
   readonly amountMinor: number;
   readonly currency: string;
@@ -695,6 +719,7 @@ export async function listExpensesForExport(
 ): Promise<readonly ExportRow[]> {
   return await database.getAllAsync<ExportRow>(
     `SELECT e.date,
+            e.kind,
             e.amountMinor,
             e.currency,
             COALESCE(c.name, f.name, 'Uncategorized') AS categoryName,
@@ -770,7 +795,8 @@ export async function searchSummary(
 ): Promise<{ readonly count: number; readonly totalMinor: number }> {
   const { where, params } = searchWhere(search);
   const row = await database.getFirstAsync<{ count: number; total: number | null }>(
-    `SELECT COUNT(*) AS count, SUM(e.amountMinor) AS total
+    `SELECT COUNT(*) AS count,
+            SUM(CASE WHEN e.kind = 'expense' THEN e.amountMinor ELSE 0 END) AS total
        FROM expenses e
        LEFT JOIN categories c ON c.id = e.categoryId AND c.deletedAt IS NULL
       WHERE ${where}`,

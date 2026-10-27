@@ -107,6 +107,7 @@ export function hasEdits(initial: ExpenseDraft, draft: ExpenseDraft): boolean {
   return (
     initial.amountMinor !== draft.amountMinor ||
     initial.categoryId !== draft.categoryId ||
+    initial.kind !== draft.kind ||
     initial.date !== draft.date ||
     normaliseNote(initial.note) !== normaliseNote(draft.note)
   );

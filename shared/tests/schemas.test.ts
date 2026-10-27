@@ -221,6 +221,7 @@ describe('request bodies reject unknown fields', () => {
     const row = {
       id: UUID_V7,
       categoryId: UUID_V7,
+      kind: 'expense',
       amountMinor: 1234,
       currency: 'USD',
       date: '2026-10-06',

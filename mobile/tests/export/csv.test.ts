@@ -81,9 +81,9 @@ describe('buildExpensesCsv', () => {
       two,
     );
     expect(csv.split('\r\n')).toEqual([
-      `﻿Date,Amount,Currency,Category,Note`,
-      '2026-10-08,12.50,USD,Groceries,',
-      '2026-10-09,0.05,USD,Groceries,"Coffee, large"',
+      `﻿Date,Amount,Currency,Category,Note,Type`,
+      '2026-10-08,12.50,USD,Groceries,,expense',
+      '2026-10-09,0.05,USD,Groceries,"Coffee, large",expense',
       '',
     ]);
   });
@@ -101,12 +101,31 @@ describe('buildExpensesCsv', () => {
 
   it('defuses a malicious note and category name', () => {
     const csv = buildExpensesCsv([expense({ categoryName: '=cmd()', note: '+1+1' })], two);
-    expect(csv).toContain(",'=cmd(),'+1+1\r\n");
+    expect(csv).toContain(",'=cmd(),'+1+1,expense\r\n");
   });
 });
 
 describe('exportFileName', () => {
   it('uses the local calendar date', () => {
     expect(exportFileName(new Date(2026, 9, 6, 23, 59))).toBe('expenses-2026-10-06.csv');
+  });
+});
+
+describe('income rows', () => {
+  it('marks income in the trailing Type column', () => {
+    const csv = buildExpensesCsv(
+      [
+        {
+          date: '2026-10-01',
+          amountMinor: 250000,
+          currency: 'USD',
+          categoryName: 'Salary',
+          note: null,
+          kind: 'income',
+        },
+      ],
+      () => 2,
+    );
+    expect(csv).toContain('2026-10-01,2500.00,USD,Salary,,income\r\n');
   });
 });

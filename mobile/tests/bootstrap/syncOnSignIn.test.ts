@@ -79,6 +79,7 @@ const PAGE = {
       record: {
         id: EXPENSE,
         categoryId: CATEGORY,
+        kind: 'expense',
         amountMinor: 4242,
         currency: 'USD',
         date: '2026-10-21',

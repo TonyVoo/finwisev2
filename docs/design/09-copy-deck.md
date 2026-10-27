@@ -486,3 +486,10 @@ them as proposals the Designer can reword; changing a row here means changing
 | `summary.insights.same` | `Your spending is about the same as in {month}.` | Summary, insights card |
 | `summary.insights.top` | `{name} is your biggest category, at {percent}% of the month.` | Summary, insights card |
 | `summary.insights.rise` | `{name} is up {amount} on {month}.` | Summary, insights card |
+| `form.title.addIncome` | `Add income` | Expense form, income mode |
+| `form.title.editIncome` | `Edit income` | Expense form, income mode |
+| `form.kind.expense` | `Expense` | Expense form, kind toggle |
+| `form.kind.income` | `Income` | Expense form, kind toggle |
+| `home.balance.income` | `Income {amount}` | Home and Summary, line under the total |
+| `home.balance.net` | `Net {amount}` | Home and Summary, line under the total |
+| `home.incomeLabel` | `income` | Home, spoken prefix on an income row |

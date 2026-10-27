@@ -159,6 +159,7 @@ describe('mutations', () => {
       expect(queue[0]).toMatchObject({ entity: 'expense', recordId: ids.expenseA });
       expect(JSON.parse(queue[0]!.fields)).toEqual({
         categoryId: ids.groceries,
+        kind: 'expense',
         amountMinor: 1250,
         currency: 'USD',
         date: '2026-10-09',
@@ -275,6 +276,7 @@ describe('mutations', () => {
       expect(
         changedExpenseFields(stored!, {
           categoryId: stored!.categoryId,
+          kind: stored!.kind,
           amountMinor: stored!.amountMinor,
           currency: stored!.currency,
           date: stored!.date,
@@ -288,6 +290,7 @@ describe('mutations', () => {
       expect(
         changedExpenseFields(stored!, {
           categoryId: ids.transport,
+          kind: stored!.kind,
           amountMinor: stored!.amountMinor,
           currency: stored!.currency,
           date: stored!.date,
@@ -302,6 +305,7 @@ describe('mutations', () => {
       expect(
         changedExpenseFields(stored!, {
           categoryId: stored!.categoryId,
+          kind: stored!.kind,
           amountMinor: stored!.amountMinor,
           currency: stored!.currency,
           date: stored!.date,

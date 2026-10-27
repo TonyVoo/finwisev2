@@ -10,7 +10,7 @@ import {
   Uuid,
 } from './primitives.js';
 import { Category, CategoryColor, CategoryName, MonthlyBudget } from './category.js';
-import { Expense, ExpenseNoteInput } from './expense.js';
+import { EntryKind, Expense, ExpenseNoteInput } from './expense.js';
 import { RecurringRule, RecurringSyncFields } from './recurring.js';
 
 /**
@@ -125,6 +125,7 @@ export const CategorySyncFields = z
 export const ExpenseSyncFields = z
   .strictObject({
     categoryId: Uuid.optional(),
+    kind: EntryKind.optional(),
     amountMinor: AmountMinor.optional(),
     currency: CurrencyCode.optional(),
     date: CalendarDate.optional(),

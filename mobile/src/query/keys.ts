@@ -42,6 +42,7 @@ export const queryKeys = {
      * is explicit that the total is never derived from the rendered page.
      */
     monthTotal: (month: string) => ['local', 'expenses', 'monthTotal', month] as const,
+    monthIncome: (month: string) => ['local', 'expenses', 'monthIncome', month] as const,
     /**
      * A month's spend per category - the Summary's one read.
      *

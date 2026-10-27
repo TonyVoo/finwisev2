@@ -82,6 +82,10 @@ export const COPY = {
     title: 'Expenses',
     /** Element 6: the label changes with the month, the figure beside it does not. */
     total: { current: 'Total this month', other: 'Total' },
+    /** The line under the total when the month has income (`MonthTotal`). */
+    balance: { income: 'Income {amount}', net: 'Net {amount}' },
+    /** A row's spoken prefix for income, so the amount is not read as money spent. */
+    incomeLabel: 'income',
     section: { today: 'Today', yesterday: 'Yesterday' },
     fab: 'Add expense',
     /** The one-time prompt after signup (`db/onboarding.ts`). */
@@ -142,7 +146,14 @@ export const COPY = {
   },
 
   form: {
-    title: { add: 'Add expense', edit: 'Edit expense' },
+    title: {
+      add: 'Add expense',
+      edit: 'Edit expense',
+      addIncome: 'Add income',
+      editIncome: 'Edit income',
+    },
+    /** The expense/income toggle at the top of the form. */
+    kind: { expense: 'Expense', income: 'Income' },
     field: {
       category: 'Category',
       date: 'Date',
