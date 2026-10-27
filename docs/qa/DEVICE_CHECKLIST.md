@@ -114,6 +114,16 @@ Haptics and animation can only be judged by hand. Run this on a real phone.
 - [ ] Turn on **Reduce Motion** (iOS: Accessibility → Motion; Android: Remove animations): the keypad
       spring, amount pop, count-up and goal bar all stop moving. Haptics still fire.
 - [ ] Turn haptics off (iOS: Sounds & Haptics → System Haptics): nothing breaks, saves still work.
+- [ ] **Welcome screen** (log out first): the logo, app name and tagline fade and rise in once.
+      With Reduce Motion on, they appear at once.
+- [ ] **Failed login or signup:** an empty form, or a wrong password, gives a warning buzz as the
+      error appears.
+- [ ] **VoiceOver / TalkBack** on Home, current month: after the total is read, "On pace for ... this
+      month" is read as a hint. Settings rows and category badges are skipped, not read as "image".
+- [ ] **Settings:** every row has an icon, hints wrap fully instead of ending in "...", and Delete
+      account has a red icon (scroll down to see it).
+- [ ] **Empty states:** a new account's Savings goals and Recurring expenses show an icon above the
+      headline.
 - [ ] **Rename offer (Vietnamese):** on an account created in English, switch the language to
       Tiếng Việt: a one-time offer to rename the untouched default categories appears. Accepting
       renames only those you had not changed, and it syncs to a second device. Declining never asks again.
