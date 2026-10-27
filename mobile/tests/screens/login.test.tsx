@@ -1,3 +1,4 @@
+import * as Haptics from 'expo-haptics';
 import { screen, waitFor } from '@testing-library/react-native';
 import { NetworkUnavailableError } from '@/api/errors';
 import { OFFLINE_COPY, VALIDATION_COPY } from '@/copy/strings';
@@ -79,9 +80,12 @@ describe('the log in screen', () => {
     it('reveals both errors when submitted empty, rather than disabling the button', async () => {
       // §1.2 rule 1: the button is never disabled, because a dead control gives the user
       // no way to find out what is wrong. Tapping it is how they find out.
+      jest.clearAllMocks();
       await pressOn('login-submit');
 
       expect(screen.getByText(VALIDATION_COPY.email.empty)).toBeTruthy();
+      // A refused submit is felt as well as read.
+      expect(Haptics.notificationAsync).toHaveBeenCalledWith('warning');
       expect(screen.getByText(VALIDATION_COPY.password.empty)).toBeTruthy();
       // Nothing was sent: the transport above would have thrown.
       expect(mounted.requests).toHaveLength(0);
@@ -230,6 +234,18 @@ describe('the log in screen', () => {
   });
 
   describe('a failed login', () => {
+    it('buzzes a warning when the server refuses the credentials', async () => {
+      mounted = await mountScreen(<LoginScreen />, {
+        transport: async () => apiError(401, 'invalid_credentials'),
+      });
+      jest.clearAllMocks();
+
+      await submitCredentials();
+      await screen.findByTestId('login-banner');
+
+      expect(Haptics.notificationAsync).toHaveBeenCalledWith('warning');
+    });
+
     it('surfaces invalid credentials as a form-level banner, not a field error', async () => {
       mounted = await mountScreen(<LoginScreen />, {
         transport: async () => apiError(401, 'invalid_credentials'),

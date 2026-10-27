@@ -1,3 +1,4 @@
+import { warnHaptic } from '../lib/haptics';
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import type { TextInput } from 'react-native';
 import type { AuthResponse } from '@expense-tracker/shared';
@@ -114,7 +115,10 @@ export function useAuthForm({
     const { errors, values } = validate(state.values);
     rawDispatch({ kind: 'submit' });
 
-    if (Object.keys(errors).length > 0) return;
+    if (Object.keys(errors).length > 0) {
+      warnHaptic();
+      return;
+    }
 
     setBusy(true);
     void (async () => {
@@ -126,6 +130,7 @@ export function useAuthForm({
         if (onSignedIn !== undefined) await onSignedIn(auth).catch(() => undefined);
       } catch (error) {
         if (!mounted.current) return;
+        warnHaptic();
         rawDispatch({ kind: 'failed', presentation: presentAuthError(error, screen) });
         setBusy(false);
       }

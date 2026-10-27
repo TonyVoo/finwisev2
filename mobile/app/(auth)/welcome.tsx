@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSession } from '@/auth/SessionProvider';
 import { Button } from '@/components/Button';
+import { FadeInUp } from '@/components/FadeInUp';
 import { FormBanner } from '@/components/FormBanner';
 import { COPY } from '@/copy/strings';
 import { space, type } from '@/theme/tokens';
@@ -60,22 +61,25 @@ export default function WelcomeScreen() {
         single decorative mark is the wrong trade. It carries no label because it says
         nothing the app name does not (§1.1 element 1).
       */}
-      <Feather
-        name="credit-card"
-        size={64}
-        color={color.primary.default}
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-      />
+      <FadeInUp style={styles.hero}>
+        <View
+          testID="welcome-mark"
+          style={styles.mark}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
+          <Feather name="credit-card" size={48} color={color.primary.default} />
+        </View>
 
-      <Text style={styles.name} accessibilityRole="header">
-        {COPY.app.name}
-      </Text>
-      {/* Centred text is used only on this screen, and only for two lines (§1.1
-          Accessibility). Body copy everywhere else is leading-aligned. */}
-      <Text style={styles.tagline} numberOfLines={2}>
-        {COPY.welcome.tagline}
-      </Text>
+        <Text style={styles.name} accessibilityRole="header">
+          {COPY.app.name}
+        </Text>
+        {/* Centred text is used only on this screen, and only for two lines (§1.1
+            Accessibility). Body copy everywhere else is leading-aligned. */}
+        <Text style={styles.tagline} numberOfLines={2}>
+          {COPY.welcome.tagline}
+        </Text>
+      </FadeInUp>
 
       <View style={styles.spacer} />
 
@@ -109,6 +113,15 @@ const useStyles = createStyles((color) =>
     banner: {
       alignSelf: 'stretch',
       marginBottom: space[6],
+    },
+    hero: { alignItems: 'center' },
+    mark: {
+      width: 112,
+      height: 112,
+      borderRadius: 56,
+      backgroundColor: color.primary.subtle,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     name: {
       ...type.title1,

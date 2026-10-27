@@ -45,6 +45,13 @@ describe('the welcome screen', () => {
       expect(screen.getAllByRole('button')).toHaveLength(2);
     });
 
+    it('puts the mark in a soft circle, hidden from assistive technology', async () => {
+      expect(
+        screen.getByTestId('welcome-mark', { includeHiddenElements: true }).props
+          .accessibilityElementsHidden,
+      ).toBe(true);
+    });
+
     it('names the app and says what it is for', async () => {
       expect(screen.getByText(COPY.app.name)).toBeTruthy();
       expect(screen.getByText(COPY.welcome.tagline)).toBeTruthy();
