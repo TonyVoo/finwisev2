@@ -92,6 +92,15 @@ export function rowCategoryColor(item: ExpenseListItem): string {
  *   row read without its date is ambiguous - which is exactly the ambiguity that makes
  *   someone check the wrong month's spending.
  */
+/**
+ * What was actually paid, in its own currency (`€10.00`), or null for an ordinary expense.
+ * The row's amount is always the account-currency one the totals use; this is the receipt.
+ */
+export function originalLabel(item: ExpenseListItem, locale?: string): string | null {
+  if (item.originalAmountMinor === null || item.originalCurrency === null) return null;
+  return formatMoney(item.originalAmountMinor, item.originalCurrency, locale);
+}
+
 export function expenseRowLabel(
   item: ExpenseListItem,
   today: CalendarDate,
@@ -101,6 +110,9 @@ export function expenseRowLabel(
     rowCategoryName(item),
     ...(item.kind === 'income' ? [COPY.home.incomeLabel] : []),
     formatMoney(item.amountMinor, item.currency, locale),
+    ...(originalLabel(item, locale) === null
+      ? []
+      : [COPY.home.paidIn.replace('{amount}', originalLabel(item, locale) ?? '')]),
     ...(item.note === null || item.note.trim().length === 0 ? [] : [item.note]),
     dayLabel(item.date, today, locale),
     ...(item.pending ? ['not synced yet'] : []),

@@ -10,6 +10,7 @@ import { docsRouter } from './routes/docs.ts';
 import { expensesRouter } from './routes/expenses.ts';
 import { healthRouter } from './routes/health.ts';
 import { meRouter } from './routes/me.ts';
+import { ratesRouter } from './routes/rates.ts';
 import { syncRouter } from './routes/sync.ts';
 
 /**
@@ -78,6 +79,7 @@ export function createApp(): Express {
   authed.use(meRouter);
   authed.use(categoriesRouter);
   authed.use(expensesRouter);
+  authed.use(ratesRouter);
   authed.use(syncRouter);
   app.use('/v1', authed);
 

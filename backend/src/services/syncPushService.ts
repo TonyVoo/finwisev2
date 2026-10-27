@@ -31,7 +31,7 @@ import { logger } from '../logger.ts';
 import type { ParsedPushItem } from '../sync/batch.ts';
 import { clampClientUpdatedAt, decideLww, inApplyOrder, wasClamped } from '../sync/resolver.ts';
 import { assignCategoryColor, requireOwnCategoryForWrite } from './categoryService.ts';
-import { accountCurrency, requireAccountCurrency } from './expenseService.ts';
+import { accountCurrency, requireAccountCurrency, requireValidOriginal } from './expenseService.ts';
 import type {
   Category as CategoryRow,
   Expense as ExpenseRow,
@@ -222,6 +222,13 @@ async function applyExpenseItem(
     }
 
     const currency = requireAccountCurrency(fields.currency, await accountCurrency(tx, userId));
+    requireValidOriginal(
+      {
+        amountMinor: fields.originalAmountMinor ?? null,
+        currency: fields.originalCurrency ?? null,
+      },
+      currency,
+    );
     const deletedAt = fields.deletedAt === undefined ? null : toDate(fields.deletedAt);
     await requireOwnCategoryForWrite(tx, userId, categoryId, {
       // A live row must point at a live category; a tombstone need not. See the doc
@@ -238,6 +245,11 @@ async function applyExpenseItem(
         kind: fields.kind ?? 'expense',
         amountMinor: BigInt(amountMinor),
         currency,
+        originalAmountMinor:
+          fields.originalAmountMinor === undefined || fields.originalAmountMinor === null
+            ? null
+            : BigInt(fields.originalAmountMinor),
+        originalCurrency: fields.originalCurrency ?? null,
         date: fromCalendarDate(date),
         // As on the REST create path: `ExpenseNoteInput` has already normalised a
         // note that trims to nothing, so this only fills in an omitted one.
@@ -258,6 +270,12 @@ async function applyExpenseItem(
   if (fields.currency !== undefined) {
     requireAccountCurrency(fields.currency, await accountCurrency(tx, userId));
   }
+  if (fields.originalCurrency !== undefined) {
+    requireValidOriginal(
+      { amountMinor: fields.originalAmountMinor ?? null, currency: fields.originalCurrency },
+      existing.currency,
+    );
+  }
 
   const categoryId = fields.categoryId ?? existing.categoryId;
   const deletedAt = fields.deletedAt === undefined ? existing.deletedAt : toDate(fields.deletedAt);
@@ -273,6 +291,15 @@ async function applyExpenseItem(
       ...(fields.kind === undefined ? {} : { kind: fields.kind }),
       ...(fields.amountMinor === undefined ? {} : { amountMinor: BigInt(fields.amountMinor) }),
       ...(fields.currency === undefined ? {} : { currency: fields.currency }),
+      ...(fields.originalCurrency === undefined
+        ? {}
+        : {
+            originalAmountMinor:
+              fields.originalAmountMinor === undefined || fields.originalAmountMinor === null
+                ? null
+                : BigInt(fields.originalAmountMinor),
+            originalCurrency: fields.originalCurrency,
+          }),
       ...(fields.date === undefined ? {} : { date: fromCalendarDate(fields.date) }),
       // `note` is nullable *and* optional: `undefined` means "leave it", `null` means
       // "clear it". Collapsing the two would make clearing a note impossible.

@@ -196,6 +196,8 @@ describe('applyLocalMutation', () => {
           kind: 'expense',
           amountMinor: 1234,
           currency: 'USD',
+          originalAmountMinor: null,
+          originalCurrency: null,
           date: '2026-10-08',
           note: 'Lunch',
           createdAt: null,

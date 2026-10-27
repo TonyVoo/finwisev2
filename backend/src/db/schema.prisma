@@ -146,6 +146,12 @@ model Expense {
   /// ISO 4217, denormalised from the user so an expense row is self-describing.
   currency String @db.Char(3)
 
+  /// What was actually paid, when that was not the account currency. Both or neither, and
+  /// never the account's own currency - held by CHECK constraints. `amount_minor` stays in the
+  /// account currency, so every total sums it unchanged.
+  originalAmountMinor BigInt?  @map("original_amount_minor")
+  originalCurrency    String?  @map("original_currency") @db.Char(3)
+
   /// Calendar DATE. The day the user assigned to this expense; monthly totals
   /// bucket on it. Deliberately not a timestamp — it must not shift by timezone.
   date DateTime @db.Date

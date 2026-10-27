@@ -19,6 +19,8 @@ const STORED: ExpenseDetail = {
   kind: 'expense',
   amountMinor: 1250,
   currency: 'USD',
+  originalAmountMinor: null,
+  originalCurrency: null,
   date: '2026-10-14',
   note: 'Milk',
 };
@@ -29,6 +31,8 @@ function draft(overrides: Partial<ExpenseDraft> = {}): ExpenseDraft {
     kind: 'expense',
     amountMinor: 1250,
     currency: 'USD',
+    originalAmountMinor: null,
+    originalCurrency: null,
     date: '2026-10-14',
     note: 'Milk',
     ...overrides,

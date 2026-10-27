@@ -41,6 +41,9 @@ export interface ExpenseRow {
   readonly kind: 'expense' | 'income';
   readonly amountMinor: number;
   readonly currency: string;
+  /** What was actually paid, when not in `currency` (migration 11). Both or neither. */
+  readonly originalAmountMinor: number | null;
+  readonly originalCurrency: string | null;
   /** Calendar date `YYYY-MM-DD`. Never a timestamp. */
   readonly date: string;
   readonly note: string | null;
@@ -140,9 +143,27 @@ const CATEGORY_SPEC: EntitySpec = {
 const EXPENSE_SPEC: EntitySpec = {
   entity: 'expense',
   table: 'expenses',
-  mutableColumns: ['categoryId', 'kind', 'amountMinor', 'currency', 'date', 'note', 'deletedAt'],
+  mutableColumns: [
+    'categoryId',
+    'kind',
+    'amountMinor',
+    'currency',
+    'originalAmountMinor',
+    'originalCurrency',
+    'date',
+    'note',
+    'deletedAt',
+  ],
   requiredOnCreate: ['categoryId', 'amountMinor', 'currency', 'date'],
-  insertDefaults: { kind: 'expense', note: null, createdAt: null, deletedAt: null, revision: 0 },
+  insertDefaults: {
+    kind: 'expense',
+    originalAmountMinor: null,
+    originalCurrency: null,
+    note: null,
+    createdAt: null,
+    deletedAt: null,
+    revision: 0,
+  },
   parseFields: (fields) => ExpenseSyncFields.parse(fields),
 };
 

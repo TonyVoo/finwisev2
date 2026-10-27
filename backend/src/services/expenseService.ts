@@ -67,6 +67,31 @@ export function requireAccountCurrency(supplied: string | undefined, accounts: s
 }
 
 /**
+ * The original amount and currency an expense is to be left with, judged **after** any merge.
+ *
+ * The schema already guarantees one request carries both or neither, but a partial update is
+ * judged against the stored row: an original currency can only be checked against the
+ * account's once both halves are known. A "foreign" amount in the account's own currency is
+ * no conversion, and is refused here and again by a CHECK constraint.
+ */
+export function requireValidOriginal(
+  original: { amountMinor: number | null; currency: string | null },
+  accounts: string,
+): void {
+  if ((original.amountMinor === null) !== (original.currency === null)) {
+    throw problems.validation('The original amount and currency go together.', {
+      issues: [{ path: 'originalCurrency', message: 'must be given with originalAmountMinor' }],
+    });
+  }
+  if (original.currency !== null && original.currency === accounts) {
+    throw problems.validation(
+      `The original currency cannot be the account currency (${accounts}); there is nothing to convert.`,
+      { issues: [{ path: 'originalCurrency', message: `must not be ${accounts}` }] },
+    );
+  }
+}
+
+/**
  * Resolve a `POST` with a client-supplied id that is already in use.
  *
  * Mirrors the category path: the caller's own row comes back for an idempotent replay,
@@ -119,6 +144,13 @@ export async function createExpense(
     if (replay) return toWireExpense(replay);
 
     const currency = requireAccountCurrency(input.currency, await accountCurrency(tx, userId));
+    requireValidOriginal(
+      {
+        amountMinor: input.originalAmountMinor ?? null,
+        currency: input.originalCurrency ?? null,
+      },
+      currency,
+    );
     await requireLiveCategoryForWrite(tx, userId, input.categoryId);
 
     const revision = await nextRevision(tx, userId);
@@ -130,6 +162,11 @@ export async function createExpense(
         kind: input.kind ?? 'expense',
         amountMinor: BigInt(input.amountMinor),
         currency,
+        originalAmountMinor:
+          input.originalAmountMinor === undefined || input.originalAmountMinor === null
+            ? null
+            : BigInt(input.originalAmountMinor),
+        originalCurrency: input.originalCurrency ?? null,
         date: fromCalendarDate(input.date),
         // Only absence to handle: `ExpenseNoteInput` has already turned a note that
         // trims to nothing into `null`, which `?? null` could not have (`""` is not
@@ -164,6 +201,12 @@ export async function updateExpense(
     if (patch.categoryId !== undefined) {
       await requireLiveCategoryForWrite(tx, userId, patch.categoryId);
     }
+    if (patch.originalCurrency !== undefined) {
+      requireValidOriginal(
+        { amountMinor: patch.originalAmountMinor ?? null, currency: patch.originalCurrency },
+        await accountCurrency(tx, userId),
+      );
+    }
 
     const revision = await nextRevision(tx, userId);
     const updated = await tx.expense.update({
@@ -173,6 +216,15 @@ export async function updateExpense(
         ...(patch.kind === undefined ? {} : { kind: patch.kind }),
         ...(patch.amountMinor === undefined ? {} : { amountMinor: BigInt(patch.amountMinor) }),
         ...(patch.currency === undefined ? {} : { currency: patch.currency }),
+        ...(patch.originalCurrency === undefined
+          ? {}
+          : {
+              originalAmountMinor:
+                patch.originalAmountMinor === undefined || patch.originalAmountMinor === null
+                  ? null
+                  : BigInt(patch.originalAmountMinor),
+              originalCurrency: patch.originalCurrency,
+            }),
         ...(patch.date === undefined ? {} : { date: fromCalendarDate(patch.date) }),
         // `note` is nullable *and* optional, so `undefined` means "leave it" and `null`
         // means "clear it". Collapsing the two would make clearing a note impossible.

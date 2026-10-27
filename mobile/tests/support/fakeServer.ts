@@ -276,6 +276,8 @@ export function createFakeSyncServer(options: FakeSyncServerOptions = {}): FakeS
         kind: item.fields.kind ?? 'expense',
         amountMinor,
         currency: currency ?? 'USD',
+        originalAmountMinor: item.fields.originalAmountMinor ?? null,
+        originalCurrency: item.fields.originalCurrency ?? null,
         date,
         note: item.fields.note ?? null,
         createdAt: item.updatedAt,
@@ -298,6 +300,14 @@ export function createFakeSyncServer(options: FakeSyncServerOptions = {}): FakeS
       kind: item.fields.kind ?? stored.kind,
       amountMinor: item.fields.amountMinor ?? stored.amountMinor,
       currency: item.fields.currency ?? stored.currency,
+      originalAmountMinor:
+        item.fields.originalAmountMinor === undefined
+          ? stored.originalAmountMinor
+          : item.fields.originalAmountMinor,
+      originalCurrency:
+        item.fields.originalCurrency === undefined
+          ? stored.originalCurrency
+          : item.fields.originalCurrency,
       date: item.fields.date ?? stored.date,
       note: item.fields.note === undefined ? stored.note : item.fields.note,
       deletedAt: item.fields.deletedAt === undefined ? stored.deletedAt : item.fields.deletedAt,

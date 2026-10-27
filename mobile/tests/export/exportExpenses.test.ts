@@ -74,8 +74,8 @@ describe('exportExpenses', () => {
     expect(written).toHaveLength(1);
     expect(written[0]?.name).toBe('expenses-2026-10-26.csv');
     expect(written[0]?.contents.split('\r\n').slice(1, 3)).toEqual([
-      '2026-10-08,12.50,USD,Groceries,,expense',
-      '2026-10-09,4.50,USD,Groceries,,expense',
+      '2026-10-08,12.50,USD,Groceries,,expense,,',
+      '2026-10-09,4.50,USD,Groceries,,expense,,',
     ]);
     expect(shared).toEqual(['file:///cache/expenses-2026-10-26.csv']);
   });

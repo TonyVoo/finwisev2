@@ -247,6 +247,9 @@ export interface ExpenseListItem {
   readonly fallbackColor: string | null;
   readonly amountMinor: number;
   readonly currency: string;
+  /** What was actually paid, when not in `currency`: both or neither. */
+  readonly originalAmountMinor: number | null;
+  readonly originalCurrency: string | null;
   readonly date: string;
   readonly note: string | null;
   readonly pending: boolean;
@@ -316,6 +319,8 @@ async function selectExpenseItems(
             e.kind,
             e.amountMinor,
             e.currency,
+            e.originalAmountMinor,
+            e.originalCurrency,
             e.date,
             e.note,
             c.name  AS categoryName,
@@ -578,6 +583,8 @@ export interface ExpenseDetail {
   readonly kind: 'expense' | 'income';
   readonly amountMinor: number;
   readonly currency: string;
+  readonly originalAmountMinor: number | null;
+  readonly originalCurrency: string | null;
   readonly date: string;
   readonly note: string | null;
 }
@@ -594,7 +601,7 @@ export async function findExpense(
   id: string,
 ): Promise<ExpenseDetail | null> {
   return await database.getFirstAsync<ExpenseDetail>(
-    `SELECT id, categoryId, kind, amountMinor, currency, date, note
+    `SELECT id, categoryId, kind, amountMinor, currency, originalAmountMinor, originalCurrency, date, note
        FROM expenses
       WHERE id = ? AND deletedAt IS NULL`,
     [id],
@@ -713,6 +720,8 @@ export interface ExportRow {
   readonly date: string;
   readonly amountMinor: number;
   readonly currency: string;
+  readonly originalAmountMinor: number | null;
+  readonly originalCurrency: string | null;
   readonly categoryName: string;
   readonly note: string | null;
 }
@@ -741,6 +750,8 @@ export async function listExpensesForExport(
             e.kind,
             e.amountMinor,
             e.currency,
+            e.originalAmountMinor,
+            e.originalCurrency,
             COALESCE(c.name, f.name, 'Uncategorized') AS categoryName,
             e.note
        FROM expenses e

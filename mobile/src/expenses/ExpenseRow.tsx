@@ -8,7 +8,7 @@ import { formatMoney } from '../lib/money';
 import { space, type } from '../theme/tokens';
 import { createStyles } from '../theme/ThemeProvider';
 import type { ExpenseListItem } from '../db/queries';
-import { expenseRowLabel, rowCategoryColor, rowCategoryName } from './listModel';
+import { expenseRowLabel, originalLabel, rowCategoryColor, rowCategoryName } from './listModel';
 
 /**
  * One expense in the list: `docs/design/04-expense-list.md` elements 9-14 and 16.
@@ -42,6 +42,11 @@ export interface ExpenseRowProps {
 
 export function ExpenseRow({ item, today, onPress, onDelete, lastInGroup }: ExpenseRowProps) {
   const styles = useStyles();
+  // What was actually paid, when that was in another currency, then the note.
+  const original = originalLabel(item);
+  const note = item.note === null || item.note.trim().length === 0 ? null : item.note;
+  const subtitle =
+    [original, note].filter((part): part is string => part !== null).join(' · ') || null;
   return (
     <SwipeToDelete
       onDelete={onDelete}
@@ -86,8 +91,10 @@ export function ExpenseRow({ item, today, onPress, onDelete, lastInGroup }: Expe
           <Text style={styles.needsAttention} testID={`expense-needs-attention-${item.id}`}>
             {SYNC_COPY.row.needsAttention}
           </Text>
-        ) : item.note === null || item.note.trim().length === 0 ? null : ( // `normaliseNote`). // - `''` and `null` would otherwise look different (`mutations.ts`, // Omitted entirely when there is no note, rather than rendered as an empty line
-          <RowSubtitle>{item.note}</RowSubtitle>
+        ) : subtitle === null ? null : (
+          // Omitted entirely when there is nothing to say, rather than rendered as an empty
+          // line (`mutations.ts`, `normaliseNote`: `''` and `null` would otherwise differ).
+          <RowSubtitle>{subtitle}</RowSubtitle>
         )}
       </Row>
     </SwipeToDelete>

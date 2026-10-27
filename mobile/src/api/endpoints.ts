@@ -7,6 +7,7 @@ import {
   ExpenseListResponse,
   ExpenseResponse,
   HealthResponse,
+  RatesResponse,
   ReceiptIndexResponse,
   ReceiptResponse,
   MeResponse,
@@ -90,6 +91,7 @@ export const ENDPOINTS = {
   updateExpense: endpoint('updateExpense', ExpenseResponse),
   deleteExpense: endpoint('deleteExpense', ExpenseResponse),
 
+  getRate: endpoint('getRate', RatesResponse),
   pullSync: endpoint('pullSync', SyncPullResponse),
   pushSync: endpoint('pushSync', SyncPushResponse),
 } as const satisfies Readonly<Record<ApiOperationId, Endpoint<unknown>>>;

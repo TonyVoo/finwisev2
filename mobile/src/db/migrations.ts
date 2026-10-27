@@ -356,6 +356,34 @@ DROP TABLE sync_rejections;
 ALTER TABLE sync_rejections_v10 RENAME TO sync_rejections;
 `;
 
+/**
+ * Foreign-currency expenses: what was actually paid, beside the account-currency amount.
+ *
+ * `amountMinor` keeps meaning "in the account currency", so every total, budget and chart is
+ * untouched; these two columns only record the original. Existing rows are NULL, NULL. The
+ * CHECKs mirror the server's: both or neither, and never the account's own currency (which
+ * is why `currency` is on the row at all).
+ */
+const FOREIGN_AMOUNTS = `
+ALTER TABLE expenses ADD COLUMN originalAmountMinor INTEGER
+  CHECK (originalAmountMinor IS NULL OR originalAmountMinor >= 0);
+ALTER TABLE expenses ADD COLUMN originalCurrency TEXT;
+CREATE TRIGGER expenses_original_pair_insert
+  BEFORE INSERT ON expenses
+  WHEN (NEW.originalAmountMinor IS NULL) <> (NEW.originalCurrency IS NULL)
+     OR NEW.originalCurrency = NEW.currency
+BEGIN
+  SELECT RAISE(ABORT, 'original amount and currency go together, and differ from the account currency');
+END;
+CREATE TRIGGER expenses_original_pair_update
+  BEFORE UPDATE ON expenses
+  WHEN (NEW.originalAmountMinor IS NULL) <> (NEW.originalCurrency IS NULL)
+     OR NEW.originalCurrency = NEW.currency
+BEGIN
+  SELECT RAISE(ABORT, 'original amount and currency go together, and differ from the account currency');
+END;
+`;
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: 'initial-schema', up: INITIAL_SCHEMA },
   { version: 2, name: 'store-owner', up: STORE_OWNER },
@@ -367,6 +395,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 8, name: 'receipts', up: RECEIPTS },
   { version: 9, name: 'entry-kind', up: ENTRY_KIND },
   { version: 10, name: 'savings-goals', up: GOALS },
+  { version: 11, name: 'foreign-amounts', up: FOREIGN_AMOUNTS },
 ];
 
 /** Highest version `MIGRATIONS` can bring a database to. */

@@ -36,9 +36,21 @@ export interface ExportExpense {
   readonly note: string | null;
   /** Defaults to `expense`. Income rows are marked in the trailing Type column. */
   readonly kind?: 'expense' | 'income';
+  /** What was actually paid, when not in `currency`. Both or neither. */
+  readonly originalAmountMinor?: number | null;
+  readonly originalCurrency?: string | null;
 }
 
-export const CSV_HEADER = ['Date', 'Amount', 'Currency', 'Category', 'Note', 'Type'] as const;
+export const CSV_HEADER = [
+  'Date',
+  'Amount',
+  'Currency',
+  'Category',
+  'Note',
+  'Type',
+  'Original amount',
+  'Original currency',
+] as const;
 
 const BOM = '﻿';
 const EOL = '\r\n';
@@ -78,6 +90,14 @@ export function buildExpensesCsv(
       csvText(expense.categoryName),
       csvText(expense.note ?? ''),
       expense.kind ?? 'expense',
+      // In the original currency's own decimals: 5000 yen is `5000`, not `50.00`.
+      expense.originalAmountMinor === undefined ||
+      expense.originalAmountMinor === null ||
+      expense.originalCurrency === undefined ||
+      expense.originalCurrency === null
+        ? ''
+        : plainAmount(expense.originalAmountMinor, decimalsFor(expense.originalCurrency)),
+      csvText(expense.originalCurrency ?? ''),
     ].join(','),
   );
   return BOM + [CSV_HEADER.join(','), ...records].join(EOL) + EOL;

@@ -82,6 +82,8 @@ const PAGE = {
         kind: 'expense',
         amountMinor: 4242,
         currency: 'USD',
+        originalAmountMinor: null,
+        originalCurrency: null,
         date: '2026-10-21',
         note: 'seeded by another device',
         createdAt: '2026-10-21T06:00:00.000Z',

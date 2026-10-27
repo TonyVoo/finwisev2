@@ -224,6 +224,8 @@ describe('request bodies reject unknown fields', () => {
       kind: 'expense',
       amountMinor: 1234,
       currency: 'USD',
+      originalAmountMinor: null,
+      originalCurrency: null,
       date: '2026-10-06',
       note: null,
       createdAt: NOW,

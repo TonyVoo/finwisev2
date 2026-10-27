@@ -134,6 +134,8 @@ describe('every client method', () => {
     ['updateExpense', (client) => client.updateExpense(ID, { amountMinor: 2 })],
     ['deleteExpense', (client) => client.deleteExpense(ID)],
 
+    ['getRate', (client) => client.getRate({ from: 'EUR', to: 'USD' })],
+
     ['pullSync', (client) => client.pullSync({ since: 0 })],
     ['pushSync', (client) => client.pushSync({ changes: [] })],
   ];
@@ -325,5 +327,34 @@ describe('createApiClient', () => {
 
       await expect(client.deleteCategory(CATEGORY.id)).rejects.toThrow(/color/);
     });
+  });
+});
+
+describe('exchange rates', () => {
+  it('asks for a pair on a day, and returns the decimal-string rate', async () => {
+    const { client, seen } = clientReturning({
+      status: 200,
+      body: { data: { from: 'EUR', to: 'USD', date: '2026-10-05', rate: '1.0823' } },
+      requestId: 'req-1',
+    });
+
+    const rate = await client.getRate({ from: 'EUR', to: 'USD', date: '2026-10-05' });
+
+    expect(rate.data).toEqual({ from: 'EUR', to: 'USD', date: '2026-10-05', rate: '1.0823' });
+    expect(seen[0]).toMatchObject({ method: 'get' });
+    expect(seen[0]!.path).toContain('/v1/rates');
+    expect(JSON.stringify(seen[0])).toContain('EUR');
+  });
+
+  it('rejects a rate that is a number instead of a string', async () => {
+    const { client } = clientReturning({
+      status: 200,
+      body: { data: { from: 'EUR', to: 'USD', date: '2026-10-05', rate: 1.0823 } },
+      requestId: 'req-1',
+    });
+
+    await expect(client.getRate({ from: 'EUR', to: 'USD' })).rejects.toBeInstanceOf(
+      ResponseShapeError,
+    );
   });
 });

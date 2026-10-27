@@ -74,6 +74,8 @@ export function toWireExpense(row: ExpenseRow): WireExpense {
     // an integer, so the narrowing happens here, once, at the boundary.
     amountMinor: Number(row.amountMinor),
     currency: row.currency,
+    originalAmountMinor: row.originalAmountMinor === null ? null : Number(row.originalAmountMinor),
+    originalCurrency: row.originalCurrency,
     date: toCalendarDate(row.date),
     note: row.note,
     createdAt: row.createdAt.toISOString(),

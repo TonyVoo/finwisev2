@@ -81,9 +81,9 @@ describe('buildExpensesCsv', () => {
       two,
     );
     expect(csv.split('\r\n')).toEqual([
-      `﻿Date,Amount,Currency,Category,Note,Type`,
-      '2026-10-08,12.50,USD,Groceries,,expense',
-      '2026-10-09,0.05,USD,Groceries,"Coffee, large",expense',
+      `﻿Date,Amount,Currency,Category,Note,Type,Original amount,Original currency`,
+      '2026-10-08,12.50,USD,Groceries,,expense,,',
+      '2026-10-09,0.05,USD,Groceries,"Coffee, large",expense,,',
       '',
     ]);
   });
@@ -101,7 +101,7 @@ describe('buildExpensesCsv', () => {
 
   it('defuses a malicious note and category name', () => {
     const csv = buildExpensesCsv([expense({ categoryName: '=cmd()', note: '+1+1' })], two);
-    expect(csv).toContain(",'=cmd(),'+1+1,expense\r\n");
+    expect(csv).toContain(",'=cmd(),'+1+1,expense,,\r\n");
   });
 });
 
@@ -126,6 +126,26 @@ describe('income rows', () => {
       ],
       () => 2,
     );
-    expect(csv).toContain('2026-10-01,2500.00,USD,Salary,,income\r\n');
+    expect(csv).toContain('2026-10-01,2500.00,USD,Salary,,income,,\r\n');
+  });
+});
+
+describe('foreign-currency rows', () => {
+  it('writes the original amount in its own decimals, and its currency', () => {
+    const csv = buildExpensesCsv(
+      [
+        {
+          date: '2026-10-01',
+          amountMinor: 670,
+          currency: 'USD',
+          categoryName: 'Travel',
+          note: null,
+          originalAmountMinor: 1000,
+          originalCurrency: 'JPY',
+        },
+      ],
+      (currency) => (currency === 'JPY' ? 0 : 2),
+    );
+    expect(csv).toContain('2026-10-01,6.70,USD,Travel,,expense,1000,JPY\r\n');
   });
 });

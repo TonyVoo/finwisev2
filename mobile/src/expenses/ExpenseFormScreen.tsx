@@ -46,16 +46,21 @@ import {
   pressDecimal,
   pressDigit,
 } from '../lib/amount';
-import { currencyDecimals } from '../lib/money';
+import { useApiClient } from '../bootstrap/AppProviders';
+import { convertMinor, impliedRate, isValidRate } from '../lib/conversion';
+import { currencyDecimals, formatMoney } from '../lib/money';
 import { dateRowLabel, monthKeyOf, monthName, monthParts, spokenDate } from '../lib/calendar';
 import { useSelectedMonth } from '../month/MonthProvider';
 import { size, space, type } from '../theme/tokens';
 import { createStyles, useColors } from '../theme/ThemeProvider';
 import { AmountDisplay } from './AmountDisplay';
 import { CategorySheet } from './CategorySheet';
+import { CurrencySheet } from './CurrencySheet';
+import { useExchangeRate } from './useExchangeRate';
 import { DateSheet } from './DateSheet';
 import { Keypad } from './Keypad';
 import { NoteSheet } from './NoteSheet';
+import { RateSheet } from './RateSheet';
 import { hasEdits, saveState } from './formModel';
 import { getReceiptPicker, type PickOutcome } from '../receipts/receiptPicker';
 import { ReceiptSheet } from '../receipts/ReceiptSheet';
@@ -100,7 +105,16 @@ export const NOTE_ROW_TEST_ID = 'expense-note-row';
 export const NOT_FOUND_TEST_ID = 'expense-not-found';
 
 /** Which sheet or dialog is up. One at a time; a sheet over a sheet has no spec. */
-type Overlay = 'none' | 'category' | 'date' | 'note' | 'receipt' | 'newCategory' | 'discard';
+type Overlay =
+  | 'none'
+  | 'category'
+  | 'date'
+  | 'note'
+  | 'receipt'
+  | 'newCategory'
+  | 'currency'
+  | 'rate'
+  | 'discard';
 
 /**
  * What the person has done to the receipt photo in this form. Like every other field it is a
@@ -112,6 +126,9 @@ type ReceiptChange =
   | { readonly kind: 'removed' };
 
 export const RECEIPT_ROW_TEST_ID = 'expense-receipt-row';
+export const CURRENCY_ROW_TEST_ID = 'expense-currency-row';
+export const RATE_FIELD_TEST_ID = 'expense-rate-field';
+export const CONVERTED_TEST_ID = 'expense-converted';
 
 export interface ExpenseFormScreenProps {
   /** Edit mode when present, add mode when not. */
@@ -142,6 +159,12 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
   const [overlay, setOverlay] = useState<Overlay>('none');
   const [rejections, setRejections] = useState(0);
   const [receiptChange, setReceiptChange] = useState<ReceiptChange>({ kind: 'unchanged' });
+  // Paying in another currency. `null` is the account's own, which is almost always the case.
+  const [entryCurrency, setEntryCurrency] = useState<string | null>(null);
+  const [rateText, setRateText] = useState('');
+  // True once the person has typed a rate, or reopened a stored one: a fetch never overwrites it.
+  const [rateLocked, setRateLocked] = useState(false);
+  const api = useApiClient();
   const storedReceipt = useReceipt(expenseId ?? null).data ?? null;
 
   const currencyCode = currency.data ?? null;
@@ -164,12 +187,30 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
         kind: stored.data.kind,
         amountMinor: stored.data.amountMinor,
         currency: stored.data.currency,
+        originalAmountMinor: stored.data.originalAmountMinor,
+        originalCurrency: stored.data.originalCurrency,
         date: stored.data.date,
         note: stored.data.note,
       };
       setDraft(seeded);
       setInitial(seeded);
-      setAmount(amountInputFrom(stored.data.amountMinor));
+      if (stored.data.originalAmountMinor !== null && stored.data.originalCurrency !== null) {
+        // Reopened in the currency it was paid in. Only the two amounts are stored, so the rate
+        // is worked back out of them - and locked, so it is not replaced by today's.
+        setEntryCurrency(stored.data.originalCurrency);
+        setAmount(amountInputFrom(stored.data.originalAmountMinor));
+        setRateText(
+          impliedRate({
+            originalMinor: stored.data.originalAmountMinor,
+            originalDecimals: currencyDecimals(stored.data.originalCurrency),
+            homeMinor: stored.data.amountMinor,
+            homeDecimals: currencyDecimals(stored.data.currency),
+          }) ?? '',
+        );
+        setRateLocked(true);
+      } else {
+        setAmount(amountInputFrom(stored.data.amountMinor));
+      }
       return;
     }
 
@@ -183,6 +224,8 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
         kind: 'expense',
         amountMinor: 0,
         currency: currencyCode,
+        originalAmountMinor: null,
+        originalCurrency: null,
         date: today,
         note: null,
       };
@@ -195,6 +238,8 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
       kind: 'expense',
       amountMinor: 0,
       currency: currencyCode,
+      originalAmountMinor: null,
+      originalCurrency: null,
       date: today,
       note: null,
     };
@@ -215,11 +260,54 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
     today,
   ]);
 
-  // The amount and the draft are two pieces of one value; the keypad owns the former.
-  const live: ExpenseDraft | null =
-    draft === null ? null : { ...draft, amountMinor: amount.amountMinor };
+  // Which currency the keypad is typing in, and whether that needs converting.
+  const foreign = entryCurrency !== null && entryCurrency !== currencyCode;
+  const entryCode = foreign ? entryCurrency : (currencyCode ?? '');
+  const homeDecimals = currencyCode === null ? 2 : currencyDecimals(currencyCode);
+  // The keypad's decimal key follows the currency being typed, not the account's.
+  const decimals = foreign ? currencyDecimals(entryCurrency) : homeDecimals;
 
-  const decimals = currencyCode === null ? 2 : currencyDecimals(currencyCode);
+  // What the typed amount comes to in the account currency. Null while there is no usable
+  // rate, or when it would be too large to store - `rateProblem` says which.
+  const converted = foreign
+    ? convertMinor({
+        amountMinor: amount.amountMinor,
+        fromDecimals: decimals,
+        toDecimals: homeDecimals,
+        rate: rateText,
+      })
+    : amount.amountMinor;
+  const rateProblem: 'missing' | 'overflow' | null = !foreign
+    ? null
+    : !isValidRate(rateText)
+      ? 'missing'
+      : converted === null
+        ? 'overflow'
+        : null;
+
+  // The amount and the draft are two pieces of one value; the keypad owns the former. For a
+  // foreign expense `amountMinor` is the converted amount - the one every total sums - and
+  // what was typed is kept beside it as the original.
+  const live: ExpenseDraft | null =
+    draft === null
+      ? null
+      : {
+          ...draft,
+          amountMinor: converted ?? 0,
+          originalAmountMinor: foreign ? amount.amountMinor : null,
+          originalCurrency: foreign ? entryCurrency : null,
+        };
+
+  const rateStatus = useExchangeRate({
+    api,
+    from: foreign ? entryCurrency : null,
+    home: currencyCode,
+    date: draft?.date ?? null,
+    today,
+    locked: rateLocked,
+    onRate: setRateText,
+  });
+
   const liveCategories = categories.data ?? [];
   const chosenCategory = liveCategories.find((row) => row.id === live?.categoryId) ?? null;
 
@@ -243,13 +331,24 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
       live === null
         ? { canSave: false }
         : saveState({
-            amountMinor: live.amountMinor,
+            // As typed, so the zero and range checks judge what the person sees; the
+            // converted amount is judged through `rateProblem`.
+            amountMinor: foreign ? amount.amountMinor : live.amountMinor,
             stored: storedRow,
             draft: live,
             hasCategories: liveCategories.length > 0,
             otherChange: receiptDirty,
+            rateProblem,
           }),
-    [live, storedRow, liveCategories.length, receiptDirty],
+    [
+      live,
+      storedRow,
+      liveCategories.length,
+      receiptDirty,
+      foreign,
+      amount.amountMinor,
+      rateProblem,
+    ],
   );
 
   const onDigit = useCallback(
@@ -300,6 +399,8 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
         kind: live.kind,
         amountMinor: live.amountMinor,
         currency: live.currency,
+        originalAmountMinor: live.originalAmountMinor,
+        originalCurrency: live.originalCurrency,
         date: live.date,
         note: live.note,
       });
@@ -448,10 +549,10 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
             }
           />
           <AmountDisplay
-            amountMinor={live.amountMinor}
-            currency={currencyCode ?? ''}
+            amountMinor={amount.amountMinor}
+            currency={entryCode}
             // Add mode's untouched zero reads as a placeholder rather than a value.
-            muted={!isEdit && live.amountMinor === 0}
+            muted={!isEdit && amount.amountMinor === 0}
             error={save.error}
             hint={save.hint}
           />
@@ -460,6 +561,51 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
               Delete is always reachable - the keypad never covers content
               (§Accessibility rule 4). */}
           <ScrollView contentContainerStyle={styles.rows}>
+            <Row
+              testID={CURRENCY_ROW_TEST_ID}
+              onPress={() => setOverlay('currency')}
+              chevron
+              leading={<Feather name="globe" size={20} color={color.text.tertiary} />}
+              trailing={<Text style={styles.valueText}>{entryCode}</Text>}
+              accessibilityLabel={`${COPY.form.currency.row}, ${entryCode}`}
+              accessibilityHint="Double tap to pay in another currency."
+            >
+              <RowTitle>{COPY.form.currency.row}</RowTitle>
+            </Row>
+
+            {foreign && currencyCode !== null ? (
+              <Row
+                testID={RATE_FIELD_TEST_ID}
+                onPress={() => setOverlay('rate')}
+                chevron
+                leading={<Feather name="repeat" size={20} color={color.text.tertiary} />}
+                trailing={
+                  <Text style={styles.valueText}>
+                    {rateText !== ''
+                      ? rateText
+                      : rateStatus === 'loading'
+                        ? COPY.form.rate.loading
+                        : ''}
+                  </Text>
+                }
+                accessibilityLabel={`${COPY.form.rate.label}, ${rateText}`}
+                accessibilityHint="Double tap to type your own exchange rate."
+              >
+                <RowTitle>{COPY.form.rate.label}</RowTitle>
+                {rateStatus === 'failed' && rateText === '' ? (
+                  <Text style={styles.rateNote}>{COPY.form.rate.failed}</Text>
+                ) : null}
+                {converted !== null && amount.amountMinor > 0 ? (
+                  <Text testID={CONVERTED_TEST_ID} style={styles.rateNote}>
+                    {COPY.form.rate.converted.replace(
+                      '{amount}',
+                      formatMoney(converted, currencyCode),
+                    )}
+                  </Text>
+                ) : null}
+              </Row>
+            ) : null}
+
             <Row
               testID={CATEGORY_ROW_TEST_ID}
               onPress={() => setOverlay('category')}
@@ -567,6 +713,39 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
           setOverlay('none');
         }}
         onCreateNew={() => setOverlay('newCategory')}
+      />
+
+      <CurrencySheet
+        visible={overlay === 'currency'}
+        onClose={() => setOverlay('none')}
+        selected={entryCode}
+        home={currencyCode ?? ''}
+        onSelect={(code) => {
+          const next = code === currencyCode ? null : code;
+          // A different minor unit means the typed digits mean something else (1000 yen is
+          // not 10.00 dollars), so they are cleared; between two-decimal currencies they stay.
+          if (currencyDecimals(code) !== decimals) setAmount(EMPTY_AMOUNT);
+          setEntryCurrency(next);
+          // A new currency has a new rate: forget the old one, and let the lookup run again.
+          setRateText('');
+          setRateLocked(false);
+          setOverlay('none');
+        }}
+      />
+
+      <RateSheet
+        visible={overlay === 'rate'}
+        onClose={() => setOverlay('none')}
+        rate={rateText}
+        hint={COPY.form.rate.hint
+          .replace('{from}', entryCode)
+          .replace('{rate}', '?')
+          .replace('{home}', currencyCode ?? '')}
+        onDone={(rate) => {
+          setRateText(rate);
+          setRateLocked(true);
+          setOverlay('none');
+        }}
       />
 
       <DateSheet
@@ -719,6 +898,7 @@ const useStyles = createStyles((color) =>
       alignItems: 'center',
       gap: space[2],
     },
+    rateNote: { ...type.callout, color: color.text.secondary, marginTop: space[1] },
     valueText: {
       ...type.body,
       color: color.text.secondary,

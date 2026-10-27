@@ -34,12 +34,20 @@ export interface NewExpense {
   readonly kind?: 'expense' | 'income';
   readonly amountMinor: number;
   readonly currency: string;
+  /**
+   * What was actually paid, when not in `currency` - both or neither. `amountMinor` stays in
+   * `currency`, so every total sums it unchanged.
+   */
+  readonly originalAmountMinor?: number | null;
+  readonly originalCurrency?: string | null;
   readonly date: string;
   readonly note?: string | null;
 }
 
 /** The editable fields of an expense, as a draft the form holds. */
 export type ExpenseDraft = Omit<NewExpense, 'note' | 'kind'> & {
+  readonly originalAmountMinor: number | null;
+  readonly originalCurrency: string | null;
   readonly kind: 'expense' | 'income';
   readonly note: string | null;
 };
@@ -54,6 +62,26 @@ export type ExpenseDraft = Omit<NewExpense, 'note' | 'kind'> & {
 export function normaliseNote(note: string | null | undefined): string | null {
   const trimmed = (note ?? '').trim();
   return trimmed.length === 0 ? null : trimmed;
+}
+
+/**
+ * The original-amount fields a write carries, or none. Sent only when there is something to
+ * say, so an ordinary expense's outbox entry is exactly what it was before this existed.
+ * Half a pair is refused here, before anything is written, rather than left for the database
+ * trigger (or the server) to reject.
+ */
+function originalFields(expense: {
+  readonly originalAmountMinor?: number | null | undefined;
+  readonly originalCurrency?: string | null | undefined;
+}): Record<string, number | string> {
+  const amount = expense.originalAmountMinor ?? null;
+  const currency = expense.originalCurrency ?? null;
+  if ((amount === null) !== (currency === null)) {
+    throw new Error('An original amount and its currency go together.');
+  }
+  return amount === null || currency === null
+    ? {}
+    : { originalAmountMinor: amount, originalCurrency: currency };
 }
 
 /**
@@ -79,6 +107,7 @@ export async function createExpense(
         kind: expense.kind ?? 'expense',
         amountMinor: expense.amountMinor,
         currency: expense.currency,
+        ...originalFields(expense),
         date: expense.date,
         note: normaliseNote(expense.note),
       },
@@ -105,6 +134,15 @@ export function changedExpenseFields(
   if (draft.kind !== stored.kind) changed.kind = draft.kind;
   if (draft.amountMinor !== stored.amountMinor) changed.amountMinor = draft.amountMinor;
   if (draft.currency !== stored.currency) changed.currency = draft.currency;
+  // Both halves move together, so a change to either sends both - including both as null,
+  // which is how switching a foreign expense back to the account currency is recorded.
+  if (
+    draft.originalAmountMinor !== stored.originalAmountMinor ||
+    draft.originalCurrency !== stored.originalCurrency
+  ) {
+    changed.originalAmountMinor = draft.originalAmountMinor;
+    changed.originalCurrency = draft.originalCurrency;
+  }
   if (draft.date !== stored.date) changed.date = draft.date;
 
   const note = normaliseNote(draft.note);

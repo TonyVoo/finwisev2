@@ -18,6 +18,8 @@ import type {
   ExpenseResponse,
   ExpenseUpdateRequest,
   HealthResponse,
+  RatesQuery,
+  RatesResponse,
   ReceiptIndexResponse,
   ReceiptPutRequest,
   ReceiptResponse,
@@ -92,6 +94,9 @@ export interface ApiClient {
   deleteReceipt(expenseId: string): Promise<void>;
   /** Which expenses have a receipt, without the images. */
   listReceipts(): Promise<ReceiptIndexResponse>;
+
+  /** What to multiply a foreign amount by. Called only while entering one; fails soft. */
+  getRate(query: RatesQuery): Promise<RatesResponse>;
 
   /** Pull changes with `revision > since`. The cursor is a revision, never a timestamp. */
   pullSync(query?: SyncPullQuery): Promise<SyncPullResponse>;
@@ -179,6 +184,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     deleteReceipt: (id) => send(ENDPOINTS.deleteReceipt, { pathParams: { id } }),
     listReceipts: () => send(ENDPOINTS.listReceipts),
 
+    getRate: (query) => send(ENDPOINTS.getRate, { query: toQuery(query) }),
     pullSync: (query) => send(ENDPOINTS.pullSync, { query: toQuery(query) }),
     pushSync: (body) => send(ENDPOINTS.pushSync, { body }),
   };

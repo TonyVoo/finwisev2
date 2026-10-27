@@ -10,7 +10,14 @@ import {
   Uuid,
 } from './primitives.js';
 import { Category, CategoryColor, CategoryName, MonthlyBudget } from './category.js';
-import { EntryKind, Expense, ExpenseNoteInput } from './expense.js';
+import {
+  EntryKind,
+  Expense,
+  ExpenseNoteInput,
+  OriginalAmountFields,
+  originalPairTogether,
+  ORIGINAL_PAIR_ISSUE,
+} from './expense.js';
 import { Goal, GoalSyncFields } from './goal.js';
 import { RecurringRule, RecurringSyncFields } from './recurring.js';
 
@@ -130,11 +137,14 @@ export const ExpenseSyncFields = z
     kind: EntryKind.optional(),
     amountMinor: AmountMinor.optional(),
     currency: CurrencyCode.optional(),
+    originalAmountMinor: OriginalAmountFields.originalAmountMinor.optional(),
+    originalCurrency: OriginalAmountFields.originalCurrency.optional(),
     date: CalendarDate.optional(),
     note: ExpenseNoteInput.optional(),
     deletedAt: Timestamp.nullable().optional(),
   })
-  .refine((v) => Object.keys(v).length > 0, { error: 'fields must not be empty' });
+  .refine((v) => Object.keys(v).length > 0, { error: 'fields must not be empty' })
+  .refine(originalPairTogether, ORIGINAL_PAIR_ISSUE);
 
 const PUSH_ITEM_BASE = {
   id: Uuid.describe(

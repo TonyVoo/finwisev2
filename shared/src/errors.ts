@@ -52,6 +52,8 @@ export const ERROR_CODES = [
   'batch_too_large',
   /** 429 — too many requests. `Retry-After` is set. */
   'rate_limited',
+  /** 502 — the exchange-rate provider could not be reached or gave an unusable answer. Retry later, or enter the rate by hand. */
+  'rates_unavailable',
   /** 500 — unexpected server fault. Never leaks internals; correlate via the logged request id. */
   'internal_error',
 ] as const;
@@ -117,6 +119,7 @@ export const ERROR_CODE_STATUS: Readonly<Record<ErrorCode, number>> = {
   mutation_id_reused: 409,
   batch_too_large: 413,
   rate_limited: 429,
+  rates_unavailable: 502,
   internal_error: 500,
 };
 

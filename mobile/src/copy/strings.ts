@@ -86,6 +86,8 @@ export const COPY = {
     balance: { income: 'Income {amount}', net: 'Net {amount}' },
     /** A row's spoken prefix for income, so the amount is not read as money spent. */
     incomeLabel: 'income',
+    /** Spoken after the amount of a foreign-currency expense: what was actually paid. */
+    paidIn: 'paid {amount}',
     section: { today: 'Today', yesterday: 'Yesterday' },
     fab: 'Add expense',
     /** The one-time prompt after signup (`db/onboarding.ts`). */
@@ -156,6 +158,17 @@ export const COPY = {
       edit: 'Edit expense',
       addIncome: 'Add income',
       editIncome: 'Edit income',
+    },
+    /** Paying in another currency: the picker, and the rate the amount is converted with. */
+    currency: { title: 'Currency', row: 'Currency' },
+    rate: {
+      label: 'Exchange rate',
+      hint: '1 {from} = {rate} {home}',
+      converted: '= {amount}',
+      loading: 'Getting the exchange rate…',
+      failed: "Could not get today's exchange rate. Enter it yourself.",
+      needed: 'Enter the exchange rate.',
+      invalid: 'Enter a rate like 1.0823.',
     },
     /** The expense/income toggle at the top of the form. */
     kind: { expense: 'Expense', income: 'Income' },

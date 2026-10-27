@@ -1171,6 +1171,8 @@ paths:
                     kind: expense
                     amountMinor: 1234
                     currency: USD
+                    originalAmountMinor: null
+                    originalCurrency: null
                     date: '2026-10-05'
                     note: Weekly shop
                     createdAt: '2026-10-05T18:02:11.000Z'
@@ -1241,6 +1243,8 @@ paths:
               kind: expense
               amountMinor: 1234
               currency: USD
+              originalAmountMinor: null
+              originalCurrency: null
               date: '2026-10-06'
               note: Weekly shop
       responses:
@@ -1356,6 +1360,8 @@ paths:
                   kind: expense
                   amountMinor: 1234
                   currency: USD
+                  originalAmountMinor: null
+                  originalCurrency: null
                   date: '2026-10-05'
                   note: Weekly shop
                   createdAt: '2026-10-05T18:02:11.000Z'
@@ -1558,6 +1564,77 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /v1/rates:
+    get:
+      operationId: getRate
+      tags: [expenses]
+      summary: Look up an exchange rate
+      description: |
+        The rate to convert an amount paid in `from` into the account's currency `to`, on a
+        given day. The server fetches it from a free public provider (Frankfurter, which
+        publishes the European Central Bank's reference rates) and caches it, so the app never
+        talks to a third party. Past days are cached indefinitely; "latest" for a few hours.
+
+        The rate is a **decimal string**, never a number: the device multiplies it with an
+        integer amount, and a float there is where money first goes wrong. The provider
+        prices the last business day on or before `date`, and the answer says which day it
+        actually used.
+
+        The mobile app calls this only while the person is entering a foreign expense, and
+        degrades to a rate typed by hand when it is offline or this returns
+        `502 rates_unavailable`. The server does not convert or store anything.
+      parameters:
+        - name: from
+          in: query
+          required: true
+          description: The currency the amount was paid in.
+          schema: { $ref: '#/components/schemas/CurrencyCode' }
+          example: EUR
+        - name: to
+          in: query
+          required: true
+          description: The currency to convert into. Must differ from `from`.
+          schema: { $ref: '#/components/schemas/CurrencyCode' }
+          example: USD
+        - name: date
+          in: query
+          required: false
+          description: Day to price. Omit for the latest rate.
+          schema: { $ref: '#/components/schemas/CalendarDate' }
+          example: '2026-10-05'
+      x-errorCodes:
+        - validation_error
+        - unauthorized
+        - token_expired
+        - token_invalid
+        - rate_limited
+        - rates_unavailable
+        - internal_error
+      responses:
+        '200':
+          description: The rate.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RatesResponse' }
+              example:
+                data:
+                  from: EUR
+                  to: USD
+                  date: '2026-10-05'
+                  rate: '1.0823'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '502':
+          $ref: '#/components/responses/RatesUnavailable'
+
   /v1/sync:
     get:
       operationId: pullSync
@@ -1668,6 +1745,8 @@ paths:
                           kind: expense
                           amountMinor: 450
                           currency: USD
+                          originalAmountMinor: null
+                          originalCurrency: null
                           date: '2026-10-06'
                           note: null
                           createdAt: '2026-10-06T13:05:00.000Z'
@@ -1697,6 +1776,8 @@ paths:
                           kind: expense
                           amountMinor: 450
                           currency: USD
+                          originalAmountMinor: null
+                          originalCurrency: null
                           date: '2026-10-06'
                           note: null
                           createdAt: '2026-10-06T13:05:00.000Z'
@@ -1911,6 +1992,8 @@ paths:
                           kind: expense
                           amountMinor: 450
                           currency: USD
+                          originalAmountMinor: null
+                          originalCurrency: null
                           date: '2026-10-06'
                           note: Flat white
                           createdAt: '2026-10-06T13:05:00.000Z'
@@ -1935,6 +2018,8 @@ paths:
                           kind: expense
                           amountMinor: 900
                           currency: USD
+                          originalAmountMinor: null
+                          originalCurrency: null
                           date: '2026-10-06'
                           note: Flat white, large
                           createdAt: '2026-10-06T13:05:00.000Z'
@@ -2173,6 +2258,20 @@ components:
             error:
               code: rate_limited
               message: Too many requests. Retry later.
+    RatesUnavailable:
+      description: |
+        The exchange-rate provider could not be reached or gave an unusable answer. Code:
+        `rates_unavailable`. Not cached, so the next call asks again. A client that is offline
+        or sees this lets the person enter the rate by hand.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            error:
+              code: rates_unavailable
+              message: Exchange rates are unavailable right now.
     InternalError:
       description: |
         Unexpected server fault. Code: `internal_error`. The message never leaks
@@ -2301,6 +2400,7 @@ components:
         | `mutation_id_reused` | 409 | A `clientMutationId` was reused with a different payload. Also a per-record `invalid` on sync. |
         | `batch_too_large` | 413 | A `POST /v1/sync` batch exceeded 500 items, or the body exceeded the server limit. |
         | `rate_limited` | 429 | Too many requests. `Retry-After` is set. |
+        | `rates_unavailable` | 502 | The exchange-rate provider could not be reached or gave an unusable answer. Retry later, or enter the rate by hand. |
         | `internal_error` | 500 | Unexpected server fault. Never leaks internals; correlate via `X-Request-Id`. |
       enum:
         - validation_error
@@ -2323,6 +2423,7 @@ components:
         - mutation_id_reused
         - batch_too_large
         - rate_limited
+        - rates_unavailable
         - internal_error
 
     ErrorDetails:
@@ -2805,6 +2906,8 @@ components:
         - kind
         - amountMinor
         - currency
+        - originalAmountMinor
+        - originalCurrency
         - date
         - note
         - createdAt
@@ -2821,6 +2924,21 @@ components:
         kind: { $ref: '#/components/schemas/EntryKind' }
         amountMinor: { $ref: '#/components/schemas/AmountMinor' }
         currency: { $ref: '#/components/schemas/CurrencyCode' }
+        originalAmountMinor:
+          oneOf:
+            - { $ref: '#/components/schemas/AmountMinor' }
+            - type: 'null'
+          description: |
+            What was actually paid, in `originalCurrency`, when that was not the account's
+            currency; `null` otherwise. `amountMinor` stays the amount in the account
+            currency - the one every total, budget and chart sums - so nothing downstream
+            changes. Both original fields are set together or both are `null`. The server
+            does not convert: the device did, at entry, with the rate the person saw.
+        originalCurrency:
+          oneOf:
+            - { $ref: '#/components/schemas/CurrencyCode' }
+            - type: 'null'
+          description: Currency actually paid in; never equal to `currency`.
         date:
           allOf: [{ $ref: '#/components/schemas/CalendarDate' }]
           description: |
@@ -2971,6 +3089,21 @@ components:
           description: |
             Defaults to the user's currency when omitted. In the MVP it must equal it —
             there is no conversion, so anything else is a `validation_error`.
+        originalAmountMinor:
+          oneOf:
+            - { $ref: '#/components/schemas/AmountMinor' }
+            - type: 'null'
+          description: |
+            What was actually paid, in `originalCurrency`, when that was not the account's
+            currency; `null` otherwise. `amountMinor` stays the amount in the account
+            currency - the one every total, budget and chart sums - so nothing downstream
+            changes. Both original fields are set together or both are `null`. The server
+            does not convert: the device did, at entry, with the rate the person saw.
+        originalCurrency:
+          oneOf:
+            - { $ref: '#/components/schemas/CurrencyCode' }
+            - type: 'null'
+          description: Currency actually paid in; never equal to `currency`.
         date: { $ref: '#/components/schemas/CalendarDate' }
         note:
           oneOf:
@@ -2994,6 +3127,21 @@ components:
         kind: { $ref: '#/components/schemas/EntryKind' }
         amountMinor: { $ref: '#/components/schemas/AmountMinor' }
         currency: { $ref: '#/components/schemas/CurrencyCode' }
+        originalAmountMinor:
+          oneOf:
+            - { $ref: '#/components/schemas/AmountMinor' }
+            - type: 'null'
+          description: |
+            What was actually paid, in `originalCurrency`, when that was not the account's
+            currency; `null` otherwise. `amountMinor` stays the amount in the account
+            currency - the one every total, budget and chart sums - so nothing downstream
+            changes. Both original fields are set together or both are `null`. The server
+            does not convert: the device did, at entry, with the rate the person saw.
+        originalCurrency:
+          oneOf:
+            - { $ref: '#/components/schemas/CurrencyCode' }
+            - type: 'null'
+          description: Currency actually paid in; never equal to `currency`.
         date: { $ref: '#/components/schemas/CalendarDate' }
         note:
           oneOf:
@@ -3077,6 +3225,32 @@ components:
         expenseId: { type: string, format: uuid }
         sizeBytes: { type: integer, minimum: 1 }
         updatedAt: { type: string, format: date-time }
+
+    ExchangeRate:
+      type: object
+      description: An exchange rate for converting `from` into `to`.
+      additionalProperties: false
+      required: [from, to, date, rate]
+      properties:
+        from: { $ref: '#/components/schemas/CurrencyCode' }
+        to: { $ref: '#/components/schemas/CurrencyCode' }
+        date:
+          allOf: [{ $ref: '#/components/schemas/CalendarDate' }]
+          description: The day the provider actually priced, which may be earlier than asked.
+        rate:
+          type: string
+          pattern: '^(?:[1-9][0-9]{0,8}|0)(?:\.[0-9]{1,8})?$'
+          description: |
+            Units of `to` per one unit of `from`, as a decimal string such as `"1.0823"`.
+            Greater than zero, plain decimal notation (no exponent), at most eight places.
+          example: '1.0823'
+
+    RatesResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/ExchangeRate' }
 
     ReceiptIndexResponse:
       type: object
@@ -3236,6 +3410,21 @@ components:
         kind: { $ref: '#/components/schemas/EntryKind' }
         amountMinor: { $ref: '#/components/schemas/AmountMinor' }
         currency: { $ref: '#/components/schemas/CurrencyCode' }
+        originalAmountMinor:
+          oneOf:
+            - { $ref: '#/components/schemas/AmountMinor' }
+            - type: 'null'
+          description: |
+            What was actually paid, in `originalCurrency`, when that was not the account's
+            currency; `null` otherwise. `amountMinor` stays the amount in the account
+            currency - the one every total, budget and chart sums - so nothing downstream
+            changes. Both original fields are set together or both are `null`. The server
+            does not convert: the device did, at entry, with the rate the person saw.
+        originalCurrency:
+          oneOf:
+            - { $ref: '#/components/schemas/CurrencyCode' }
+            - type: 'null'
+          description: Currency actually paid in; never equal to `currency`.
         date: { $ref: '#/components/schemas/CalendarDate' }
         note:
           oneOf:

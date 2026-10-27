@@ -210,9 +210,7 @@ describe('mutations', () => {
 
       expect(await listMonthExpenses(database, OCTOBER)).toEqual([]);
       expect(await monthTotalMinor(database, OCTOBER)).toBe(0);
-      expect(
-        await monthTotalMinor(database, { from: '2026-09-01', to: '2026-09-30' }),
-      ).toBe(1250);
+      expect(await monthTotalMinor(database, { from: '2026-09-01', to: '2026-09-30' })).toBe(1250);
     });
 
     it('stores a blank note as null rather than an empty string', async () => {
@@ -279,6 +277,8 @@ describe('mutations', () => {
           kind: stored!.kind,
           amountMinor: stored!.amountMinor,
           currency: stored!.currency,
+          originalAmountMinor: stored!.originalAmountMinor,
+          originalCurrency: stored!.originalCurrency,
           date: stored!.date,
           note: stored!.note,
         }),
@@ -293,6 +293,8 @@ describe('mutations', () => {
           kind: stored!.kind,
           amountMinor: stored!.amountMinor,
           currency: stored!.currency,
+          originalAmountMinor: stored!.originalAmountMinor,
+          originalCurrency: stored!.originalCurrency,
           date: stored!.date,
           note: 'Bus fare',
         }),
@@ -308,6 +310,8 @@ describe('mutations', () => {
           kind: stored!.kind,
           amountMinor: stored!.amountMinor,
           currency: stored!.currency,
+          originalAmountMinor: stored!.originalAmountMinor,
+          originalCurrency: stored!.originalCurrency,
           date: stored!.date,
           note: '   ',
         }),
@@ -582,9 +586,12 @@ describe('mutations', () => {
         'expense',
         'expense',
       ]);
-      expect(queue.slice(1).map((entry) => entry.recordId).sort()).toEqual(
-        [ids.expenseA, ids.expenseB, ids.expenseC].sort(),
-      );
+      expect(
+        queue
+          .slice(1)
+          .map((entry) => entry.recordId)
+          .sort(),
+      ).toEqual([ids.expenseA, ids.expenseB, ids.expenseC].sort());
       // The reassignment pushes the expense's *new* categoryId, so a peer converges on the
       // same state without re-deriving it (`CAT-06`).
       expect(JSON.parse(queue[1]!.fields)).toEqual({ categoryId: ids.uncategorized });

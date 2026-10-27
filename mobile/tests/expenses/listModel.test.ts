@@ -54,6 +54,8 @@ function item(overrides: Partial<ExpenseListItem> = {}): ExpenseListItem {
     fallbackColor: CATEGORY_RESERVED_COLOR,
     amountMinor: 1250,
     currency: 'USD',
+    originalAmountMinor: null,
+    originalCurrency: null,
     date: TODAY,
     note: null,
     pending: false,

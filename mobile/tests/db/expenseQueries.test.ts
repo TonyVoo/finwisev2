@@ -125,6 +125,8 @@ describe('expense and category reads', () => {
           fallbackColor: '#6B7280',
           amountMinor: 1250,
           currency: 'USD',
+          originalAmountMinor: null,
+          originalCurrency: null,
           date: '2026-10-09',
           note: 'Milk, eggs',
           pending: false,
@@ -368,6 +370,8 @@ describe('expense and category reads', () => {
         kind: 'expense',
         amountMinor: 1250,
         currency: 'USD',
+        originalAmountMinor: null,
+        originalCurrency: null,
         date: '2026-10-09',
         note: 'Milk',
       });

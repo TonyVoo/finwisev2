@@ -1,4 +1,4 @@
-import { VALIDATION_COPY } from '../copy/strings';
+import { COPY, VALIDATION_COPY } from '../copy/strings';
 import { isOutOfRangeAmount, isSavableAmount } from '../lib/amount';
 import type { ExpenseDraft } from '../db/mutations';
 import { changedExpenseFields, normaliseNote } from '../db/mutations';
@@ -34,6 +34,14 @@ export interface SaveStateInput {
   readonly hasCategories: boolean;
   /** Something outside the draft changed (the receipt photo): edit mode may then save. */
   readonly otherChange?: boolean;
+  /**
+   * Paying in a foreign currency, and what is wrong with the conversion: `missing` while the
+   * rate is empty or malformed, `overflow` when the converted amount would be too large to
+   * store. Null for an ordinary expense or a conversion that worked. In that case
+   * `amountMinor` is the amount **as typed**, in the foreign currency - the home amount cannot
+   * be judged until there is a rate.
+   */
+  readonly rateProblem?: 'missing' | 'overflow' | null;
 }
 
 /**
@@ -58,6 +66,7 @@ export function saveState({
   draft,
   hasCategories,
   otherChange = false,
+  rateProblem = null,
 }: SaveStateInput): SaveState {
   if (!hasCategories) {
     return { canSave: false, hint: VALIDATION_COPY.nocategories };
@@ -69,6 +78,14 @@ export function saveState({
 
   if (!isSavableAmount(amountMinor)) {
     return { canSave: false, hint: VALIDATION_COPY.amount.zero };
+  }
+
+  // After the amount, because there is nothing to convert until there is one.
+  if (rateProblem === 'overflow') {
+    return { canSave: false, error: VALIDATION_COPY.amount.outOfRange };
+  }
+  if (rateProblem === 'missing') {
+    return { canSave: false, hint: COPY.form.rate.needed };
   }
 
   // Edit mode only: add mode has nothing to compare against, and a nonzero amount is
@@ -108,6 +125,8 @@ export function hasEdits(initial: ExpenseDraft, draft: ExpenseDraft): boolean {
     initial.amountMinor !== draft.amountMinor ||
     initial.categoryId !== draft.categoryId ||
     initial.kind !== draft.kind ||
+    initial.originalAmountMinor !== draft.originalAmountMinor ||
+    initial.originalCurrency !== draft.originalCurrency ||
     initial.date !== draft.date ||
     normaliseNote(initial.note) !== normaliseNote(draft.note)
   );

@@ -54,6 +54,8 @@ const EXPENSE = {
   kind: 'expense',
   amountMinor: 1234,
   currency: 'USD',
+  originalAmountMinor: null,
+  originalCurrency: null,
   date: '2026-10-08',
   note: 'coffee',
   createdAt: '2026-10-08T10:00:00.000Z',

@@ -153,6 +153,7 @@ blank banner.
 | `mutation_id_reused`     | _(never shown)_ — a client bug; logged, and the record is flagged `needs-attention`   | none                                             |
 | `batch_too_large`        | _(never shown)_ — the client splits the batch and retries                             | none                                             |
 | `rate_limited`           | `Too many attempts. Try again in a moment.`                                           | form banner                                      |
+| `rates_unavailable`      | `Could not get today's exchange rate. Enter it yourself.`                             | Expense form, Rate field                         |
 | `internal_error`         | `Something went wrong on our end. Try again.`                                         | form banner                                      |
 
 Notes:
@@ -547,3 +548,13 @@ them as proposals the Designer can reword; changing a row here means changing
 | `lock.settingsRow` | `App lock` | Settings row |
 | `lock.settingsHint` | `Ask for Face ID or your passcode.` | Settings row, hint |
 | `lock.notConfirmed` | `Could not confirm it is you, so app lock was not changed.` | Settings, snackbar |
+| `home.paidIn` | `paid {amount}` | Home, spoken label of a foreign-currency row |
+| `form.currency.title` | `Currency` | Currency sheet, title |
+| `form.currency.row` | `Currency` | Expense form, currency row |
+| `form.rate.label` | `Exchange rate` | Expense form, rate field |
+| `form.rate.hint` | `1 {from} = {rate} {home}` | Expense form, rate field helper |
+| `form.rate.converted` | `= {amount}` | Expense form, converted amount |
+| `form.rate.loading` | `Getting the exchange rate…` | Expense form, rate field |
+| `form.rate.failed` | `Could not get today's exchange rate. Enter it yourself.` | Expense form, rate field |
+| `form.rate.needed` | `Enter the exchange rate.` | Expense form, Save hint |
+| `form.rate.invalid` | `Enter a rate like 1.0823.` | Expense form, rate field error |

@@ -118,5 +118,8 @@ export const problems = {
   /** An email-verification code that did not work. Same single message as a reset code. */
   invalidVerificationCode: () =>
     new ApiProblem('invalid_verification_code', 'That code is incorrect or has expired.'),
+  /** The exchange-rate provider failed or answered something unusable. Retryable. */
+  ratesUnavailable: () =>
+    new ApiProblem('rates_unavailable', 'Exchange rates are unavailable right now.'),
   internal: (message = 'Something went wrong.') => new ApiProblem('internal_error', message),
 } as const;

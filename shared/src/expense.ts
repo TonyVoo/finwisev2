@@ -45,6 +45,46 @@ export const EntryKind = z
   .enum(['expense', 'income'])
   .describe('`expense` (money out) or `income` (money in). Defaults to `expense`.');
 
+/**
+ * What was actually paid, when it was not in the account's currency.
+ *
+ * `amountMinor` stays the amount in the account's own currency - the one every total, budget
+ * and chart sums, so nothing downstream changes - and these two record the original beside it.
+ * They travel together or not at all: an amount with no currency is meaningless, and a
+ * currency with no amount says nothing. The server does not convert; the device did, at entry,
+ * with the rate the person saw. Never the account's own currency (that would be no conversion).
+ */
+export const OriginalAmountFields = {
+  originalAmountMinor: AmountMinor.nullable().describe(
+    'Amount actually paid, in `originalCurrency`; null when paid in the account currency.',
+  ),
+  originalCurrency: CurrencyCode.nullable().describe(
+    'Currency actually paid in; null when it was the account currency. Never equal to `currency`.',
+  ),
+};
+
+/**
+ * Both original fields or neither, as one request carries them. `undefined` (absent) and
+ * `null` (clear) are different things, so "both absent" and "both null" are each valid, while
+ * one present without the other - or an amount with a null currency - is not.
+ */
+export function originalPairTogether(v: {
+  originalAmountMinor?: number | null | undefined;
+  originalCurrency?: string | null | undefined;
+}): boolean {
+  const amount = v.originalAmountMinor;
+  const currency = v.originalCurrency;
+  if (amount === undefined && currency === undefined) return true;
+  if (amount === undefined || currency === undefined) return false;
+  return (amount === null) === (currency === null);
+}
+
+export const ORIGINAL_PAIR_ISSUE = {
+  error:
+    '`originalAmountMinor` and `originalCurrency` must be given together, both set or both null',
+  path: ['originalCurrency'] as string[],
+};
+
 /** An expense row as the server reports it. */
 export const Expense = z.strictObject({
   ...SYNCABLE_SHAPE,
@@ -54,23 +94,28 @@ export const Expense = z.strictObject({
   kind: EntryKind,
   amountMinor: AmountMinor,
   currency: CurrencyCode,
+  ...OriginalAmountFields,
   date: CalendarDate,
   note: ExpenseNote.nullable(),
 });
 
-export const ExpenseCreateRequest = z.strictObject({
-  id: Uuid.optional().describe(
-    'Optional client-minted UUIDv7. Supply it so a row created offline keeps its identity; omit it and the server mints one.',
-  ),
-  categoryId: Uuid,
-  kind: EntryKind.optional(),
-  amountMinor: AmountMinor,
-  currency: CurrencyCode.optional().describe(
-    "Defaults to the user's currency when omitted. In the MVP it must equal it; anything else is a validation_error.",
-  ),
-  date: CalendarDate,
-  note: ExpenseNoteInput.optional(),
-});
+export const ExpenseCreateRequest = z
+  .strictObject({
+    id: Uuid.optional().describe(
+      'Optional client-minted UUIDv7. Supply it so a row created offline keeps its identity; omit it and the server mints one.',
+    ),
+    categoryId: Uuid,
+    kind: EntryKind.optional(),
+    amountMinor: AmountMinor,
+    currency: CurrencyCode.optional().describe(
+      "Defaults to the user's currency when omitted. In the MVP it must equal it; anything else is a validation_error.",
+    ),
+    originalAmountMinor: OriginalAmountFields.originalAmountMinor.optional(),
+    originalCurrency: OriginalAmountFields.originalCurrency.optional(),
+    date: CalendarDate,
+    note: ExpenseNoteInput.optional(),
+  })
+  .refine(originalPairTogether, ORIGINAL_PAIR_ISSUE);
 
 export const ExpenseUpdateRequest = z
   .strictObject({
@@ -78,10 +123,13 @@ export const ExpenseUpdateRequest = z
     kind: EntryKind.optional(),
     amountMinor: AmountMinor.optional(),
     currency: CurrencyCode.optional(),
+    originalAmountMinor: OriginalAmountFields.originalAmountMinor.optional(),
+    originalCurrency: OriginalAmountFields.originalCurrency.optional(),
     date: CalendarDate.optional(),
     note: ExpenseNoteInput.optional(),
   })
-  .refine((v) => Object.keys(v).length > 0, { error: 'at least one field must be present' });
+  .refine((v) => Object.keys(v).length > 0, { error: 'at least one field must be present' })
+  .refine(originalPairTogether, ORIGINAL_PAIR_ISSUE);
 
 /**
  * Query for `GET /v1/expenses`. Keyset-paginated on `(date DESC, id DESC)`.
