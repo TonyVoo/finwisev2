@@ -39,6 +39,7 @@ import { createStyles } from '../theme/ThemeProvider';
 export const MONTH_TOTAL_TEST_ID = 'month-total';
 export const MONTH_TOTAL_SKELETON_TEST_ID = 'month-total-skeleton';
 export const MONTH_TOTAL_COUNT_TEST_ID = 'month-total-count';
+export const MONTH_PACE_TEST_ID = 'month-total-pace';
 export const MONTH_BALANCE_TEST_ID = 'month-total-balance';
 
 export interface MonthTotalProps {
@@ -63,6 +64,8 @@ export interface MonthTotalProps {
   /** Running spend per day so far; with `daysInMonth` it draws the month's sparkline. */
   readonly series?: readonly number[];
   readonly daysInMonth?: number;
+  /** Where the month ends at the current daily average; current month only. */
+  readonly paceMinor?: number | null;
 }
 
 export function MonthTotal({
@@ -73,6 +76,7 @@ export function MonthTotal({
   incomeMinor,
   series,
   daysInMonth,
+  paceMinor,
 }: MonthTotalProps) {
   const styles = useStyles();
   const drawn = useCountUp(totalMinor, useReduceMotion());
@@ -96,6 +100,11 @@ export function MonthTotal({
       ? null
       : `${COPY.home.balance.income.replace('{amount}', formatMoney(incomeMinor, currency))} · ${COPY.home.balance.net.replace('{amount}', formatMoney(incomeMinor - totalMinor, currency))}`;
 
+  const pace =
+    paceMinor === undefined || paceMinor === null
+      ? null
+      : COPY.home.pace.replace('{amount}', formatMoney(paceMinor, currency));
+
   return (
     <View
       testID={MONTH_TOTAL_TEST_ID}
@@ -112,6 +121,13 @@ export function MonthTotal({
       {balance === null ? null : (
         <Text testID={MONTH_BALANCE_TEST_ID} style={styles.count}>
           {balance}
+        </Text>
+      )}
+      {/* An estimate, so it stays out of the spoken label (the spec'd label is exact figures
+          only); the sighted-only line is a hint, not a fact. */}
+      {pace === null ? null : (
+        <Text testID={MONTH_PACE_TEST_ID} style={styles.count}>
+          {pace}
         </Text>
       )}
       {series === undefined || daysInMonth === undefined ? null : (

@@ -493,6 +493,7 @@ them as proposals the Designer can reword; changing a row here means changing
 | `form.kind.income` | `Income` | Expense form, kind toggle |
 | `home.balance.income` | `Income {amount}` | Home and Summary, line under the total |
 | `home.balance.net` | `Net {amount}` | Home and Summary, line under the total |
+| `home.pace` | `On pace for {amount} this month` | Home, line under the total, current month only, once some money is spent |
 | `home.incomeLabel` | `income` | Home, spoken prefix on an income row |
 | `form.deleteIncome` | `Delete income` | Expense form, income mode |
 | `recurring.reminder.title` | `Due tomorrow` | Notification, day before a recurring expense |

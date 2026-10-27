@@ -43,6 +43,24 @@ describe('SpendSparkline', () => {
   });
 });
 
+describe('MonthTotal pace line', () => {
+  it('says where the month is heading, without changing the spoken total', async () => {
+    await render(<MonthTotal totalMinor={4000} currency="USD" isCurrentMonth paceMinor={12000} />);
+
+    expect(screen.getByText('On pace for $120.00 this month')).toBeTruthy();
+    // An estimate, not a figure: the spoken label stays exactly the spec'd one.
+    expect(screen.getByTestId('month-total').props.accessibilityLabel).toBe(
+      'Total this month, $40.00',
+    );
+  });
+
+  it('is absent without a projection', async () => {
+    await render(<MonthTotal totalMinor={4000} currency="USD" isCurrentMonth />);
+
+    expect(screen.queryByText(/On pace for/)).toBeNull();
+  });
+});
+
 describe('MonthTotal with a spend series', () => {
   it('shows the sparkline under the figure', async () => {
     await render(

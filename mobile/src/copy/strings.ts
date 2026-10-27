@@ -88,6 +88,8 @@ export const COPY = {
     total: { current: 'Total this month', other: 'Total' },
     /** The line under the total when the month has income (`MonthTotal`). */
     balance: { income: 'Income {amount}', net: 'Net {amount}' },
+    /** The line under the total while the month is under way: where it is heading. */
+    pace: 'On pace for {amount} this month',
     /** A row's spoken prefix for income, so the amount is not read as money spent. */
     incomeLabel: 'income',
     /** Spoken after the amount of a foreign-currency expense: what was actually paid. */

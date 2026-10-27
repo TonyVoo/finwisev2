@@ -89,6 +89,7 @@ export const VIETNAMESE_COPY: CopyBundle = {
       title: 'Chi tiêu',
       total: { current: 'Tổng tháng này', other: 'Tổng' },
       balance: { income: 'Thu nhập {amount}', net: 'Còn lại {amount}' },
+      pace: 'Dự kiến {amount} trong tháng',
       incomeLabel: 'thu nhập',
       paidIn: 'đã trả {amount}',
       section: { today: 'Hôm nay', yesterday: 'Hôm qua' },

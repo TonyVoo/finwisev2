@@ -39,7 +39,7 @@ import { formatMoney } from '@/lib/money';
 import { useFirstPaintSkeleton } from '@/expenses/useFirstPaint';
 import { useAwaitingFirstSync } from '@/sync/useAwaitingFirstSync';
 import { daysInMonth as daysIn, monthLabel } from '@/lib/calendar';
-import { cumulativeSeries } from '@/expenses/spendPace';
+import { cumulativeSeries, projectedMonthEnd } from '@/expenses/spendPace';
 import { warnHaptic } from '@/lib/haptics';
 import { MonthSwitcher } from '@/month/MonthSwitcher';
 import { SyncIndicator } from '@/sync/SyncIndicator';
@@ -154,7 +154,8 @@ export default function ExpenseListScreen() {
   const monthDays = daysIn(month);
   // The current month stops at today, so the bars do not flat-line into the future.
   const shownDays = isCurrent ? Number(today.slice(8, 10)) : monthDays;
-  const series = daily.data === undefined ? undefined : cumulativeSeries(daily.data, month, shownDays);
+  const series =
+    daily.data === undefined ? undefined : cumulativeSeries(daily.data, month, shownDays);
   const anyExist = useAnyExpensesExist();
   const currency = useUserCurrency();
 
@@ -278,6 +279,11 @@ export default function ExpenseListScreen() {
           isCurrentMonth={isCurrent}
           incomeMinor={currencyCode === null || awaitingFirstSync ? undefined : income.data}
           series={series}
+          paceMinor={
+            isCurrent && total.data !== undefined && shownDays < monthDays
+              ? projectedMonthEnd(total.data, shownDays, monthDays)
+              : null
+          }
           daysInMonth={monthDays}
         />
       )}
