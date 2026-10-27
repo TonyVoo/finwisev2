@@ -11,6 +11,11 @@
  * sync pull needs after writing rows it cannot cheaply map back to screens.
  */
 export const queryKeys = {
+  /**
+   * The caller's household, from the server. The one key that is **not** a SQLite read, so it
+   * deliberately does not start with `local` and is not cleared by a local invalidation.
+   */
+  household: () => ['household'] as const,
   /** Everything read out of SQLite, i.e. the whole cache. See `localWrite.ts`. */
   local: () => ['local'] as const,
 

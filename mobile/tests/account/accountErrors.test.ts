@@ -8,6 +8,13 @@ const problem = (status: number, code: ApiRequestError['code']) =>
   new ApiRequestError({ status, code, message: `${code} from the test` });
 
 describe('presentAccountError', () => {
+  it('explains that an owner must delete the household before the account', () => {
+    expect(presentAccountError(problem(409, 'household_has_members'), 'deleteAccount')).toEqual({
+      passwordError: null,
+      banner: COPY.household.error.household_has_members,
+    });
+  });
+
   it('puts a wrong password on the password field, not in a banner', () => {
     expect(presentAccountError(problem(403, 'forbidden'), 'changePassword')).toEqual({
       passwordError: COPY.account.wrongPassword,

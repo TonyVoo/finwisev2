@@ -775,3 +775,61 @@ describe('the account endpoints, through the real client against the real server
     await expect(client.getMe()).rejects.toMatchObject({ code: 'token_invalid' });
   });
 });
+
+describe('API-27 — a household, driven by two real clients', () => {
+  it('shares the owner books with a member, and gives them back on leaving', async () => {
+    const owner = await signedIn();
+    const member = await signedIn();
+
+    const category = (await owner.client.listCategories()).data[0]!;
+    const expense = (
+      await owner.client.createExpense({
+        categoryId: category.id,
+        amountMinor: 1250,
+        date: '2026-10-09',
+      })
+    ).data;
+
+    // Nothing in a household yet: `null`, parsed by the strict client schema.
+    expect((await owner.client.getHousehold()).household).toBeNull();
+
+    const created = (await owner.client.createHousehold()).household;
+    expect(created).toMatchObject({ role: 'owner', ownerId: owner.auth.user.id });
+
+    const { code } = (await owner.client.createHouseholdInvite()).data;
+    const joined = (await member.client.joinHousehold({ code })).household;
+    expect(joined).toMatchObject({ role: 'member', ownerId: owner.auth.user.id });
+    expect(joined?.members).toHaveLength(2);
+
+    // The member's identity is unchanged; their data scope is the owner's.
+    const me = await member.client.getMe();
+    expect(me.user.id).toBe(member.auth.user.id);
+    expect(me.dataOwnerId).toBe(owner.auth.user.id);
+    const seen = (await member.client.listExpenses()).data.map((e: Expense) => e.id);
+    expect(seen).toContain(expense.id);
+
+    // 204s resolve to nothing, as the client promises.
+    await expect(member.client.leaveHousehold()).resolves.toBeUndefined();
+    expect((await member.client.getMe()).dataOwnerId).toBe(member.auth.user.id);
+    expect((await member.client.listExpenses()).data.map((e: Expense) => e.id)).not.toContain(
+      expense.id,
+    );
+
+    await expect(owner.client.deleteHousehold()).resolves.toBeUndefined();
+    expect((await owner.client.getHousehold()).household).toBeNull();
+  });
+
+  it('carries the documented error codes to the client', async () => {
+    const owner = await signedIn();
+    const other = await signedIn();
+    await owner.client.createHousehold();
+
+    await expect(other.client.joinHousehold({ code: 'AAAAAAAA' })).rejects.toMatchObject({
+      code: 'invalid_invite_code',
+    });
+    await expect(other.client.leaveHousehold()).rejects.toMatchObject({ code: 'not_in_household' });
+    await expect(owner.client.leaveHousehold()).rejects.toMatchObject({
+      code: 'owner_cannot_leave',
+    });
+  });
+});

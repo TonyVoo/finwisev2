@@ -242,6 +242,8 @@ export const VIETNAMESE_COPY: CopyBundle = {
       recurringHint: 'Tiền nhà, gói đăng ký và các khoản định kỳ.',
       goals: 'Mục tiêu tiết kiệm',
       goalsHint: 'Tiết kiệm cho điều bạn muốn.',
+      household: 'Hộ gia đình',
+      householdHint: 'Chia sẻ sổ chi tiêu với người khác.',
       renameCategories: 'Đổi tên danh mục mặc định',
       renameCategoriesHint: 'Chuyển tên gốc sang tiếng Việt.',
       appearance: 'Giao diện',
@@ -275,6 +277,74 @@ export const VIETNAMESE_COPY: CopyBundle = {
       settingsHint: 'Yêu cầu Face ID hoặc mật mã.',
     },
 
+    /** Shared households (`docs/design/10-households.md`). */
+    household: {
+      title: 'Hộ gia đình',
+      empty: {
+        headline: 'Chia sẻ sổ chi tiêu',
+        body: 'Dùng chung một sổ chi tiêu với người thân hoặc gia đình. Ai cũng xem và thêm được mọi thứ.',
+      },
+      create: 'Tạo hộ gia đình',
+      join: 'Tham gia bằng mã',
+      members: 'Thành viên',
+      role: {
+        owner: 'Chủ hộ',
+        member: 'Thành viên',
+      },
+      you: 'Bạn',
+      invite: {
+        action: 'Mời thêm người',
+        title: 'Mã mời',
+        body: 'Chia sẻ mã này. Mã dùng được một lần, trong 48 giờ.',
+        share: 'Chia sẻ mã',
+        message: 'Tham gia hộ gia đình của mình trên Expense Tracker bằng mã này: {code}',
+        close: 'Đóng',
+      },
+      joinSheet: {
+        title: 'Tham gia hộ gia đình',
+        field: 'Mã mời',
+        hint: 'Bạn sẽ thấy sổ chi tiêu của hộ gia đình. Khoản chi riêng của bạn vẫn được giữ kín và quay lại nếu bạn rời đi.',
+        submit: 'Tham gia',
+      },
+      leave: {
+        action: 'Rời hộ gia đình',
+        title: 'Rời hộ gia đình này?',
+        body: 'Bạn sẽ quay lại với các khoản chi riêng của mình. Hộ gia đình giữ lại những gì mọi người đã thêm.',
+        confirm: 'Rời đi',
+      },
+      delete: {
+        action: 'Xóa hộ gia đình',
+        title: 'Xóa hộ gia đình này?',
+        body: 'Mọi người quay lại với các khoản chi riêng. Bạn giữ lại các khoản chi chung.',
+        confirm: 'Xóa',
+      },
+      remove: {
+        title: 'Xóa {email} khỏi hộ gia đình?',
+        body: 'Họ sẽ quay lại với các khoản chi riêng của mình.',
+        confirm: 'Xóa khỏi hộ',
+      },
+      syncFirst: 'Hãy đồng bộ các thay đổi trước. Kết nối internet rồi thử lại.',
+      offline: 'Hãy kết nối internet để quản lý hộ gia đình.',
+      retry: 'Thử lại',
+      snack: {
+        created: 'Đã tạo hộ gia đình.',
+        joined: 'Bạn đã tham gia hộ gia đình.',
+        left: 'Bạn đã rời hộ gia đình.',
+        removed: 'Đã xóa thành viên.',
+        deleted: 'Đã xóa hộ gia đình.',
+      },
+      a11y: {
+        removeMember: 'Xóa {email}',
+      },
+      error: {
+        invalid_invite_code: 'Mã không đúng hoặc đã hết hạn.',
+        household_exists: 'Bạn đã ở trong một hộ gia đình.',
+        not_in_household: 'Bạn chưa ở trong hộ gia đình nào.',
+        household_owner_only: 'Chỉ chủ hộ mới làm được việc này.',
+        owner_cannot_leave: 'Chủ hộ không thể rời đi. Hãy xóa hộ gia đình thay vào đó.',
+        household_has_members: 'Hãy xóa hộ gia đình trước khi xóa tài khoản.',
+      },
+    },
     goals: {
       title: 'Mục tiêu tiết kiệm',
       fab: 'Thêm mục tiêu tiết kiệm',

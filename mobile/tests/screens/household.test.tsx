@@ -1,0 +1,311 @@
+import type { Household } from '@expense-tracker/shared';
+import { screen, waitFor } from '@testing-library/react-native';
+import { COPY } from '@/copy/strings';
+import { applyLocalMutation } from '@/db/write';
+import HouseholdScreen from '../../app/(app)/settings/household';
+import type { Transport, TransportRequest, TransportResponse } from '@/api/transport';
+import { NetworkUnavailableError } from '@/api/errors';
+import { resetRouter } from '../support/router';
+import { apiError, mountScreen, ok, pressOn, typeInto } from '../support/mount';
+import { seedFallbackCategory } from '../support/seed';
+
+jest.mock('expo-router');
+
+const ME = '0192f5a0-0000-7000-8000-00000000a001';
+const OWNER = '0192f5a0-0000-7000-8000-00000000b001';
+const HOUSEHOLD_ID = '0192f5a0-0000-7000-8000-00000000c001';
+const hidden = { includeHiddenElements: true };
+
+function household(role: 'owner' | 'member'): Household {
+  const owner = {
+    userId: role === 'owner' ? ME : OWNER,
+    email: role === 'owner' ? 'ana@example.com' : 'bao@example.com',
+    role: 'owner' as const,
+    joinedAt: '2026-10-20T09:00:00.000Z',
+  };
+  const other = {
+    userId: role === 'owner' ? OWNER : ME,
+    email: role === 'owner' ? 'bao@example.com' : 'ana@example.com',
+    role: 'member' as const,
+    joinedAt: '2026-10-21T09:00:00.000Z',
+  };
+  return {
+    id: HOUSEHOLD_ID,
+    role,
+    ownerId: OWNER,
+    currency: 'USD',
+    members: [owner, other],
+  };
+}
+
+interface FakeServer {
+  state: { household: Household | null; scope: string };
+  transport: Transport;
+  calls: () => string[];
+}
+
+/** Just enough server: the household routes and `GET /v1/me`. */
+function fakeServer(
+  initial: Household | null,
+  overrides: Record<string, TransportResponse> = {},
+): FakeServer {
+  const state = { household: initial, scope: ME };
+  const seen: string[] = [];
+  const transport: Transport = async (request: TransportRequest) => {
+    const key = `${request.method.toUpperCase()} ${request.path}`;
+    seen.push(key);
+    const override = overrides[key];
+    if (override !== undefined) return override;
+    switch (key) {
+      case 'GET /v1/household':
+        return ok(200, { household: state.household });
+      case 'POST /v1/household':
+        state.household = {
+          ...household('owner'),
+          ownerId: ME,
+          members: [household('owner').members[0]!],
+        };
+        return ok(201, { household: state.household });
+      case 'POST /v1/household/invite':
+        return ok(201, { data: { code: 'K7QM4T2X', expiresAt: '2026-10-29T09:00:00.000Z' } });
+      case 'POST /v1/household/join':
+        state.household = household('member');
+        state.scope = OWNER;
+        return ok(200, { household: state.household });
+      case 'POST /v1/household/leave':
+        state.household = null;
+        state.scope = ME;
+        return ok(204, undefined);
+      case 'DELETE /v1/household':
+        state.household = null;
+        return ok(204, undefined);
+      case 'GET /v1/me':
+        return ok(200, {
+          user: {
+            id: ME,
+            email: 'ana@example.com',
+            currency: 'EUR',
+            createdAt: '2026-10-01T00:00:00.000Z',
+          },
+          dataOwnerId: state.scope,
+        });
+      case 'GET /v1/sync':
+        return ok(200, { changes: [], cursor: 0, resyncRequired: false });
+      default:
+        if (key.startsWith('DELETE /v1/household/members/')) {
+          state.household = { ...household('owner'), members: [household('owner').members[0]!] };
+          return ok(204, undefined);
+        }
+        throw new Error(`unexpected request ${key}`);
+    }
+  };
+  return { state, transport, calls: () => seen };
+}
+
+beforeEach(() => {
+  resetRouter();
+  jest.clearAllMocks();
+});
+
+async function mount(server: FakeServer) {
+  return await mountScreen(<HouseholdScreen />, {
+    transport: server.transport,
+    seed: async (database) => {
+      await seedFallbackCategory(database);
+    },
+  });
+}
+
+describe('a person in no household', () => {
+  it('is offered to create one or to join with a code', async () => {
+    await mount(fakeServer(null));
+
+    await waitFor(() => expect(screen.queryByTestId('household-empty')).not.toBeNull());
+    expect(screen.getByText(COPY.household.empty.headline)).toBeTruthy();
+    expect(screen.getByTestId('household-create')).toBeTruthy();
+    expect(screen.getByTestId('household-join')).toBeTruthy();
+    expect(screen.getByTestId('empty-icon-users', hidden)).toBeTruthy();
+  });
+
+  it('creates a household and then shows its members, with the creator as owner', async () => {
+    const server = fakeServer(null);
+    await mount(server);
+    await waitFor(() => expect(screen.queryByTestId('household-create')).not.toBeNull());
+
+    await pressOn('household-create');
+
+    await waitFor(() => expect(screen.queryByText(COPY.household.snack.created)).not.toBeNull());
+    expect(screen.getByText('ana@example.com')).toBeTruthy();
+    expect(screen.getAllByText(COPY.household.role.owner).length).toBeGreaterThan(0);
+    expect(server.calls()).toContain('POST /v1/household');
+  });
+});
+
+describe('joining with a code', () => {
+  async function openJoin(server: FakeServer) {
+    const mounted = await mount(server);
+    await waitFor(() => expect(screen.queryByTestId('household-join')).not.toBeNull());
+    await pressOn('household-join');
+    return mounted;
+  }
+
+  it('sends the code, then moves the device to the household books and says so', async () => {
+    const server = fakeServer(null);
+    await openJoin(server);
+
+    await typeInto('household-code', 'k7qm4t2x');
+    await pressOn('household-join-submit');
+
+    await waitFor(() => expect(screen.queryByText(COPY.household.snack.joined)).not.toBeNull());
+    expect(server.calls()).toContain('POST /v1/household/join');
+    // The device asked who it is now, and so learned its data scope changed.
+    expect(server.calls()).toContain('GET /v1/me');
+  });
+
+  it('says why when the code is wrong, and stays on the field', async () => {
+    const server = fakeServer(null, {
+      'POST /v1/household/join': apiError(400, 'invalid_invite_code'),
+    });
+    await openJoin(server);
+
+    await typeInto('household-code', 'AAAAAAAA');
+    await pressOn('household-join-submit');
+
+    await waitFor(() =>
+      expect(screen.queryByText(COPY.household.error.invalid_invite_code)).not.toBeNull(),
+    );
+    expect(screen.queryByText(COPY.household.snack.joined)).toBeNull();
+  });
+
+  it('does not send a malformed code', async () => {
+    const server = fakeServer(null);
+    await openJoin(server);
+
+    await typeInto('household-code', 'abc');
+    await pressOn('household-join-submit');
+
+    expect(server.calls()).not.toContain('POST /v1/household/join');
+  });
+
+  it('refuses while changes are still waiting to sync, because joining clears them', async () => {
+    const server = fakeServer(null);
+    const mounted = await openJoin(server);
+    await applyLocalMutation(
+      mounted.database,
+      {
+        entity: 'category',
+        id: '0192f5a0-0000-7000-8000-0000000000c9',
+        fields: { name: 'Pets', color: '#2F8044' },
+      },
+      { clock: () => new Date('2026-10-26T09:00:00.000Z') },
+    );
+
+    await typeInto('household-code', 'K7QM4T2X');
+    await pressOn('household-join-submit');
+
+    await waitFor(() => expect(screen.queryByText(COPY.household.syncFirst)).not.toBeNull());
+    expect(server.calls()).not.toContain('POST /v1/household/join');
+  });
+});
+
+describe('the owner of a household', () => {
+  it('sees the members with their roles', async () => {
+    await mount(fakeServer(household('owner')));
+
+    await waitFor(() => expect(screen.queryByText('bao@example.com')).not.toBeNull());
+    expect(screen.getByText('ana@example.com')).toBeTruthy();
+    expect(screen.getAllByText(COPY.household.role.member).length).toBeGreaterThan(0);
+  });
+
+  it('can make an invite code, which is shown once with a way to share it', async () => {
+    const server = fakeServer(household('owner'));
+    await mount(server);
+    await waitFor(() => expect(screen.queryByTestId('household-invite')).not.toBeNull());
+
+    await pressOn('household-invite');
+
+    await waitFor(() => expect(screen.queryByText('K7QM4T2X')).not.toBeNull());
+    expect(screen.getByText(COPY.household.invite.body)).toBeTruthy();
+    expect(screen.getByTestId('household-invite-share')).toBeTruthy();
+  });
+
+  it('removes a member after confirming', async () => {
+    const server = fakeServer(household('owner'));
+    await mount(server);
+    await waitFor(() => expect(screen.queryByTestId(`household-member-${OWNER}`)).not.toBeNull());
+
+    await pressOn(`household-member-${OWNER}`);
+    await waitFor(() =>
+      expect(
+        screen.queryByText(COPY.household.remove.title.replace('{email}', 'bao@example.com')),
+      ).not.toBeNull(),
+    );
+    await pressOn('household-remove-dialog-confirm');
+
+    await waitFor(() => expect(screen.queryByText(COPY.household.snack.removed)).not.toBeNull());
+    expect(server.calls()).toContain(`DELETE /v1/household/members/${OWNER}`);
+  });
+
+  it('deletes the household after confirming', async () => {
+    const server = fakeServer(household('owner'));
+    await mount(server);
+    await waitFor(() => expect(screen.queryByTestId('household-delete')).not.toBeNull());
+
+    await pressOn('household-delete');
+    await pressOn('household-delete-dialog-confirm');
+
+    await waitFor(() => expect(screen.queryByText(COPY.household.snack.deleted)).not.toBeNull());
+    expect(server.calls()).toContain('DELETE /v1/household');
+  });
+
+  it('has no Leave button: the owner deletes instead', async () => {
+    await mount(fakeServer(household('owner')));
+    await waitFor(() => expect(screen.queryByTestId('household-delete')).not.toBeNull());
+
+    expect(screen.queryByTestId('household-leave')).toBeNull();
+  });
+});
+
+describe('a member of a household', () => {
+  it('can leave after confirming, and returns to their own books', async () => {
+    const server = fakeServer(household('member'));
+    server.state.scope = OWNER;
+    await mount(server);
+    await waitFor(() => expect(screen.queryByTestId('household-leave')).not.toBeNull());
+
+    await pressOn('household-leave');
+    await pressOn('household-leave-dialog-confirm');
+
+    await waitFor(() => expect(screen.queryByText(COPY.household.snack.left)).not.toBeNull());
+    expect(server.calls()).toContain('POST /v1/household/leave');
+    expect(server.calls()).toContain('GET /v1/me');
+  });
+
+  it('cannot invite, remove or delete', async () => {
+    await mount(fakeServer(household('member')));
+    await waitFor(() => expect(screen.queryByTestId('household-leave')).not.toBeNull());
+
+    expect(screen.queryByTestId('household-invite')).toBeNull();
+    expect(screen.queryByTestId('household-delete')).toBeNull();
+    expect(screen.queryByTestId(`household-member-${OWNER}`)).toBeNull();
+  });
+});
+
+describe('offline', () => {
+  it('says to connect, with a way to try again', async () => {
+    let online = false;
+    const server = fakeServer(null);
+    await mountScreen(<HouseholdScreen />, {
+      transport: async (request) => {
+        if (!online) throw new NetworkUnavailableError('offline');
+        return server.transport(request);
+      },
+    });
+
+    await waitFor(() => expect(screen.queryByText(COPY.household.offline)).not.toBeNull());
+
+    online = true;
+    await pressOn('household-retry');
+    await waitFor(() => expect(screen.queryByTestId('household-empty')).not.toBeNull());
+  });
+});

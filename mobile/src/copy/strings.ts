@@ -276,6 +276,8 @@ export const COPY = {
     recurringHint: 'Rent, subscriptions and other regular payments.',
     goals: 'Savings goals',
     goalsHint: 'Save towards something you want.',
+    household: 'Household',
+    householdHint: 'Share your books with someone.',
     renameCategories: 'Rename default categories',
     renameCategoriesHint: 'Switch the starter names to Vietnamese.',
     appearance: 'Appearance',
@@ -312,6 +314,74 @@ export const COPY = {
   },
 
   /** Savings goals: a target, what has been put towards it, and an optional deadline. */
+  /** Shared households (`docs/design/10-households.md`). */
+  household: {
+    title: 'Household',
+    empty: {
+      headline: 'Share your books',
+      body: 'Keep one set of expenses with a partner or family. Everyone can see and add everything.',
+    },
+    create: 'Create a household',
+    join: 'Join with a code',
+    members: 'Members',
+    role: {
+      owner: 'Owner',
+      member: 'Member',
+    },
+    you: 'You',
+    invite: {
+      action: 'Invite someone',
+      title: 'Invite code',
+      body: 'Share this code. It works once, for 48 hours.',
+      share: 'Share code',
+      message: 'Join my household in Expense Tracker with this code: {code}',
+      close: 'Close',
+    },
+    joinSheet: {
+      title: 'Join a household',
+      field: 'Invite code',
+      hint: "You will see the household's books. Your own expenses stay private and come back if you leave.",
+      submit: 'Join',
+    },
+    leave: {
+      action: 'Leave household',
+      title: 'Leave this household?',
+      body: 'You will go back to your own expenses. The household keeps what everyone added.',
+      confirm: 'Leave',
+    },
+    delete: {
+      action: 'Delete household',
+      title: 'Delete this household?',
+      body: 'Everyone goes back to their own expenses. You keep the shared ones.',
+      confirm: 'Delete',
+    },
+    remove: {
+      title: 'Remove {email}?',
+      body: 'They will go back to their own expenses.',
+      confirm: 'Remove',
+    },
+    syncFirst: 'Sync your changes first. Connect to the internet and try again.',
+    offline: 'Connect to the internet to manage your household.',
+    retry: 'Try again',
+    snack: {
+      created: 'Household created.',
+      joined: 'You joined the household.',
+      left: 'You left the household.',
+      removed: 'Member removed.',
+      deleted: 'Household deleted.',
+    },
+    a11y: {
+      removeMember: 'Remove {email}',
+    },
+    error: {
+      invalid_invite_code: 'That code is incorrect or has expired.',
+      household_exists: 'You are already in a household.',
+      not_in_household: 'You are not in a household.',
+      household_owner_only: 'Only the household owner can do that.',
+      owner_cannot_leave: 'The owner cannot leave the household. Delete it instead.',
+      household_has_members: 'Delete your household before deleting your account.',
+    },
+  },
   goals: {
     title: 'Savings goals',
     fab: 'Add savings goal',

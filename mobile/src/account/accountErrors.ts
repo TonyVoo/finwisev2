@@ -46,6 +46,10 @@ export function presentAccountError(
     if (error.code === 'rate_limited') {
       return { passwordError: null, banner: COPY.account.tooManyAttempts };
     }
+    if (error.code === 'household_has_members' && action === 'deleteAccount') {
+      // Deleting the owner would delete the shared books, so the household goes first.
+      return { passwordError: null, banner: COPY.household.error.household_has_members };
+    }
   }
 
   return { passwordError: null, banner: COPY.error.generic };

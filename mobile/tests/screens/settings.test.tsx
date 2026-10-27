@@ -136,6 +136,7 @@ describe('the settings screen', () => {
       'tag',
       'repeat',
       'target',
+      'users',
       'moon',
       'globe',
       'lock',

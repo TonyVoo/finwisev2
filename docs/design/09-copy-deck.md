@@ -515,6 +515,53 @@ them as proposals the Designer can reword; changing a row here means changing
 | `settings.goalsHint` | `Save towards something you want.` | Settings row, hint |
 | `goals.title` | `Savings goals` | Goals screen title |
 | `goals.fab` | `Add savings goal` | Goals screen, add button |
+| `household.error.invalid_invite_code` | `That code is incorrect or has expired.` | Household screen, banner |
+| `household.error.household_exists` | `You are already in a household.` | Household screen, banner |
+| `household.error.not_in_household` | `You are not in a household.` | Household screen, banner |
+| `household.error.household_owner_only` | `Only the household owner can do that.` | Household screen, banner |
+| `household.error.owner_cannot_leave` | `The owner cannot leave the household. Delete it instead.` | Household screen, banner |
+| `household.error.household_has_members` | `Delete your household before deleting your account.` | Household screen, banner |
+| `household.title` | `Household` | Household screen |
+| `household.empty.headline` | `Share your books` | Household screen |
+| `household.empty.body` | `Keep one set of expenses with a partner or family. Everyone can see and add everything.` | Household screen |
+| `household.create` | `Create a household` | Household screen |
+| `household.join` | `Join with a code` | Household screen |
+| `household.members` | `Members` | Household screen |
+| `household.role.owner` | `Owner` | Household screen |
+| `household.role.member` | `Member` | Household screen |
+| `household.you` | `You` | Household screen |
+| `household.invite.action` | `Invite someone` | Household screen |
+| `household.invite.title` | `Invite code` | Household screen |
+| `household.invite.body` | `Share this code. It works once, for 48 hours.` | Household screen |
+| `household.invite.share` | `Share code` | Household screen |
+| `household.invite.message` | `Join my household in Expense Tracker with this code: {code}` | Household screen |
+| `household.invite.close` | `Close` | Household screen |
+| `household.joinSheet.title` | `Join a household` | Household screen |
+| `household.joinSheet.field` | `Invite code` | Household screen |
+| `household.joinSheet.hint` | `You will see the household's books. Your own expenses stay private and come back if you leave.` | Household screen |
+| `household.joinSheet.submit` | `Join` | Household screen |
+| `household.leave.action` | `Leave household` | Household screen |
+| `household.leave.title` | `Leave this household?` | Household screen |
+| `household.leave.body` | `You will go back to your own expenses. The household keeps what everyone added.` | Household screen |
+| `household.leave.confirm` | `Leave` | Household screen |
+| `household.delete.action` | `Delete household` | Household screen |
+| `household.delete.title` | `Delete this household?` | Household screen |
+| `household.delete.body` | `Everyone goes back to their own expenses. You keep the shared ones.` | Household screen |
+| `household.delete.confirm` | `Delete` | Household screen |
+| `household.remove.title` | `Remove {email}?` | Household screen |
+| `household.remove.body` | `They will go back to their own expenses.` | Household screen |
+| `household.remove.confirm` | `Remove` | Household screen |
+| `household.syncFirst` | `Sync your changes first. Connect to the internet and try again.` | Household screen |
+| `household.offline` | `Connect to the internet to manage your household.` | Household screen |
+| `household.retry` | `Try again` | Household screen |
+| `household.snack.created` | `Household created.` | Household screen |
+| `household.snack.joined` | `You joined the household.` | Household screen |
+| `household.snack.left` | `You left the household.` | Household screen |
+| `household.snack.removed` | `Member removed.` | Household screen |
+| `household.snack.deleted` | `Household deleted.` | Household screen |
+| `household.a11y.removeMember` | `Remove {email}` | Household screen |
+| `settings.household` | `Household` | Settings row |
+| `settings.householdHint` | `Share your books with someone.` | Settings row hint |
 | `goals.reminder.weekTitle` | `Goal due in a week` | Notification, 7 days before a savings goal's deadline |
 | `goals.reminder.dayTitle` | `Goal due tomorrow` | Notification, the day before a savings goal's deadline |
 | `goals.reminder.body` | `{name} · {remaining} to go` | Notification, both goal reminders |
