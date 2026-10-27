@@ -2582,6 +2582,15 @@ components:
           description: |
             Currency for this account, captured once at signup. Defaults to `USD` when
             omitted. Not changeable in the MVP.
+        language:
+          type: string
+          enum: [en, vi]
+          default: en
+          description: |
+            Language to name the seeded default categories in (`Uncategorized`, `Groceries`...
+            or `Chưa phân loại`, `Tạp hóa`...). Only the names differ: the order, colours and
+            which one is the undeletable default are the same. The names are ordinary data the
+            person can rename; this is not stored on the account and does not change later.
 
     LoginRequest:
       type: object

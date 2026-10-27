@@ -113,3 +113,33 @@ export const DEFAULT_CATEGORIES = [
   { name: 'Bills', color: '#8E4EC6', isDefault: false },
   { name: 'Health', color: '#C73B3B', isDefault: false },
 ] as const satisfies ReadonlyArray<{ name: string; color: string; isDefault: boolean }>;
+
+/** Languages the server can name a new account's default categories in. */
+export const SEED_LANGUAGES = ['en', 'vi'] as const;
+export type SeedLanguage = (typeof SEED_LANGUAGES)[number];
+
+/**
+ * The names of {@link DEFAULT_CATEGORIES} in each language, in the same order: the undeletable
+ * default first, then the five the account starts with.
+ *
+ * The names are **data**, not interface text - they are stored on the account and the person
+ * may rename them - so they are chosen once, at signup, from the language the app was showing
+ * then. Nothing else about a default category varies by language: the colours, the order and
+ * which one is the default come from {@link DEFAULT_CATEGORIES}, so a Vietnamese account is
+ * the same account with different words.
+ */
+const DEFAULT_CATEGORY_NAMES: Readonly<Record<SeedLanguage, readonly string[]>> = {
+  en: DEFAULT_CATEGORIES.map((category) => category.name),
+  vi: ['Chưa phân loại', 'Tạp hóa', 'Di chuyển', 'Ăn ngoài', 'Hóa đơn', 'Sức khỏe'],
+};
+
+export function defaultCategories(
+  language: SeedLanguage = 'en',
+): ReadonlyArray<{ name: string; color: string; isDefault: boolean }> {
+  const names = DEFAULT_CATEGORY_NAMES[language];
+  return DEFAULT_CATEGORIES.map((category, index) => ({
+    name: names[index] ?? category.name,
+    color: category.color,
+    isDefault: category.isDefault,
+  }));
+}

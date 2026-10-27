@@ -1,5 +1,6 @@
 import {
-  DEFAULT_CATEGORIES,
+  type SeedLanguage,
+  defaultCategories,
   type AuthResponse,
   type TokenPair,
   type User as WireUser,
@@ -84,6 +85,8 @@ export interface SignupInput {
   readonly email: string;
   readonly password: string;
   readonly currency: string;
+  /** Language the seeded default categories are named in. English when omitted. */
+  readonly language?: SeedLanguage | undefined;
 }
 
 /**
@@ -111,10 +114,11 @@ export async function signup(db: Db, input: SignupInput): Promise<AuthResponse> 
       // instead of a silently restarted sequence.
       await tx.revisionCounter.create({ data: { userId } });
 
-      const revisions = await nextRevisionBlock(tx, userId, DEFAULT_CATEGORIES.length);
+      const seeds = defaultCategories(input.language);
+      const revisions = await nextRevisionBlock(tx, userId, seeds.length);
 
       await tx.category.createMany({
-        data: DEFAULT_CATEGORIES.map((category, index) => {
+        data: seeds.map((category, index) => {
           const revision = revisions[index];
           if (revision === undefined) {
             // Unreachable: the block is allocated with exactly this length.

@@ -49,6 +49,7 @@ authRouter.post(
       // here rather than in the schema keeps `SignupRequest` an honest description of
       // what the client sent.
       currency: body.currency ?? DEFAULT_CURRENCY,
+      language: body.language,
     });
     sendJson(res, 201, AuthResponse, result);
   },

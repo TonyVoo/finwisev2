@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SEED_LANGUAGES } from './category.js';
 import { CurrencyCode, LIMITS, Timestamp } from './primitives.js';
 import { Email, Password, User } from './user.js';
 
@@ -16,6 +17,12 @@ export const SignupRequest = z.strictObject({
   currency: CurrencyCode.optional().describe(
     'Currency for this account, captured once at signup. Defaults to "USD" when omitted. Not changeable in the MVP.',
   ),
+  language: z
+    .enum(SEED_LANGUAGES)
+    .optional()
+    .describe(
+      'Language to name the seeded default categories in: `en` (the default) or `vi`. Only affects the names they are created with; the person can rename them.',
+    ),
 });
 
 export const LoginRequest = z.strictObject({

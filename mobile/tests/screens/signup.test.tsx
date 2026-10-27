@@ -2,6 +2,8 @@ import { screen, waitFor } from '@testing-library/react-native';
 import { NetworkUnavailableError } from '@/api/errors';
 import { OFFLINE_COPY, VALIDATION_COPY } from '@/copy/strings';
 import { OWNER_KEY } from '@/db/localStore';
+import { META_KEYS, writeMeta } from '@/db/meta';
+import { applyLanguagePreference } from '@/i18n/apply';
 import { readCategoryReviewPending } from '@/db/onboarding';
 import { readUser } from '@/db/user';
 import SignupScreen from '../../app/(auth)/signup';
@@ -208,6 +210,7 @@ describe('the sign up screen', () => {
         email: VALID.email,
         password: VALID.password,
         currency: 'JPY',
+        language: 'en',
       });
     });
 
@@ -215,7 +218,7 @@ describe('the sign up screen', () => {
       await submitForm();
       await authenticated();
 
-      expect(mounted.requests[0]?.body).toEqual({ ...VALID, currency: 'USD' });
+      expect(mounted.requests[0]?.body).toEqual({ ...VALID, currency: 'USD', language: 'en' });
     });
 
     it('keeps the typed credentials when the sheet opens and closes', async () => {
@@ -227,6 +230,37 @@ describe('the sign up screen', () => {
 
       expect(screen.getByTestId('signup-email').props.value).toBe(VALID.email);
       expect(screen.getByTestId('signup-password').props.value).toBe(VALID.password);
+    });
+  });
+
+  describe('the language of the categories it seeds', () => {
+    afterEach(() => applyLanguagePreference('en'));
+
+    it('asks for Vietnamese category names when the app is in Vietnamese', async () => {
+      mounted = await mountScreen(<SignupScreen />, {
+        transport: async () => ok(201, authResponse()),
+        seed: async (database) => writeMeta(database, META_KEYS.languagePreference, 'vi'),
+      });
+
+      await typeInto('signup-email', VALID.email);
+      await typeInto('signup-password', VALID.password);
+      await pressOn('signup-submit');
+      await authenticated();
+
+      expect(mounted.requests[0]?.body).toMatchObject({ language: 'vi' });
+    });
+
+    it('asks for English when it is in English', async () => {
+      mounted = await mountScreen(<SignupScreen />, {
+        transport: async () => ok(201, authResponse()),
+      });
+
+      await typeInto('signup-email', VALID.email);
+      await typeInto('signup-password', VALID.password);
+      await pressOn('signup-submit');
+      await authenticated();
+
+      expect(mounted.requests[0]?.body).toMatchObject({ language: 'en' });
     });
   });
 

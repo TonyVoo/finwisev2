@@ -25,6 +25,7 @@ import {
 } from '@/lib/currencies';
 import { HIT_SLOP_44, radius, size, space, type } from '@/theme/tokens';
 import { createStyles, useColors } from '@/theme/ThemeProvider';
+import { useLanguage } from '@/i18n/LanguageProvider';
 
 /**
  * Sign up - `docs/design/03-auth.md` §1.2.
@@ -55,6 +56,7 @@ export default function SignupScreen() {
   const api = useApiClient();
   const [currency, setCurrency] = useState(DEFAULT_CURRENCY_CODE);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const { language } = useLanguage();
 
   const database = useDatabase();
   const queryClient = useQueryClient();
@@ -68,7 +70,9 @@ export default function SignupScreen() {
       await queryClient.invalidateQueries({ queryKey: queryKeys.onboarding.categoryReview() });
     },
     validate: validateSignup,
-    request: ({ email, password }) => api.signup({ email, password, currency }),
+    // The language the app is showing, so the categories the account starts with are named
+    // in it. Sent once: they are ordinary data from then on, and renaming them is the user's.
+    request: ({ email, password }) => api.signup({ email, password, currency, language }),
   });
   const { state } = form;
 

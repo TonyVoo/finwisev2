@@ -1,4 +1,9 @@
-import { AuthResponse, DEFAULT_CATEGORIES, UNCATEGORIZED_NAME } from '@expense-tracker/shared';
+import {
+  AuthResponse,
+  DEFAULT_CATEGORIES,
+  UNCATEGORIZED_NAME,
+  defaultCategories,
+} from '@expense-tracker/shared';
 import { describe, expect, it } from 'vitest';
 import { getPrisma } from '../src/db/client.ts';
 import { TEST_PASSWORD, api, uniqueEmail } from './support/api.ts';
@@ -185,5 +190,63 @@ describe('POST /v1/auth/signup', () => {
 
     expect(response.status).toBe(400);
     expect(response.body.error.code).toBe('malformed_request');
+  });
+
+  describe('the language of the seeded categories', () => {
+    async function seeded(extra: object) {
+      const response = await api()
+        .post('/v1/auth/signup')
+        .send({ email: uniqueEmail(), password: TEST_PASSWORD, ...extra });
+      const categories = await getPrisma().category.findMany({
+        where: { userId: response.body.user?.id },
+        orderBy: { revision: 'asc' },
+      });
+      return { response, categories };
+    }
+
+    it('names them in Vietnamese when the app was in Vietnamese', async () => {
+      const { response, categories } = await seeded({ language: 'vi' });
+
+      expect(response.status).toBe(201);
+      expect(categories.map((c) => c.name)).toEqual(defaultCategories('vi').map((c) => c.name));
+      expect(categories[0]).toMatchObject({ name: 'Chưa phân loại', isDefault: true });
+    });
+
+    it('keeps colours, order, revisions and the single default exactly as in English', async () => {
+      const vi = (await seeded({ language: 'vi' })).categories;
+      const en = (await seeded({ language: 'en' })).categories;
+
+      expect(vi.map((c) => c.color)).toEqual(en.map((c) => c.color));
+      expect(vi.map((c) => c.revision)).toEqual(en.map((c) => c.revision));
+      expect(vi.filter((c) => c.isDefault)).toHaveLength(1);
+    });
+
+    it('is English when no language is given', async () => {
+      const { categories } = await seeded({});
+      expect(categories.map((c) => c.name)).toEqual(DEFAULT_CATEGORIES.map((c) => c.name));
+    });
+
+    it('refuses a language it has no names for, and creates no account', async () => {
+      const email = uniqueEmail();
+      const response = await api()
+        .post('/v1/auth/signup')
+        .send({ email, password: TEST_PASSWORD, language: 'fr' });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error.code).toBe('validation_error');
+      expect(await getPrisma().user.count({ where: { email } })).toBe(0);
+    });
+
+    it('lets the seeded Vietnamese names be used on the wire like any category', async () => {
+      const { response } = await seeded({ language: 'vi' });
+      const list = await api()
+        .get('/v1/categories')
+        .set('Authorization', `Bearer ${response.body.accessToken}`);
+
+      expect(list.body.data.map((c: { name: string }) => c.name)).toContain('Ăn ngoài');
+      expect(list.body.data.find((c: { isDefault: boolean }) => c.isDefault).name).toBe(
+        'Chưa phân loại',
+      );
+    });
   });
 });
