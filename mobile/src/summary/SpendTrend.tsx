@@ -22,6 +22,8 @@ import type { Trend } from './trendModel';
 
 export const TREND_TEST_ID = 'summary-trend';
 export const TREND_BAR_TEST_ID_PREFIX = 'summary-trend-bar';
+export const TREND_INCOME_BAR_TEST_ID_PREFIX = 'summary-trend-income-bar';
+export const TREND_LEGEND_TEST_ID = 'summary-trend-legend';
 
 /** Height of the tallest bar. Fixed, so the card is the same size whatever the data. */
 const BAR_AREA_HEIGHT = 120;
@@ -40,6 +42,14 @@ export function SpendTrend({ trend, currency }: SpendTrendProps) {
       <Text style={styles.heading} accessibilityRole="header">
         {COPY.summary.trend.title}
       </Text>
+      {trend.hasIncome ? (
+        <View style={styles.legend} testID={TREND_LEGEND_TEST_ID}>
+          <View style={[styles.swatch, styles.barSelected]} />
+          <Text style={styles.legendText}>{COPY.summary.trend.spent}</Text>
+          <View style={[styles.swatch, styles.barIncome]} />
+          <Text style={styles.legendText}>{COPY.summary.trend.income}</Text>
+        </View>
+      ) : null}
       <View style={styles.bars}>
         {trend.bars.map((bar) => (
           <View
@@ -47,16 +57,34 @@ export function SpendTrend({ trend, currency }: SpendTrendProps) {
             testID={`${TREND_BAR_TEST_ID_PREFIX}-${bar.month}`}
             style={styles.column}
             accessible
-            accessibilityLabel={`${monthSpokenLabel(bar.month)}, ${formatMoney(bar.totalMinor, currency)}`}
+            accessibilityLabel={
+              trend.hasIncome
+                ? `${monthSpokenLabel(bar.month)}, ${COPY.summary.trend.spent} ${formatMoney(bar.totalMinor, currency)}, ${COPY.summary.trend.income} ${formatMoney(bar.incomeMinor, currency)}`
+                : `${monthSpokenLabel(bar.month)}, ${formatMoney(bar.totalMinor, currency)}`
+            }
           >
-            <View style={styles.barArea}>
+            <View style={[styles.barArea, trend.hasIncome ? styles.barPair : null]}>
               <View
                 style={[
                   styles.bar,
+                  trend.hasIncome ? styles.barHalf : null,
                   bar.selected ? styles.barSelected : styles.barMuted,
                   { height: Math.max(MIN_STUB, Math.round(bar.fraction * BAR_AREA_HEIGHT)) },
                 ]}
               />
+              {trend.hasIncome ? (
+                <View
+                  testID={`${TREND_INCOME_BAR_TEST_ID_PREFIX}-${bar.month}`}
+                  style={[
+                    styles.bar,
+                    styles.barHalf,
+                    styles.barIncome,
+                    {
+                      height: Math.max(MIN_STUB, Math.round(bar.incomeFraction * BAR_AREA_HEIGHT)),
+                    },
+                  ]}
+                />
+              ) : null}
             </View>
             <Text
               style={[styles.label, bar.selected ? styles.labelSelected : null]}
@@ -81,11 +109,17 @@ const useStyles = createStyles((color) =>
       marginBottom: space[4],
       padding: space[4],
     },
-    heading: { ...type.headline, color: color.text.primary, marginBottom: space[4] },
+    heading: { ...type.headline, color: color.text.primary, marginBottom: space[3] },
+    legend: { flexDirection: 'row', alignItems: 'center', gap: space[2], marginBottom: space[3] },
+    swatch: { width: 12, height: 12, borderRadius: 3 },
+    legendText: { ...type.caption, color: color.text.secondary, marginRight: space[2] },
     bars: { flexDirection: 'row', gap: space[2] },
     column: { flex: 1, alignItems: 'center' },
     barArea: { height: BAR_AREA_HEIGHT, justifyContent: 'flex-end', alignSelf: 'stretch' },
     bar: { borderRadius: radius.sm, alignSelf: 'stretch' },
+    barPair: { flexDirection: 'row', alignItems: 'flex-end', gap: 2 },
+    barHalf: { flex: 1, alignSelf: 'auto' },
+    barIncome: { backgroundColor: color.success.default },
     barSelected: { backgroundColor: color.primary.default },
     barMuted: { backgroundColor: color.border.strong },
     label: { ...type.caption, color: color.text.tertiary, marginTop: space[2] },

@@ -8,7 +8,12 @@ import { MONTH_TOTAL_TEST_ID } from '@/expenses/MonthTotal';
 import { MONTH_NEXT_TEST_ID, MONTH_PREVIOUS_TEST_ID } from '@/month/MonthSwitcher';
 import { DONUT_CENTRE_TEST_ID, DONUT_TEST_ID } from '@/summary/CategoryDonut';
 import { LEGEND_ROW_TEST_ID_PREFIX, LEGEND_TEST_ID } from '@/summary/SpendLegend';
-import { TREND_BAR_TEST_ID_PREFIX, TREND_TEST_ID } from '@/summary/SpendTrend';
+import {
+  TREND_BAR_TEST_ID_PREFIX,
+  TREND_INCOME_BAR_TEST_ID_PREFIX,
+  TREND_LEGEND_TEST_ID,
+  TREND_TEST_ID,
+} from '@/summary/SpendTrend';
 import { SUMMARY_EMPTY_TEST_ID } from '@/summary/SummaryStates';
 import { categoryColor } from '@/theme/tokens';
 import SummaryScreen from '../../app/(app)/(tabs)/summary';
@@ -495,6 +500,36 @@ describe('the trend card', () => {
       'September 2026, $9,999.00',
       'October 2026, $1,284.50',
     ]);
+  });
+
+  it('adds an income bar per month, a legend and spoken income once there is income', async () => {
+    await mountSummary(async (database) => {
+      await seedOctober(database);
+      await seedExpense(database, {
+        id: expenseId(90),
+        categoryId: HOUSING,
+        kind: 'income',
+        amountMinor: 500000,
+        date: '2026-10-05',
+      });
+    });
+
+    expect(screen.queryByTestId(TREND_LEGEND_TEST_ID)).not.toBeNull();
+    const income = screen.queryAllByTestId(new RegExp(`^${TREND_INCOME_BAR_TEST_ID_PREFIX}-`));
+    expect(income).toHaveLength(6);
+    const october = screen.getByTestId(`${TREND_BAR_TEST_ID_PREFIX}-2026-10`);
+    expect(october.props.accessibilityLabel).toBe(
+      'October 2026, Spent $1,284.50, Income $5,000.00',
+    );
+  });
+
+  it('shows no income bars or legend without income', async () => {
+    await mountSummary(seedOctober);
+
+    expect(screen.queryByTestId(TREND_LEGEND_TEST_ID)).toBeNull();
+    expect(
+      screen.queryAllByTestId(new RegExp(`^${TREND_INCOME_BAR_TEST_ID_PREFIX}-`)),
+    ).toHaveLength(0);
   });
 
   it('is left out when only one month has spend', async () => {

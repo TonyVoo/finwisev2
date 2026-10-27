@@ -3,7 +3,13 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AppBar } from '@/components/Chrome';
 import { COPY } from '@/copy/strings';
-import { useMonthCategorySpend, useMonthIncome, useSpendTrend, useUserCurrency } from '@/db/hooks';
+import {
+  useIncomeTrend,
+  useMonthCategorySpend,
+  useMonthIncome,
+  useSpendTrend,
+  useUserCurrency,
+} from '@/db/hooks';
 import { MonthTotal } from '@/expenses/MonthTotal';
 import { useFirstPaintSkeleton } from '@/expenses/useFirstPaint';
 import { useAwaitingFirstSync } from '@/sync/useAwaitingFirstSync';
@@ -81,13 +87,15 @@ export default function SummaryScreen() {
   const income = useMonthIncome(month);
   const previousMonth = stepMonth(month, -1);
   const previousSpend = useMonthCategorySpend(previousMonth);
+  const previousIncome = useMonthIncome(previousMonth);
 
   // The frame or two before the first read returns, abandoned after 300ms whatever happens
   // - after that the honest answer is `empty`, not `loading` (`useFirstPaintSkeleton`).
   const showSkeleton = useFirstPaintSkeleton(spend.isPending || currency.isPending);
 
   const summary = summariseMonth(spend.data ?? []);
-  const trend = buildTrend(trendRows.data ?? [], month);
+  const incomeTrendRows = useIncomeTrend(month);
+  const trend = buildTrend(trendRows.data ?? [], month, incomeTrendRows.data ?? []);
 
   // `undefined` while the read is in flight, `null` when there is no user row. Neither is a
   // currency, and formatting an amount without one would put a dollar sign in front of a
@@ -152,7 +160,10 @@ export default function SummaryScreen() {
 
         {!pending && currencyCode !== null && previousSpend.data !== undefined ? (
           <InsightsCard
-            insights={buildInsights(spend.data ?? [], previousSpend.data)}
+            insights={buildInsights(spend.data ?? [], previousSpend.data, {
+              current: income.data ?? 0,
+              previous: previousIncome.data ?? 0,
+            })}
             previousLabel={monthName(previousMonth)}
             currency={currencyCode}
           />

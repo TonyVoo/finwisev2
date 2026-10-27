@@ -21,7 +21,20 @@ export type Insight =
       readonly kind: 'biggestRise';
       readonly name: string;
       readonly increaseMinor: number;
-    };
+    }
+  | {
+      readonly kind: 'incomeChange';
+      readonly direction: 'up' | 'down' | 'same';
+      readonly percent: number;
+    }
+  /** Income minus spend for the month; negative when more went out than came in. */
+  | { readonly kind: 'net'; readonly netMinor: number };
+
+/** The month's income and the previous month's, in minor units. */
+export interface IncomeFigures {
+  readonly current: number;
+  readonly previous: number;
+}
 
 function total(rows: readonly CategorySpend[]): number {
   return rows.reduce((sum, row) => sum + row.totalMinor, 0);
@@ -39,6 +52,7 @@ export function wholePercent(part: number, whole: number): number {
 export function buildInsights(
   current: readonly CategorySpend[],
   previous: readonly CategorySpend[],
+  income: IncomeFigures = { current: 0, previous: 0 },
 ): readonly Insight[] {
   const currentTotal = total(current);
   if (currentTotal <= 0) return [];
@@ -83,6 +97,20 @@ export function buildInsights(
     }
   }
 
+  if (income.current > 0 && income.previous > 0) {
+    const delta = income.current - income.previous;
+    const percent = wholePercent(Math.abs(delta), income.previous);
+    insights.push({
+      kind: 'incomeChange',
+      direction: delta === 0 || percent === 0 ? 'same' : delta > 0 ? 'up' : 'down',
+      percent,
+    });
+  }
+
+  if (income.current > 0) {
+    insights.push({ kind: 'net', netMinor: income.current - currentTotal });
+  }
+
   return insights;
 }
 
@@ -95,6 +123,11 @@ export function insightText(
     readonly same: string;
     readonly top: string;
     readonly rise: string;
+    readonly incomeUp: string;
+    readonly incomeDown: string;
+    readonly incomeSame: string;
+    readonly kept: string;
+    readonly overspent: string;
   },
   previousLabel: string,
   currency: string,
@@ -111,5 +144,18 @@ export function insightText(
         .replace('{name}', insight.name)
         .replace('{amount}', formatMoney(insight.increaseMinor, currency))
         .replace('{month}', previousLabel);
+    case 'incomeChange': {
+      const template = { up: copy.incomeUp, down: copy.incomeDown, same: copy.incomeSame }[
+        insight.direction
+      ];
+      return template
+        .replace('{percent}', String(insight.percent))
+        .replace('{month}', previousLabel);
+    }
+    case 'net':
+      return (insight.netMinor >= 0 ? copy.kept : copy.overspent).replace(
+        '{amount}',
+        formatMoney(Math.abs(insight.netMinor), currency),
+      );
   }
 }

@@ -133,7 +133,7 @@ export const COPY = {
      */
     count: { many: '{count} expenses', one: '1 expense' },
     /** The trend card: spend per month over the six months ending at the selected one. */
-    trend: { title: 'Last 6 months' },
+    trend: { title: 'Last 6 months', spent: 'Spent', income: 'Income' },
     /** Observations under the chart (`summary/insightsModel.ts`). */
     insights: {
       title: 'Insights',
@@ -142,6 +142,11 @@ export const COPY = {
       same: 'Your spending is about the same as in {month}.',
       top: '{name} is your biggest category, at {percent}% of the month.',
       rise: '{name} is up {amount} on {month}.',
+      incomeUp: 'Your income is up {percent}% on {month}.',
+      incomeDown: 'Your income is down {percent}% on {month}.',
+      incomeSame: 'Your income is about the same as in {month}.',
+      kept: 'You have kept {amount} of your income this month.',
+      overspent: 'You have spent {amount} more than you earned this month.',
     },
   },
 

@@ -60,3 +60,28 @@ describe('buildTrend', () => {
     expect(trend.bars.every((bar) => bar.fraction === 0 && bar.totalMinor === 0)).toBe(true);
   });
 });
+
+describe('buildTrend with income', () => {
+  it('has no income unless a month in the window has some', () => {
+    const trend = buildTrend([{ month: '2026-10', totalMinor: 100 }], '2026-10', []);
+    expect(trend.hasIncome).toBe(false);
+    expect(trend.bars.every((bar) => bar.incomeMinor === 0 && bar.incomeFraction === 0)).toBe(true);
+  });
+
+  it('puts spend and income on one scale', () => {
+    const trend = buildTrend([{ month: '2026-10', totalMinor: 1000 }], '2026-10', [
+      { month: '2026-10', totalMinor: 4000 },
+      { month: '2026-09', totalMinor: 2000 },
+    ]);
+    expect(trend.hasIncome).toBe(true);
+    const last = trend.bars.at(-1)!;
+    expect(last.incomeFraction).toBe(1);
+    expect(last.fraction).toBe(0.25);
+    expect(trend.bars.find((bar) => bar.month === '2026-09')!.incomeFraction).toBe(0.5);
+  });
+
+  it('does not let income change whether the chart is worth showing', () => {
+    const trend = buildTrend([], '2026-10', [{ month: '2026-10', totalMinor: 9 }]);
+    expect(trend.isWorthShowing).toBe(false);
+  });
+});

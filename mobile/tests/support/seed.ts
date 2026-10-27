@@ -73,6 +73,8 @@ export interface SeededExpense {
   readonly currency?: string;
   /** Set to tombstone the row on insert, for the soft-delete exclusion cases. */
   readonly deletedAt?: string | null;
+  /** Defaults to `expense`. */
+  readonly kind?: 'expense' | 'income';
 }
 
 export async function seedExpense(
@@ -81,12 +83,13 @@ export async function seedExpense(
 ): Promise<string> {
   await database.runAsync(
     `INSERT INTO expenses
-       (id, categoryId, amountMinor, currency, date, note,
+       (id, categoryId, kind, amountMinor, currency, date, note,
         createdAt, updatedAt, deletedAt, revision)
-     VALUES (?, ?, ?, ?, ?, ?, '2026-10-01T00:00:00.000Z', '2026-10-01T00:00:00.000Z', ?, 1)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, '2026-10-01T00:00:00.000Z', '2026-10-01T00:00:00.000Z', ?, 1)`,
     [
       expense.id,
       expense.categoryId,
+      expense.kind ?? 'expense',
       expense.amountMinor,
       expense.currency ?? 'USD',
       expense.date,

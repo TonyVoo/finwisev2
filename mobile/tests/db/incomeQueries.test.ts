@@ -6,6 +6,7 @@ import {
   monthCategorySpend,
   monthIncomeMinor,
   monthTotalMinor,
+  monthlyIncomeTotals,
   monthlyTotals,
   searchSummary,
 } from '@/db/queries';
@@ -81,6 +82,12 @@ describe('income is kept out of every spend total', () => {
     expect(spend.map((row) => [row.totalMinor, row.expenseCount])).toEqual([[1000, 1]]);
     expect(await monthlyTotals(database, '2026-10', '2026-10')).toEqual([
       { month: '2026-10', totalMinor: 1000 },
+    ]);
+  });
+
+  it('totals income per month, and only income', async () => {
+    expect(await monthlyIncomeTotals(database, '2026-10', '2026-10')).toEqual([
+      { month: '2026-10', totalMinor: 500000 },
     ]);
   });
 

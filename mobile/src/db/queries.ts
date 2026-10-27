@@ -518,6 +518,25 @@ export async function monthlyTotals(
   return rows.map((row) => ({ month: row.ym, totalMinor: row.total }));
 }
 
+/** Live income per calendar month across `[fromMonth, toMonth]`; absent months are zero. */
+export async function monthlyIncomeTotals(
+  database: SqliteDatabase,
+  fromMonth: string,
+  toMonth: string,
+): Promise<readonly MonthlyTotal[]> {
+  const rows = await database.getAllAsync<{ ym: string; total: number }>(
+    `SELECT substr(e.date, 1, 7) AS ym, SUM(e.amountMinor) AS total
+       FROM expenses e
+      WHERE e.deletedAt IS NULL
+        AND e.kind = 'income'
+        AND substr(e.date, 1, 7) BETWEEN ? AND ?
+      GROUP BY ym
+      ORDER BY ym`,
+    [fromMonth, toMonth],
+  );
+  return rows.map((row) => ({ month: row.ym, totalMinor: row.total }));
+}
+
 /**
  * Whether the user has any live expense at all, in any month.
  *

@@ -56,3 +56,40 @@ describe('wholePercent', () => {
     expect(wholePercent(1, 3)).toBe(33);
   });
 });
+
+describe('income insights', () => {
+  const spend = [row('a', 'Food', 300)];
+
+  it('says nothing about income when there is none', () => {
+    const kinds = buildInsights(spend, [], { current: 0, previous: 0 }).map((i) => i.kind);
+    expect(kinds).not.toContain('net');
+    expect(kinds).not.toContain('incomeChange');
+  });
+
+  it('reports what was kept of this months income', () => {
+    expect(buildInsights(spend, [], { current: 1000, previous: 0 }).at(-1)).toEqual({
+      kind: 'net',
+      netMinor: 700,
+    });
+  });
+
+  it('reports overspending as a negative net', () => {
+    expect(buildInsights(spend, [], { current: 100, previous: 0 }).at(-1)).toEqual({
+      kind: 'net',
+      netMinor: -200,
+    });
+  });
+
+  it('compares income with the previous month only when both months have some', () => {
+    const both = buildInsights(spend, [], { current: 1500, previous: 1000 });
+    expect(both.find((i) => i.kind === 'incomeChange')).toEqual({
+      kind: 'incomeChange',
+      direction: 'up',
+      percent: 50,
+    });
+    const down = buildInsights(spend, [], { current: 500, previous: 1000 });
+    expect(down.find((i) => i.kind === 'incomeChange')).toMatchObject({ direction: 'down' });
+    const noPrevious = buildInsights(spend, [], { current: 1500, previous: 0 });
+    expect(noPrevious.find((i) => i.kind === 'incomeChange')).toBeUndefined();
+  });
+});

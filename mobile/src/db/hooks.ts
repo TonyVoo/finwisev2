@@ -34,6 +34,7 @@ import {
   monthsWithExpenses,
   searchExpenses,
   monthIncomeMinor,
+  monthlyIncomeTotals,
   searchSummary,
 } from './queries';
 
@@ -156,6 +157,15 @@ export function useSpendTrend(month: MonthKey): UseQueryResult<readonly MonthlyT
   return useQuery({
     queryKey: queryKeys.expenses.trend(month),
     queryFn: () => monthlyTotals(database, stepMonth(month, -(TREND_MONTHS - 1)), month),
+  });
+}
+
+/** Per-month income for the trend chart, over the same window as {@link useSpendTrend}. */
+export function useIncomeTrend(month: MonthKey): UseQueryResult<readonly MonthlyTotal[]> {
+  const database = useDatabase();
+  return useQuery({
+    queryKey: queryKeys.expenses.incomeTrend(month),
+    queryFn: () => monthlyIncomeTotals(database, stepMonth(month, -(TREND_MONTHS - 1)), month),
   });
 }
 

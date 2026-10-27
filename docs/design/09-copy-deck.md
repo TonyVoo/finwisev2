@@ -496,3 +496,10 @@ them as proposals the Designer can reword; changing a row here means changing
 | `form.deleteIncome` | `Delete income` | Expense form, income mode |
 | `recurring.reminder.title` | `Due tomorrow` | Notification, day before a recurring expense |
 | `recurring.reminder.body` | `{name} · {amount}` | Notification, day before a recurring expense |
+| `summary.insights.incomeUp` | `Your income is up {percent}% on {month}.` | Summary, insights card |
+| `summary.insights.incomeDown` | `Your income is down {percent}% on {month}.` | Summary, insights card |
+| `summary.insights.incomeSame` | `Your income is about the same as in {month}.` | Summary, insights card |
+| `summary.insights.kept` | `You have kept {amount} of your income this month.` | Summary, insights card |
+| `summary.insights.overspent` | `You have spent {amount} more than you earned this month.` | Summary, insights card |
+| `summary.trend.spent` | `Spent` | Summary, trend legend |
+| `summary.trend.income` | `Income` | Summary, trend legend |
