@@ -7,6 +7,8 @@ import {
   ExpenseListResponse,
   ExpenseResponse,
   HealthResponse,
+  ReceiptIndexResponse,
+  ReceiptResponse,
   MeResponse,
   RefreshResponse,
   type RouteSpec,
@@ -72,6 +74,11 @@ export const ENDPOINTS = {
   requestEmailVerification: emptyEndpoint('requestEmailVerification'),
   confirmEmailVerification: endpoint('confirmEmailVerification', MeResponse),
   deleteAccount: emptyEndpoint('deleteAccount'),
+
+  putReceipt: endpoint('putReceipt', ReceiptResponse),
+  getReceipt: endpoint('getReceipt', ReceiptResponse),
+  deleteReceipt: emptyEndpoint('deleteReceipt'),
+  listReceipts: endpoint('listReceipts', ReceiptIndexResponse),
 
   listCategories: endpoint('listCategories', CategoryListResponse),
   createCategory: endpoint('createCategory', CategoryResponse),

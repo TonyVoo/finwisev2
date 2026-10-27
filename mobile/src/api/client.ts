@@ -18,6 +18,9 @@ import type {
   ExpenseResponse,
   ExpenseUpdateRequest,
   HealthResponse,
+  ReceiptIndexResponse,
+  ReceiptPutRequest,
+  ReceiptResponse,
   LoginRequest,
   LogoutRequest,
   MeResponse,
@@ -81,6 +84,14 @@ export interface ApiClient {
   createExpense(body: ExpenseCreateRequest): Promise<ExpenseResponse>;
   updateExpense(id: string, body: ExpenseUpdateRequest): Promise<ExpenseResponse>;
   deleteExpense(id: string): Promise<ExpenseResponse>;
+
+  /** Attaches or replaces the expense's receipt photo (base64 JPEG). */
+  putReceipt(expenseId: string, body: ReceiptPutRequest): Promise<ReceiptResponse>;
+  getReceipt(expenseId: string): Promise<ReceiptResponse>;
+  /** Idempotent: 204 whether or not there was a receipt. */
+  deleteReceipt(expenseId: string): Promise<void>;
+  /** Which expenses have a receipt, without the images. */
+  listReceipts(): Promise<ReceiptIndexResponse>;
 
   /** Pull changes with `revision > since`. The cursor is a revision, never a timestamp. */
   pullSync(query?: SyncPullQuery): Promise<SyncPullResponse>;
@@ -162,6 +173,11 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     createExpense: (body) => send(ENDPOINTS.createExpense, { body }),
     updateExpense: (id, body) => send(ENDPOINTS.updateExpense, { pathParams: { id }, body }),
     deleteExpense: (id) => send(ENDPOINTS.deleteExpense, { pathParams: { id } }),
+
+    putReceipt: (id, body) => send(ENDPOINTS.putReceipt, { pathParams: { id }, body }),
+    getReceipt: (id) => send(ENDPOINTS.getReceipt, { pathParams: { id } }),
+    deleteReceipt: (id) => send(ENDPOINTS.deleteReceipt, { pathParams: { id } }),
+    listReceipts: () => send(ENDPOINTS.listReceipts),
 
     pullSync: (query) => send(ENDPOINTS.pullSync, { query: toQuery(query) }),
     pushSync: (body) => send(ENDPOINTS.pushSync, { body }),

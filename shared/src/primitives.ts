@@ -90,6 +90,10 @@ export const LIMITS = {
   RESET_ATTEMPT_MAX_PER_IP: 30,
   /** Verification codes one account may request per window (each send counts). */
   VERIFY_REQUEST_MAX_PER_USER: 5,
+  /** Largest receipt image, decoded. The app downsizes well below this before uploading. */
+  RECEIPT_MAX_BYTES: 1_500_000,
+  /** Longest `dataBase64` that can encode `RECEIPT_MAX_BYTES` (4 chars per 3 bytes). */
+  RECEIPT_MAX_BASE64_LENGTH: 2_000_000,
 } as const;
 
 /**

@@ -282,3 +282,61 @@ describe('status the pill reads', () => {
     expect(changed).not.toHaveBeenCalled();
   });
 });
+
+describe('the receipt step', () => {
+  function engineWith(
+    syncReceipts: (guard: unknown) => Promise<boolean>,
+    onLocalDataChanged?: () => void,
+    epoch: () => number = () => 0,
+  ): SyncEngine {
+    return createSyncEngine({
+      database,
+      api,
+      reachability,
+      session: { getEpoch: epoch },
+      clock: () => AT,
+      syncReceipts,
+      ...(onLocalDataChanged === undefined ? {} : { onLocalDataChanged }),
+    });
+  }
+
+  it('runs after the main pass, and refreshes the screens when it changed something', async () => {
+    const changed = jest.fn();
+    const order: string[] = [];
+    const engine = engineWith(async () => {
+      order.push('receipts');
+      return true;
+    }, changed);
+
+    const result = await engine.sync('app-open');
+
+    expect(order).toEqual(['receipts']);
+    expect(result.status).toBe('completed');
+    expect(changed).toHaveBeenCalledTimes(1);
+  });
+
+  it('never fails the sync: a receipt error is retried next pass, the pill stays quiet', async () => {
+    const engine = engineWith(async () => {
+      throw new Error('receipts exploded');
+    });
+
+    const result = await engine.sync('app-open');
+
+    expect(result.status).toBe('completed');
+    expect(engine.getStatus().lastAttemptFailed).toBe(false);
+    expect(engine.getStatus().lastSyncedAt).toBe(AT.toISOString());
+  });
+
+  it('is not run when the main pass failed', async () => {
+    const receipts = jest.fn(async () => false);
+    api.pullHandler = async () => {
+      throw new Error('server down');
+    };
+    const engine = engineWith(receipts);
+
+    const result = await engine.sync('manual');
+
+    expect(result.status).toBe('failed');
+    expect(receipts).not.toHaveBeenCalled();
+  });
+});

@@ -6,7 +6,12 @@ import type { SqliteDatabase } from '../db/sqlite';
 import { readLastSyncedAt, writeLastSyncedAt } from './cursor';
 import { type PullOutcome, type PullProgress, pullChanges } from './pull';
 import { type PushOutcome, drainOutbox } from './push';
-import { type EpochSource, SessionChangedError, captureSession } from './sessionGuard';
+import {
+  type EpochSource,
+  type SessionGuard,
+  SessionChangedError,
+  captureSession,
+} from './sessionGuard';
 import type { Reachability } from './reachability';
 import type { SyncInputs } from './state';
 
@@ -120,6 +125,13 @@ export interface SyncEngineDependencies {
    * sync.
    */
   readonly beforeSync?: () => Promise<void>;
+  /**
+   * The receipt photos' half of a pass (`receipts/receiptSync.ts`), run after the main sync
+   * has succeeded. Returns whether it changed local rows. A throw is swallowed: the expenses
+   * have synced, the receipts are retried on the next pass, and a photo problem must not turn
+   * the pill red for an account whose data is all up to date.
+   */
+  readonly syncReceipts?: (guard: SessionGuard) => Promise<boolean>;
 }
 
 export interface SyncEngine {
@@ -195,6 +207,7 @@ export function createSyncEngine(deps: SyncEngineDependencies): SyncEngine {
     publish({ inFlight: true });
     let push: PushOutcome | null = null;
     let pull: PullOutcome | null = null;
+    let receiptsChanged = false;
 
     // Once per pass, before the first read: everything below belongs to this session.
     const guard = captureSession(session);
@@ -208,6 +221,18 @@ export function createSyncEngine(deps: SyncEngineDependencies): SyncEngine {
         onProgress: (progress) =>
           publish({ resyncing: progress.resyncing, resyncProgress: progress }),
       });
+
+      if (deps.syncReceipts !== undefined) {
+        try {
+          receiptsChanged = await deps.syncReceipts(guard);
+        } catch (error) {
+          // The user switched under the pass: abandon it like any other step.
+          if (error instanceof SessionChangedError) throw error;
+          if (__DEV__ && process.env.NODE_ENV !== 'test') {
+            console.warn('[sync] receipts failed:', messageOf(error));
+          }
+        }
+      }
 
       const at = toTimestamp(clock());
       await writeLastSyncedAt(database, at);
@@ -235,7 +260,7 @@ export function createSyncEngine(deps: SyncEngineDependencies): SyncEngine {
     } finally {
       publish({ inFlight: false, resyncing: false, resyncProgress: null });
       await refreshPending();
-      if (changedLocalRows(push, pull)) {
+      if (changedLocalRows(push, pull) || receiptsChanged) {
         // A pull may have delivered a rule another device created; its due expenses are
         // made now rather than at the next pass. Idempotent, so a pass that delivered
         // nothing relevant creates nothing.

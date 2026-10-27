@@ -36,6 +36,7 @@ import {
 } from '../db/mutations';
 import { isCategoryNameTaken } from '../db/queries';
 import { useDatabase } from '../db/DatabaseProvider';
+import type { SqliteDatabase } from '../db/sqlite';
 import {
   EMPTY_AMOUNT,
   type AmountInput,
@@ -55,6 +56,10 @@ import { DateSheet } from './DateSheet';
 import { Keypad } from './Keypad';
 import { NoteSheet } from './NoteSheet';
 import { hasEdits, saveState } from './formModel';
+import { getReceiptPicker, type PickOutcome } from '../receipts/receiptPicker';
+import { ReceiptSheet } from '../receipts/ReceiptSheet';
+import { attachReceipt, detachReceipt, hasReceipt } from '../receipts/receiptStore';
+import { useReceipt } from '../receipts/useReceipt';
 
 /**
  * Add / Edit expense: `docs/design/06-expense-form.md`.
@@ -94,7 +99,18 @@ export const NOTE_ROW_TEST_ID = 'expense-note-row';
 export const NOT_FOUND_TEST_ID = 'expense-not-found';
 
 /** Which sheet or dialog is up. One at a time; a sheet over a sheet has no spec. */
-type Overlay = 'none' | 'category' | 'date' | 'note' | 'newCategory' | 'discard';
+type Overlay = 'none' | 'category' | 'date' | 'note' | 'receipt' | 'newCategory' | 'discard';
+
+/**
+ * What the person has done to the receipt photo in this form. Like every other field it is a
+ * draft: nothing is stored until Save, and closing without saving discards it.
+ */
+type ReceiptChange =
+  | { readonly kind: 'unchanged' }
+  | { readonly kind: 'set'; readonly dataBase64: string }
+  | { readonly kind: 'removed' };
+
+export const RECEIPT_ROW_TEST_ID = 'expense-receipt-row';
 
 export interface ExpenseFormScreenProps {
   /** Edit mode when present, add mode when not. */
@@ -124,6 +140,8 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
   const [initial, setInitial] = useState<ExpenseDraft | null>(null);
   const [overlay, setOverlay] = useState<Overlay>('none');
   const [rejections, setRejections] = useState(0);
+  const [receiptChange, setReceiptChange] = useState<ReceiptChange>({ kind: 'unchanged' });
+  const storedReceipt = useReceipt(expenseId ?? null).data ?? null;
 
   const currencyCode = currency.data ?? null;
   const storedRow = isEdit ? (stored.data ?? null) : null;
@@ -201,6 +219,21 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
   const liveCategories = categories.data ?? [];
   const chosenCategory = liveCategories.find((row) => row.id === live?.categoryId) ?? null;
 
+  // What the form would leave the expense with, not what is stored.
+  const receiptData =
+    receiptChange.kind === 'set'
+      ? receiptChange.dataBase64
+      : receiptChange.kind === 'removed'
+        ? null
+        : (storedReceipt?.dataBase64 ?? null);
+  const receiptPresent =
+    receiptChange.kind === 'set'
+      ? true
+      : receiptChange.kind === 'removed'
+        ? false
+        : hasReceipt(storedReceipt);
+  const receiptDirty = receiptChange.kind !== 'unchanged';
+
   const save = useMemo(
     () =>
       live === null
@@ -210,8 +243,9 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
             stored: storedRow,
             draft: live,
             hasCategories: liveCategories.length > 0,
+            otherChange: receiptDirty,
           }),
-    [live, storedRow, liveCategories.length],
+    [live, storedRow, liveCategories.length, receiptDirty],
   );
 
   const onDigit = useCallback(
@@ -231,12 +265,12 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
   );
 
   const onClose = useCallback(() => {
-    if (initial !== null && live !== null && hasEdits(initial, live)) {
+    if (receiptDirty || (initial !== null && live !== null && hasEdits(initial, live))) {
       setOverlay('discard');
       return;
     }
     router.back();
-  }, [initial, live, router]);
+  }, [initial, live, receiptDirty, router]);
 
   const onSave = useCallback(async () => {
     if (live === null || !save.canSave) return;
@@ -245,22 +279,27 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
       // Only what changed. A push is a merge, so sending an unchanged field would
       // overwrite whatever another device wrote there meanwhile.
       const changes = changedExpenseFields(storedRow, live);
-      await localWrite((db) => updateExpense(db, expenseId, changes));
+      await localWrite(async (db) => {
+        // A receipt-only edit changes no expense field, and an empty update is not a write.
+        if (Object.keys(changes).length > 0) await updateExpense(db, expenseId, changes);
+        await applyReceiptChange(db, expenseId, receiptChange);
+      });
       router.back();
       showSnackbar({ message: SNACK_COPY.expense.updated });
       AccessibilityInfo.announceForAccessibility(SNACK_COPY.expense.updated);
       return;
     }
 
-    await localWrite((db) =>
-      createExpense(db, {
+    await localWrite(async (db) => {
+      const queued = await createExpense(db, {
         categoryId: live.categoryId,
         amountMinor: live.amountMinor,
         currency: live.currency,
         date: live.date,
         note: live.note,
-      }),
-    );
+      });
+      await applyReceiptChange(db, queued.recordId, receiptChange);
+    });
     router.back();
 
     // Rule 9: a save outside the month Home is showing says which month it landed in,
@@ -283,12 +322,30 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
     save.canSave,
     storedRow,
     expenseId,
+    receiptChange,
     localWrite,
     router,
     showSnackbar,
     selectedMonth,
     selectMonth,
   ]);
+
+  const onPicked = useCallback(
+    (outcome: PickOutcome, source: 'camera' | 'library') => {
+      if (outcome.status === 'picked') {
+        setReceiptChange({ kind: 'set', dataBase64: outcome.dataBase64 });
+        setOverlay('none');
+      } else if (outcome.status === 'denied') {
+        showSnackbar({
+          message:
+            source === 'camera' ? COPY.form.receipt.deniedCamera : COPY.form.receipt.deniedLibrary,
+        });
+      } else if (outcome.status === 'failed') {
+        showSnackbar({ message: COPY.form.receipt.failed });
+      }
+    },
+    [showSnackbar],
+  );
 
   const onDeleteExpense = useCallback(async () => {
     if (expenseId === undefined) return;
@@ -423,7 +480,6 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
               testID={NOTE_ROW_TEST_ID}
               onPress={() => setOverlay('note')}
               chevron
-              lastInGroup
               leading={<Feather name="file-text" size={20} color={color.text.tertiary} />}
               accessibilityLabel={
                 live.note === null || live.note.length === 0
@@ -438,6 +494,24 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
               >
                 {live.note ?? COPY.form.field.notePlaceholder}
               </Text>
+            </Row>
+
+            <Row
+              testID={RECEIPT_ROW_TEST_ID}
+              onPress={() => setOverlay('receipt')}
+              chevron
+              lastInGroup
+              leading={<Feather name="camera" size={20} color={color.text.tertiary} />}
+              trailing={
+                <Text style={styles.valueText}>
+                  {receiptPresent ? COPY.form.field.receiptAttached : COPY.form.field.receiptAdd}
+                </Text>
+              }
+              accessibilityLabel={`${COPY.form.field.receipt}, ${
+                receiptPresent ? COPY.form.field.receiptAttached : COPY.form.field.receiptAdd
+              }`}
+            >
+              <RowTitle>{COPY.form.field.receipt}</RowTitle>
             </Row>
 
             {isEdit ? (
@@ -495,6 +569,29 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
           setDraft((current) =>
             current === null ? current : { ...current, note: normaliseNote(note) },
           );
+          setOverlay('none');
+        }}
+      />
+
+      <ReceiptSheet
+        visible={overlay === 'receipt'}
+        onClose={() => setOverlay('none')}
+        expenseId={expenseId ?? null}
+        stored={storedReceipt}
+        dataBase64={receiptData}
+        present={receiptPresent}
+        onTake={() =>
+          void getReceiptPicker()
+            .takePhoto()
+            .then((o) => onPicked(o, 'camera'))
+        }
+        onChoose={() =>
+          void getReceiptPicker()
+            .chooseFromLibrary()
+            .then((o) => onPicked(o, 'library'))
+        }
+        onRemove={() => {
+          setReceiptChange({ kind: 'removed' });
           setOverlay('none');
         }}
       />
@@ -643,3 +740,14 @@ const useStyles = createStyles((color) =>
     },
   }),
 );
+
+/** Persist the form's receipt decision alongside the expense write that just happened. */
+async function applyReceiptChange(
+  db: SqliteDatabase,
+  expenseId: string,
+  change: ReceiptChange,
+): Promise<void> {
+  const at = new Date().toISOString();
+  if (change.kind === 'set') await attachReceipt(db, expenseId, change.dataBase64, at);
+  else if (change.kind === 'removed') await detachReceipt(db, expenseId, at);
+}

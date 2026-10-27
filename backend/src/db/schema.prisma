@@ -58,6 +58,7 @@ model User {
   refreshTokens   RefreshToken[]
   passwordResetCode PasswordResetCode?
   emailVerificationCode EmailVerificationCode?
+  expenseReceipts ExpenseReceipt[]
   syncMutations   SyncMutation[]
 
   @@map("users")
@@ -154,6 +155,7 @@ model Expense {
 
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   category Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  receipt  ExpenseReceipt?
 
   @@unique([userId, revision])
   /// `GET /v1/expenses?from&to` filters by date within a user, newest first.
@@ -265,6 +267,24 @@ model PasswordResetCode {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("password_reset_codes")
+}
+
+/// One receipt photo per expense. Not part of the sync cursor (attaching one does not change
+/// the expense row), so clients discover them through `GET /v1/receipts`. The bytes live in
+/// Postgres: one transaction, one backup, no volume to configure.
+model ExpenseReceipt {
+  expenseId   String   @id @map("expense_id") @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  contentType String   @map("content_type") @db.VarChar(32)
+  bytes       Bytes
+  sizeBytes   Int      @map("size_bytes")
+  updatedAt   DateTime @map("updated_at") @db.Timestamptz(3)
+
+  expense Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("expense_receipts")
 }
 
 /// A pending email-verification code. One per user, HMAC-only, same lifetime rules as a

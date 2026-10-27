@@ -28,6 +28,8 @@ function request(route: RouteSpec) {
       return agent.get(path);
     case 'post':
       return agent.post(path);
+    case 'put':
+      return agent.put(path);
     case 'patch':
       return agent.patch(path);
     case 'delete':

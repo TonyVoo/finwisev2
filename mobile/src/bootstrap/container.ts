@@ -15,6 +15,7 @@ import { openLocalDatabase } from '../db/open';
 import type { SqliteDatabase } from '../db/sqlite';
 import { createQueryClient } from '../query/client';
 import { queryKeys } from '../query/keys';
+import { syncReceipts } from '../receipts/receiptSync';
 import { type SyncEngine, createSyncEngine } from '../sync/engine';
 import { type Reachability, createNetInfoReachability } from '../sync/reachability';
 
@@ -128,6 +129,7 @@ export async function createAppContainer(options: AppContainerOptions = {}): Pro
     // Due recurring expenses are created here: locally, offline, at launch and at the start
     // of every pass, so a rule that fired while the app was closed has its expenses by the
     // time the first screen reads - and the drain that follows sends them.
+    syncReceipts: (guard) => syncReceipts({ database, api, guard }),
     beforeSync: async () => {
       if (session.getSnapshot().status !== 'authenticated') return;
       const created = await generateDueRecurring(database, { clock });

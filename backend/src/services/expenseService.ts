@@ -202,6 +202,8 @@ export async function deleteExpense(db: Db, userId: string, id: string): Promise
       where: { id: existing.id },
       data: { deletedAt: now, updatedAt: now, revision },
     });
+    // A tombstone keeps no photo: the bytes are the heaviest thing the row owned.
+    await tx.expenseReceipt.deleteMany({ where: { expenseId: existing.id } });
     return toWireExpense(tombstoned);
   });
 }

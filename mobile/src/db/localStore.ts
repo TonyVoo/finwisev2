@@ -95,6 +95,7 @@ export interface LocalStore {
 const DATA_TABLES = [
   'outbox',
   'sync_rejections',
+  'receipts',
   'expenses',
   'recurring',
   'categories',

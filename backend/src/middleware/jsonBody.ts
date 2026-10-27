@@ -38,7 +38,17 @@ export function requireJsonContentType(req: Request, _res: Response, next: NextF
  * names a type from `@types/connect`, which is a transitive dependency and so not
  * nameable from here under `declaration`.
  */
-export const parseJsonBody: RequestHandler = express.json({ limit: BODY_LIMIT, strict: true });
+const standardParser: RequestHandler = express.json({ limit: BODY_LIMIT, strict: true });
+
+/** Receipt uploads carry an image as base64; 1,500,000 decoded bytes is 2,000,000 chars. */
+const RECEIPT_BODY_LIMIT = '3mb';
+const receiptParser: RequestHandler = express.json({ limit: RECEIPT_BODY_LIMIT, strict: true });
+const RECEIPT_PUT = /^\/v1\/expenses\/[^/]+\/receipt$/;
+
+export const parseJsonBody: RequestHandler = (req, res, next) => {
+  const isReceiptUpload = req.method === 'PUT' && RECEIPT_PUT.test(req.path);
+  (isReceiptUpload ? receiptParser : standardParser)(req, res, next);
+};
 
 /**
  * Translate body-parser's own failures into contract error codes.
@@ -49,7 +59,7 @@ export const parseJsonBody: RequestHandler = express.json({ limit: BODY_LIMIT, s
  */
 export function jsonBodyErrors(
   error: unknown,
-  _req: Request,
+  req: Request,
   _res: Response,
   next: NextFunction,
 ): void {
@@ -59,7 +69,13 @@ export function jsonBodyErrors(
         next(problems.malformedRequest('Request body is not valid JSON.'));
         return;
       case 'entity.too.large':
-        next(problems.batchTooLarge(`Request body exceeds the ${BODY_LIMIT} limit.`));
+        next(
+          problems.batchTooLarge(
+            `Request body exceeds the ${
+              req.method === 'PUT' && RECEIPT_PUT.test(req.path) ? RECEIPT_BODY_LIMIT : BODY_LIMIT
+            } limit.`,
+          ),
+        );
         return;
       case 'charset.unsupported':
       case 'encoding.unsupported':

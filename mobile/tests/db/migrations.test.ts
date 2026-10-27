@@ -31,6 +31,8 @@ describe('migrate', () => {
     );
     // `meta` arrived in v2 and now holds three things: which user the rows belong to
     // (`src/db/localStore.ts`) and the two sync watermarks (`src/sync/cursor.ts`).
+    // `receipts` arrived in v8: one photo per expense, with the state sync still owes it
+    // (`src/receipts/receiptStore.ts`).
     // `sync_rejections` arrived in v4 and is what keeps a row the server refused visible
     // after its outbox entry is retired (`src/sync/rejections.ts`).
     expect(tables.map((table) => table.name)).toEqual([
@@ -38,6 +40,7 @@ describe('migrate', () => {
       'expenses',
       'meta',
       'outbox',
+      'receipts',
       'recurring',
       'sync_rejections',
       'user',

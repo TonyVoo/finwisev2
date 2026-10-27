@@ -274,6 +274,8 @@ async function applyExpenseItem(
       revision,
     },
   });
+  // A tombstone keeps no photo (see `deleteExpense`).
+  if (deletedAt !== null) await tx.expenseReceipt.deleteMany({ where: { expenseId: existing.id } });
   return applied(toWireExpense(updated));
 }
 
@@ -615,7 +617,11 @@ function buildResult(args: {
   // cast. The discriminated union is what gives the client a precise `record` without a
   // cast of its own; building it with one here would waste that.
   if (args.entity === 'category') {
-    return { entity: 'category', ...base, record: args.outcome.record as RecordFor<'category'> | null };
+    return {
+      entity: 'category',
+      ...base,
+      record: args.outcome.record as RecordFor<'category'> | null,
+    };
   }
   if (args.entity === 'recurring') {
     return {

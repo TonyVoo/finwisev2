@@ -63,6 +63,11 @@ export const queryKeys = {
     months: () => ['local', 'expenses', 'months'] as const,
   },
 
+  receipts: {
+    /** One expense's receipt row: its state and, when held, the image. */
+    detail: (expenseId: string) => ['local', 'receipts', expenseId] as const,
+  },
+
   recurring: {
     all: () => ['local', 'recurring'] as const,
     /** Every live rule, with its category's name and colour. */

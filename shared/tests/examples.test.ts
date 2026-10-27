@@ -19,6 +19,9 @@ import {
   ExpenseCreateRequest,
   ExpenseListResponse,
   ExpenseResponse,
+  ReceiptIndexResponse,
+  ReceiptPutRequest,
+  ReceiptResponse,
   ExpenseUpdateRequest,
   HealthResponse,
   LoginRequest,
@@ -65,6 +68,9 @@ const SCHEMA_BY_NAME = {
   ExpenseCreateRequest,
   ExpenseListResponse,
   ExpenseResponse,
+  ReceiptIndexResponse,
+  ReceiptPutRequest,
+  ReceiptResponse,
   ExpenseUpdateRequest,
   HealthResponse,
   LoginRequest,
@@ -121,7 +127,7 @@ function samplesFrom(container: Json | undefined, where: string): Sample[] {
 
 const samples: Sample[] = [];
 for (const [path, item] of Object.entries(spec.paths as Record<string, Json>)) {
-  for (const method of ['get', 'post', 'patch', 'delete'] as const) {
+  for (const method of ['get', 'post', 'put', 'patch', 'delete'] as const) {
     const operation = item[method] as Json | undefined;
     if (operation === undefined) continue;
     const where = `${method.toUpperCase()} ${path}`;

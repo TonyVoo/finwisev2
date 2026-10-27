@@ -264,6 +264,29 @@ const EMAIL_VERIFIED = `
 ALTER TABLE user ADD COLUMN emailVerified INTEGER NOT NULL DEFAULT 0 CHECK (emailVerified IN (0, 1));
 `;
 
+/**
+ * Receipt photos, one per expense, kept on the device and mirrored to the server.
+ *
+ * `state` is what the sync step has still to do about the row:
+ *   - `pending-upload`: the person attached this image here; it has not reached the server.
+ *   - `pending-delete`: the person removed it here; the server still has it. No image bytes.
+ *   - `synced`: the server has exactly this image.
+ *   - `remote`: the server has one (another device took it) and this device has not
+ *     downloaded it yet; `dataBase64` is NULL until it is opened.
+ * The image is base64 text, as the wire carries it, so nothing is re-encoded on the way in
+ * or out. No foreign key to `expenses`: a receipt can be queued for an expense whose own
+ * outbox entry has not drained, and the table is wiped with everything else.
+ */
+const RECEIPTS = `
+CREATE TABLE receipts (
+  expenseId  TEXT PRIMARY KEY,
+  state      TEXT NOT NULL CHECK (state IN ('pending-upload', 'pending-delete', 'synced', 'remote')),
+  dataBase64 TEXT,
+  sizeBytes  INTEGER NOT NULL DEFAULT 0,
+  updatedAt  TEXT NOT NULL
+);
+`;
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: 'initial-schema', up: INITIAL_SCHEMA },
   { version: 2, name: 'store-owner', up: STORE_OWNER },
@@ -272,6 +295,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 5, name: 'category-budget', up: CATEGORY_BUDGET },
   { version: 6, name: 'recurring', up: RECURRING },
   { version: 7, name: 'email-verified', up: EMAIL_VERIFIED },
+  { version: 8, name: 'receipts', up: RECEIPTS },
 ];
 
 /** Highest version `MIGRATIONS` can bring a database to. */

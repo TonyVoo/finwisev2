@@ -1370,6 +1370,191 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /v1/expenses/{id}/receipt:
+    parameters:
+      - $ref: '#/components/parameters/ResourceId'
+    put:
+      operationId: putReceipt
+      tags: [expenses]
+      summary: Attach or replace an expense's receipt photo
+      description: |
+        Stores one JPEG for the expense, replacing any earlier one. The image travels as
+        base64 in JSON; the app downsizes it first, so a typical body is a few hundred KB.
+        The body limit on this route is 3 MB, and the decoded image may be at most
+        1,500,000 bytes. Bytes that are not a JPEG (checked by their signature, not by the
+        declared type) are a `validation_error`.
+
+        An expense that is not the caller's, does not exist yet, or has been deleted is
+        `404`. A client that queued the upload offline therefore retries after its expense
+        has synced.
+      x-errorCodes:
+        - validation_error
+        - malformed_request
+        - unsupported_media_type
+        - batch_too_large
+        - unauthorized
+        - token_expired
+        - token_invalid
+        - rate_limited
+        - internal_error
+        - not_found
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReceiptPutRequest' }
+            example:
+              contentType: image/jpeg
+              dataBase64: /9j/4AAQSkZJRg==
+      responses:
+        '200':
+          description: Stored. Returns the receipt metadata and bytes.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReceiptResponse' }
+              example:
+                data:
+                  expenseId: 0192f3b1-0000-7f1e-9b2d-000000000001
+                  contentType: image/jpeg
+                  dataBase64: /9j/4AAQSkZJRg==
+                  sizeBytes: 10
+                  updatedAt: '2026-10-06T09:15:00.000Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '413':
+          description: |
+            The body exceeded this route's 3 MB limit. Code: `batch_too_large`. Downsize the
+            image and try again.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              example:
+                error:
+                  code: batch_too_large
+                  message: Request body exceeds the 3mb limit.
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    get:
+      operationId: getReceipt
+      tags: [expenses]
+      summary: Download an expense's receipt photo
+      description: |
+        `404` when the expense has no receipt, is not the caller's, or has been deleted -
+        the three are indistinguishable on purpose.
+      x-errorCodes:
+        - validation_error
+        - unauthorized
+        - token_expired
+        - token_invalid
+        - rate_limited
+        - internal_error
+        - not_found
+      responses:
+        '200':
+          description: The receipt.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReceiptResponse' }
+              example:
+                data:
+                  expenseId: 0192f3b1-0000-7f1e-9b2d-000000000001
+                  contentType: image/jpeg
+                  dataBase64: /9j/4AAQSkZJRg==
+                  sizeBytes: 10
+                  updatedAt: '2026-10-06T09:15:00.000Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      operationId: deleteReceipt
+      tags: [expenses]
+      summary: Remove an expense's receipt photo
+      description: |
+        Idempotent: removing a receipt that is not there is still `204`, so a retried
+        delete never fails. An expense that is not the caller's is `404`.
+      x-errorCodes:
+        - validation_error
+        - unauthorized
+        - token_expired
+        - token_invalid
+        - rate_limited
+        - internal_error
+        - not_found
+      responses:
+        '204':
+          description: Removed, or there was nothing to remove. No body.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/receipts:
+    get:
+      operationId: listReceipts
+      tags: [expenses]
+      summary: List which expenses have a receipt
+      description: |
+        Every receipt of the caller's live expenses, without the image bytes: the id of the
+        expense, the size and when it changed. This is how a device that did not take a photo
+        learns it exists, since attaching one does not change the expense row and so does not
+        appear in the sync stream. Not paginated; an item is about a hundred bytes.
+      x-errorCodes:
+        - unauthorized
+        - token_expired
+        - token_invalid
+        - rate_limited
+        - internal_error
+      responses:
+        '200':
+          description: The receipts, oldest change first.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReceiptIndexResponse' }
+              example:
+                data:
+                  - expenseId: 0192f3b1-0000-7f1e-9b2d-000000000001
+                    sizeBytes: 240118
+                    updatedAt: '2026-10-06T09:15:00.000Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /v1/sync:
     get:
       operationId: pullSync
@@ -2777,6 +2962,63 @@ components:
       required: [data]
       properties:
         data: { $ref: '#/components/schemas/Expense' }
+
+    ReceiptPutRequest:
+      type: object
+      additionalProperties: false
+      required: [contentType, dataBase64]
+      properties:
+        contentType:
+          type: string
+          enum: [image/jpeg]
+        dataBase64:
+          type: string
+          minLength: 1
+          maxLength: 2000000
+          pattern: '^[A-Za-z0-9+/]+={0,2}$'
+          description: The JPEG, base64-encoded. At most 1,500,000 bytes decoded.
+
+    Receipt:
+      type: object
+      additionalProperties: false
+      required: [expenseId, contentType, dataBase64, sizeBytes, updatedAt]
+      properties:
+        expenseId: { type: string, format: uuid }
+        contentType:
+          type: string
+          enum: [image/jpeg]
+        dataBase64:
+          type: string
+          minLength: 1
+          maxLength: 2000000
+          pattern: '^[A-Za-z0-9+/]+={0,2}$'
+        sizeBytes: { type: integer, minimum: 1 }
+        updatedAt: { type: string, format: date-time }
+
+    ReceiptResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/Receipt' }
+
+    ReceiptIndexItem:
+      type: object
+      additionalProperties: false
+      required: [expenseId, sizeBytes, updatedAt]
+      properties:
+        expenseId: { type: string, format: uuid }
+        sizeBytes: { type: integer, minimum: 1 }
+        updatedAt: { type: string, format: date-time }
+
+    ReceiptIndexResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ReceiptIndexItem' }
 
     # -----------------------------------------------------------------------
     # Sync. Mirrors shared/src/sync.ts. The operation descriptions on

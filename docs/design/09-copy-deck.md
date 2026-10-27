@@ -68,6 +68,19 @@ is no `(s)` anywhere.
 | `form.field.date`                 | `Date`                                       | Expense form                      |
 | `form.field.note`                 | `Note`                                       | Expense form                      |
 | `form.field.note.placeholder`     | `Add a note (optional)`                      | Expense form                      |
+| `form.field.receipt` | `Receipt` | Expense form, row |
+| `form.field.receiptAdd` | `Add a photo` | Expense form, row value |
+| `form.field.receiptAttached` | `Photo attached` | Expense form, row value |
+| `form.receipt.title` | `Receipt` | Receipt sheet |
+| `form.receipt.take` | `Take photo` | Receipt sheet, button |
+| `form.receipt.choose` | `Choose from library` | Receipt sheet, button |
+| `form.receipt.remove` | `Remove photo` | Receipt sheet, button |
+| `form.receipt.loading` | `Loading photo…` | Receipt sheet |
+| `form.receipt.unavailable` | `Connect to the internet to view this photo.` | Receipt sheet |
+| `form.receipt.deniedCamera` | `Allow camera access in Settings to photograph a receipt.` | Snackbar |
+| `form.receipt.deniedLibrary` | `Allow photo access in Settings to attach a receipt.` | Snackbar |
+| `form.receipt.failed` | `Could not use that photo. Try another.` | Snackbar |
+| `form.receipt.imageLabel` | `Receipt photo` | Receipt sheet, image label |
 | `form.save`                       | `Save`                                       | Expense form                      |
 | `form.delete`                     | `Delete expense`                             | Expense form                      |
 | `form.close`                      | `Close without saving`                       | a11y label                        |

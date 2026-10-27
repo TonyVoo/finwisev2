@@ -18,10 +18,20 @@
       "expo-background-task",
       "expo-sqlite",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Expense Tracker uses your photos so you can attach a receipt to an expense.",
+          "cameraPermission": "Expense Tracker uses the camera so you can photograph a receipt.",
+          "microphonePermission": false
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#F7F8FA",
-          "dark": { "backgroundColor": "#0F1115" }
+          "dark": {
+            "backgroundColor": "#0F1115"
+          }
         }
       ]
     ],

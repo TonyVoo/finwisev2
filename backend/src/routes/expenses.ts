@@ -4,6 +4,9 @@ import {
   ExpenseListResponse,
   ExpenseResponse,
   ExpenseUpdateRequest,
+  ReceiptIndexResponse,
+  ReceiptPutRequest,
+  ReceiptResponse,
 } from '@expense-tracker/shared';
 import { Router, type Request, type Response } from 'express';
 import { getPrisma } from '../db/client.ts';
@@ -17,6 +20,7 @@ import {
   validatedParams,
   validatedQuery,
 } from '../middleware/validate.ts';
+import { deleteReceipt, getReceipt, listReceipts, putReceipt } from '../services/receiptService.ts';
 import {
   createExpense,
   deleteExpense,
@@ -74,3 +78,40 @@ expensesRouter.delete(
     sendJson(res, 200, ExpenseResponse, { data });
   },
 );
+
+expensesRouter.put(
+  '/expenses/:id/receipt',
+  validateParams(ResourceIdParams),
+  validateBody(ReceiptPutRequest),
+  async (req: Request, res: Response) => {
+    const { id } = validatedParams(res, ResourceIdParams);
+    const body = req.body as ReceiptPutRequest;
+    const data = await putReceipt(getPrisma(), userIdOf(req), id, body.dataBase64);
+    sendJson(res, 200, ReceiptResponse, { data });
+  },
+);
+
+expensesRouter.get(
+  '/expenses/:id/receipt',
+  validateParams(ResourceIdParams),
+  async (req: Request, res: Response) => {
+    const { id } = validatedParams(res, ResourceIdParams);
+    const data = await getReceipt(getPrisma(), userIdOf(req), id);
+    sendJson(res, 200, ReceiptResponse, { data });
+  },
+);
+
+expensesRouter.delete(
+  '/expenses/:id/receipt',
+  validateParams(ResourceIdParams),
+  async (req: Request, res: Response) => {
+    const { id } = validatedParams(res, ResourceIdParams);
+    await deleteReceipt(getPrisma(), userIdOf(req), id);
+    res.status(204).end();
+  },
+);
+
+expensesRouter.get('/receipts', async (req: Request, res: Response) => {
+  const data = await listReceipts(getPrisma(), userIdOf(req));
+  sendJson(res, 200, ReceiptIndexResponse, { data });
+});

@@ -7,7 +7,7 @@
  * surfacing as a 404 on a device.
  */
 
-export const HTTP_METHODS = ['get', 'post', 'patch', 'delete'] as const;
+export const HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete'] as const;
 export type HttpMethod = (typeof HTTP_METHODS)[number];
 
 export interface RouteSpec {
@@ -152,6 +152,34 @@ export const API_ROUTES = [
     method: 'delete',
     path: '/v1/expenses/{id}',
     operationId: 'deleteExpense',
+    auth: true,
+    successStatus: 200,
+  },
+  {
+    method: 'put',
+    path: '/v1/expenses/{id}/receipt',
+    operationId: 'putReceipt',
+    auth: true,
+    successStatus: 200,
+  },
+  {
+    method: 'get',
+    path: '/v1/expenses/{id}/receipt',
+    operationId: 'getReceipt',
+    auth: true,
+    successStatus: 200,
+  },
+  {
+    method: 'delete',
+    path: '/v1/expenses/{id}/receipt',
+    operationId: 'deleteReceipt',
+    auth: true,
+    successStatus: 204,
+  },
+  {
+    method: 'get',
+    path: '/v1/receipts',
+    operationId: 'listReceipts',
     auth: true,
     successStatus: 200,
   },

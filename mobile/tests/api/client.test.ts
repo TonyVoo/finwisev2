@@ -109,6 +109,17 @@ describe('every client method', () => {
     ['requestEmailVerification', (client) => client.requestEmailVerification({})],
     ['confirmEmailVerification', (client) => client.confirmEmailVerification({ code: '123456' })],
     ['deleteAccount', (client) => client.deleteAccount({ password: 'a' })],
+    [
+      'putReceipt',
+      (client) =>
+        client.putReceipt(ID, {
+          contentType: 'image/jpeg',
+          dataBase64: '/9j/AAAA',
+        }),
+    ],
+    ['getReceipt', (client) => client.getReceipt(ID)],
+    ['deleteReceipt', (client) => client.deleteReceipt(ID)],
+    ['listReceipts', (client) => client.listReceipts()],
 
     ['listCategories', (client) => client.listCategories()],
     ['createCategory', (client) => client.createCategory({ name: 'Rent' })],

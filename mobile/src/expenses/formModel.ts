@@ -32,6 +32,8 @@ export interface SaveStateInput {
   readonly draft: ExpenseDraft;
   /** False when the database holds no live category at all (rule 4, last bullet). */
   readonly hasCategories: boolean;
+  /** Something outside the draft changed (the receipt photo): edit mode may then save. */
+  readonly otherChange?: boolean;
 }
 
 /**
@@ -55,6 +57,7 @@ export function saveState({
   stored,
   draft,
   hasCategories,
+  otherChange = false,
 }: SaveStateInput): SaveState {
   if (!hasCategories) {
     return { canSave: false, hint: VALIDATION_COPY.nocategories };
@@ -70,7 +73,13 @@ export function saveState({
 
   // Edit mode only: add mode has nothing to compare against, and a nonzero amount is
   // already a change.
-  if (stored !== null && Object.keys(changedExpenseFields(stored, draft)).length === 0) {
+  // `otherChange`: something the draft does not hold has changed (the receipt photo), which
+  // is a change worth saving even when every field is as stored.
+  if (
+    stored !== null &&
+    !otherChange &&
+    Object.keys(changedExpenseFields(stored, draft)).length === 0
+  ) {
     return { canSave: false, hint: VALIDATION_COPY.nochange };
   }
 
