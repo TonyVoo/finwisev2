@@ -100,7 +100,15 @@ backend **restarted after pulling** (it adds three tables: `pnpm --filter backen
       A still has everything B added while in.
 - [ ] A removes B while B is in: B's phone returns to its own books on its next sync (no crash, no
       A data left behind).
-- [ ] A cannot leave (no Leave button) and **Delete household** returns everyone to their own books.
+- [ ] **Create** asks first ("Your current expenses move into the household..."). After creating, A's
+      Home is unchanged. Creating with unsynced changes is refused ("Sync your changes first").
+- [ ] **Hand over:** A taps B's row -> **Make owner** -> confirm. A now sees **Leave household**; B sees
+      Invite and Delete. Nothing disappears from either phone.
+- [ ] A (the original creator) leaves after handing over: A's own books are fresh default categories and
+      the history stays in the household. A can add an expense straight away.
+- [ ] A cannot delete their account while others are in and they own it; after handing over, they can.
+- [ ] **Delete household** (as the owner): the owner gets the shared books, merged into their own
+      (same-named categories combined, no duplicates); everyone else is back on their own books.
 - [ ] A cannot delete their account while B is in; the banner says to delete the household first.
 
 ## 7. App lock
