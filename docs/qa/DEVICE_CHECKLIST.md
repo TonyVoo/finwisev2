@@ -151,6 +151,9 @@ Haptics and animation can only be judged by hand. Run this on a real phone.
 - [ ] **Settings is the third tab** (gear icon) of the floating bar, with a large title and no back arrow;
       Home's header has no gear. Opening a row (Categories, Goals, Household...) pushes it full-screen with a
       back arrow that returns to the Settings tab. Log out at the bottom scrolls fully clear of the bar.
+- [ ] **Search** is a screen of its own: tapping the magnifier on Home opens it with the keyboard up, a
+      back arrow, category chips and a prompt. Typing finds expenses from any month with "N results - total";
+      a result opens its editor; swipe-delete works with Undo; back returns to an unchanged Home.
 - [ ] **Floating tab bar:** a capsule floats above the bottom edge (clear of the home indicator), with the
       active tab showing icon and label on a highlight and the other as an icon alone. Switching gives a
       light tick; the last row of Home and the last card of Summary scroll fully clear of it, and the add

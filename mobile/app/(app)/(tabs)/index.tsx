@@ -1,14 +1,13 @@
 import { TAB_BAR_RESERVE } from '@/navigation/tabBar';
+import { useDeleteExpense } from '@/expenses/useDeleteExpense';
 import { useAddedBy } from '@/household/useAddedBy';
 import { useCallback, useEffect, useState } from 'react';
-import { AccessibilityInfo, SectionList, StyleSheet, Text, View } from 'react-native';
+import { SectionList, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppBar, Fab, IconButton } from '@/components/Chrome';
-import { useSnackbar } from '@/components/Snackbar';
-import { COPY, SNACK_COPY } from '@/copy/strings';
+import { COPY } from '@/copy/strings';
 import { useDatabase } from '@/db/DatabaseProvider';
-import { useLocalWrite } from '@/db/localWrite';
 import { clearCategoryReviewPending } from '@/db/onboarding';
 import { queryKeys } from '@/query/keys';
 import { useQueryClient } from '@tanstack/react-query';
@@ -16,17 +15,12 @@ import {
   useAnyExpensesExist,
   useCategoryReviewPending,
   useMonthCategorySpend,
-  useExpenseSearch,
-  useExpenseSearchSummary,
-  useLiveCategories,
   useMonthExpenses,
   useMonthDailySpend,
   useMonthIncome,
   useMonthTotal,
   useUserCurrency,
 } from '@/db/hooks';
-import { isSearchActive } from '@/db/queries';
-import { deleteExpense, restoreExpense } from '@/db/mutations';
 import { BudgetAlertBanner } from '@/expenses/BudgetAlertBanner';
 import { CategoryReviewBanner } from '@/expenses/CategoryReviewBanner';
 import { budgetAlert } from '@/summary/budgetAlerts';
@@ -34,15 +28,12 @@ import { notifyBudgetAlert } from '@/notifications/budgetNotifier';
 import { summariseMonth } from '@/summary/summaryModel';
 import { ExpenseRow } from '@/expenses/ExpenseRow';
 import { groupByDate } from '@/expenses/listModel';
-import { FirstRunEmpty, ListSkeleton, MonthEmpty, SearchEmpty } from '@/expenses/ListStates';
+import { FirstRunEmpty, ListSkeleton, MonthEmpty } from '@/expenses/ListStates';
 import { MonthTotal } from '@/expenses/MonthTotal';
-import { SearchBar } from '@/expenses/SearchBar';
-import { formatMoney } from '@/lib/money';
 import { useFirstPaintSkeleton } from '@/expenses/useFirstPaint';
 import { useAwaitingFirstSync } from '@/sync/useAwaitingFirstSync';
 import { daysInMonth as daysIn, monthLabel } from '@/lib/calendar';
 import { cumulativeSeries, projectedMonthEnd } from '@/expenses/spendPace';
-import { warnHaptic } from '@/lib/haptics';
 import { MonthSwitcher } from '@/month/MonthSwitcher';
 import { SyncIndicator } from '@/sync/SyncIndicator';
 import { usePullToRefresh } from '@/sync/usePullToRefresh';
@@ -84,35 +75,10 @@ const FAB_CLEARANCE = size.fab + space[4] + space[4];
 export default function ExpenseListScreen() {
   const styles = useStyles();
   const router = useRouter();
-  const showSnackbar = useSnackbar();
-  const localWrite = useLocalWrite();
   const insets = useSafeAreaInsets();
   const { month, currentMonth, today, isCurrent, goToCurrent } = useSelectedMonth();
 
   const [scrolled, setScrolled] = useState(false);
-
-  // Search is local screen state: closing the bar discards it, and nothing about it is worth
-  // restoring after a restart.
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchText, setSearchText] = useState('');
-  const [searchCategory, setSearchCategory] = useState<string | null>(null);
-  const [debouncedText, setDebouncedText] = useState('');
-  useEffect(() => {
-    // Clearing is immediate; typing waits 200ms so a query is not run per keystroke.
-    if (searchText === '') {
-      setDebouncedText('');
-      return undefined;
-    }
-    const handle = setTimeout(() => setDebouncedText(searchText), 200);
-    return () => clearTimeout(handle);
-  }, [searchText]);
-  const search = { text: debouncedText, categoryId: searchCategory };
-  const searching = searchOpen && isSearchActive(search);
-  const searchRows = useExpenseSearch(searching ? search : { text: '', categoryId: null });
-  const searchSummary = useExpenseSearchSummary(
-    searching ? search : { text: '', categoryId: null },
-  );
-  const categories = useLiveCategories();
 
   const database = useDatabase();
   const addedBy = useAddedBy();
@@ -142,12 +108,6 @@ export default function ExpenseListScreen() {
     [database, queryClient, router],
   );
 
-  const closeSearch = useCallback(() => {
-    setSearchOpen(false);
-    setSearchText('');
-    setDebouncedText('');
-    setSearchCategory(null);
-  }, []);
   const pullToRefresh = usePullToRefresh();
 
   const expenses = useMonthExpenses(month);
@@ -172,36 +132,14 @@ export default function ExpenseListScreen() {
       expenses.isPending || total.isPending || anyExist.isPending || currency.isPending,
     ) || awaitingFirstSync;
 
-  const rows = searching ? (searchRows.data ?? []) : (expenses.data ?? []);
-  const sections = groupByDate(rows, today);
+  const sections = groupByDate(expenses.data ?? [], today);
 
   // `undefined` while the read is in flight, `null` when there is no user row. Neither is
   // a currency, and formatting an amount without one would put a dollar sign in front of
   // a euro figure - so both hold the total on its skeleton (`db/hooks.ts`).
   const currencyCode = currency.data ?? null;
 
-  const onDelete = useCallback(
-    async (id: string) => {
-      // Committed first, announced second. The order is the rule: the snackbar reports
-      // something that has already happened.
-      await localWrite((database) => deleteExpense(database, id));
-      warnHaptic();
-      AccessibilityInfo.announceForAccessibility(SNACK_COPY.expense.deleted);
-
-      showSnackbar({
-        message: SNACK_COPY.expense.deleted,
-        action: {
-          label: COPY.common.undo,
-          onPress: () => {
-            void localWrite((database) => restoreExpense(database, id)).then(() => {
-              AccessibilityInfo.announceForAccessibility(SNACK_COPY.expense.restored);
-            });
-          },
-        },
-      });
-    },
-    [localWrite, showSnackbar],
-  );
+  const onDelete = useDeleteExpense();
 
   return (
     <View style={styles.screen}>
@@ -216,28 +154,18 @@ export default function ExpenseListScreen() {
                 the title never shifts when sync state changes (`02-offline-and-sync.md` §3). */}
             <SyncIndicator />
             <IconButton
-              icon={searchOpen ? 'x' : 'search'}
-              label={searchOpen ? COPY.home.search.close : COPY.home.search.open}
-              onPress={searchOpen ? closeSearch : () => setSearchOpen(true)}
+              icon="search"
+              label={COPY.home.search.open}
+              onPress={() => router.push('/(app)/search')}
               testID="home-search"
             />
           </>
         }
       />
 
-      {searchOpen ? (
-        <SearchBar
-          text={searchText}
-          onChangeText={setSearchText}
-          categoryId={searchCategory}
-          onChangeCategory={setSearchCategory}
-          categories={categories.data ?? []}
-        />
-      ) : (
-        <MonthSwitcher onOpenPicker={() => router.push('/(app)/month-picker')} />
-      )}
+      <MonthSwitcher onOpenPicker={() => router.push('/(app)/month-picker')} />
 
-      {alert !== null && alert.key !== dismissedAlert && !searchOpen ? (
+      {alert !== null && alert.key !== dismissedAlert ? (
         <BudgetAlertBanner
           alert={alert}
           onOpen={() => router.navigate('/(app)/(tabs)/summary')}
@@ -245,45 +173,28 @@ export default function ExpenseListScreen() {
         />
       ) : null}
 
-      {reviewPending.data === true && !searchOpen ? (
+      {reviewPending.data === true ? (
         <CategoryReviewBanner
           onReview={() => void answerCategoryReview(true)}
           onDismiss={() => void answerCategoryReview(false)}
         />
       ) : null}
 
-      {searching ? (
-        // Across every month, so the month total would be the wrong number to show. This is
-        // the aggregate over all matches, not over the rendered page (rule 3 again).
-        <Text testID="search-summary" style={styles.searchSummary} accessibilityLiveRegion="polite">
-          {searchSummary.data === undefined || currencyCode === null
-            ? ' '
-            : `${
-                searchSummary.data.count === 1
-                  ? COPY.home.search.resultsOne
-                  : COPY.home.search.resultsMany.replace(
-                      '{count}',
-                      String(searchSummary.data.count),
-                    )
-              } · ${formatMoney(searchSummary.data.totalMinor, currencyCode)}`}
-        </Text>
-      ) : searchOpen ? null : (
-        // The total renders above the list and outside it, so it stays put while the rows
-        // scroll - and so a paginated list can never be mistaken for its source (rule 3).
-        <MonthTotal
-          totalMinor={currencyCode === null || awaitingFirstSync ? undefined : total.data}
-          currency={currencyCode ?? ''}
-          isCurrentMonth={isCurrent}
-          incomeMinor={currencyCode === null || awaitingFirstSync ? undefined : income.data}
-          series={series}
-          paceMinor={
-            isCurrent && total.data !== undefined && shownDays < monthDays
-              ? projectedMonthEnd(total.data, shownDays, monthDays)
-              : null
-          }
-          daysInMonth={monthDays}
-        />
-      )}
+      {/* The total renders above the list and outside it, so it stays put while the rows
+          scroll - and so a paginated list can never be mistaken for its source (rule 3). */}
+      <MonthTotal
+        totalMinor={currencyCode === null || awaitingFirstSync ? undefined : total.data}
+        currency={currencyCode ?? ''}
+        isCurrentMonth={isCurrent}
+        incomeMinor={currencyCode === null || awaitingFirstSync ? undefined : income.data}
+        series={series}
+        paceMinor={
+          isCurrent && total.data !== undefined && shownDays < monthDays
+            ? projectedMonthEnd(total.data, shownDays, monthDays)
+            : null
+        }
+        daysInMonth={monthDays}
+      />
 
       <SectionList
         testID={HOME_LIST_TEST_ID}
@@ -323,8 +234,6 @@ export default function ExpenseListScreen() {
         ListEmptyComponent={
           showSkeleton ? (
             <ListSkeleton />
-          ) : searching ? (
-            <SearchEmpty />
           ) : anyExist.data === true ? (
             // Expenses exist, just not here: offer navigation, not a tutorial.
             <MonthEmpty

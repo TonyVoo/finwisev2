@@ -4,7 +4,8 @@ import { escapeLike, searchExpenses, searchSummary } from '@/db/queries';
 import type { SqliteDatabase } from '@/db/sqlite';
 import { MONTH_TOTAL_TEST_ID } from '@/expenses/MonthTotal';
 import ExpenseListScreen from '../../app/(app)/(tabs)/index';
-import { resetRouter } from '../support/router';
+import SearchScreen from '../../app/(app)/search';
+import { resetRouter, routerRecord } from '../support/router';
 import { mountScreen, type MountedScreen } from '../support/mount';
 import {
   categoryId,
@@ -59,6 +60,12 @@ async function mountHome(): Promise<MountedScreen> {
   return mounted;
 }
 
+async function mountSearch(): Promise<MountedScreen> {
+  const mounted = await mountScreen(<SearchScreen />, { clock: () => NOW, seed: seedData });
+  await waitFor(() => expect(screen.queryByTestId('search-input')).not.toBeNull());
+  return mounted;
+}
+
 beforeEach(() => {
   resetRouter();
 });
@@ -104,29 +111,44 @@ describe('search queries', () => {
   });
 });
 
-describe('the Home search UI', () => {
-  it('finds an expense in another month, then restores the month view on close', async () => {
+describe('Home and search', () => {
+  it('opens the search screen from the app bar, and keeps the month view as it is', async () => {
     await mountHome();
 
     await userEvent.press(screen.getByTestId('home-search'));
-    expect(screen.queryByTestId(MONTH_TOTAL_TEST_ID)).toBeNull();
+
+    expect(routerRecord.push).toEqual(['/(app)/search']);
+    // Search is a screen of its own: Home does not turn into a results list.
+    expect(screen.queryByTestId('search-input')).toBeNull();
+    expect(screen.getByTestId(MONTH_TOTAL_TEST_ID)).toBeTruthy();
+  });
+});
+
+describe('the Search screen', () => {
+  it('opens with the field focused and a prompt, and no results yet', async () => {
+    await mountSearch();
+
+    expect(screen.getByTestId('search-prompt')).toBeTruthy();
+    expect(screen.queryByTestId('search-summary')).toBeNull();
+    expect(screen.queryByText('Milk, eggs')).toBeNull();
+  });
+
+  it('finds an expense in another month, with the count and the total of every match', async () => {
+    await mountSearch();
 
     fireEvent.changeText(screen.getByTestId('search-input'), 'dentist');
+
     expect(await screen.findByText('Dentist 50% off', {}, { timeout: 2000 })).toBeTruthy();
     expect(screen.queryByText('Milk, eggs')).toBeNull();
     await waitFor(() =>
       expect(screen.getByTestId('search-summary').props.children).toContain('1 result'),
     );
-
-    await userEvent.press(screen.getByTestId('home-search'));
-    await waitFor(() => expect(screen.queryByTestId(MONTH_TOTAL_TEST_ID)).not.toBeNull());
-    expect(screen.getByText('Milk, eggs')).toBeTruthy();
-    expect(screen.queryByText('Dentist 50% off')).toBeNull();
+    expect(screen.queryByTestId('search-prompt')).toBeNull();
   });
 
-  it('filters by a category chip and shows an empty state for no matches', async () => {
-    await mountHome();
-    await userEvent.press(screen.getByTestId('home-search'));
+  it('filters by a category chip, and says so when nothing matches', async () => {
+    await mountSearch();
+    await waitFor(() => expect(screen.queryByTestId(`search-chip-${TRANSPORT}`)).not.toBeNull());
 
     await userEvent.press(screen.getByTestId(`search-chip-${TRANSPORT}`));
     await waitFor(() => expect(screen.queryByText('$3.20')).not.toBeNull());
@@ -136,15 +158,36 @@ describe('the Home search UI', () => {
     expect(await screen.findByTestId('empty-search', {}, { timeout: 2000 })).toBeTruthy();
   });
 
+  it('opens a result to edit it', async () => {
+    await mountSearch();
+    fireEvent.changeText(screen.getByTestId('search-input'), 'dentist');
+    await screen.findByText('Dentist 50% off', {}, { timeout: 2000 });
+
+    await userEvent.press(screen.getByTestId(`expense-row-${expenseId(3)}`));
+
+    expect(routerRecord.push).toEqual([`/(app)/expense/${expenseId(3)}`]);
+  });
+
+  it('has a back button', async () => {
+    await mountSearch();
+
+    await userEvent.press(screen.getByTestId('search-back'));
+
+    expect(routerRecord.back).toBe(1);
+  });
+
   it('does nothing for whitespace-only text', async () => {
-    await mountHome();
-    await userEvent.press(screen.getByTestId('home-search'));
+    await mountSearch();
     fireEvent.changeText(screen.getByTestId('search-input'), '   ');
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 300));
     });
+
     expect(screen.queryByTestId('search-summary')).toBeNull();
     expect(screen.queryByTestId('empty-search')).toBeNull();
+    expect(screen.getByTestId('search-prompt')).toBeTruthy();
+    // Unmount inside the test: a 300ms real-timer wait leaves the tree to be torn down late,
+    // which otherwise starves the next mount.
     cleanup();
   });
 });
