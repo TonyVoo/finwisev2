@@ -4,7 +4,7 @@ import type { Transport, TransportRequest } from '@/api/transport';
 import { COPY } from '@/copy/strings';
 import { readEmailVerified } from '@/db/user';
 import { queryKeys } from '@/query/keys';
-import SettingsScreen from '../../app/(app)/settings/index';
+import SettingsScreen from '../../app/(app)/(tabs)/settings';
 import VerifyEmailScreen from '../../app/(app)/settings/verify-email';
 import { resetRouter, routerRecord } from '../support/router';
 import {

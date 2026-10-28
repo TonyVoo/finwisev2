@@ -618,13 +618,11 @@ describe('the expense list', () => {
       expect(routerRecord.push).toEqual(['/(app)/expense/new']);
     });
 
-    it('opens Settings from the app bar', async () => {
-      // Rule 14: Settings is reached from the app bar on Home, not from a third tab.
+    it('has no Settings button in the app bar: Settings is a tab of its own', async () => {
       await mountHome(seedOctober);
 
-      await userEvent.press(screen.getByTestId('home-settings'));
-
-      expect(routerRecord.push).toEqual(['/(app)/settings']);
+      expect(screen.queryByTestId('home-settings')).toBeNull();
+      expect(screen.queryByLabelText(COPY.settings.title)).toBeNull();
     });
 
     it('opens the month picker from the centre label', async () => {

@@ -53,8 +53,9 @@ Notes:
    Log in, and no back-navigation out of Welcome after logging out.
 2. **Add and Edit are the same screen**, distinguished by whether the route carries an `id`.
    See [`06-expense-form.md`](./06-expense-form.md).
-3. **Settings is reached from the Home app bar**, not a third tab — it holds three rows and does
-   not earn tab real estate.
+3. **Settings is the third tab** of the floating tab bar, not a button in the Home app bar. It began
+   as three rows and earned a tab as it grew (account, categories, recurring, goals, household,
+   language, app lock, export). Its sub-screens are pushed on top of the tabs.
 4. The month state is shared between Home and Summary: switching month on one and then changing
    tab shows the same month. See [`05-month-switcher.md`](./05-month-switcher.md) §Behaviour
    rule 7.

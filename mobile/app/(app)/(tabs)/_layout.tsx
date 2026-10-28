@@ -5,9 +5,8 @@ import { useColors } from '@/theme/ThemeProvider';
 import { COPY } from '@/copy/strings';
 
 /**
- * The two tabs of the MVP: the expense list and the monthly summary.
- *
- * Settings is reached from the app bar on Home, not from a third tab
+ * The tabs: the expense list, the monthly summary and Settings. Settings began as a button in
+ * Home's app bar and became a tab once it held more than a few rows
  * (`docs/design/04-expense-list.md` §Behaviour rule 14).
  *
  * The bar is our own (`FloatingTabBar`) rather than the navigator's built-in one, which has its
@@ -38,6 +37,15 @@ export default function TabsLayout() {
           title: COPY.summary.title,
           tabBarIcon: ({ color: tint, size }) => (
             <Feather name="pie-chart" size={size} color={tint} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: COPY.settings.title,
+          tabBarIcon: ({ color: tint, size }) => (
+            <Feather name="settings" size={size} color={tint} />
           ),
         }}
       />

@@ -3,7 +3,7 @@ import { COPY } from '@/copy/strings';
 import { META_KEYS, WIPED_META_KEYS, readMeta, writeMeta } from '@/db/meta';
 import { applyLanguagePreference } from '@/i18n/apply';
 import { LANGUAGE_OPTION_TEST_ID_PREFIX } from '@/i18n/LanguageSheet';
-import SettingsScreen from '../../app/(app)/settings/index';
+import SettingsScreen from '../../app/(app)/(tabs)/settings';
 import { resetRouter } from '../support/router';
 import { type MountedScreen, authResponse, mountScreen, ok } from '../support/mount';
 import type { Transport } from '@/api/transport';

@@ -9,7 +9,7 @@ one **moves** its expenses rather than destroying them.
 
 ### Route
 
-`/(app)/settings/categories`, pushed from the `Categories` row in Settings
+`/(app)/settings/categories`, pushed from the `Categories` row in the Settings tab
 ([`04-expense-list.md`](./04-expense-list.md) §Behaviour rule 14).
 
 Flow: [`01-flows.md`](./01-flows.md) §5.

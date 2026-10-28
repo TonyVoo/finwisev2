@@ -1,9 +1,10 @@
+import { useTabBarClearance } from '@/navigation/tabBar';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSessionController } from '@/auth/SessionProvider';
 import { Button } from '@/components/Button';
-import { AppBar, IconButton } from '@/components/Chrome';
+import { AppBar } from '@/components/Chrome';
 import { Dialog } from '@/components/Dialog';
 import { useSnackbar } from '@/components/Snackbar';
 import { IconBadge } from '@/components/IconBadge';
@@ -28,7 +29,7 @@ import { useLanguage } from '@/i18n/LanguageProvider';
 import { useAppLock } from '@/lock/AppLockProvider';
 import { space, type } from '@/theme/tokens';
 import { ThemeSheet, themePreferenceLabel } from '@/theme/ThemeSheet';
-import { createStyles, useColors, useTheme } from '@/theme/ThemeProvider';
+import { createStyles, useTheme } from '@/theme/ThemeProvider';
 
 /**
  * Settings: `docs/design/04-expense-list.md` §Behaviour rule 14.
@@ -47,9 +48,10 @@ import { createStyles, useColors, useTheme } from '@/theme/ThemeProvider';
  * same `usePendingRecordCount` the sync pill reads, so the two cannot disagree.
  */
 export default function SettingsScreen() {
-  const color = useColors();
   const styles = useStyles();
   const router = useRouter();
+  // The floating tab bar covers the bottom of the screen; Log out has to clear it.
+  const tabBarClearance = useTabBarClearance();
   const session = useSessionController();
   const currency = useUserCurrency();
   const email = useUserEmail();
@@ -124,22 +126,11 @@ export default function SettingsScreen() {
 
   return (
     <View style={styles.screen}>
-      <AppBar
-        title={COPY.settings.title}
-        leading={
-          <IconButton
-            icon="chevron-left"
-            label={COPY.common.back}
-            onPress={() => router.back()}
-            tint={color.text.primary}
-            testID="settings-back"
-          />
-        }
-      />
+      <AppBar large title={COPY.settings.title} />
 
       {/* Eight rows and a button no longer fit a short phone or a large font size; without
           this the Log out button below the fold simply could not be reached. */}
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]}>
         <Row
           testID="settings-email"
           leading={<IconBadge name="mail" />}

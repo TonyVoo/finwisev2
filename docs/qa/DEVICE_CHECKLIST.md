@@ -148,6 +148,9 @@ Haptics and animation can only be judged by hand. Run this on a real phone.
       The amount at the top gives a small pop as each digit lands or is deleted.
 - [ ] **Save** an expense: a success buzz as the screen closes. **Swipe-delete** one: a warning buzz.
 - [ ] Home: the month total counts up to its new value after you add or delete an expense.
+- [ ] **Settings is the third tab** (gear icon) of the floating bar, with a large title and no back arrow;
+      Home's header has no gear. Opening a row (Categories, Goals, Household...) pushes it full-screen with a
+      back arrow that returns to the Settings tab. Log out at the bottom scrolls fully clear of the bar.
 - [ ] **Floating tab bar:** a capsule floats above the bottom edge (clear of the home indicator), with the
       active tab showing icon and label on a highlight and the other as an icon alone. Switching gives a
       light tick; the last row of Home and the last card of Summary scroll fully clear of it, and the add

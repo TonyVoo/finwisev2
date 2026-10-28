@@ -3,7 +3,7 @@ import { COPY } from '@/copy/strings';
 import { queryKeys } from '@/query/keys';
 import { META_KEYS, readMeta } from '@/db/meta';
 import type { Transport, TransportRequest } from '@/api/transport';
-import SettingsScreen from '../../app/(app)/settings/index';
+import SettingsScreen from '../../app/(app)/(tabs)/settings';
 import { resetRouter, routerRecord } from '../support/router';
 import { type MountedScreen, authResponse, mountScreen, ok, secureStore } from '../support/mount';
 
@@ -147,6 +147,13 @@ describe('the settings screen', () => {
     for (const name of icons) {
       expect(screen.getByTestId(`row-icon-${name}`, { includeHiddenElements: true })).toBeTruthy();
     }
+  });
+
+  it('is a tab, not a pushed screen: no back button', async () => {
+    await waitFor(() => expect(screen.getByText('ada@example.com')).toBeTruthy());
+
+    expect(screen.queryByTestId('settings-back')).toBeNull();
+    expect(screen.getByRole('header', { name: COPY.settings.title })).toBeTruthy();
   });
 
   it('shows the account email and a Log out button', async () => {

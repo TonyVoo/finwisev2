@@ -58,7 +58,7 @@ user into Add in one tap.
 | 1   | App bar             | `bg.surface`, 56 tall, `elevation.1` once the list is scrolled past 0                     | —                                                                     | —               | —                                                              |
 | 2   | Screen title        | `type.headline` / `text.primary`, leading, `space.4` from edge                            | `Expenses`                                                            | none            | `role="header"`                                                |
 | 3   | Sync pill           | [`02-offline-and-sync.md`](./02-offline-and-sync.md) §3                                   | per state                                                             | 44x44 `hitSlop` | per that spec                                                  |
-| 4   | Settings button     | `settings` 24, `text.secondary`, trailing                                                 | —                                                                     | 44x44           | `role="button"`, label `Settings`                              |
+| 4   | ~~Settings button~~ (removed: a tab, rule 14) | `settings` 24, `text.secondary`, trailing                                                 | —                                                                     | 44x44           | `role="button"`, label `Settings`                              |
 | 5   | Month switcher      | [`05-month-switcher.md`](./05-month-switcher.md)                                          | per that spec                                                         | per that spec   | per that spec                                                  |
 | 6   | Total label         | `type.caption` / `text.tertiary`                                                          | `Total this month` for the current month; `Total` for any other month | none            | grouped with 7                                                 |
 | 7   | Total amount        | `type.display` / `text.primary`, `tabular-nums`                                           | formatted money, e.g. `$1,284.50`                                     | none            | one element with 6: `Total this month, 1,284 dollars 50 cents` |
@@ -143,7 +143,9 @@ be scrolled clear of the FAB.
     carries the explanation; it does **not** show an error.
 13. **Month changes** are owned by [`05-month-switcher.md`](./05-month-switcher.md). The list
     re-queries on change; the scroll position resets to top.
-14. **Settings** (element 4) pushes `/(app)/settings`, which holds exactly three rows — the
+14. **Settings** is the third tab of the tab bar (`/(app)/(tabs)/settings`); element 4, the app-bar
+    button that used to push it, was removed once Settings outgrew three rows. Its sub-screens are
+    pushed on top of the tabs. Originally it held exactly three rows — the
     account email as read-only text, the currency as read-only text with the helper
     `Set when you created your account.`, and `Categories` — plus a `destructive` `Log out`
     button. Log out revokes the refresh token via `POST /v1/auth/logout` on a best-effort basis,

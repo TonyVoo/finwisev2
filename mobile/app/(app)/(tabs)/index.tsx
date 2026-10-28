@@ -212,21 +212,14 @@ export default function ExpenseListScreen() {
         elevated={scrolled}
         trailing={
           <>
-            {/* The pill leads the gear, as `02-offline-and-sync.md` §3 draws it: trailing
-                in the bar, and in a fixed-width slot so the title never shifts when sync
-                state changes. */}
+            {/* The sync pill leads the search button, trailing in the bar in a fixed-width slot so
+                the title never shifts when sync state changes (`02-offline-and-sync.md` §3). */}
+            <SyncIndicator />
             <IconButton
               icon={searchOpen ? 'x' : 'search'}
               label={searchOpen ? COPY.home.search.close : COPY.home.search.open}
               onPress={searchOpen ? closeSearch : () => setSearchOpen(true)}
               testID="home-search"
-            />
-            <SyncIndicator />
-            <IconButton
-              icon="settings"
-              label={COPY.settings.title}
-              onPress={() => router.push('/(app)/settings')}
-              testID="home-settings"
             />
           </>
         }

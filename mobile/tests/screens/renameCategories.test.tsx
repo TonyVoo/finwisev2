@@ -3,7 +3,7 @@ import { defaultCategories } from '@expense-tracker/shared';
 import { COPY, SNACK_COPY } from '@/copy/strings';
 import { META_KEYS, readMeta, writeMeta } from '@/db/meta';
 import { applyLanguagePreference } from '@/i18n/apply';
-import SettingsScreen from '../../app/(app)/settings/index';
+import SettingsScreen from '../../app/(app)/(tabs)/settings';
 import { resetRouter } from '../support/router';
 import { type MountedScreen, authResponse, mountScreen, ok } from '../support/mount';
 import type { Transport } from '@/api/transport';

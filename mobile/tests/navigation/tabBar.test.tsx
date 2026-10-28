@@ -18,13 +18,14 @@ function props(index: number, overrides: { prevented?: boolean } = {}) {
   const routes = [
     { key: 'index-1', name: 'index' },
     { key: 'summary-1', name: 'summary' },
+    { key: 'settings-1', name: 'settings' },
   ];
   const descriptors = Object.fromEntries(
     routes.map((route) => [
       route.key,
       {
         options: {
-          title: route.name === 'index' ? 'Expenses' : 'Summary',
+          title: { index: 'Expenses', summary: 'Summary', settings: 'Settings' }[route.name],
           tabBarIcon: ({ color }: { color: string }) => (
             <Text>{`icon-${route.name}-${color}`}</Text>
           ),
@@ -51,6 +52,14 @@ describe('FloatingTabBar', () => {
 
     expect(screen.getByText('Expenses')).toBeTruthy();
     expect(screen.queryByText('Summary')).toBeNull();
+  });
+
+  it('carries three tabs, Settings last, each named even when only its icon shows', async () => {
+    await renderWithSafeArea(<FloatingTabBar {...props(0).bar} />);
+
+    expect(screen.getAllByRole('tab')).toHaveLength(3);
+    expect(screen.getByRole('tab', { name: 'Settings' })).toBeTruthy();
+    expect(screen.queryByText('Settings')).toBeNull();
   });
 
   it('floats: it is lifted off the bottom edge, past the home indicator', async () => {
