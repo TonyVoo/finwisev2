@@ -14,6 +14,7 @@ import {
   Expense,
   ExpenseCreateRequest,
   ExpenseListQuery,
+  ExpenseSyncFields,
   ExpenseUpdateRequest,
   LIMITS,
   Password,
@@ -230,6 +231,7 @@ describe('request bodies reject unknown fields', () => {
       note: null,
       private: false,
       createdBy: UUID_V7,
+      paidBy: null,
       createdAt: NOW,
       updatedAt: NOW,
       deletedAt: null,
@@ -406,5 +408,31 @@ describe('seeded defaults', () => {
       });
       expect(result.success, category.name).toBe(true);
     }
+  });
+});
+
+describe('who paid an expense', () => {
+  const base = { categoryId: UUID_V7, amountMinor: 100, date: '2026-10-06' };
+
+  it('may be a member id, null, or absent on create', () => {
+    expect(ExpenseCreateRequest.safeParse({ ...base, paidBy: UUID_V7 }).success).toBe(true);
+    expect(ExpenseCreateRequest.safeParse({ ...base, paidBy: null }).success).toBe(true);
+    expect(ExpenseCreateRequest.safeParse(base).success).toBe(true);
+  });
+
+  it('must be a uuid when given', () => {
+    expect(ExpenseCreateRequest.safeParse({ ...base, paidBy: 'bao' }).success).toBe(false);
+    expect(ExpenseUpdateRequest.safeParse({ paidBy: 'bao' }).success).toBe(false);
+    expect(ExpenseSyncFields.safeParse({ paidBy: 12 }).success).toBe(false);
+  });
+
+  it('can be changed or cleared on its own in an update', () => {
+    expect(ExpenseUpdateRequest.safeParse({ paidBy: UUID_V7 }).success).toBe(true);
+    expect(ExpenseUpdateRequest.safeParse({ paidBy: null }).success).toBe(true);
+  });
+
+  it('can be pushed, set or cleared', () => {
+    expect(ExpenseSyncFields.safeParse({ paidBy: UUID_V7 }).success).toBe(true);
+    expect(ExpenseSyncFields.safeParse({ paidBy: null }).success).toBe(true);
   });
 });

@@ -165,6 +165,7 @@ export async function createExpense(
       currency,
     );
     await requireLiveCategoryForWrite(tx, userId, input.categoryId);
+    await requireValidPayer(tx, userId, input.paidBy);
 
     const revision = await nextRevision(tx, userId);
     const created = await tx.expense.create({
@@ -172,6 +173,7 @@ export async function createExpense(
         id,
         userId,
         createdBy: actorId,
+        paidBy: input.paidBy ?? null,
         private: input.private ?? false,
         categoryId: input.categoryId,
         kind: input.kind ?? 'expense',
@@ -219,6 +221,9 @@ export async function updateExpense(
     if (patch.categoryId !== undefined) {
       await requireLiveCategoryForWrite(tx, userId, patch.categoryId);
     }
+    if (patch.paidBy !== undefined && patch.paidBy !== existing.paidBy) {
+      await requireValidPayer(tx, userId, patch.paidBy);
+    }
     if (patch.originalCurrency !== undefined) {
       requireValidOriginal(
         { amountMinor: patch.originalAmountMinor ?? null, currency: patch.originalCurrency },
@@ -247,6 +252,7 @@ export async function updateExpense(
         // `note` is nullable *and* optional, so `undefined` means "leave it" and `null`
         // means "clear it". Collapsing the two would make clearing a note impossible.
         ...(patch.note === undefined ? {} : { note: patch.note }),
+        ...(patch.paidBy === undefined ? {} : { paidBy: patch.paidBy }),
         ...privacyData(existing, patch.private, actorId),
         updatedAt: now,
         revision,
@@ -381,4 +387,34 @@ export function privacyData(
 ): { private?: boolean; createdBy?: string } {
   if (next === undefined || next === existing.private) return {};
   return { private: next, ...(existing.createdBy === null ? { createdBy: actorId } : {}) };
+}
+
+/**
+ * `paidBy` may name only someone who can actually share the expense: a current member of the
+ * household whose book this is, or - for a book with no household - that account itself. Anything
+ * else is a `validation_error` on `paidBy`. Checked only when the value is being set, so editing
+ * other fields of an expense whose payer has since left still works.
+ */
+export async function requireValidPayer(
+  db: Db,
+  bookId: string,
+  paidBy: string | null | undefined,
+): Promise<void> {
+  if (paidBy === undefined || paidBy === null) return;
+  const household = await db.household.findUnique({
+    where: { scopeId: bookId },
+    select: { id: true },
+  });
+  const allowed =
+    household === null
+      ? paidBy === bookId
+      : (await db.householdMember.findFirst({
+          where: { householdId: household.id, userId: paidBy },
+          select: { userId: true },
+        })) !== null;
+  if (!allowed) {
+    throw problems.validation('paidBy must be a member of the household.', {
+      issues: [{ path: 'paidBy', message: 'not a member of this household' }],
+    });
+  }
 }

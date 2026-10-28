@@ -16,6 +16,8 @@ import { AppBar, IconButton, SkeletonBlock } from '../components/Chrome';
 import { Button } from '../components/Button';
 import { Dialog } from '../components/Dialog';
 import { Row, RowSubtitle, RowTitle, Swatch } from '../components/Row';
+import { memberLabel } from '../household/addedBy';
+import { useHouseholdMembers } from '../household/useHouseholdMembers';
 import { useInHousehold } from '../household/useInHousehold';
 import { useSnackbar } from '../components/Snackbar';
 import { KindToggle } from './KindToggle';
@@ -34,6 +36,7 @@ import {
   useFallbackCategory,
   useLastUsedCategoryId,
   useUserCurrency,
+  useUserEmail,
 } from '../db/hooks';
 import { useLocalWrite } from '../db/localWrite';
 import {
@@ -82,6 +85,7 @@ import { RateSheet } from './RateSheet';
 import { hasEdits, saveState } from './formModel';
 import { getReceiptPicker, type PickOutcome } from '../receipts/receiptPicker';
 import { savedHaptic } from '../lib/haptics';
+import { PaidBySheet } from './PaidBySheet';
 import { ReceiptSheet } from '../receipts/ReceiptSheet';
 import { ReceiptSuggestionCard } from '../receipts/ReceiptSuggestionCard';
 import { isScanUnavailable, markScanUnavailable } from '../receipts/scanAvailability';
@@ -136,6 +140,7 @@ type Overlay =
   | 'newCategory'
   | 'currency'
   | 'rate'
+  | 'paidBy'
   | 'discard';
 
 /**
@@ -174,6 +179,8 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
   const lastUsed = useLastUsedCategoryId();
   // Only a household has anyone to hide an expense from.
   const inHousehold = useInHousehold();
+  const members = useHouseholdMembers();
+  const myEmail = useUserEmail().data;
   const currency = useUserCurrency();
   const coloursInUse = useColoursInUse();
 
@@ -220,6 +227,7 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
         date: stored.data.date,
         note: stored.data.note,
         private: stored.data.private,
+        paidBy: stored.data.paidBy,
       };
       setDraft(seeded);
       setInitial(seeded);
@@ -340,6 +348,23 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
   const liveCategories = categories.data ?? [];
   const chosenCategory = liveCategories.find((row) => row.id === live?.categoryId) ?? null;
 
+  // Who paid. Null means whoever added the expense: in edit mode its stored author (an expense the
+  // server has not stamped yet is one this person made), in add mode the person holding the phone.
+  const meId = members.find((member) => member.email === myEmail)?.userId ?? null;
+  const adderId = storedRow?.createdBy ?? meId;
+  const payerId = live?.paidBy ?? adderId;
+  const payerMember = members.find((member) => member.userId === payerId);
+  const payerLabel =
+    payerId === null || payerId === meId
+      ? COPY.household.you
+      : payerMember === undefined
+        ? COPY.household.formerMember
+        : memberLabel(payerMember);
+  const payerOptions = members.map((member) => ({
+    userId: member.userId,
+    label: member.userId === meId ? COPY.household.you : memberLabel(member),
+  }));
+
   // What the form would leave the expense with, not what is stored.
   const receiptData =
     receiptChange.kind === 'set'
@@ -434,6 +459,7 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
         date: live.date,
         note: live.note,
         private: live.private ?? false,
+        paidBy: live.paidBy ?? null,
       });
       await applyReceiptChange(db, queued.recordId, receiptChange);
     });
@@ -721,6 +747,19 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
               <RowTitle>{COPY.form.field.category}</RowTitle>
             </Row>
 
+            {inHousehold && live.private !== true ? (
+              <Row
+                testID="form-paid-by"
+                onPress={() => setOverlay('paidBy')}
+                chevron
+                leading={<Feather name="user" size={20} color={color.text.tertiary} />}
+                trailing={<Text style={styles.valueText}>{payerLabel}</Text>}
+                accessibilityLabel={`${COPY.form.paidBy.label}, ${payerLabel}`}
+              >
+                <RowTitle>{COPY.form.paidBy.label}</RowTitle>
+              </Row>
+            ) : null}
+
             {inHousehold ? (
               <Row
                 testID="form-private"
@@ -841,6 +880,21 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
           setOverlay('none');
         }}
         onCreateNew={() => setOverlay('newCategory')}
+      />
+
+      <PaidBySheet
+        visible={overlay === 'paidBy'}
+        onClose={() => setOverlay('none')}
+        options={payerOptions}
+        selectedId={payerId}
+        onSelect={(userId) => {
+          // Stored only when it differs from whoever added it: choosing the person who would have
+          // paid anyway adds nothing to the row.
+          setDraft((current) =>
+            current === null ? current : { ...current, paidBy: userId === adderId ? null : userId },
+          );
+          setOverlay('none');
+        }}
       />
 
       <CurrencySheet

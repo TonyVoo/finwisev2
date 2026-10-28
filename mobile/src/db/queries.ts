@@ -611,6 +611,10 @@ export interface ExpenseDetail {
   readonly date: string;
   readonly note: string | null;
   readonly private: boolean;
+  /** Who paid, or null for whoever added it. */
+  readonly paidBy: string | null;
+  /** Who added it (server-assigned); null until the server answers, and for old rows. */
+  readonly createdBy: string | null;
 }
 
 /**
@@ -625,7 +629,7 @@ export async function findExpense(
   id: string,
 ): Promise<ExpenseDetail | null> {
   const row = await database.getFirstAsync<Omit<ExpenseDetail, 'private'> & { private: number }>(
-    `SELECT id, categoryId, kind, amountMinor, currency, originalAmountMinor, originalCurrency, date, note, private
+    `SELECT id, categoryId, kind, amountMinor, currency, originalAmountMinor, originalCurrency, date, note, private, paidBy, createdBy
        FROM expenses
       WHERE id = ? AND deletedAt IS NULL`,
     [id],

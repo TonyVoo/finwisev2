@@ -165,6 +165,12 @@ model Expense {
   /// that account is deleted, so a member leaving never costs the household its history.
   createdBy String? @map("created_by") @db.Uuid
 
+  /// Who paid, for splitting a household's expenses; null means whoever added it. Deliberately no
+  /// foreign key: a member leaving must not cost the household its history, so the id stays on the
+  /// rows and the app simply stops counting a payer who is no longer a member. Validated only when
+  /// it is set (`requireValidPayer`).
+  paidBy String? @map("paid_by") @db.Uuid
+
   /// Hidden from every household member but `created_by`: to them the row is a deleted
   /// placeholder. Meaningless outside a household, where nobody else sees the book anyway.
   private Boolean @default(false)

@@ -565,6 +565,9 @@ them as proposals the Designer can reword; changing a row here means changing
 | `account.displayName.tooLong` | `Names can be up to 40 characters.` | Display name screen |
 | `account.displayName.offline` | `You need to be online to change your name.` | Display name screen |
 | `settings.displayName` | `Display name` | Settings row |
+| `form.paidBy.label` | `Paid by` | Expense form, household only |
+| `form.paidBy.title` | `Who paid?` | Expense form, Paid by sheet |
+| `household.formerMember` | `Former member` | Paid by, for someone who has left |
 | `form.private.label` | `Keep private` | Expense form, household only |
 | `form.private.hint` | `Only you can see it. It is left out of everyone else's totals.` | Expense form, household only |
 | `home.private` | `Includes {amount} private` | Home, under the total |

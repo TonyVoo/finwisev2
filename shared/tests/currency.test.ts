@@ -34,6 +34,7 @@ const row = {
   note: null,
   private: false,
   createdBy: UUID_V7,
+  paidBy: null,
   createdAt: NOW,
   updatedAt: NOW,
   deletedAt: null,

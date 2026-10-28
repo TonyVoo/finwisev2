@@ -377,6 +377,8 @@ describe('expense and category reads', () => {
         date: '2026-10-09',
         note: 'Milk',
         private: false,
+        paidBy: null,
+        createdBy: null,
       });
     });
 

@@ -60,6 +60,7 @@ const EXPENSE = {
   note: 'coffee',
   private: false,
   createdBy: null,
+  paidBy: null,
   createdAt: '2026-10-08T10:00:00.000Z',
   updatedAt: '2026-10-08T10:00:00.000Z',
   deletedAt: null,

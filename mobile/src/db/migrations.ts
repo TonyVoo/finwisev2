@@ -407,6 +407,14 @@ const PRIVATE_EXPENSES = `
 ALTER TABLE expenses ADD COLUMN private INTEGER NOT NULL DEFAULT 0;
 `;
 
+/**
+ * Who paid for an expense, for settling up in a household. NULL means whoever added it, which is
+ * every row that exists today, so nothing is backfilled.
+ */
+const PAID_BY = `
+ALTER TABLE expenses ADD COLUMN paidBy TEXT;
+`;
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: 'initial-schema', up: INITIAL_SCHEMA },
   { version: 2, name: 'store-owner', up: STORE_OWNER },
@@ -422,6 +430,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 12, name: 'expense-author', up: EXPENSE_AUTHOR },
   { version: 13, name: 'display-name', up: DISPLAY_NAME },
   { version: 14, name: 'private-expenses', up: PRIVATE_EXPENSES },
+  { version: 15, name: 'paid-by', up: PAID_BY },
 ];
 
 /** Highest version `MIGRATIONS` can bring a database to. */

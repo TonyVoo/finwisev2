@@ -105,6 +105,9 @@ export const Expense = z.strictObject({
   createdBy: Uuid.nullable().describe(
     'Who added it: the account that made the request, which in a household is not the owner whose books it is in. Server-assigned and immutable; `null` for a row from before this was recorded, or once that account is deleted.',
   ),
+  paidBy: Uuid.nullable().describe(
+    "Who paid, for splitting a household's expenses: a member of the household, or `null` meaning whoever added it (every expense from before this existed). Not validated against current membership on read: a member who has since left stays named here.",
+  ),
 });
 
 export const ExpenseCreateRequest = z
@@ -126,6 +129,11 @@ export const ExpenseCreateRequest = z
       .boolean()
       .optional()
       .describe('Hide from the rest of the household. Defaults to false.'),
+    paidBy: Uuid.nullable()
+      .optional()
+      .describe(
+        'Who paid: a current member of the household whose book this is (a solo account may name only itself), or null for whoever added it. Defaults to null.',
+      ),
   })
   .refine(originalPairTogether, ORIGINAL_PAIR_ISSUE);
 
@@ -140,6 +148,11 @@ export const ExpenseUpdateRequest = z
     date: CalendarDate.optional(),
     note: ExpenseNoteInput.optional(),
     private: z.boolean().optional().describe('Only the author may change this.'),
+    paidBy: Uuid.nullable()
+      .optional()
+      .describe(
+        'Any member who may edit the expense may change who paid. Must be a current member of the household whose book this is, or null.',
+      ),
   })
   .refine((v) => Object.keys(v).length > 0, { error: 'at least one field must be present' })
   .refine(originalPairTogether, ORIGINAL_PAIR_ISSUE);

@@ -32,7 +32,12 @@ import { logger } from '../logger.ts';
 import type { ParsedPushItem } from '../sync/batch.ts';
 import { clampClientUpdatedAt, decideLww, inApplyOrder, wasClamped } from '../sync/resolver.ts';
 import { assignCategoryColor, requireOwnCategoryForWrite } from './categoryService.ts';
-import { accountCurrency, requireAccountCurrency, requireValidOriginal } from './expenseService.ts';
+import {
+  accountCurrency,
+  requireAccountCurrency,
+  requireValidOriginal,
+  requireValidPayer,
+} from './expenseService.ts';
 import type {
   Category as CategoryRow,
   Expense as ExpenseRow,
@@ -241,12 +246,15 @@ async function applyExpenseItem(
       requireLive: deletedAt === null,
     });
 
+    await requireValidPayer(tx, userId, fields.paidBy);
+
     const revision = await nextRevision(tx, userId);
     const created = await tx.expense.create({
       data: {
         id: item.id,
         userId,
         createdBy: actorId,
+        paidBy: fields.paidBy ?? null,
         private: fields.private ?? false,
         categoryId,
         kind: fields.kind ?? 'expense',
@@ -285,6 +293,9 @@ async function applyExpenseItem(
   if (fields.currency !== undefined) {
     requireAccountCurrency(fields.currency, await accountCurrency(tx, userId));
   }
+  if (fields.paidBy !== undefined && fields.paidBy !== existing.paidBy) {
+    await requireValidPayer(tx, userId, fields.paidBy);
+  }
   if (fields.originalCurrency !== undefined) {
     requireValidOriginal(
       { amountMinor: fields.originalAmountMinor ?? null, currency: fields.originalCurrency },
@@ -319,6 +330,7 @@ async function applyExpenseItem(
       // `note` is nullable *and* optional: `undefined` means "leave it", `null` means
       // "clear it". Collapsing the two would make clearing a note impossible.
       ...(fields.note === undefined ? {} : { note: fields.note }),
+      ...(fields.paidBy === undefined ? {} : { paidBy: fields.paidBy }),
       ...(fields.private === undefined || fields.private === existing.private
         ? {}
         : {

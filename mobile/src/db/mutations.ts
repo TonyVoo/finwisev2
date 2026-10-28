@@ -45,6 +45,8 @@ export interface NewExpense {
   readonly note?: string | null;
   /** Hide it from the rest of the household. Sent only when set. */
   readonly private?: boolean;
+  /** Who paid, when not whoever adds it (a household member's id). Sent only when set. */
+  readonly paidBy?: string | null;
 }
 
 /** The editable fields of an expense, as a draft the form holds. */
@@ -116,6 +118,9 @@ export async function createExpense(
         note: normaliseNote(expense.note),
         // Only when set, so an ordinary expense's outbox entry is exactly what it always was.
         ...(expense.private === true ? { private: true } : {}),
+        ...(expense.paidBy === undefined || expense.paidBy === null
+          ? {}
+          : { paidBy: expense.paidBy }),
       },
     },
     options,
@@ -151,6 +156,8 @@ export function changedExpenseFields(
   }
   if (draft.date !== stored.date) changed.date = draft.date;
   if ((draft.private ?? false) !== stored.private) changed.private = draft.private ?? false;
+  // null and absent are the same "whoever added it"; a change either way is sent, null included.
+  if ((draft.paidBy ?? null) !== stored.paidBy) changed.paidBy = draft.paidBy ?? null;
 
   const note = normaliseNote(draft.note);
   if (note !== stored.note) changed.note = note;

@@ -163,6 +163,11 @@ export const COPY = {
   },
 
   form: {
+    /** Who paid, for splitting a household's expenses; offered only in a household. */
+    paidBy: {
+      label: 'Paid by',
+      title: 'Who paid?',
+    },
     /** The switch that hides an expense from the rest of the household. */
     private: {
       label: 'Keep private',
@@ -395,6 +400,8 @@ export const COPY = {
       member: 'Member',
     },
     you: 'You',
+    /** Someone who paid but has since left the household. */
+    formerMember: 'Former member',
     invite: {
       action: 'Invite someone',
       title: 'Invite code',

@@ -149,6 +149,10 @@ export const VIETNAMESE_COPY: CopyBundle = {
     },
 
     form: {
+      paidBy: {
+        label: 'Người trả',
+        title: 'Ai đã trả?',
+      },
       private: {
         label: 'Giữ riêng tư',
         hint: 'Chỉ bạn nhìn thấy. Khoản này không tính vào tổng của người khác.',
@@ -351,6 +355,7 @@ export const VIETNAMESE_COPY: CopyBundle = {
         member: 'Thành viên',
       },
       you: 'Bạn',
+      formerMember: 'Thành viên cũ',
       invite: {
         action: 'Mời thêm người',
         title: 'Mã mời',

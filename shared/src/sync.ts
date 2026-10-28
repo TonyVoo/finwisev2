@@ -142,6 +142,7 @@ export const ExpenseSyncFields = z
     date: CalendarDate.optional(),
     note: ExpenseNoteInput.optional(),
     private: z.boolean().optional(),
+    paidBy: Uuid.nullable().optional(),
     deletedAt: Timestamp.nullable().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, { error: 'fields must not be empty' })

@@ -1680,6 +1680,7 @@ paths:
                     note: Weekly shop
                     private: false
                     createdBy: '0192f3a0-0000-7f1e-9b2d-0000000000aa'
+                    paidBy: null
                     createdAt: '2026-10-05T18:02:11.000Z'
                     updatedAt: '2026-10-05T18:02:11.000Z'
                     deletedAt: null
@@ -1871,6 +1872,7 @@ paths:
                   note: Weekly shop
                   private: false
                   createdBy: '0192f3a0-0000-7f1e-9b2d-0000000000aa'
+                  paidBy: null
                   createdAt: '2026-10-05T18:02:11.000Z'
                   updatedAt: '2026-10-06T09:15:00.000Z'
                   deletedAt: '2026-10-06T09:15:00.000Z'
@@ -2344,6 +2346,7 @@ paths:
                           note: null
                           private: false
                           createdBy: '0192f3a0-0000-7f1e-9b2d-0000000000aa'
+                          paidBy: null
                           createdAt: '2026-10-06T13:05:00.000Z'
                           updatedAt: '2026-10-06T13:05:00.000Z'
                           deletedAt: null
@@ -2377,6 +2380,7 @@ paths:
                           note: null
                           private: false
                           createdBy: '0192f3a0-0000-7f1e-9b2d-0000000000aa'
+                          paidBy: null
                           createdAt: '2026-10-06T13:05:00.000Z'
                           updatedAt: '2026-10-06T15:00:00.000Z'
                           deletedAt: '2026-10-06T15:00:00.000Z'
@@ -2595,6 +2599,7 @@ paths:
                           note: Flat white
                           private: false
                           createdBy: '0192f3a0-0000-7f1e-9b2d-0000000000aa'
+                          paidBy: null
                           createdAt: '2026-10-06T13:05:00.000Z'
                           updatedAt: '2026-10-06T13:05:00.000Z'
                           deletedAt: null
@@ -2623,6 +2628,7 @@ paths:
                           note: Flat white, large
                           private: false
                           createdBy: '0192f3a0-0000-7f1e-9b2d-0000000000aa'
+                          paidBy: null
                           createdAt: '2026-10-06T13:05:00.000Z'
                           updatedAt: '2026-10-06T14:30:00.000Z'
                           deletedAt: null
@@ -3712,6 +3718,7 @@ components:
         - note
         - private
         - createdBy
+        - paidBy
         - createdAt
         - updatedAt
         - deletedAt
@@ -3769,6 +3776,16 @@ components:
             gets `validation_error` over REST and a per-record `immutable_field` on sync. `null`
             for a row from before this was recorded, or once that account is deleted (the
             expense stays).
+        paidBy:
+          oneOf:
+            - { $ref: '#/components/schemas/Uuid' }
+            - type: 'null'
+          description: |
+            Who paid, for splitting a household's expenses: a member of the household, or `null`
+            meaning whoever added it (every expense from before this existed). Not checked against
+            current membership when read: a member who has since left stays named here, and the app
+            leaves that expense out of the arithmetic. Hidden (`null`) on a private expense's
+            placeholder.
         createdAt: { $ref: '#/components/schemas/CreatedAt' }
         updatedAt: { $ref: '#/components/schemas/UpdatedAt' }
         deletedAt: { $ref: '#/components/schemas/DeletedAt' }
@@ -3938,6 +3955,15 @@ components:
           description: |
             Hide from the rest of the household (only the author may set or change it). Defaults
             to `false`.
+        paidBy:
+          oneOf:
+            - { $ref: '#/components/schemas/Uuid' }
+            - type: 'null'
+          description: |
+            Who paid. A current member of the household whose book this is (a solo account may name
+            only itself), or `null` for whoever added it. Any member who may edit the expense may
+            change it. Anyone else is `validation_error` on `paidBy` (a per-record `invalid` on sync).
+            Checked only when the value is being set.
 
     ExpenseUpdateRequest:
       type: object
@@ -3981,6 +4007,15 @@ components:
           description: |
             Hide from the rest of the household (only the author may set or change it). Defaults
             to `false`.
+        paidBy:
+          oneOf:
+            - { $ref: '#/components/schemas/Uuid' }
+            - type: 'null'
+          description: |
+            Who paid. A current member of the household whose book this is (a solo account may name
+            only itself), or `null` for whoever added it. Any member who may edit the expense may
+            change it. Anyone else is `validation_error` on `paidBy` (a per-record `invalid` on sync).
+            Checked only when the value is being set.
 
     ExpenseListResponse:
       type: object
@@ -4316,6 +4351,11 @@ components:
         private:
           type: boolean
           description: Hide from the rest of the household (author only).
+        paidBy:
+          oneOf:
+            - { $ref: '#/components/schemas/Uuid' }
+            - type: 'null'
+          description: Who paid; a current household member or null. Same rules as `ExpenseCreateRequest.paidBy`.
         deletedAt: { $ref: '#/components/schemas/DeletedAt' }
 
     GoalSyncFields:

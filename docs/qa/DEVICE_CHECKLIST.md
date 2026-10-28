@@ -177,6 +177,13 @@ Haptics and animation can only be judged by hand. Run this on a real phone.
       with that one picked; with VoiceOver/TalkBack the row's actions include **Select expense**. If the long
       press does not start a selection on a device, say so: in the iOS simulator it started reliably only some
       of the time, and this has not been seen on hardware.
+- [ ] **Paid by:** in a household, the expense form has a **Paid by** row (not shown outside a household, and not
+      while **Keep private** is on). It names you by default; tap it to pick another member (you are ticked).
+      Add an expense paid by the other person and save: on their phone, after a sync, the row opens naming them.
+      On an expense the other person added, it names them until you change it; choosing yourself and saving
+      works, and choosing them again puts it back (nothing extra is stored). Leave the household as the other
+      person, then open an expense they paid: it says "Former member". Nothing in Home or Summary changes yet:
+      who owes whom comes with the Balances screen.
 - [ ] **Display name:** Settings -> **Display name** -> type a name -> Save. The row shows it. In a household,
       the Members list, the member action sheet, the hand-over and remove dialogs and the "Added by" line on
       expenses all use that name instead of the start of the email; a member with no name still shows the
