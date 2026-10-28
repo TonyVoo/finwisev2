@@ -141,7 +141,7 @@ describe('EDGE-15 — the rendered string comes from the locale', () => {
     expect(render('de-DE', 'USD', 1250)).not.toContain('$12.50');
   });
 
-  it("names a decimal key that does not exist on a comma-separator device", () => {
+  it('names a decimal key that does not exist on a comma-separator device', () => {
     // `06-expense-form.md` rule 12 labels the decimal key with "the locale decimal
     // separator, `.` or `,`". `EDGE-03` step 2 says to press `.`. On de-DE and fr-FR that
     // key is a comma, so the step as written cannot be followed.

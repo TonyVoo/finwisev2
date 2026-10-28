@@ -22,6 +22,7 @@ import {
   useLiveCategories,
   usePendingRecordCount,
   useUserCurrency,
+  useUserDisplayName,
   useUserEmail,
 } from '@/db/hooks';
 import { LanguageSheet, languagePreferenceLabel } from '@/i18n/LanguageSheet';
@@ -75,6 +76,7 @@ export default function SettingsScreen() {
   const [exporting, setExporting] = useState(false);
   const [choosingTheme, setChoosingTheme] = useState(false);
   const [choosingTabBar, setChoosingTabBar] = useState(false);
+  const displayName = useUserDisplayName();
   const tabBar = useTabBarStyle();
   const [choosingLanguage, setChoosingLanguage] = useState(false);
   const language = useLanguage();
@@ -144,6 +146,19 @@ export default function SettingsScreen() {
           trailing={<Text style={styles.value}>{email.data ?? ''}</Text>}
         >
           <RowTitle>{COPY.settings.email}</RowTitle>
+        </Row>
+
+        <Row
+          testID="settings-display-name"
+          leading={<IconBadge name="user" />}
+          onPress={() => router.push('/(app)/settings/display-name')}
+          chevron
+          accessibilityLabel={`${COPY.settings.displayName}, ${displayName.data ?? COPY.account.displayName.none}`}
+          trailing={
+            <Text style={styles.value}>{displayName.data ?? COPY.account.displayName.none}</Text>
+          }
+        >
+          <RowTitle>{COPY.settings.displayName}</RowTitle>
         </Row>
 
         {/* Only while unverified, and only once the local row has answered: `false` is not

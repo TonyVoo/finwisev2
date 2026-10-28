@@ -393,6 +393,11 @@ const EXPENSE_AUTHOR = `
 ALTER TABLE expenses ADD COLUMN createdBy TEXT;
 `;
 
+/** The account's display name, kept so Settings can show it offline. NULL when none is chosen. */
+const DISPLAY_NAME = `
+ALTER TABLE user ADD COLUMN displayName TEXT;
+`;
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: 'initial-schema', up: INITIAL_SCHEMA },
   { version: 2, name: 'store-owner', up: STORE_OWNER },
@@ -406,6 +411,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 10, name: 'savings-goals', up: GOALS },
   { version: 11, name: 'foreign-amounts', up: FOREIGN_AMOUNTS },
   { version: 12, name: 'expense-author', up: EXPENSE_AUTHOR },
+  { version: 13, name: 'display-name', up: DISPLAY_NAME },
 ];
 
 /** Highest version `MIGRATIONS` can bring a database to. */

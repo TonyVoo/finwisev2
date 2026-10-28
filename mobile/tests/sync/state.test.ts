@@ -1,9 +1,4 @@
-import {
-  type SyncInputs,
-  type SyncPillState,
-  isPillTappable,
-  syncPillState,
-} from '@/sync/state';
+import { type SyncInputs, type SyncPillState, isPillTappable, syncPillState } from '@/sync/state';
 
 /**
  * `docs/design/02-offline-and-sync.md` §3's table, as a table.

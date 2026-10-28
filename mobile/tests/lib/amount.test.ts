@@ -29,7 +29,8 @@ const JPY = 0;
 function press(keys: string, decimals: number, from: AmountInput = EMPTY_AMOUNT): AmountInput {
   let input = from;
   for (const key of keys) {
-    input = key === '.' ? pressDecimal(input).input : pressDigit(input, Number(key), decimals).input;
+    input =
+      key === '.' ? pressDecimal(input).input : pressDigit(input, Number(key), decimals).input;
   }
   return input;
 }

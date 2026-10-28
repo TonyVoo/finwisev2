@@ -29,6 +29,8 @@ import type { SqliteDatabase, SqliteExecutor } from './sqlite';
 export interface UserRow {
   readonly id: string;
   readonly email: string;
+  /** What other people see for this account, or null when none is chosen. */
+  readonly displayName: string | null;
   readonly currency: string;
   readonly emailVerified: boolean;
   readonly createdAt: string;
@@ -37,7 +39,10 @@ export interface UserRow {
 export async function readUser(executor: SqliteExecutor): Promise<UserRow | null> {
   const row = await executor.getFirstAsync<
     Omit<UserRow, 'emailVerified'> & { emailVerified: number }
-  >('SELECT id, email, currency, emailVerified, createdAt FROM user WHERE onlyRow = 1', []);
+  >(
+    'SELECT id, email, displayName, currency, emailVerified, createdAt FROM user WHERE onlyRow = 1',
+    [],
+  );
   return row === null ? null : { ...row, emailVerified: row.emailVerified === 1 };
 }
 
@@ -49,15 +54,23 @@ export async function readUser(executor: SqliteExecutor): Promise<UserRow | null
  */
 export async function writeUser(executor: SqliteExecutor, user: User): Promise<void> {
   await executor.runAsync(
-    `INSERT INTO user (onlyRow, id, email, currency, emailVerified, createdAt)
-          VALUES (1, ?, ?, ?, ?, ?)
+    `INSERT INTO user (onlyRow, id, email, displayName, currency, emailVerified, createdAt)
+          VALUES (1, ?, ?, ?, ?, ?, ?)
        ON CONFLICT (onlyRow) DO UPDATE SET
             id        = excluded.id,
             email     = excluded.email,
+            displayName = excluded.displayName,
             currency  = excluded.currency,
             emailVerified = excluded.emailVerified,
             createdAt = excluded.createdAt`,
-    [user.id, user.email, user.currency, user.emailVerified === true ? 1 : 0, user.createdAt],
+    [
+      user.id,
+      user.email,
+      user.displayName ?? null,
+      user.currency,
+      user.emailVerified === true ? 1 : 0,
+      user.createdAt,
+    ],
   );
 }
 
@@ -84,6 +97,15 @@ export async function readUserEmail(database: SqliteDatabase): Promise<string | 
     [],
   );
   return row?.email ?? null;
+}
+
+/** The account's display name, or null when there is none (or no user row). */
+export async function readUserDisplayName(database: SqliteDatabase): Promise<string | null> {
+  const row = await database.getFirstAsync<{ displayName: string | null }>(
+    'SELECT displayName FROM user WHERE onlyRow = 1',
+    [],
+  );
+  return row?.displayName ?? null;
 }
 
 /** Whether the account's email is verified. False when there is no user row. */

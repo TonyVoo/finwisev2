@@ -5,7 +5,7 @@ import { type MonthKey, monthRange, stepMonth } from '../lib/calendar';
 import { TREND_MONTHS } from '../summary/trendModel';
 import { useDatabase } from './DatabaseProvider';
 import { readCategoryRenameAnswered, readCategoryReviewPending } from './onboarding';
-import { readEmailVerified, readUserCurrency, readUserEmail } from './user';
+import { readEmailVerified, readUserCurrency, readUserDisplayName, readUserEmail } from './user';
 import {
   type CategoryListItem,
   type CategorySpend,
@@ -297,6 +297,15 @@ export function useUserCurrency(): UseQueryResult<string | null> {
 }
 
 /** The signed-in account's email, for the read-only Settings row. */
+/** The account's own display name, for Settings. */
+export function useUserDisplayName(): UseQueryResult<string | null> {
+  const database = useDatabase();
+  return useQuery({
+    queryKey: queryKeys.user.displayName(),
+    queryFn: () => readUserDisplayName(database),
+  });
+}
+
 export function useUserEmail(): UseQueryResult<string | null> {
   const database = useDatabase();
   return useQuery({

@@ -11,6 +11,7 @@ import { Row, RowSubtitle, RowTitle } from '@/components/Row';
 import { useSnackbar } from '@/components/Snackbar';
 import { COPY } from '@/copy/strings';
 import { useUserEmail } from '@/db/hooks';
+import { memberLabel } from '@/household/addedBy';
 import { InviteSheet } from '@/household/InviteSheet';
 import { JoinSheet } from '@/household/JoinSheet';
 import { MemberSheet } from '@/household/MemberSheet';
@@ -200,14 +201,14 @@ export default function HouseholdScreen() {
                     testID={canRemove ? `household-member-${member.userId}` : undefined}
                     lastInGroup={index === data.members.length - 1}
                     onPress={canRemove ? () => setActingOn(member) : undefined}
-                    accessibilityLabel={`${member.email}, ${COPY.household.role[member.role]}`}
+                    accessibilityLabel={`${memberLabel(member)}, ${COPY.household.role[member.role]}`}
                     accessibilityHint={
                       canRemove
-                        ? COPY.household.a11y.memberActions.replace('{email}', member.email)
+                        ? COPY.household.a11y.memberActions.replace('{email}', memberLabel(member))
                         : undefined
                     }
                   >
-                    <RowTitle>{member.email}</RowTitle>
+                    <RowTitle>{memberLabel(member)}</RowTitle>
                     <RowSubtitle>
                       {isYou
                         ? `${COPY.household.role[member.role]} · ${COPY.household.you}`
@@ -291,11 +292,11 @@ function dialogTitle(confirming: Confirming | null): string {
   if (confirming === null) return '';
   if (confirming.kind === 'create') return COPY.household.createConfirm.title;
   if (confirming.kind === 'transfer') {
-    return COPY.household.transfer.title.replace('{email}', confirming.member.email);
+    return COPY.household.transfer.title.replace('{email}', memberLabel(confirming.member));
   }
   if (confirming.kind === 'leave') return COPY.household.leave.title;
   if (confirming.kind === 'delete') return COPY.household.delete.title;
-  return COPY.household.remove.title.replace('{email}', confirming.member.email);
+  return COPY.household.remove.title.replace('{email}', memberLabel(confirming.member));
 }
 
 function dialogBody(confirming: Confirming | null): string {

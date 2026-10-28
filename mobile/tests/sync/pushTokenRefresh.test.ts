@@ -92,7 +92,9 @@ async function rig(options: { onRefresh?: () => Promise<void> } = {}): Promise<R
     }
 
     if (request.method === 'post' && request.path === '/v1/sync') {
-      const body = request.body as { changes: { entity: string; id: string; clientMutationId: string; updatedAt: string }[] };
+      const body = request.body as {
+        changes: { entity: string; id: string; clientMutationId: string; updatedAt: string }[];
+      };
       return {
         status: 200,
         body: pushResponse(

@@ -90,6 +90,10 @@ async function storeMembers(
     await deleteMeta(executor, [META_KEYS.householdMembers]);
     return;
   }
-  const members = household.members.map(({ userId, email }) => ({ userId, email }));
+  const members = household.members.map(({ userId, email, displayName }) => ({
+    userId,
+    email,
+    displayName,
+  }));
   await writeMeta(executor, META_KEYS.householdMembers, JSON.stringify(members));
 }

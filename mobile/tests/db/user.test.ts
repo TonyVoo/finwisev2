@@ -23,6 +23,7 @@ import { createTestDatabase, type TestDatabase } from '../support/sqlite';
 const USER_A: User = {
   id: '0192f5a0-0000-7000-8000-00000000a001',
   email: 'ada@example.com',
+  displayName: null,
   currency: 'USD',
   emailVerified: false,
   createdAt: '2026-10-08T10:00:00.000Z',
@@ -31,6 +32,7 @@ const USER_A: User = {
 const USER_B: User = {
   id: '0192f5a0-0000-7000-8000-00000000b001',
   email: 'grace@example.com',
+  displayName: null,
   currency: 'JPY',
   emailVerified: false,
   createdAt: '2026-10-09T11:00:00.000Z',
@@ -311,5 +313,36 @@ describe('through the session controller', () => {
 
     await writeUser(database, { ...USER_A, emailVerified: true });
     await expect(readUser(database)).resolves.toMatchObject({ emailVerified: true });
+  });
+
+  it('keeps the display name, and lets it be cleared', async () => {
+    await writeUser(database, {
+      id: '0192f5a0-0000-7000-8000-00000000a001',
+      email: 'ada@example.com',
+      displayName: 'Ada',
+      currency: 'USD',
+      createdAt: '2026-10-01T00:00:00.000Z',
+    });
+    expect((await readUser(database))?.displayName).toBe('Ada');
+
+    await writeUser(database, {
+      id: '0192f5a0-0000-7000-8000-00000000a001',
+      email: 'ada@example.com',
+      displayName: null,
+      currency: 'USD',
+      createdAt: '2026-10-01T00:00:00.000Z',
+    });
+    expect((await readUser(database))?.displayName).toBeNull();
+  });
+
+  it('reads an older server answer, with no name at all, as none', async () => {
+    await writeUser(database, {
+      id: '0192f5a0-0000-7000-8000-00000000a001',
+      email: 'ada@example.com',
+      currency: 'USD',
+      createdAt: '2026-10-01T00:00:00.000Z',
+    });
+
+    expect((await readUser(database))?.displayName).toBeNull();
   });
 });

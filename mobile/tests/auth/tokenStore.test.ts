@@ -137,7 +137,7 @@ describe('createSecureTokenStore', () => {
       await expect(store.read()).resolves.toMatchObject({ userId: USER_ID, refreshToken: 'r-old' });
     });
 
-    it("ignores an access token that belongs to a different owner than the refresh token", async () => {
+    it('ignores an access token that belongs to a different owner than the refresh token', async () => {
       await store.write(sessionFromTokenPair(PAIR, USER_ID, ISSUED_AT));
       mocked.__store.set(
         'expenseTracker.accessToken',

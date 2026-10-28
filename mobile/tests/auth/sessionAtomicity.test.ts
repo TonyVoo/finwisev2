@@ -155,34 +155,31 @@ describe('signing in as a different user', () => {
    * property its sibling file asserts — nothing is published before the store is safe to
    * read — and takes the destructive step out of the failure path.
    */
-  it(
-    'keeps the previous account data when the sign-in cannot store its tokens',
-    async () => {
-      const controller = createSessionController({
-        tokenStore: {
-          read: async () => null,
-          write: () => Promise.reject(new Error('keychain unavailable')),
-          clear: async () => undefined,
-        },
-        localStore: createSqliteLocalStore(database),
-        refreshTokens: async () => tokenPair('2'),
-        clock: () => ISSUED_AT,
-      });
-      await controller.initialize();
+  it('keeps the previous account data when the sign-in cannot store its tokens', async () => {
+    const controller = createSessionController({
+      tokenStore: {
+        read: async () => null,
+        write: () => Promise.reject(new Error('keychain unavailable')),
+        clear: async () => undefined,
+      },
+      localStore: createSqliteLocalStore(database),
+      refreshTokens: async () => tokenPair('2'),
+      clock: () => ISSUED_AT,
+    });
+    await controller.initialize();
 
-      await expect(controller.signIn(authResponse(USER_B, 'user-b'))).rejects.toThrow(
-        'keychain unavailable',
-      );
+    await expect(controller.signIn(authResponse(USER_B, 'user-b'))).rejects.toThrow(
+      'keychain unavailable',
+    );
 
-      // No session, which is correct and asserted elsewhere too...
-      expect(controller.getSnapshot()).toEqual({ status: 'anonymous', expired: false });
-      // ...and USER_A's undrained work is still on disk, which is not.
-      expect(await listLiveCategories(database)).toHaveLength(1);
-      expect(await countPendingRecords(database)).toBe(2);
-      // Nor is the store left claiming an owner who has no session.
-      await expect(createSqliteLocalStore(database).readOwner()).resolves.toBe(USER_A);
-    },
-  );
+    // No session, which is correct and asserted elsewhere too...
+    expect(controller.getSnapshot()).toEqual({ status: 'anonymous', expired: false });
+    // ...and USER_A's undrained work is still on disk, which is not.
+    expect(await listLiveCategories(database)).toHaveLength(1);
+    expect(await countPendingRecords(database)).toBe(2);
+    // Nor is the store left claiming an owner who has no session.
+    await expect(createSqliteLocalStore(database).readOwner()).resolves.toBe(USER_A);
+  });
 
   /**
    * `AUTH-21`. The owner and the tokens are three independent secure-store values written

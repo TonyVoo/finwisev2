@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { Button } from '../components/Button';
 import { Sheet } from '../components/Sheet';
 import { COPY } from '../copy/strings';
+import { memberLabel } from './addedBy';
 import { space } from '../theme/tokens';
 import { createStyles } from '../theme/ThemeProvider';
 
@@ -28,7 +29,7 @@ export function MemberSheet({
   return (
     <Sheet
       visible={member !== null}
-      title={member?.email ?? ''}
+      title={member === null ? '' : memberLabel(member)}
       onClose={onClose}
       testID={MEMBER_SHEET_TEST_ID}
     >

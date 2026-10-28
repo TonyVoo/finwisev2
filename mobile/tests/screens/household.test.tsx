@@ -22,12 +22,14 @@ function household(role: 'owner' | 'member'): Household {
   const owner = {
     userId: role === 'owner' ? ME : OWNER,
     email: role === 'owner' ? 'ana@example.com' : 'bao@example.com',
+    displayName: null,
     role: 'owner' as const,
     joinedAt: '2026-10-20T09:00:00.000Z',
   };
   const other = {
     userId: role === 'owner' ? OWNER : ME,
     email: role === 'owner' ? 'bao@example.com' : 'ana@example.com',
+    displayName: null,
     role: 'member' as const,
     joinedAt: '2026-10-21T09:00:00.000Z',
   };
@@ -157,7 +159,7 @@ describe('a person in no household', () => {
     await pressOn('household-create-dialog-confirm');
 
     await waitFor(() => expect(screen.queryByText(COPY.household.snack.created)).not.toBeNull());
-    expect(screen.getByText('ana@example.com')).toBeTruthy();
+    expect(screen.getByText('Ana', { exact: false })).toBeTruthy();
     // "Owner", plus "You" once the device has learned who it is.
     expect(screen.getByText(new RegExp(`^${COPY.household.role.owner}`))).toBeTruthy();
     expect(server.calls()).toContain('POST /v1/household');
@@ -258,9 +260,26 @@ describe('the owner of a household', () => {
   it('sees the members with their roles', async () => {
     await mount(fakeServer(household('owner')));
 
-    await waitFor(() => expect(screen.queryByText('bao@example.com')).not.toBeNull());
-    expect(screen.getByText('ana@example.com')).toBeTruthy();
+    await waitFor(() => expect(screen.queryByText('Bao')).not.toBeNull());
+    expect(screen.getByText('Ana', { exact: false })).toBeTruthy();
     expect(screen.getAllByText(COPY.household.role.member).length).toBeGreaterThan(0);
+  });
+
+  it('names a member by the name they chose, and by their email when they chose none', async () => {
+    const withName = household('owner');
+    await mount(
+      fakeServer({
+        ...withName,
+        members: withName.members.map((m) =>
+          m.userId === OWNER ? { ...m, displayName: 'Bảo' } : m,
+        ),
+      }),
+    );
+
+    await waitFor(() => expect(screen.queryByText('Bảo')).not.toBeNull());
+    expect(screen.queryByText('bao@example.com')).toBeNull();
+    // The other member has no name, so the email's start stands in.
+    expect(screen.getByText('Ana', { exact: false })).toBeTruthy();
   });
 
   it('can make an invite code, which is shown once with a way to share it', async () => {
@@ -284,7 +303,7 @@ describe('the owner of a household', () => {
     await pressOn('household-member-remove');
     await waitFor(() =>
       expect(
-        screen.queryByText(COPY.household.remove.title.replace('{email}', 'bao@example.com')),
+        screen.queryByText(COPY.household.remove.title.replace('{email}', 'Bao')),
       ).not.toBeNull(),
     );
     await pressOn('household-remove-dialog-confirm');
@@ -312,7 +331,7 @@ describe('the owner of a household', () => {
     await pressOn('household-member-transfer');
     await waitFor(() =>
       expect(
-        screen.queryByText(COPY.household.transfer.title.replace('{email}', 'bao@example.com')),
+        screen.queryByText(COPY.household.transfer.title.replace('{email}', 'Bao')),
       ).not.toBeNull(),
     );
     expect(server.calls()).not.toContain('POST /v1/household/transfer');
@@ -385,7 +404,7 @@ describe('staying current', () => {
     });
     const server = fakeServer(household('owner'));
     await mount(server);
-    await waitFor(() => expect(screen.queryByText('bao@example.com')).not.toBeNull());
+    await waitFor(() => expect(screen.queryByText('Bao')).not.toBeNull());
     const reads = () => server.calls().filter((call) => call === 'GET /v1/household').length;
     expect(reads()).toBe(1);
 
@@ -397,6 +416,7 @@ describe('staying current', () => {
         {
           userId: '0192f5a0-0000-7000-8000-00000000d001',
           email: 'chi@example.com',
+          displayName: null,
           role: 'member' as const,
           joinedAt: '2026-10-22T09:00:00.000Z',
         },
@@ -404,7 +424,7 @@ describe('staying current', () => {
     };
     await act(async () => handlers.forEach((handler) => handler('active')));
 
-    await waitFor(() => expect(screen.queryByText('chi@example.com')).not.toBeNull());
+    await waitFor(() => expect(screen.queryByText('Chi')).not.toBeNull());
     expect(reads()).toBe(2);
   });
 
@@ -416,7 +436,7 @@ describe('staying current', () => {
     });
     const server = fakeServer(household('owner'));
     await mount(server);
-    await waitFor(() => expect(screen.queryByText('bao@example.com')).not.toBeNull());
+    await waitFor(() => expect(screen.queryByText('Bao')).not.toBeNull());
 
     await act(async () => handlers.forEach((handler) => handler('background')));
 

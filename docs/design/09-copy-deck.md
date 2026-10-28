@@ -544,6 +544,15 @@ them as proposals the Designer can reword; changing a row here means changing
 | `tabBarStyle.hint.compact` | `A small bar that floats in the middle.` | Tab bar style sheet |
 | `tabBarStyle.hint.wide` | `Spans the screen, with the same slot for each tab.` | Tab bar style sheet |
 | `tabBarStyle.hint.labelled` | `Spans the screen, with a name under every icon.` | Tab bar style sheet |
+| `account.displayName.title` | `Display name` | Display name screen |
+| `account.displayName.field` | `Name` | Display name screen |
+| `account.displayName.hint` | `This is the name other people in your household see. Leave it empty to show the start of your email instead.` | Display name screen |
+| `account.displayName.save` | `Save` | Display name screen |
+| `account.displayName.saved` | `Name saved.` | Snackbar after saving the display name |
+| `account.displayName.none` | `Not set` | Settings row value |
+| `account.displayName.tooLong` | `Names can be up to 40 characters.` | Display name screen |
+| `account.displayName.offline` | `You need to be online to change your name.` | Display name screen |
+| `settings.displayName` | `Display name` | Settings row |
 | `household.addedBy` | `Added by {name}` | Expense row, in a shared household |
 | `household.addedByYou` | `Added by you` | Expense row, in a shared household |
 | `household.members` | `Members` | Household screen |

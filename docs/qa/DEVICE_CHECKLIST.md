@@ -154,6 +154,12 @@ Haptics and animation can only be judged by hand. Run this on a real phone.
 - [ ] **Search** is a screen of its own: tapping the magnifier on Home opens it with the keyboard up, a
       back arrow, category chips and a prompt. Typing finds expenses from any month with "N results - total";
       a result opens its editor; swipe-delete works with Undo; back returns to an unchanged Home.
+- [ ] **Display name:** Settings -> **Display name** -> type a name -> Save. The row shows it. In a household,
+      the Members list, the member action sheet, the hand-over and remove dialogs and the "Added by" line on
+      expenses all use that name instead of the start of the email; a member with no name still shows the
+      email's start. Emptying the field and saving goes back to that. Offline: "You need to be online...".
+- [ ] **Tab bar styles:** Settings -> **Tab bar** offers Compact, Wide and With labels; each applies at once, is
+      remembered after a restart, and keeps Home, Summary and Settings clear of it. With labels every tab is named.
 - [ ] **Floating tab bar:** a capsule floats above the bottom edge (clear of the home indicator), with the
       active tab showing icon and label on a highlight and the other as an icon alone. Switching gives a
       light tick; the last row of Home and the last card of Summary scroll fully clear of it, and the add

@@ -26,12 +26,7 @@ const RULES: ReadonlyArray<readonly [CategoryIconName, readonly string[]]> = [
 ];
 
 function normalise(name: string): string {
-  return name
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/đ/g, 'd')
-    .toLowerCase()
-    .trim();
+  return name.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').toLowerCase().trim();
 }
 
 export function categoryIcon(name: string): CategoryIconName {
