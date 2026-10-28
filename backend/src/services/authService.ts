@@ -391,6 +391,9 @@ export async function deleteAccount(db: Db, userId: string, password: string): P
       await tx.expense.deleteMany({ where: { userId: owned.scopeId } });
       await tx.user.delete({ where: { id: owned.scopeId } });
     }
+    // Private expenses they added to a household's book are theirs alone: with the account
+    // gone nobody could ever see them, and leaving them behind would orphan them.
+    await tx.expense.deleteMany({ where: { createdBy: userId, private: true } });
     await tx.expense.deleteMany({ where: { userId } });
     await tx.user.delete({ where: { id: userId } });
   });

@@ -201,3 +201,59 @@ export async function ensureOwnDefaultCategory(tx: Db, userId: string): Promise<
     })),
   });
 }
+
+/**
+ * Give a person back the private expenses they added to a household's book.
+ *
+ * Private means "only I see it", so when that person stops being a member - leaves, is removed,
+ * or the household is deleted - their private expenses go with them rather than staying behind
+ * in books they can no longer open. Each moves to their own account, filed under their category
+ * of the same name (case-insensitively) or, failing that, their Uncategorized default, and gets
+ * a fresh revision from their own counter so their devices pick it up when they resync.
+ *
+ * Shared expenses stay: they belong to the household. Deleted ones stay too - they are
+ * placeholders to everyone else and have nothing to hand back.
+ */
+export async function handBackPrivateExpenses(
+  tx: Db,
+  bookId: string,
+  memberId: string,
+): Promise<void> {
+  const rows = await tx.expense.findMany({
+    where: { userId: bookId, createdBy: memberId, private: true, deletedAt: null },
+    orderBy: { revision: 'asc' },
+  });
+  if (rows.length === 0) return;
+
+  // Their own books may be empty (a creator who handed over and left): a category must exist.
+  await ensureOwnDefaultCategory(tx, memberId);
+
+  const theirs = await tx.category.findMany({ where: { userId: memberId, deletedAt: null } });
+  const byName = new Map(theirs.map((category) => [category.name.toLowerCase(), category.id]));
+  const fallback = theirs.find((category) => category.isDefault)?.id;
+  if (fallback === undefined) throw new Error('a person returning to their books has no default');
+
+  const bookCategories = await tx.category.findMany({
+    where: { id: { in: [...new Set(rows.map((row) => row.categoryId))] } },
+    select: { id: true, name: true },
+  });
+  const nameOf = new Map(bookCategories.map((category) => [category.id, category.name]));
+
+  const revisions = await nextRevisionBlock(tx, memberId, rows.length);
+  for (const [index, row] of rows.entries()) {
+    const categoryId = byName.get((nameOf.get(row.categoryId) ?? '').toLowerCase()) ?? fallback;
+    await tx.expense.update({
+      where: { id: row.id },
+      data: {
+        userId: memberId,
+        categoryId,
+        private: false,
+        revision: revisions[index] ?? 1,
+      },
+    });
+  }
+  await tx.expenseReceipt.updateMany({
+    where: { expenseId: { in: rows.map((row) => row.id) } },
+    data: { userId: memberId },
+  });
+}

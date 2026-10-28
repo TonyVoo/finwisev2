@@ -13,6 +13,7 @@ import { isUniqueViolation } from '../db/errors.ts';
 import {
   createBook,
   ensureOwnDefaultCategory,
+  handBackPrivateExpenses,
   mergeBooks,
   moveBooks,
   unusablePasswordHash,
@@ -194,8 +195,14 @@ export async function leaveHousehold(db: Db, userId: string): Promise<void> {
   if (membership.role === 'owner') throw ownerCannotLeave();
 
   await db.$transaction(async (tx) => {
+    const { scopeId } = await tx.household.findUniqueOrThrow({
+      where: { id: membership.householdId },
+      select: { scopeId: true },
+    });
     await tx.householdMember.delete({ where: { userId } });
     await ensureOwnDefaultCategory(tx, userId);
+    // Private means "only I see it": it goes with the person, not into books they can't open.
+    await handBackPrivateExpenses(tx, scopeId, userId);
   });
   logger.info('household left', { userId, householdId: membership.householdId });
 }
@@ -211,6 +218,11 @@ export async function removeMember(db: Db, ownerUserId: string, memberId: string
     // Not a member of *this* household: the same 404 as an unknown id, so ids cannot be probed.
     if (removed.count !== 1) throw problems.notFound('No such member.');
     await ensureOwnDefaultCategory(tx, memberId);
+    const { scopeId } = await tx.household.findUniqueOrThrow({
+      where: { id: owner.householdId },
+      select: { scopeId: true },
+    });
+    await handBackPrivateExpenses(tx, scopeId, memberId);
   });
 
   logger.info('household member removed', { userId: ownerUserId, householdId: owner.householdId });
@@ -224,11 +236,26 @@ export async function deleteHousehold(db: Db, userId: string): Promise<void> {
       where: { id: owner.householdId },
       select: { id: true, ownerId: true, scopeId: true },
     });
+    // Every other member gets their private expenses back first: they are theirs alone, and
+    // must not be merged into the owner's books along with the shared ones.
+    const others = await tx.householdMember.findMany({
+      where: { householdId: household.id, userId: { not: household.ownerId } },
+      select: { userId: true },
+    });
+    for (const { userId: memberId } of others) {
+      await handBackPrivateExpenses(tx, household.scopeId, memberId);
+    }
     // The shared books go to the owner, merged into whatever books they already have. A
     // household made before books existed was scoped by its owner already: nothing to move.
     if (household.scopeId !== household.ownerId) {
       await mergeBooks(tx, household.scopeId, household.ownerId);
     }
+    // The owner's own private expenses are theirs in their books now; "private" has no meaning
+    // in a book only they read.
+    await tx.expense.updateMany({
+      where: { userId: household.ownerId, private: true },
+      data: { private: false },
+    });
     // Members, the invite and the memberships go with it (cascade); the book is empty now.
     await tx.household.delete({ where: { id: household.id } });
     if (household.scopeId !== household.ownerId) {

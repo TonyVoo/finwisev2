@@ -8,9 +8,9 @@ import {
 } from '@expense-tracker/shared';
 import { v7 as uuidv7 } from 'uuid';
 import type { Db } from '../db/client.ts';
-import { fromCalendarDate, toCalendarDate, toWireExpense } from '../db/mappers.ts';
+import { canSeeExpense, fromCalendarDate, toCalendarDate, toWireExpense } from '../db/mappers.ts';
 import { nextRevision } from '../db/revision.ts';
-import { problems } from '../errors.ts';
+import { ApiProblem, problems } from '../errors.ts';
 import { decodeExpenseCursor, encodeExpenseCursor } from '../http/cursor.ts';
 import { requireLiveCategoryForWrite } from './categoryService.ts';
 import type { Expense as ExpenseRow, Prisma } from '../db/generated/client.ts';
@@ -102,10 +102,11 @@ async function findForIdempotentCreate(
   db: Db,
   userId: string,
   id: string,
+  viewerId: string,
 ): Promise<ExpenseRow | null> {
   const existing = await db.expense.findUnique({ where: { id } });
   if (!existing) return null;
-  if (existing.userId !== userId) {
+  if (existing.userId !== userId || !canSeeExpense(existing, viewerId)) {
     throw problems.validation('The supplied id is already in use.', {
       issues: [{ path: 'id', message: 'already in use' }],
     });
@@ -113,9 +114,19 @@ async function findForIdempotentCreate(
   return existing;
 }
 
-/** Load a live expense of this user, or raise the contract's `404`. */
-async function requireOwnLiveExpense(db: Db, userId: string, id: string): Promise<ExpenseRow> {
-  const row = await db.expense.findFirst({ where: { id, userId, deletedAt: null } });
+/**
+ * Load a live expense of this book that `viewerId` may see, or raise the contract's `404`.
+ * Another member's private expense is exactly as absent as one that does not exist.
+ */
+async function requireOwnLiveExpense(
+  db: Db,
+  userId: string,
+  id: string,
+  viewerId: string,
+): Promise<ExpenseRow> {
+  const row = await db.expense.findFirst({
+    where: { id, userId, deletedAt: null, OR: [{ private: false }, { createdBy: viewerId }] },
+  });
   if (!row) {
     // "No such id", "another user's id" and "tombstoned" are one message, because they
     // have to be indistinguishable — anything else probes for existence.
@@ -142,8 +153,8 @@ export async function createExpense(
   const now = new Date();
 
   return db.$transaction(async (tx) => {
-    const replay = await findForIdempotentCreate(tx, userId, id);
-    if (replay) return toWireExpense(replay);
+    const replay = await findForIdempotentCreate(tx, userId, id, actorId);
+    if (replay) return toWireExpense(replay, actorId);
 
     const currency = requireAccountCurrency(input.currency, await accountCurrency(tx, userId));
     requireValidOriginal(
@@ -161,6 +172,7 @@ export async function createExpense(
         id,
         userId,
         createdBy: actorId,
+        private: input.private ?? false,
         categoryId: input.categoryId,
         kind: input.kind ?? 'expense',
         amountMinor: BigInt(input.amountMinor),
@@ -182,7 +194,7 @@ export async function createExpense(
         revision,
       },
     });
-    return toWireExpense(created);
+    return toWireExpense(created, actorId);
   });
 }
 
@@ -192,11 +204,14 @@ export async function updateExpense(
   userId: string,
   id: string,
   patch: ExpenseUpdateRequest,
+  /** Who is editing; `userId` is whose books. They differ for a household member. */
+  actorId: string = userId,
 ): Promise<WireExpense> {
   const now = new Date();
 
   return db.$transaction(async (tx) => {
-    const existing = await requireOwnLiveExpense(tx, userId, id);
+    const existing = await requireOwnLiveExpense(tx, userId, id, actorId);
+    requireMayChangePrivacy(existing, patch.private, actorId);
 
     if (patch.currency !== undefined) {
       requireAccountCurrency(patch.currency, await accountCurrency(tx, userId));
@@ -232,11 +247,12 @@ export async function updateExpense(
         // `note` is nullable *and* optional, so `undefined` means "leave it" and `null`
         // means "clear it". Collapsing the two would make clearing a note impossible.
         ...(patch.note === undefined ? {} : { note: patch.note }),
+        ...privacyData(existing, patch.private, actorId),
         updatedAt: now,
         revision,
       },
     });
-    return toWireExpense(updated);
+    return toWireExpense(updated, actorId);
   });
 }
 
@@ -246,13 +262,20 @@ export async function updateExpense(
  * Idempotent: a second delete returns the existing tombstone with the same `updatedAt`
  * and `revision`, so a retry does not push the row onto another sync page.
  */
-export async function deleteExpense(db: Db, userId: string, id: string): Promise<WireExpense> {
+export async function deleteExpense(
+  db: Db,
+  userId: string,
+  id: string,
+  actorId: string = userId,
+): Promise<WireExpense> {
   const now = new Date();
 
   return db.$transaction(async (tx) => {
     const existing = await tx.expense.findFirst({ where: { id, userId } });
-    if (!existing) throw problems.notFound('No such expense.');
-    if (existing.deletedAt !== null) return toWireExpense(existing);
+    if (!existing || !canSeeExpense(existing, actorId)) {
+      throw problems.notFound('No such expense.');
+    }
+    if (existing.deletedAt !== null) return toWireExpense(existing, actorId);
 
     const revision = await nextRevision(tx, userId);
     const tombstoned = await tx.expense.update({
@@ -261,7 +284,7 @@ export async function deleteExpense(db: Db, userId: string, id: string): Promise
     });
     // A tombstone keeps no photo: the bytes are the heaviest thing the row owned.
     await tx.expenseReceipt.deleteMany({ where: { expenseId: existing.id } });
-    return toWireExpense(tombstoned);
+    return toWireExpense(tombstoned, actorId);
   });
 }
 
@@ -278,11 +301,14 @@ export async function listExpenses(
   db: Db,
   userId: string,
   query: ExpenseListQuery,
+  viewerId: string = userId,
 ): Promise<ExpenseListResponse> {
   const limit = query.limit ?? LIMITS.EXPENSE_LIST_DEFAULT_LIMIT;
 
   const where: Prisma.ExpenseWhereInput = {
     userId,
+    // Another member's private expenses are not in this list, not even as placeholders.
+    OR: [{ private: false }, { createdBy: viewerId }],
     ...(query.includeDeleted ? {} : { deletedAt: null }),
     // An unknown `categoryId` is deliberately not an error: it matches nothing and
     // returns an empty page, which is also what makes another user's category id
@@ -322,7 +348,7 @@ export async function listExpenses(
   const last = page.at(-1);
 
   return {
-    data: page.map(toWireExpense),
+    data: page.map((row) => toWireExpense(row, viewerId)),
     // Null on the last page, so `nextCursor !== null` and `hasMore` cannot disagree.
     nextCursor:
       hasMore && last
@@ -330,4 +356,29 @@ export async function listExpenses(
         : null,
     hasMore,
   };
+}
+
+/**
+ * Only the author may change whether an expense is private. A row with no recorded author (made
+ * before authors were recorded) may be changed by anyone, and the first change claims it.
+ */
+export function requireMayChangePrivacy(
+  existing: ExpenseRow,
+  next: boolean | undefined,
+  actorId: string,
+): void {
+  if (next === undefined || next === existing.private) return;
+  if (existing.createdBy !== null && existing.createdBy !== actorId) {
+    throw new ApiProblem('forbidden', 'Only the person who added an expense can make it private.');
+  }
+}
+
+/** The columns a privacy change writes: the flag, and the author if the row had none. */
+export function privacyData(
+  existing: ExpenseRow,
+  next: boolean | undefined,
+  actorId: string,
+): { private?: boolean; createdBy?: string } {
+  if (next === undefined || next === existing.private) return {};
+  return { private: next, ...(existing.createdBy === null ? { createdBy: actorId } : {}) };
 }

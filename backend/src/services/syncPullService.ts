@@ -71,6 +71,7 @@ async function readPage(
   userId: string,
   since: number,
   limit: number,
+  viewerId: string,
 ): Promise<PageSnapshot> {
   const take = limit + 1;
 
@@ -118,7 +119,7 @@ async function readPage(
       })),
       ...expenses.map((row) => ({
         revision: row.revision,
-        change: { entity: 'expense', record: toWireExpense(row) } satisfies SyncChange,
+        change: { entity: 'expense', record: toWireExpense(row, viewerId) } satisfies SyncChange,
       })),
     ].sort((a, b) => a.revision - b.revision);
 
@@ -145,11 +146,13 @@ export async function pullChanges(
   db: Db,
   userId: string,
   query: SyncPullQuery,
+  /** Who is asking: `userId` is whose books, this is whose eyes (private expenses). */
+  viewerId: string = userId,
 ): Promise<SyncPullResponse> {
   const since = query.since ?? 0;
   const limit = query.limit ?? LIMITS.SYNC_PULL_DEFAULT_LIMIT;
 
-  const snapshot = await readPage(db, userId, since, limit);
+  const snapshot = await readPage(db, userId, since, limit, viewerId);
 
   if (
     needsResync({

@@ -65,7 +65,40 @@ export function fromCalendarDate(date: CalendarDate): Date {
   return new Date(`${date}T00:00:00.000Z`);
 }
 
-export function toWireExpense(row: ExpenseRow): WireExpense {
+/** Whether `viewerId` may see this row's content. A shared row is for everyone in the book. */
+export function canSeeExpense(row: ExpenseRow, viewerId: string): boolean {
+  return !row.private || row.createdBy === viewerId;
+}
+
+/**
+ * The row as `viewerId` is allowed to see it.
+ *
+ * A private expense is shown to everyone but its author as a **deleted placeholder**: same id,
+ * category link and revision, but no amount, note, date or author. Sending a placeholder rather
+ * than leaving the row out is what keeps sync honest - the revision stream has no gap, a phone
+ * that already held the row is told to drop it when it is made private, and told it is back when
+ * it is made shared again.
+ */
+export function toWireExpense(row: ExpenseRow, viewerId: string): WireExpense {
+  if (!canSeeExpense(row, viewerId)) {
+    return {
+      id: row.id,
+      categoryId: row.categoryId,
+      kind: 'expense',
+      amountMinor: 0,
+      currency: row.currency,
+      originalAmountMinor: null,
+      originalCurrency: null,
+      date: '2000-01-01',
+      note: null,
+      private: true,
+      createdBy: null,
+      createdAt: row.createdAt.toISOString(),
+      updatedAt: row.updatedAt.toISOString(),
+      deletedAt: row.updatedAt.toISOString(),
+      revision: row.revision,
+    };
+  }
   return {
     id: row.id,
     categoryId: row.categoryId,
@@ -77,9 +110,10 @@ export function toWireExpense(row: ExpenseRow): WireExpense {
     currency: row.currency,
     originalAmountMinor: row.originalAmountMinor === null ? null : Number(row.originalAmountMinor),
     originalCurrency: row.originalCurrency,
-    createdBy: row.createdBy,
     date: toCalendarDate(row.date),
     note: row.note,
+    private: row.private,
+    createdBy: row.createdBy,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     deletedAt: row.deletedAt?.toISOString() ?? null,

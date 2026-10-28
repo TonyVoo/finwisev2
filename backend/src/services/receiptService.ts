@@ -52,14 +52,22 @@ function toWire(row: {
   };
 }
 
+/** The expenses `viewerId` may see: shared ones, and their own private ones. */
+function visibleTo(viewerId: string) {
+  return { OR: [{ private: false }, { createdBy: viewerId }] };
+}
+
 export async function putReceipt(
   db: Db,
   userId: string,
   expenseId: string,
   dataBase64: string,
+  viewerId: string = userId,
   now: Date = new Date(),
 ): Promise<Receipt> {
-  const expense = await db.expense.findFirst({ where: { id: expenseId, userId, deletedAt: null } });
+  const expense = await db.expense.findFirst({
+    where: { id: expenseId, userId, deletedAt: null, ...visibleTo(viewerId) },
+  });
   if (!expense) throw problems.notFound('No such expense.');
 
   const bytes = decodeJpeg(dataBase64);
@@ -79,25 +87,41 @@ export async function putReceipt(
   return toWire(row);
 }
 
-export async function getReceipt(db: Db, userId: string, expenseId: string): Promise<Receipt> {
+export async function getReceipt(
+  db: Db,
+  userId: string,
+  expenseId: string,
+  viewerId: string = userId,
+): Promise<Receipt> {
   const row = await db.expenseReceipt.findFirst({
-    where: { expenseId, userId, expense: { deletedAt: null } },
+    where: { expenseId, userId, expense: { deletedAt: null, ...visibleTo(viewerId) } },
   });
   if (!row) throw problems.notFound('No receipt for this expense.');
   return toWire(row);
 }
 
-export async function deleteReceipt(db: Db, userId: string, expenseId: string): Promise<void> {
+export async function deleteReceipt(
+  db: Db,
+  userId: string,
+  expenseId: string,
+  viewerId: string = userId,
+): Promise<void> {
   // Any expense of the caller's, deleted or not: a retried delete after the expense itself
   // was removed must still succeed.
-  const expense = await db.expense.findFirst({ where: { id: expenseId, userId } });
+  const expense = await db.expense.findFirst({
+    where: { id: expenseId, userId, ...visibleTo(viewerId) },
+  });
   if (!expense) throw problems.notFound('No such expense.');
   await db.expenseReceipt.deleteMany({ where: { expenseId, userId } });
 }
 
-export async function listReceipts(db: Db, userId: string): Promise<ReceiptIndexItem[]> {
+export async function listReceipts(
+  db: Db,
+  userId: string,
+  viewerId: string = userId,
+): Promise<ReceiptIndexItem[]> {
   const rows = await db.expenseReceipt.findMany({
-    where: { userId, expense: { deletedAt: null } },
+    where: { userId, expense: { deletedAt: null, ...visibleTo(viewerId) } },
     select: { expenseId: true, sizeBytes: true, updatedAt: true },
     orderBy: [{ updatedAt: 'asc' }, { expenseId: 'asc' }],
   });

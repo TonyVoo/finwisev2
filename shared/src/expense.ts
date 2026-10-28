@@ -97,6 +97,11 @@ export const Expense = z.strictObject({
   ...OriginalAmountFields,
   date: CalendarDate,
   note: ExpenseNote.nullable(),
+  private: z
+    .boolean()
+    .describe(
+      'Private to its author: in a household only the person who added it sees the content. To everyone else the row arrives as a deleted placeholder (amount 0, no note, `createdBy` null), so it is absent from their lists and totals. `false` outside a household and for shared expenses.',
+    ),
   createdBy: Uuid.nullable().describe(
     'Who added it: the account that made the request, which in a household is not the owner whose books it is in. Server-assigned and immutable; `null` for a row from before this was recorded, or once that account is deleted.',
   ),
@@ -117,6 +122,10 @@ export const ExpenseCreateRequest = z
     originalCurrency: OriginalAmountFields.originalCurrency.optional(),
     date: CalendarDate,
     note: ExpenseNoteInput.optional(),
+    private: z
+      .boolean()
+      .optional()
+      .describe('Hide from the rest of the household. Defaults to false.'),
   })
   .refine(originalPairTogether, ORIGINAL_PAIR_ISSUE);
 
@@ -130,6 +139,7 @@ export const ExpenseUpdateRequest = z
     originalCurrency: OriginalAmountFields.originalCurrency.optional(),
     date: CalendarDate.optional(),
     note: ExpenseNoteInput.optional(),
+    private: z.boolean().optional().describe('Only the author may change this.'),
   })
   .refine((v) => Object.keys(v).length > 0, { error: 'at least one field must be present' })
   .refine(originalPairTogether, ORIGINAL_PAIR_ISSUE);

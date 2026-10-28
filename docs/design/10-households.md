@@ -88,6 +88,33 @@ In one: the members and roles; the owner can generate an invite code (shown once
 remove members or delete the household; a member can leave. Joining, leaving, removal and deletion
 all end in the same place: the local store is cleared and resynced under the new scope.
 
+## Private expenses
+
+An expense can be marked **private**. Inside a household only its author sees it, and it is left
+out of everyone else's lists, totals and budgets. The author sees it in their own, marked with a
+lock.
+
+- **Stored in the household book**, with `private` and the existing `createdBy`. Nothing about
+  where rows live changes.
+- **Hidden by redaction, not omission.** To everyone but the author a private expense arrives as a
+  **deleted placeholder**: same id, category link and revision, but amount 0, no note, no author, a
+  fixed date, and `deletedAt` set. Leaving the row out would put a gap in the revision stream, and
+  would never tell a phone that already held the expense to drop it. A placeholder does both: it
+  hides it, it removes it from phones when it is made private later, and it brings it back when it
+  is made shared again - one mechanism for all three.
+- **Only the author** can read, edit, delete or attach a receipt to it, and only the author can
+  change whether it is private. Anyone else gets the same `404` as for an id that does not exist
+  (REST) or a per-record `invalid` (sync).
+- **A person's private expenses leave with them.** On leaving, being removed, or the household being
+  deleted, each moves to their own books, filed under their category of the same name or
+  Uncategorized, and stops being private. They are never merged into the owner's books. An account
+  deleted while in a household takes its private expenses with it.
+- **Totals.** The author's phone holds the real rows, so their totals and budgets include them, with
+  a line saying how much of the month is private. Other members never receive the content, so
+  nothing of it can reach their figures.
+
+Not offered outside a household: nobody else sees a solo account's books, so the toggle is hidden.
+
 ## Not in this version
 
 More than one household per person, and per-member private expenses.

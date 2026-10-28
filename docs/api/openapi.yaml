@@ -1678,6 +1678,7 @@ paths:
                     originalCurrency: null
                     date: '2026-10-05'
                     note: Weekly shop
+                    private: false
                     createdBy: '0192f3a0-0000-7f1e-9b2d-0000000000aa'
                     createdAt: '2026-10-05T18:02:11.000Z'
                     updatedAt: '2026-10-05T18:02:11.000Z'
@@ -1868,6 +1869,7 @@ paths:
                   originalCurrency: null
                   date: '2026-10-05'
                   note: Weekly shop
+                  private: false
                   createdBy: '0192f3a0-0000-7f1e-9b2d-0000000000aa'
                   createdAt: '2026-10-05T18:02:11.000Z'
                   updatedAt: '2026-10-06T09:15:00.000Z'
@@ -2254,6 +2256,7 @@ paths:
                           originalCurrency: null
                           date: '2026-10-06'
                           note: null
+                          private: false
                           createdBy: '0192f3a0-0000-7f1e-9b2d-0000000000aa'
                           createdAt: '2026-10-06T13:05:00.000Z'
                           updatedAt: '2026-10-06T13:05:00.000Z'
@@ -2286,6 +2289,7 @@ paths:
                           originalCurrency: null
                           date: '2026-10-06'
                           note: null
+                          private: false
                           createdBy: '0192f3a0-0000-7f1e-9b2d-0000000000aa'
                           createdAt: '2026-10-06T13:05:00.000Z'
                           updatedAt: '2026-10-06T15:00:00.000Z'
@@ -2503,6 +2507,7 @@ paths:
                           originalCurrency: null
                           date: '2026-10-06'
                           note: Flat white
+                          private: false
                           createdBy: '0192f3a0-0000-7f1e-9b2d-0000000000aa'
                           createdAt: '2026-10-06T13:05:00.000Z'
                           updatedAt: '2026-10-06T13:05:00.000Z'
@@ -2530,6 +2535,7 @@ paths:
                           originalCurrency: null
                           date: '2026-10-06'
                           note: Flat white, large
+                          private: false
                           createdBy: '0192f3a0-0000-7f1e-9b2d-0000000000aa'
                           createdAt: '2026-10-06T13:05:00.000Z'
                           updatedAt: '2026-10-06T14:30:00.000Z'
@@ -3587,6 +3593,7 @@ components:
         - originalCurrency
         - date
         - note
+        - private
         - createdBy
         - createdAt
         - updatedAt
@@ -3627,6 +3634,14 @@ components:
             - { $ref: '#/components/schemas/ExpenseNote' }
             - type: 'null'
           description: Free-text note, or `null` when the user did not write one.
+        private:
+          type: boolean
+          description: |
+            Private to its author. In a household only the person who added the expense sees its
+            content: to everyone else the row arrives as a **deleted placeholder** (amount 0, no
+            note, `createdBy` null), so it is absent from their lists and totals, and it appears
+            and disappears for them as the author makes it private or shared again. `false`
+            outside a household and for shared expenses.
         createdBy:
           oneOf:
             - { $ref: '#/components/schemas/Uuid' }
@@ -3801,6 +3816,11 @@ components:
             Free-text note. Trimmed, and a value that trims to nothing is stored as
             `null` rather than an empty string, so `null` is the only representation of
             "no note" in the database.
+        private:
+          type: boolean
+          description: |
+            Hide from the rest of the household (only the author may set or change it). Defaults
+            to `false`.
 
     ExpenseUpdateRequest:
       type: object
@@ -3839,6 +3859,11 @@ components:
             Free-text note. Trimmed, and a value that trims to nothing is stored as
             `null` rather than an empty string, so `null` is the only representation of
             "no note" in the database.
+        private:
+          type: boolean
+          description: |
+            Hide from the rest of the household (only the author may set or change it). Defaults
+            to `false`.
 
     ExpenseListResponse:
       type: object
@@ -4122,6 +4147,9 @@ components:
             Free-text note. Trimmed, and a value that trims to nothing is stored as
             `null` rather than an empty string, so `null` is the only representation of
             "no note" in the database.
+        private:
+          type: boolean
+          description: Hide from the rest of the household (author only).
         deletedAt: { $ref: '#/components/schemas/DeletedAt' }
 
     GoalSyncFields:

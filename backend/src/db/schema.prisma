@@ -165,6 +165,10 @@ model Expense {
   /// that account is deleted, so a member leaving never costs the household its history.
   createdBy String? @map("created_by") @db.Uuid
 
+  /// Hidden from every household member but `created_by`: to them the row is a deleted
+  /// placeholder. Meaningless outside a household, where nobody else sees the book anyway.
+  private Boolean @default(false)
+
   /// Calendar DATE. The day the user assigned to this expense; monthly totals
   /// bucket on it. Deliberately not a timestamp — it must not shift by timezone.
   date DateTime @db.Date

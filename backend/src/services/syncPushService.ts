@@ -21,6 +21,7 @@ import { isUniqueViolation } from '../db/errors.ts';
 import {
   fromCalendarDate,
   toWireCategory,
+  canSeeExpense,
   toWireExpense,
   toWireGoal,
   toWireRecurringRule,
@@ -200,6 +201,9 @@ async function applyExpenseItem(
   const fields: ExpenseSyncFields = item.fields;
   const existing: ExpenseRow | null = await tx.expense.findUnique({ where: { id: item.id } });
   if (existing && existing.userId !== userId) throw idAlreadyInUse();
+  // Another member's private expense is exactly as unavailable as an id that belongs to someone
+  // else, and answers the same way, so nothing about it can be learned from here.
+  if (existing && !canSeeExpense(existing, actorId)) throw idAlreadyInUse();
 
   const incomingUpdatedAt = clampPushedUpdatedAt(item.updatedAt, now, {
     userId,
@@ -243,6 +247,7 @@ async function applyExpenseItem(
         id: item.id,
         userId,
         createdBy: actorId,
+        private: fields.private ?? false,
         categoryId,
         kind: fields.kind ?? 'expense',
         amountMinor: BigInt(amountMinor),
@@ -262,13 +267,21 @@ async function applyExpenseItem(
         revision,
       },
     });
-    return applied(toWireExpense(created));
+    return applied(toWireExpense(created, actorId));
   }
 
   if (decideLww({ incomingUpdatedAt, storedUpdatedAt: existing.updatedAt }) !== 'applied') {
-    return conflict(toWireExpense(existing));
+    return conflict(toWireExpense(existing, actorId));
   }
 
+  if (fields.private !== undefined && fields.private !== existing.private) {
+    // Only the author may change it. Answered as a per-record `invalid`, like any refused write.
+    if (existing.createdBy !== null && existing.createdBy !== actorId) {
+      throw problems.validation('Only the person who added an expense can make it private.', {
+        issues: [{ path: 'private', message: 'only the author can change this' }],
+      });
+    }
+  }
   if (fields.currency !== undefined) {
     requireAccountCurrency(fields.currency, await accountCurrency(tx, userId));
   }
@@ -306,6 +319,12 @@ async function applyExpenseItem(
       // `note` is nullable *and* optional: `undefined` means "leave it", `null` means
       // "clear it". Collapsing the two would make clearing a note impossible.
       ...(fields.note === undefined ? {} : { note: fields.note }),
+      ...(fields.private === undefined || fields.private === existing.private
+        ? {}
+        : {
+            private: fields.private,
+            ...(existing.createdBy === null ? { createdBy: actorId } : {}),
+          }),
       deletedAt,
       updatedAt: incomingUpdatedAt,
       revision,
@@ -313,7 +332,7 @@ async function applyExpenseItem(
   });
   // A tombstone keeps no photo (see `deleteExpense`).
   if (deletedAt !== null) await tx.expenseReceipt.deleteMany({ where: { expenseId: existing.id } });
-  return applied(toWireExpense(updated));
+  return applied(toWireExpense(updated, actorId));
 }
 
 // ---------------------------------------------------------------------------
@@ -647,6 +666,7 @@ async function currentRecord(
   userId: string,
   entity: SyncEntity,
   id: string,
+  viewerId: string,
 ): Promise<WireRecord | null> {
   if (entity === 'recurring') {
     const row = await tx.recurringRule.findFirst({ where: { id, userId } });
@@ -661,7 +681,7 @@ async function currentRecord(
     return row ? toWireCategory(row) : null;
   }
   const row = await tx.expense.findFirst({ where: { id, userId } });
-  return row ? toWireExpense(row) : null;
+  return row ? toWireExpense(row, viewerId) : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -790,7 +810,7 @@ async function attemptItem(
       clientMutationId,
       outcome: {
         status: entry.status,
-        record: await currentRecord(tx, userId, entity, id),
+        record: await currentRecord(tx, userId, entity, id, actorId),
         error: entry.error,
       },
       idempotentReplay: true,
@@ -805,7 +825,7 @@ async function attemptItem(
       clientMutationId,
       outcome: {
         status: 'invalid',
-        record: await currentRecord(tx, userId, entity, id),
+        record: await currentRecord(tx, userId, entity, id, actorId),
         error: new ApiProblem(
           'mutation_id_reused',
           'This clientMutationId was already used for a different change. Mint a new one.',
@@ -901,7 +921,7 @@ async function attemptItem(
       entity,
       id,
       clientMutationId,
-      outcome: { ...outcome, record: await currentRecord(tx, userId, entity, id) },
+      outcome: { ...outcome, record: await currentRecord(tx, userId, entity, id, actorId) },
       idempotentReplay: false,
     });
   }

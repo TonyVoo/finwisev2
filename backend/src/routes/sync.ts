@@ -22,7 +22,7 @@ export const syncRouter = Router();
 
 syncRouter.get('/sync', validateQuery(SyncPullQuery), async (req: Request, res: Response) => {
   const query = validatedQuery(res, SyncPullQuery);
-  const body = await pullChanges(getPrisma(), dataOwnerIdOf(req), query);
+  const body = await pullChanges(getPrisma(), dataOwnerIdOf(req), query, userIdOf(req));
   sendJson(res, 200, SyncPullResponse, body);
 });
 
