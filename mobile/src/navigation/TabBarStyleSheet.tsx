@@ -56,7 +56,7 @@ export function TabBarStyleSheet({
             }
           >
             <RowTitle>{tabBarStyleLabel(option)}</RowTitle>
-            <RowSubtitle>{COPY.tabBarStyle.hint[option]}</RowSubtitle>
+            <RowSubtitle lines={2}>{COPY.tabBarStyle.hint[option]}</RowSubtitle>
           </Row>
         );
       })}
