@@ -281,6 +281,7 @@ export function createFakeSyncServer(options: FakeSyncServerOptions = {}): FakeS
         date,
         note: item.fields.note ?? null,
         createdBy: null,
+        private: false,
         createdAt: item.updatedAt,
         updatedAt: item.updatedAt,
         deletedAt: item.fields.deletedAt ?? null,

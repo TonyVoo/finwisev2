@@ -398,6 +398,15 @@ const DISPLAY_NAME = `
 ALTER TABLE user ADD COLUMN displayName TEXT;
 `;
 
+/**
+ * Private expenses: hidden from the rest of a household. A device only ever holds its own
+ * private rows as real ones - for everyone else the server sends a deleted placeholder - so this
+ * flag is what the author's lists mark with a lock and their totals report separately.
+ */
+const PRIVATE_EXPENSES = `
+ALTER TABLE expenses ADD COLUMN private INTEGER NOT NULL DEFAULT 0;
+`;
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: 'initial-schema', up: INITIAL_SCHEMA },
   { version: 2, name: 'store-owner', up: STORE_OWNER },
@@ -412,6 +421,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 11, name: 'foreign-amounts', up: FOREIGN_AMOUNTS },
   { version: 12, name: 'expense-author', up: EXPENSE_AUTHOR },
   { version: 13, name: 'display-name', up: DISPLAY_NAME },
+  { version: 14, name: 'private-expenses', up: PRIVATE_EXPENSES },
 ];
 
 /** Highest version `MIGRATIONS` can bring a database to. */

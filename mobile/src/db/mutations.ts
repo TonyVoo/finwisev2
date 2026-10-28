@@ -43,6 +43,8 @@ export interface NewExpense {
   readonly originalCurrency?: string | null;
   readonly date: string;
   readonly note?: string | null;
+  /** Hide it from the rest of the household. Sent only when set. */
+  readonly private?: boolean;
 }
 
 /** The editable fields of an expense, as a draft the form holds. */
@@ -51,6 +53,7 @@ export type ExpenseDraft = Omit<NewExpense, 'note' | 'kind'> & {
   readonly originalCurrency: string | null;
   readonly kind: 'expense' | 'income';
   readonly note: string | null;
+  readonly private?: boolean;
 };
 
 /**
@@ -111,6 +114,8 @@ export async function createExpense(
         ...originalFields(expense),
         date: expense.date,
         note: normaliseNote(expense.note),
+        // Only when set, so an ordinary expense's outbox entry is exactly what it always was.
+        ...(expense.private === true ? { private: true } : {}),
       },
     },
     options,
@@ -145,6 +150,7 @@ export function changedExpenseFields(
     changed.originalCurrency = draft.originalCurrency;
   }
   if (draft.date !== stored.date) changed.date = draft.date;
+  if ((draft.private ?? false) !== stored.private) changed.private = draft.private ?? false;
 
   const note = normaliseNote(draft.note);
   if (note !== stored.note) changed.note = note;

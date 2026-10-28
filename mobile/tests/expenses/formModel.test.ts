@@ -23,6 +23,7 @@ const STORED: ExpenseDetail = {
   originalCurrency: null,
   date: '2026-10-14',
   note: 'Milk',
+  private: false,
 };
 
 function draft(overrides: Partial<ExpenseDraft> = {}): ExpenseDraft {

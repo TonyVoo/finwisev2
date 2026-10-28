@@ -130,6 +130,7 @@ describe('expense and category reads', () => {
           date: '2026-10-09',
           note: 'Milk, eggs',
           createdBy: null,
+          private: false,
           pending: false,
           needsAttention: false,
         },
@@ -375,6 +376,7 @@ describe('expense and category reads', () => {
         originalCurrency: null,
         date: '2026-10-09',
         note: 'Milk',
+        private: false,
       });
     });
 

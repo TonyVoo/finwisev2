@@ -281,9 +281,15 @@ async function wholeRowFields(
   );
   if (queued !== null) return null;
   const whole: Record<string, unknown> = {};
-  for (const column of spec.mutableColumns) whole[column] = row[column];
+  for (const column of spec.mutableColumns) {
+    // SQLite keeps a boolean as 0/1; the wire wants a boolean.
+    whole[column] = BOOLEAN_COLUMNS.has(column) ? row[column] === 1 : row[column];
+  }
   return definedFields(spec.parseFields(whole));
 }
+
+/** Columns SQLite stores as 0/1 that the contract carries as a boolean. */
+const BOOLEAN_COLUMNS: ReadonlySet<string> = new Set(['private']);
 
 async function rowExists(txn: SqliteExecutor, table: string, id: string): Promise<boolean> {
   // `table` is never user input: it comes from the entity spec, a closed set declared in

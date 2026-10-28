@@ -254,6 +254,8 @@ export interface ExpenseListItem {
   readonly note: string | null;
   /** Who added it (the server's `createdBy`); null until the server answers, and for old rows. */
   readonly createdBy: string | null;
+  /** Hidden from the rest of the household: this device's person added it and only they see it. */
+  readonly private: boolean;
   readonly pending: boolean;
   /**
    * The server refused this row and nothing is queued for it any more
@@ -311,9 +313,10 @@ async function selectExpenseItems(
   page: { readonly limit: number; readonly offset?: number },
 ): Promise<readonly ExpenseListItem[]> {
   const rows = await database.getAllAsync<
-    Omit<ExpenseListItem, 'pending' | 'needsAttention'> & {
+    Omit<ExpenseListItem, 'pending' | 'needsAttention' | 'private'> & {
       pending: number;
       rejected: number;
+      private: number;
     }
   >(
     `SELECT e.id,
@@ -326,6 +329,7 @@ async function selectExpenseItems(
             e.date,
             e.note,
             e.createdBy,
+            e.private,
             c.name  AS categoryName,
             c.color AS categoryColor,
             (SELECT f.name  FROM categories f
@@ -349,8 +353,9 @@ async function selectExpenseItems(
     [...params, page.limit, page.offset ?? 0],
   );
 
-  return rows.map(({ pending, rejected, ...row }) => ({
+  return rows.map(({ pending, rejected, private: isPrivate, ...row }) => ({
     ...row,
+    private: isPrivate === 1,
     pending: pending === 1,
     // Refused *and* not queued. A row the user has just re-saved is queued again, and the
     // design is explicit that saving the repair clears the marker (§5.1).
@@ -605,6 +610,7 @@ export interface ExpenseDetail {
   readonly originalCurrency: string | null;
   readonly date: string;
   readonly note: string | null;
+  readonly private: boolean;
 }
 
 /**
@@ -618,12 +624,30 @@ export async function findExpense(
   database: SqliteDatabase,
   id: string,
 ): Promise<ExpenseDetail | null> {
-  return await database.getFirstAsync<ExpenseDetail>(
-    `SELECT id, categoryId, kind, amountMinor, currency, originalAmountMinor, originalCurrency, date, note
+  const row = await database.getFirstAsync<Omit<ExpenseDetail, 'private'> & { private: number }>(
+    `SELECT id, categoryId, kind, amountMinor, currency, originalAmountMinor, originalCurrency, date, note, private
        FROM expenses
       WHERE id = ? AND deletedAt IS NULL`,
     [id],
   );
+  return row === null ? null : { ...row, private: row.private === 1 };
+}
+
+/**
+ * What this month's private expenses add up to, in minor units. The author's own totals include
+ * them; this is the figure the "includes private" line quotes. Spend only: private income is not
+ * money out, and a deleted one is gone.
+ */
+export async function monthPrivateSpendMinor(
+  database: SqliteDatabase,
+  range: DateRange,
+): Promise<number> {
+  const row = await database.getFirstAsync<{ total: number | null }>(
+    `SELECT SUM(e.amountMinor) AS total FROM expenses e
+      WHERE ${LIVE_IN_MONTH} AND ${SPEND} AND e.private = 1`,
+    [range.from, range.to],
+  );
+  return row?.total ?? 0;
 }
 
 /**

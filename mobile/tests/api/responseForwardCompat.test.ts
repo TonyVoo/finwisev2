@@ -58,6 +58,7 @@ const EXPENSE = {
   originalCurrency: null,
   date: '2026-10-08',
   note: 'coffee',
+  private: false,
   createdBy: null,
   createdAt: '2026-10-08T10:00:00.000Z',
   updatedAt: '2026-10-08T10:00:00.000Z',

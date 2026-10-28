@@ -49,6 +49,8 @@ export interface ExpenseRow {
   readonly note: string | null;
   /** The account that added it (server-assigned); null until the server answers, and for old rows. */
   readonly createdBy: string | null;
+  /** `1` while hidden from the rest of the household (migration 14). */
+  readonly private: number;
   readonly createdAt: string | null;
   readonly updatedAt: string;
   readonly deletedAt: string | null;
@@ -154,6 +156,7 @@ const EXPENSE_SPEC: EntitySpec = {
     'originalCurrency',
     'date',
     'note',
+    'private',
     'deletedAt',
   ],
   requiredOnCreate: ['categoryId', 'amountMinor', 'currency', 'date'],
@@ -163,6 +166,7 @@ const EXPENSE_SPEC: EntitySpec = {
     originalCurrency: null,
     note: null,
     createdBy: null,
+    private: 0,
     createdAt: null,
     deletedAt: null,
     revision: 0,
