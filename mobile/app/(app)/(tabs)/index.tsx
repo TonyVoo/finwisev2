@@ -1,3 +1,4 @@
+import { TAB_BAR_RESERVE } from '@/navigation/tabBar';
 import { useAddedBy } from '@/household/useAddedBy';
 import { useCallback, useEffect, useState } from 'react';
 import { AccessibilityInfo, SectionList, StyleSheet, Text, View } from 'react-native';
@@ -308,7 +309,9 @@ export default function ExpenseListScreen() {
         {...pullToRefresh.listProps}
         // Deep enough that the last row can always be scrolled clear of the FAB
         // (§Elements, FAB position).
-        contentContainerStyle={{ paddingBottom: FAB_CLEARANCE + insets.bottom }}
+        // The floating tab bar covers the bottom of the screen, so the last row has to clear it
+        // as well as the add button.
+        contentContainerStyle={{ paddingBottom: FAB_CLEARANCE + insets.bottom + TAB_BAR_RESERVE }}
         renderSectionHeader={({ section }) => (
           <Text style={styles.sectionHeader} accessibilityRole="header">
             {section.title}
@@ -348,6 +351,8 @@ export default function ExpenseListScreen() {
           screen-reader user is not forced past it to reach their expenses. */}
       <Fab
         label={COPY.home.fab}
+        // Above the floating bar, which is over the screen rather than under it.
+        bottomOffset={TAB_BAR_RESERVE}
         onPress={() => router.push('/(app)/expense/new')}
         testID="home-fab"
       />

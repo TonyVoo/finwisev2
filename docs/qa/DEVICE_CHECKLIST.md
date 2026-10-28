@@ -148,6 +148,10 @@ Haptics and animation can only be judged by hand. Run this on a real phone.
       The amount at the top gives a small pop as each digit lands or is deleted.
 - [ ] **Save** an expense: a success buzz as the screen closes. **Swipe-delete** one: a warning buzz.
 - [ ] Home: the month total counts up to its new value after you add or delete an expense.
+- [ ] **Floating tab bar:** a capsule floats above the bottom edge (clear of the home indicator), with the
+      active tab showing icon and label on a highlight and the other as an icon alone. Switching gives a
+      light tick; the last row of Home and the last card of Summary scroll fully clear of it, and the add
+      button sits above it. Works in dark mode and with large text.
 - [ ] Home, current month: a row of daily bars under the total, and an **On pace for ... this month**
       line once something is spent. Neither shows for a past month's pace line.
 - [ ] Category badges show an **icon** on every list: expenses, the category picker, Categories,

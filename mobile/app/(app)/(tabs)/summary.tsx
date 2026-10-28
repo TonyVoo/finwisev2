@@ -1,3 +1,4 @@
+import { useTabBarClearance } from '@/navigation/tabBar';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -75,6 +76,8 @@ export const SUMMARY_SCROLL_TEST_ID = 'summary-scroll';
  */
 export default function SummaryScreen() {
   const styles = useStyles();
+  // The floating tab bar covers the bottom of the screen; the last card has to clear it.
+  const tabBarClearance = useTabBarClearance();
   const router = useRouter();
   const { month, isCurrent } = useSelectedMonth();
 
@@ -125,7 +128,7 @@ export default function SummaryScreen() {
         // which has no `refreshing`/`onRefresh` - spreading them here dropped both on the
         // floor and left the gesture inert on this tab.
         refreshControl={pullToRefresh.refreshControl}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]}
       >
         {/* Renders in every state, including `empty`, where it is `$0.00` and `0 expenses`.
             Hiding it there would make the figure appear to pop into existence later. */}
