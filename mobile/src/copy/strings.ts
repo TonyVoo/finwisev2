@@ -356,6 +356,42 @@ export const COPY = {
   /** Shared households (`docs/design/10-households.md`). */
   household: {
     title: 'Household',
+    /** Who owes whom, from the household's expenses and the payments recorded between members. */
+    balances: {
+      title: 'Balances',
+      settled: 'All settled up',
+      youOwe: 'You owe {name} {amount}',
+      owesYou: '{name} owes you {amount}',
+      owes: '{from} owes {to} {amount}',
+      settleUp: 'Settle up',
+      history: 'Payment history',
+      /** Added to the leave and remove dialogs while anyone owes anyone: a warning, never a block. */
+      unsettledLeave:
+        "You haven't settled up yet. If you leave now, the others' balances are worked out without you.",
+      unsettledRemove:
+        "Balances aren't settled yet. Once they are removed, everyone else's are worked out without them.",
+    },
+    /** Every recorded payment, newest first. */
+    history: {
+      title: 'Payment history',
+      emptyHeadline: 'No payments yet',
+      emptyBody: 'Payments you record to settle up show up here.',
+      youPaid: 'You paid {name}',
+      paidYou: '{name} paid you',
+      paid: '{from} paid {to}',
+      deleted: 'Payment deleted.',
+      deleteAction: 'Delete payment',
+    },
+    /** The Settle up screen: record that one member paid another. */
+    settle: {
+      title: 'Settle up',
+      record: 'Record',
+      close: 'Close without recording',
+      iPaid: 'I paid',
+      theyPaid: 'They paid me',
+      person: 'With',
+      recorded: 'Payment recorded.',
+    },
     empty: {
       headline: 'Share your books',
       body: 'Keep one set of expenses with a partner or family. Everyone can see and add everything.',

@@ -12,9 +12,11 @@ import { useSnackbar } from '@/components/Snackbar';
 import { COPY } from '@/copy/strings';
 import { useUserEmail } from '@/db/hooks';
 import { memberLabel } from '@/household/addedBy';
+import { BalancesSection } from '@/household/BalancesSection';
 import { InviteSheet } from '@/household/InviteSheet';
 import { JoinSheet } from '@/household/JoinSheet';
 import { MemberSheet } from '@/household/MemberSheet';
+import { useBalances } from '@/household/useBalances';
 import {
   PendingChangesError,
   householdErrorMessage,
@@ -132,6 +134,8 @@ export default function HouseholdScreen() {
   }, [actions]);
 
   const data: Household | null | undefined = household.data;
+  // Who owes whom: read from the rows this phone holds, for the members the screen is showing.
+  const balances = useBalances(data?.members, data?.currency ?? '');
 
   return (
     <View style={styles.screen}>
@@ -188,6 +192,13 @@ export default function HouseholdScreen() {
           </View>
         ) : (
           <>
+            {data.members.length >= 2 && balances.ready ? (
+              <BalancesSection
+                balances={balances}
+                onSettle={() => router.push('/(app)/settings/settle-up')}
+                onHistory={() => router.push('/(app)/settings/settlements')}
+              />
+            ) : null}
             <Text style={styles.section} accessibilityRole="header">
               {COPY.household.members}
             </Text>
@@ -273,7 +284,7 @@ export default function HouseholdScreen() {
       <Dialog
         visible={confirming !== null}
         title={dialogTitle(confirming)}
-        body={dialogBody(confirming)}
+        body={dialogBody(confirming, balances.unsettled)}
         destructive={{ label: dialogConfirmLabel(confirming), onPress: () => void confirm() }}
         onCancel={() => setConfirming(null)}
         // Creating and handing over destroy nothing, so they are not drawn like a deletion.
@@ -299,13 +310,24 @@ function dialogTitle(confirming: Confirming | null): string {
   return COPY.household.remove.title.replace('{email}', memberLabel(confirming.member));
 }
 
-function dialogBody(confirming: Confirming | null): string {
+/**
+ * Leaving or removing someone changes everyone's balances, since they are worked out among
+ * current members, so while anyone owes anyone the dialog says so. A warning only: settling up
+ * first is the way to leave on good terms, but nothing stops you.
+ */
+function dialogBody(confirming: Confirming | null, unsettled: boolean): string {
   if (confirming === null) return '';
   if (confirming.kind === 'create') return COPY.household.createConfirm.body;
   if (confirming.kind === 'transfer') return COPY.household.transfer.body;
-  if (confirming.kind === 'leave') return COPY.household.leave.body;
   if (confirming.kind === 'delete') return COPY.household.delete.body;
-  return COPY.household.remove.body;
+  if (confirming.kind === 'leave') {
+    return unsettled
+      ? `${COPY.household.leave.body}\n\n${COPY.household.balances.unsettledLeave}`
+      : COPY.household.leave.body;
+  }
+  return unsettled
+    ? `${COPY.household.remove.body}\n\n${COPY.household.balances.unsettledRemove}`
+    : COPY.household.remove.body;
 }
 
 function dialogConfirmLabel(confirming: Confirming | null): string {

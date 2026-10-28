@@ -1,5 +1,6 @@
 import type { SyncEntity } from '@expense-tracker/shared';
 import type { CategoryRow } from './entities';
+import type { BalanceExpense } from '../household/balances';
 import type { SqliteDatabase } from './sqlite';
 
 /**
@@ -980,4 +981,22 @@ export async function listSettlements(
     [],
   );
   return rows.map((row) => ({ ...row, pending: row.pending === 1 }));
+}
+
+/**
+ * The expenses settling up splits: live spending that is not private, with who added it and who
+ * paid. Income, private and deleted rows are left out in SQL, so the engine is handed only what it
+ * would not skip anyway.
+ */
+export async function listBalanceExpenses(
+  database: SqliteDatabase,
+): Promise<readonly BalanceExpense[]> {
+  const rows = await database.getAllAsync<Omit<BalanceExpense, 'private'> & { private: number }>(
+    `SELECT id, amountMinor, date, kind, private, paidBy, createdBy
+       FROM expenses
+      WHERE deletedAt IS NULL AND kind = 'expense' AND private = 0
+      ORDER BY date, id`,
+    [],
+  );
+  return rows.map((row) => ({ ...row, private: row.private === 1 }));
 }

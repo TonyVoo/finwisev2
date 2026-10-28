@@ -80,10 +80,23 @@ nothing on a private expense, and the form hides the row there.
 - **Household screen** gets a **Balances** section at the top once there are two or more members:
   one line each (*Bao owes you US$42.00*, *You owe Ana US$12.00*, or *All settled up*), then a
   **Settle up** button and a **History** row.
-- **Settle up** opens a sheet: who, an amount pre-filled with the suggested transfer for you (editable
-  and never above zero), a date, a note. **Record** writes the payment locally and syncs it, like any
-  edit. If you owe nobody anything the button says so instead of opening an empty sheet.
-- **History** lists payments newest first, each deletable with an Undo snackbar.
+- **Settle up** opens a screen, built from the same parts as the expense form (direction toggle,
+  amount and keypad, date and note): **I paid / They paid me**, the person, an amount, a date and a
+  note, then **Record**. It starts from what you actually owe, or are owed: the first suggested
+  transfer that involves you gives the person, the direction and the amount, and every part stays
+  editable. The first key you press replaces the suggested amount instead of extending it; picking
+  someone else restarts from what is owed with them, unless you have already typed an amount. With
+  nothing owed it opens empty and **Record** waits for an amount, because someone owed money may
+  still want to record "Bao paid me". Record writes a local change that syncs like any edit, with
+  an **Undo** that deletes it.
+- **History** lists payments newest first, worded for the person looking (*You paid Bao*, *Bao paid
+  you*, *Cam paid Bao*). Only the two people a payment names can delete it (with an Undo), which is also
+  all the server allows, so everyone else's rows are read-only. It reads this phone's own rows, so it
+  works offline.
+- **Where the data comes from.** Members come with the day each joined (`joinedAt`, already on
+  `/v1/me`, now kept in the phone's stored member list), so a late joiner is not charged for what
+  came before. The Balances section reads the members the Household screen is showing; History reads
+  the stored list.
 - **Expense form** gets a **Paid by** row (household only, hidden on a private expense), defaulting to
   *You*, opening a list of members.
 - Home, Summary, Search and budgets are unchanged: they still show what the household spent, not who

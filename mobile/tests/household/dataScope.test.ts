@@ -191,8 +191,18 @@ describe('reconcileDataScope', () => {
       });
 
       expect(JSON.parse((await readMeta(database, META_KEYS.householdMembers)) ?? 'null')).toEqual([
-        { userId: OWNER_ID, email: 'bao@example.com', displayName: 'Bảo' },
-        { userId: ME_ID, email: 'ana@example.com', displayName: null },
+        {
+          userId: OWNER_ID,
+          email: 'bao@example.com',
+          displayName: 'Bảo',
+          joinedAt: '2026-10-01T00:00:00.000Z',
+        },
+        {
+          userId: ME_ID,
+          email: 'ana@example.com',
+          displayName: null,
+          joinedAt: '2026-10-02T00:00:00.000Z',
+        },
       ]);
     });
 
@@ -206,7 +216,12 @@ describe('reconcileDataScope', () => {
 
       expect(result).toBe('unchanged');
       expect(JSON.parse((await readMeta(database, META_KEYS.householdMembers)) ?? 'null')).toEqual([
-        { userId: OWNER_ID, email: 'bao@example.com', displayName: 'Bảo' },
+        {
+          userId: OWNER_ID,
+          email: 'bao@example.com',
+          displayName: 'Bảo',
+          joinedAt: '2026-10-01T00:00:00.000Z',
+        },
       ]);
     });
 

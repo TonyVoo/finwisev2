@@ -314,6 +314,38 @@ export const VIETNAMESE_COPY: CopyBundle = {
     /** Shared households (`docs/design/10-households.md`). */
     household: {
       title: 'Hộ gia đình',
+      balances: {
+        title: 'Số dư',
+        settled: 'Đã thanh toán hết',
+        youOwe: 'Bạn nợ {name} {amount}',
+        owesYou: '{name} nợ bạn {amount}',
+        owes: '{from} nợ {to} {amount}',
+        settleUp: 'Thanh toán',
+        history: 'Lịch sử thanh toán',
+        unsettledLeave:
+          'Bạn chưa thanh toán xong. Nếu rời đi bây giờ, số dư của những người còn lại sẽ được tính mà không có bạn.',
+        unsettledRemove:
+          'Số dư chưa được thanh toán. Sau khi họ bị xóa, số dư của mọi người còn lại sẽ được tính mà không có họ.',
+      },
+      history: {
+        title: 'Lịch sử thanh toán',
+        emptyHeadline: 'Chưa có khoản thanh toán nào',
+        emptyBody: 'Các khoản thanh toán bạn ghi lại sẽ hiện ở đây.',
+        youPaid: 'Bạn đã trả {name}',
+        paidYou: '{name} đã trả bạn',
+        paid: '{from} đã trả {to}',
+        deleted: 'Đã xóa khoản thanh toán.',
+        deleteAction: 'Xóa khoản thanh toán',
+      },
+      settle: {
+        title: 'Thanh toán',
+        record: 'Ghi lại',
+        close: 'Đóng, không ghi',
+        iPaid: 'Tôi đã trả',
+        theyPaid: 'Họ đã trả tôi',
+        person: 'Với',
+        recorded: 'Đã ghi khoản thanh toán.',
+      },
       empty: {
         headline: 'Chia sẻ sổ chi tiêu',
         body: 'Dùng chung một sổ chi tiêu với người thân hoặc gia đình. Ai cũng xem và thêm được mọi thứ.',

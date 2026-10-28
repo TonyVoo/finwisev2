@@ -1,5 +1,6 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { LIMITS } from '@expense-tracker/shared';
+import type { BalanceExpense } from '../household/balances';
 import { queryKeys } from '../query/keys';
 import { type MonthKey, monthRange, stepMonth } from '../lib/calendar';
 import { TREND_MONTHS } from '../summary/trendModel';
@@ -25,7 +26,10 @@ import {
   lastUsedCategoryId,
   listLiveCategories,
   listLiveCategoriesWithCounts,
+  listBalanceExpenses,
   listMonthExpenses,
+  listSettlements,
+  type SettlementListItem,
   listLiveRecurring,
   listPendingChanges,
   monthCategorySpend,
@@ -395,5 +399,23 @@ export function useCategoryReviewPending(): UseQueryResult<boolean> {
   return useQuery({
     queryKey: queryKeys.onboarding.categoryReview(),
     queryFn: () => readCategoryReviewPending(database),
+  });
+}
+
+/** The expenses settling up splits. Re-read on every local write and sync, like every other read. */
+export function useBalanceExpenses(): UseQueryResult<readonly BalanceExpense[]> {
+  const database = useDatabase();
+  return useQuery({
+    queryKey: queryKeys.expenses.balance(),
+    queryFn: () => listBalanceExpenses(database),
+  });
+}
+
+/** Recorded payments between household members, newest first. */
+export function useSettlements(): UseQueryResult<readonly SettlementListItem[]> {
+  const database = useDatabase();
+  return useQuery({
+    queryKey: queryKeys.settlements.list(),
+    queryFn: () => listSettlements(database),
   });
 }

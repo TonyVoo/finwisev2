@@ -184,6 +184,23 @@ Haptics and animation can only be judged by hand. Run this on a real phone.
       works, and choosing them again puts it back (nothing extra is stored). Leave the household as the other
       person, then open an expense they paid: it says "Former member". Nothing in Home or Summary changes yet:
       who owes whom comes with the Balances screen.
+- [ ] **Balances (settle up):** with two people in a household, the Household screen has a **Balances** section
+      above the members. Add an expense as you (no "Paid by" change): it reads "Bao owes you ..." with half the
+      amount, and on the other phone, after a sync, "You owe Ana ..." with the same figure. Add one the other
+      person paid: the figures net off. A **private** expense, an **income** entry, and an expense dated
+      before the other person joined change nothing. Setting **Paid by** to the other person flips who owes.
+      With nothing owed it says "All settled up".
+- [ ] **Settle up:** tap **Settle up**. It opens on what you owe (or are owed) with that person, the direction
+      and the amount filled in; the first key you press replaces the amount. Flip **I paid / They paid me**,
+      pick another person (with three members), change the date and add a note, then **Record**. You return
+      to the Household screen, the balance drops by the amount, and a snackbar offers **Undo**. On the other
+      phone the same payment arrives after a sync and their balance matches.
+- [ ] **Payment history:** **Payment history** lists payments newest first ("You paid Bao", "Bao paid you",
+      and "Cam paid Bao" for two others). Swipe your own to delete with **Undo**; a payment between two other
+      people has no delete. Deleting puts the balance back. Works in airplane mode.
+- [ ] **Leaving with open balances:** while anyone owes anyone, **Leave household** (and, for the owner,
+      removing a member) adds a sentence about unsettled balances to its dialog but still lets you go. Settled
+      up, the dialogs are unchanged.
 - [ ] **Display name:** Settings -> **Display name** -> type a name -> Save. The row shows it. In a household,
       the Members list, the member action sheet, the hand-over and remove dialogs and the "Added by" line on
       expenses all use that name instead of the start of the email; a member with no name still shows the

@@ -22,21 +22,19 @@ export function PaidBySheet({
   options,
   selectedId,
   onSelect,
+  title = COPY.form.paidBy.title,
 }: {
   readonly visible: boolean;
   readonly onClose: () => void;
   readonly options: readonly PaidByOption[];
   readonly selectedId: string | null;
   readonly onSelect: (userId: string) => void;
+  /** Defaults to "Who paid?"; settling up asks "With" the same list. */
+  readonly title?: string;
 }) {
   const color = useColors();
   return (
-    <Sheet
-      visible={visible}
-      title={COPY.form.paidBy.title}
-      onClose={onClose}
-      testID={PAID_BY_SHEET_TEST_ID}
-    >
+    <Sheet visible={visible} title={title} onClose={onClose} testID={PAID_BY_SHEET_TEST_ID}>
       <ScrollView style={styles.list}>
         {options.map((option, index) => {
           const selected = option.userId === selectedId;

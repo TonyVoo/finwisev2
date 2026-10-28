@@ -24,6 +24,11 @@ export const queryKeys = {
   /** When the last sync completed, as persisted - what tells "empty" from "not loaded yet". */
   lastSyncedAt: () => ['local', 'sync', 'lastSyncedAt'] as const,
 
+  settlements: {
+    /** Recorded payments between household members, newest first. */
+    list: () => ['local', 'settlements', 'list'] as const,
+  },
+
   categories: {
     all: () => ['local', 'categories'] as const,
     live: () => ['local', 'categories', 'live'] as const,
@@ -38,6 +43,8 @@ export const queryKeys = {
   },
 
   expenses: {
+    /** The expenses settling up splits: live, shared spending with who added and who paid. */
+    balance: () => ['local', 'expenses', 'balance'] as const,
     all: () => ['local', 'expenses'] as const,
     /** @param month `YYYY-MM`, the bucket monthly totals group on. */
     month: (month: string) => ['local', 'expenses', 'month', month] as const,

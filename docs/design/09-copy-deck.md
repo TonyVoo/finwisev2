@@ -573,6 +573,30 @@ them as proposals the Designer can reword; changing a row here means changing
 | `home.private` | `Includes {amount} private` | Home, under the total |
 | `a11y.private` | `private` | Spoken in an expense row's label |
 | `household.addedBy` | `Added by {name}` | Expense row, in a shared household |
+| `household.balances.title` | `Balances` | Household screen, section heading |
+| `household.balances.settled` | `All settled up` | Balances, when nobody owes anything |
+| `household.balances.youOwe` | `You owe {name} {amount}` | Balances line |
+| `household.balances.owesYou` | `{name} owes you {amount}` | Balances line |
+| `household.balances.settleUp` | `Settle up` | Balances, button |
+| `household.balances.history` | `Payment history` | Balances, row |
+| `household.balances.unsettledLeave` | `You haven't settled up yet. If you leave now, the others' balances are worked out without you.` | Leave dialog, added while anyone owes anyone |
+| `household.balances.unsettledRemove` | `Balances aren't settled yet. Once they are removed, everyone else's are worked out without them.` | Remove dialog, added while anyone owes anyone |
+| `household.history.title` | `Payment history` | Payment history, title |
+| `household.history.emptyHeadline` | `No payments yet` | Payment history, empty |
+| `household.history.emptyBody` | `Payments you record to settle up show up here.` | Payment history, empty |
+| `household.history.youPaid` | `You paid {name}` | Payment history row |
+| `household.history.paidYou` | `{name} paid you` | Payment history row |
+| `household.history.paid` | `{from} paid {to}` | Payment history row, between two other members |
+| `household.history.deleted` | `Payment deleted.` | Snackbar, `Undo` |
+| `household.history.deleteAction` | `Delete payment` | Screen-reader action on a payment row |
+| `household.settle.title` | `Settle up` | Settle up screen, title |
+| `household.settle.record` | `Record` | Settle up, save action |
+| `household.settle.close` | `Close without recording` | Settle up, close button label |
+| `household.settle.iPaid` | `I paid` | Settle up, direction |
+| `household.settle.theyPaid` | `They paid me` | Settle up, direction |
+| `household.settle.person` | `With` | Settle up, person row |
+| `household.settle.recorded` | `Payment recorded.` | Snackbar, `Undo` |
+| `household.balances.owes` | `{from} owes {to} {amount}` | Balances line, between two other members |
 | `household.addedByYou` | `Added by you` | Expense row, in a shared household |
 | `household.bulk.selectAction` | `Select expense` | Screen-reader action on an expense row |
 | `household.bulk.select` | `Select expenses` | Home and Search header, button that starts picking |

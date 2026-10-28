@@ -12,6 +12,11 @@ export interface MemberRef {
   readonly email: string;
   /** What they chose to be called, or null. */
   readonly displayName: string | null;
+  /**
+   * When they joined, as the server sent it. Absent on members stored before it was kept; the next
+   * sync pass rewrites them with it.
+   */
+  readonly joinedAt?: string;
 }
 
 /**
@@ -40,12 +45,13 @@ export function parseMembers(json: string | null): readonly MemberRef[] {
     const members: MemberRef[] = [];
     for (const entry of parsed) {
       if (typeof entry !== 'object' || entry === null) return [];
-      const { userId, email, displayName } = entry as Record<string, unknown>;
+      const { userId, email, displayName, joinedAt } = entry as Record<string, unknown>;
       if (typeof userId !== 'string' || typeof email !== 'string') return [];
       members.push({
         userId,
         email,
         displayName: typeof displayName === 'string' ? displayName : null,
+        ...(typeof joinedAt === 'string' ? { joinedAt } : {}),
       });
     }
     return members;
@@ -70,4 +76,18 @@ export function addedByText(
     return COPY.household.addedByYou;
   }
   return COPY.household.addedBy.replace('{name}', memberLabel(author));
+}
+
+/**
+ * What to call a member where money is concerned: `You` for the person looking, their name for a
+ * current member, and a former member for anyone no longer in the list.
+ */
+export function labelOfMember(
+  members: readonly MemberRef[],
+  meId: string | null,
+  userId: string,
+): string {
+  if (userId === meId) return COPY.household.you;
+  const member = members.find((candidate) => candidate.userId === userId);
+  return member === undefined ? COPY.household.formerMember : memberLabel(member);
 }
