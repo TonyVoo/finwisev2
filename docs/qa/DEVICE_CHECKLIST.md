@@ -95,6 +95,15 @@ backend **restarted after pulling** (it adds three tables: `pnpm --filter backen
       part of their email before the @), and "Added by you" on your own. Rows from before the
       household, and any row with no recorded author, show nothing extra. A solo account never sees
       the line. VoiceOver/TalkBack read it as part of the row.
+- [ ] **Private expenses:** inside a household, the add/edit form has a **Keep private** switch (not shown to an
+      account in no household). Phone B marks an expense private: **phone A never sees it** - not in the list,
+      not in Summary or any total, not in search - while B sees it with a small lock and an "Includes ... private"
+      line under the total, and VoiceOver says "private". B turns the switch off: it appears on A after a sync;
+      B turns it back on: it disappears from A after a sync. A cannot edit, delete or open B's private expense.
+- [ ] **Leaving takes private expenses along:** B leaves (or is removed, or the owner deletes the household): B's
+      private expenses are now ordinary expenses in B's own books (under the same-named category or
+      Uncategorized), and none of them appear in A's books. A member who deletes their account takes their
+      private expenses with them.
 - [ ] Airplane mode: the "Added by" lines still show (the names are kept on the phone).
 - [ ] B: **Leave household**. B is back on its own books and currency, its own expenses are back, and
       A still has everything B added while in.

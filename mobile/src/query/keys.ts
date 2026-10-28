@@ -50,6 +50,8 @@ export const queryKeys = {
      */
     monthTotal: (month: string) => ['local', 'expenses', 'monthTotal', month] as const,
     incomeTrend: (month: string) => ['local', 'expenses', 'incomeTrend', month] as const,
+    /** The month's private spend, for the line under the total. */
+    monthPrivate: (month: string) => ['local', 'expenses', 'monthPrivate', month] as const,
     monthDailySpend: (month: string) => ['local', 'expenses', 'monthDailySpend', month] as const,
     monthIncome: (month: string) => ['local', 'expenses', 'monthIncome', month] as const,
     /**

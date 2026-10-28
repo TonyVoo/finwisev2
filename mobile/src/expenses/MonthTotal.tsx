@@ -40,6 +40,7 @@ export const MONTH_TOTAL_TEST_ID = 'month-total';
 export const MONTH_TOTAL_SKELETON_TEST_ID = 'month-total-skeleton';
 export const MONTH_TOTAL_COUNT_TEST_ID = 'month-total-count';
 export const MONTH_PACE_TEST_ID = 'month-total-pace';
+export const MONTH_PRIVATE_TEST_ID = 'month-total-private';
 export const MONTH_BALANCE_TEST_ID = 'month-total-balance';
 
 export interface MonthTotalProps {
@@ -66,6 +67,11 @@ export interface MonthTotalProps {
   readonly daysInMonth?: number;
   /** Where the month ends at the current daily average; current month only. */
   readonly paceMinor?: number | null;
+  /**
+   * How much of the month is private to this person (household only). The total above already
+   * includes it; this says so, and how much. Omitted or zero shows nothing.
+   */
+  readonly privateMinor?: number;
 }
 
 export function MonthTotal({
@@ -77,6 +83,7 @@ export function MonthTotal({
   series,
   daysInMonth,
   paceMinor,
+  privateMinor,
 }: MonthTotalProps) {
   const styles = useStyles();
   const drawn = useCountUp(totalMinor, useReduceMotion());
@@ -123,6 +130,11 @@ export function MonthTotal({
       {balance === null ? null : (
         <Text testID={MONTH_BALANCE_TEST_ID} style={styles.count}>
           {balance}
+        </Text>
+      )}
+      {privateMinor === undefined || privateMinor <= 0 ? null : (
+        <Text testID={MONTH_PRIVATE_TEST_ID} style={styles.count}>
+          {COPY.home.private.replace('{amount}', formatMoney(privateMinor, currency))}
         </Text>
       )}
       {pace === null ? null : (

@@ -118,6 +118,7 @@ export function expenseRowLabel(
     ...(item.note === null || item.note.trim().length === 0 ? [] : [item.note]),
     ...(addedBy === null || addedBy === undefined ? [] : [addedBy]),
     dayLabel(item.date, today, locale),
+    ...(item.private ? [COPY.a11y.private] : []),
     ...(item.pending ? [COPY.a11y.notSyncedYet] : []),
     // Deck §8: the row's composed label ends with `, could not sync` when the server
     // refused it. Appended rather than substituted, because the amount and the day are

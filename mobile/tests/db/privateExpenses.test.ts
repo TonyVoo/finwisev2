@@ -124,4 +124,31 @@ describe('private expenses, on the device', () => {
 
     expect(await monthPrivateSpendMinor(database, OCTOBER)).toBe(0);
   });
+
+  it("never shows or counts another member's private expense, which arrives as a deleted placeholder", async () => {
+    await database.withExclusiveTransactionAsync(async (txn) => {
+      await applyServerRecord(txn, {
+        entity: 'expense',
+        record: serverExpense({
+          id: expenseId(7),
+          private: true,
+          amountMinor: 0,
+          note: null,
+          createdBy: null,
+          date: '2026-10-09',
+          deletedAt: '2026-10-09T10:00:00.000Z',
+        }),
+      });
+      await applyServerRecord(txn, {
+        entity: 'expense',
+        record: serverExpense({ id: expenseId(8), amountMinor: 1250, date: '2026-10-09' }),
+      });
+    });
+
+    const items = await listMonthExpenses(database, OCTOBER);
+
+    expect(items.map((item) => item.id)).toEqual([expenseId(8)]);
+    expect(await monthPrivateSpendMinor(database, OCTOBER)).toBe(0);
+    expect(await findExpense(database, expenseId(7))).toBeNull();
+  });
 });

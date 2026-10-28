@@ -30,6 +30,7 @@ import {
   listPendingChanges,
   monthCategorySpend,
   monthDailySpend,
+  monthPrivateSpendMinor,
   monthTotalMinor,
   monthlyTotals,
   type MonthlyTotal,
@@ -125,6 +126,15 @@ export function useMonthTotal(month: MonthKey): UseQueryResult<number> {
   return useQuery({
     queryKey: queryKeys.expenses.monthTotal(month),
     queryFn: () => monthTotalMinor(database, monthRange(month)),
+  });
+}
+
+/** What this month's private expenses add up to, for the line under the total. */
+export function useMonthPrivateSpend(month: MonthKey): UseQueryResult<number> {
+  const database = useDatabase();
+  return useQuery({
+    queryKey: queryKeys.expenses.monthPrivate(month),
+    queryFn: () => monthPrivateSpendMinor(database, monthRange(month)),
   });
 }
 

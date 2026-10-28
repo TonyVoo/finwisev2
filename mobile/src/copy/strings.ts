@@ -90,6 +90,8 @@ export const COPY = {
     balance: { income: 'Income {amount}', net: 'Net {amount}' },
     /** The line under the total while the month is under way: where it is heading. */
     pace: 'On pace for {amount} this month',
+    /** Under the total, in a household, when some of the month is private to you. */
+    private: 'Includes {amount} private',
     /** A row's spoken prefix for income, so the amount is not read as money spent. */
     incomeLabel: 'income',
     /** Spoken after the amount of a foreign-currency expense: what was actually paid. */
@@ -159,6 +161,11 @@ export const COPY = {
   },
 
   form: {
+    /** The switch that hides an expense from the rest of the household. */
+    private: {
+      label: 'Keep private',
+      hint: "Only you can see it. It is left out of everyone else's totals.",
+    },
     title: {
       add: 'Add expense',
       edit: 'Edit expense',
@@ -623,6 +630,7 @@ export const COPY = {
     amount: 'Amount, {amount}',
     doubleTapToChange: 'Double tap to change.',
     notSyncedYet: 'not synced yet',
+    private: 'private',
     couldNotSync: 'could not sync',
     cannotBeDeleted: 'cannot be deleted',
     noExpenses: 'No expenses',

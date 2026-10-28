@@ -1,11 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AccessibilityInfo, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  AccessibilityInfo,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  View,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import Feather from '@expo/vector-icons/Feather';
 import { AppBar, IconButton, SkeletonBlock } from '../components/Chrome';
 import { Button } from '../components/Button';
 import { Dialog } from '../components/Dialog';
-import { Row, RowTitle, Swatch } from '../components/Row';
+import { Row, RowSubtitle, RowTitle, Swatch } from '../components/Row';
+import { useInHousehold } from '../household/useInHousehold';
 import { useSnackbar } from '../components/Snackbar';
 import { KindToggle } from './KindToggle';
 import { CategoryFormSheet, type CategoryDraft } from '../categories/CategoryFormSheet';
@@ -151,6 +160,8 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
   const categories = useCategoriesWithCounts();
   const fallback = useFallbackCategory();
   const lastUsed = useLastUsedCategoryId();
+  // Only a household has anyone to hide an expense from.
+  const inHousehold = useInHousehold();
   const currency = useUserCurrency();
   const coloursInUse = useColoursInUse();
 
@@ -192,6 +203,7 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
         originalCurrency: stored.data.originalCurrency,
         date: stored.data.date,
         note: stored.data.note,
+        private: stored.data.private,
       };
       setDraft(seeded);
       setInitial(seeded);
@@ -405,6 +417,7 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
         originalCurrency: live.originalCurrency,
         date: live.date,
         note: live.note,
+        private: live.private ?? false,
       });
       await applyReceiptChange(db, queued.recordId, receiptChange);
     });
@@ -631,6 +644,38 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
             >
               <RowTitle>{COPY.form.field.category}</RowTitle>
             </Row>
+
+            {inHousehold ? (
+              <Row
+                testID="form-private"
+                leading={<Feather name="lock" size={20} color={color.text.tertiary} />}
+                onPress={() =>
+                  setDraft((current) =>
+                    current === null
+                      ? current
+                      : { ...current, private: !(current.private ?? false) },
+                  )
+                }
+                accessibilityLabel={`${COPY.form.private.label}. ${COPY.form.private.hint}`}
+                accessibilityState={{ selected: live.private ?? false }}
+                trailing={
+                  <Switch
+                    testID="form-private-switch"
+                    value={live.private ?? false}
+                    onValueChange={(next) =>
+                      setDraft((current) =>
+                        current === null ? current : { ...current, private: next },
+                      )
+                    }
+                    accessibilityElementsHidden
+                    importantForAccessibility="no-hide-descendants"
+                  />
+                }
+              >
+                <RowTitle>{COPY.form.private.label}</RowTitle>
+                <RowSubtitle lines={2}>{COPY.form.private.hint}</RowSubtitle>
+              </Row>
+            ) : null}
 
             <Row
               testID={DATE_ROW_TEST_ID}

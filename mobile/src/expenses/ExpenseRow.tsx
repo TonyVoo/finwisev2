@@ -6,7 +6,8 @@ import { COPY, SYNC_COPY } from '../copy/strings';
 import type { CalendarDate } from '../lib/calendar';
 import { formatMoney } from '../lib/money';
 import { space, type } from '../theme/tokens';
-import { createStyles } from '../theme/ThemeProvider';
+import Feather from '@expo/vector-icons/Feather';
+import { createStyles, useColors } from '../theme/ThemeProvider';
 import type { ExpenseListItem } from '../db/queries';
 import { expenseRowLabel, originalLabel, rowCategoryColor, rowCategoryName } from './listModel';
 
@@ -51,6 +52,7 @@ export function ExpenseRow({
   addedBy,
 }: ExpenseRowProps) {
   const styles = useStyles();
+  const color = useColors();
   // What was actually paid, when that was in another currency, then the note.
   const original = originalLabel(item);
   const note = item.note === null || item.note.trim().length === 0 ? null : item.note;
@@ -81,6 +83,17 @@ export function ExpenseRow({
             {/* Mutually exclusive by construction: `needsAttention` means the server
                 refused the row *and* nothing is queued for it (`db/queries.ts`). */}
             {item.needsAttention ? <NeedsAttentionGlyph /> : item.pending ? <PendingGlyph /> : null}
+            {/* Decorative: the row's label says "private", and only its author ever sees this. */}
+            {item.private ? (
+              <Feather
+                testID={`expense-private-${item.id}`}
+                name="lock"
+                size={14}
+                color={color.text.tertiary}
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+              />
+            ) : null}
             <Text
               testID={`${EXPENSE_AMOUNT_TEST_ID_PREFIX}-${item.id}`}
               style={[styles.amount, item.kind === 'income' ? styles.income : null]}

@@ -87,6 +87,7 @@ const PAGE = {
         date: '2026-10-21',
         note: 'seeded by another device',
         createdBy: null,
+        private: false,
         createdAt: '2026-10-21T06:00:00.000Z',
         updatedAt: '2026-10-21T06:00:00.000Z',
         deletedAt: null,

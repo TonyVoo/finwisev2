@@ -553,6 +553,10 @@ them as proposals the Designer can reword; changing a row here means changing
 | `account.displayName.tooLong` | `Names can be up to 40 characters.` | Display name screen |
 | `account.displayName.offline` | `You need to be online to change your name.` | Display name screen |
 | `settings.displayName` | `Display name` | Settings row |
+| `form.private.label` | `Keep private` | Expense form, household only |
+| `form.private.hint` | `Only you can see it. It is left out of everyone else's totals.` | Expense form, household only |
+| `home.private` | `Includes {amount} private` | Home, under the total |
+| `a11y.private` | `private` | Spoken in an expense row's label |
 | `household.addedBy` | `Added by {name}` | Expense row, in a shared household |
 | `household.addedByYou` | `Added by you` | Expense row, in a shared household |
 | `household.members` | `Members` | Household screen |

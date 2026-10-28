@@ -90,6 +90,7 @@ export const VIETNAMESE_COPY: CopyBundle = {
       total: { current: 'Tổng tháng này', other: 'Tổng' },
       balance: { income: 'Thu nhập {amount}', net: 'Còn lại {amount}' },
       pace: 'Dự kiến {amount} trong tháng',
+      private: 'Gồm {amount} riêng tư',
       incomeLabel: 'thu nhập',
       paidIn: 'đã trả {amount}',
       section: { today: 'Hôm nay', yesterday: 'Hôm qua' },
@@ -147,6 +148,10 @@ export const VIETNAMESE_COPY: CopyBundle = {
     },
 
     form: {
+      private: {
+        label: 'Giữ riêng tư',
+        hint: 'Chỉ bạn nhìn thấy. Khoản này không tính vào tổng của người khác.',
+      },
       title: {
         add: 'Thêm khoản chi',
         edit: 'Sửa khoản chi',
@@ -577,6 +582,7 @@ export const VIETNAMESE_COPY: CopyBundle = {
       amount: 'Số tiền, {amount}',
       doubleTapToChange: 'Nhấn đúp để thay đổi.',
       notSyncedYet: 'chưa đồng bộ',
+      private: 'riêng tư',
       couldNotSync: 'không đồng bộ được',
       cannotBeDeleted: 'không thể xóa',
       noExpenses: 'Không có khoản chi',

@@ -17,6 +17,7 @@ import {
   useMonthCategorySpend,
   useMonthExpenses,
   useMonthDailySpend,
+  useMonthPrivateSpend,
   useMonthIncome,
   useMonthTotal,
   useUserCurrency,
@@ -115,6 +116,7 @@ export default function ExpenseListScreen() {
   const total = useMonthTotal(month);
   const income = useMonthIncome(month);
   const daily = useMonthDailySpend(month);
+  const privateSpend = useMonthPrivateSpend(month);
   const monthDays = daysIn(month);
   // The current month stops at today, so the bars do not flat-line into the future.
   const shownDays = isCurrent ? Number(today.slice(8, 10)) : monthDays;
@@ -189,6 +191,7 @@ export default function ExpenseListScreen() {
         isCurrentMonth={isCurrent}
         incomeMinor={currencyCode === null || awaitingFirstSync ? undefined : income.data}
         series={series}
+        privateMinor={currencyCode === null || awaitingFirstSync ? undefined : privateSpend.data}
         paceMinor={
           isCurrent && total.data !== undefined && shownDays < monthDays
             ? projectedMonthEnd(total.data, shownDays, monthDays)
