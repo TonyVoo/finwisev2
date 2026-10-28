@@ -3800,6 +3800,64 @@ components:
         lands on the 28th/29th in February and the 30th in April, and is back on the 31st
         in May - it does not drift).
 
+    Settlement:
+      type: object
+      description: |
+        A recorded payment between two members of a household ("Bao paid Ana 42.00"), as the
+        server reports it. Balances are the household's expenses minus these payments, computed on
+        each device; see `docs/design/12-settle-up.md`.
+
+        Sync-only, like goals: no REST route, a change travels as a push item and arrives as a
+        pull change. It lives in the household's book, so every member sees every payment. Either
+        person it names may record it, edit it or delete it (deleting is how one is undone). Both
+        must be current members when it is written; no foreign key holds them, so a member leaving
+        later leaves the history intact. There is no currency: the amount is in the household's.
+      additionalProperties: false
+      required:
+        - id
+        - fromUserId
+        - toUserId
+        - amountMinor
+        - date
+        - note
+        - createdBy
+        - createdAt
+        - updatedAt
+        - deletedAt
+        - revision
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        fromUserId:
+          allOf: [{ $ref: '#/components/schemas/Uuid' }]
+          description: Who paid.
+        toUserId:
+          allOf: [{ $ref: '#/components/schemas/Uuid' }]
+          description: Who was paid. Never the same as `fromUserId`.
+        amountMinor:
+          type: integer
+          minimum: 1
+          maximum: 999999999999
+          description: Amount paid, in minor units of the household currency. Greater than zero.
+        date:
+          allOf: [{ $ref: '#/components/schemas/CalendarDate' }]
+          description: The day the payment happened.
+        note:
+          oneOf:
+            - type: string
+              maxLength: 200
+            - type: 'null'
+          description: Free-text note, up to 200 characters after trimming, or `null`.
+        createdBy:
+          oneOf:
+            - { $ref: '#/components/schemas/Uuid' }
+            - type: 'null'
+          description: |
+            Who recorded it: one of the two people it names. Server-assigned and immutable.
+        createdAt: { $ref: '#/components/schemas/CreatedAt' }
+        updatedAt: { $ref: '#/components/schemas/UpdatedAt' }
+        deletedAt: { $ref: '#/components/schemas/DeletedAt' }
+        revision: { $ref: '#/components/schemas/Revision' }
+
     Goal:
       type: object
       description: |
@@ -4223,6 +4281,16 @@ components:
         entity: { const: expense }
         record: { $ref: '#/components/schemas/Expense' }
 
+    SettlementSyncChange:
+      type: object
+      title: Settlement change
+      description: A changed settlement (recorded payment), as delivered by `GET /v1/sync`.
+      additionalProperties: false
+      required: [entity, record]
+      properties:
+        entity: { const: settlement }
+        record: { $ref: '#/components/schemas/Settlement' }
+
     SyncChange:
       description: |
         One changed row, discriminated on `entity` so a client gets a precise type for
@@ -4230,13 +4298,14 @@ components:
         is the only way a delete crosses the wire.
 
         `entity` also fixes the order the server applies a batch in: all `category` items,
-        then all `recurring` items, then all `goal` items, then all `expense` items — so an expense created offline
+        then all `recurring` items, then all `goal` items, then all `expense` items, then all `settlement` items — so an expense created offline
         against a category created offline syncs in one round trip.
       oneOf:
         - { $ref: '#/components/schemas/CategorySyncChange' }
         - { $ref: '#/components/schemas/RecurringSyncChange' }
         - { $ref: '#/components/schemas/GoalSyncChange' }
         - { $ref: '#/components/schemas/ExpenseSyncChange' }
+        - { $ref: '#/components/schemas/SettlementSyncChange' }
       discriminator:
         propertyName: entity
         mapping:
@@ -4244,6 +4313,7 @@ components:
           recurring: '#/components/schemas/RecurringSyncChange'
           goal: '#/components/schemas/GoalSyncChange'
           expense: '#/components/schemas/ExpenseSyncChange'
+          settlement: '#/components/schemas/SettlementSyncChange'
 
     SyncPullResponse:
       type: object
@@ -4356,6 +4426,32 @@ components:
             - { $ref: '#/components/schemas/Uuid' }
             - type: 'null'
           description: Who paid; a current household member or null. Same rules as `ExpenseCreateRequest.paidBy`.
+        deletedAt: { $ref: '#/components/schemas/DeletedAt' }
+
+    SettlementSyncFields:
+      type: object
+      description: |
+        Mutable settlement fields in a push. Same upsert/merge semantics as `CategorySyncFields`.
+        To create a settlement that does not exist yet, `fromUserId`, `toUserId`, `amountMinor` and
+        `date` are required. Only a household member may write one; both people must be current
+        members, must differ, and the caller must be one of them. The same holds to edit or delete
+        one. Anything else is a per-record `invalid`.
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        fromUserId: { $ref: '#/components/schemas/Uuid' }
+        toUserId: { $ref: '#/components/schemas/Uuid' }
+        amountMinor:
+          type: integer
+          minimum: 1
+          maximum: 999999999999
+        date: { $ref: '#/components/schemas/CalendarDate' }
+        note:
+          oneOf:
+            - type: string
+              maxLength: 200
+            - type: 'null'
+          description: Trimmed; a note that trims to nothing is stored as `null`.
         deletedAt: { $ref: '#/components/schemas/DeletedAt' }
 
     GoalSyncFields:
@@ -4494,6 +4590,19 @@ components:
         clientMutationId: { $ref: '#/components/schemas/ClientMutationId' }
         fields: { $ref: '#/components/schemas/ExpenseSyncFields' }
 
+    SettlementSyncPushItem:
+      type: object
+      title: Settlement push item
+      description: An upsert of one settlement (recorded payment).
+      additionalProperties: false
+      required: [entity, id, updatedAt, clientMutationId, fields]
+      properties:
+        entity: { const: settlement }
+        id: { $ref: '#/components/schemas/SyncPushItemId' }
+        updatedAt: { $ref: '#/components/schemas/SyncPushUpdatedAt' }
+        clientMutationId: { $ref: '#/components/schemas/ClientMutationId' }
+        fields: { $ref: '#/components/schemas/SettlementSyncFields' }
+
     SyncPushItem:
       description: |
         One item in a push batch, discriminated on `entity` so `fields` is precisely typed.
@@ -4503,6 +4612,7 @@ components:
         - { $ref: '#/components/schemas/RecurringSyncPushItem' }
         - { $ref: '#/components/schemas/GoalSyncPushItem' }
         - { $ref: '#/components/schemas/ExpenseSyncPushItem' }
+        - { $ref: '#/components/schemas/SettlementSyncPushItem' }
       discriminator:
         propertyName: entity
         mapping:
@@ -4510,6 +4620,7 @@ components:
           recurring: '#/components/schemas/RecurringSyncPushItem'
           goal: '#/components/schemas/GoalSyncPushItem'
           expense: '#/components/schemas/ExpenseSyncPushItem'
+          settlement: '#/components/schemas/SettlementSyncPushItem'
 
     SyncPushRequest:
       type: object
@@ -4650,6 +4761,28 @@ components:
             `conflict_server_wins` alike. `null` only for an `invalid` item whose row does
             not exist server-side.
 
+    SettlementSyncPushResult:
+      type: object
+      title: Settlement push result
+      description: The outcome of one settlement upsert, plus the authoritative server row.
+      additionalProperties: false
+      required: [entity, clientMutationId, id, status, idempotentReplay, error, record]
+      properties:
+        entity: { const: settlement }
+        clientMutationId: { $ref: '#/components/schemas/SyncPushEchoedMutationId' }
+        id: { $ref: '#/components/schemas/Uuid' }
+        status: { $ref: '#/components/schemas/SyncPushStatus' }
+        idempotentReplay: { $ref: '#/components/schemas/SyncPushIdempotentReplay' }
+        error: { $ref: '#/components/schemas/SyncPushError' }
+        record:
+          oneOf:
+            - { $ref: '#/components/schemas/Settlement' }
+            - type: 'null'
+          description: |
+            The authoritative server row after the batch — present for `applied` and
+            `conflict_server_wins` alike. `null` only for an `invalid` item whose row does
+            not exist server-side.
+
     SyncPushResult:
       description: |
         One push result, discriminated on `entity`.
@@ -4664,6 +4797,7 @@ components:
         - { $ref: '#/components/schemas/RecurringSyncPushResult' }
         - { $ref: '#/components/schemas/GoalSyncPushResult' }
         - { $ref: '#/components/schemas/ExpenseSyncPushResult' }
+        - { $ref: '#/components/schemas/SettlementSyncPushResult' }
       discriminator:
         propertyName: entity
         mapping:
@@ -4671,6 +4805,7 @@ components:
           recurring: '#/components/schemas/RecurringSyncPushResult'
           goal: '#/components/schemas/GoalSyncPushResult'
           expense: '#/components/schemas/ExpenseSyncPushResult'
+          settlement: '#/components/schemas/SettlementSyncPushResult'
 
     SyncPushResponse:
       type: object

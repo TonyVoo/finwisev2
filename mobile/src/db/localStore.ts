@@ -99,6 +99,7 @@ const DATA_TABLES = [
   'expenses',
   'recurring',
   'goals',
+  'settlements',
   'categories',
   'user',
 ] as const;
@@ -121,6 +122,7 @@ async function hasRows(executor: SqliteExecutor): Promise<boolean> {
           OR EXISTS (SELECT 1 FROM expenses)
           OR EXISTS (SELECT 1 FROM recurring)
           OR EXISTS (SELECT 1 FROM goals)
+          OR EXISTS (SELECT 1 FROM settlements)
           OR EXISTS (SELECT 1 FROM outbox)
           OR EXISTS (SELECT 1 FROM user)) AS present`,
     [],

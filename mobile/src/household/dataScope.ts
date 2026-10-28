@@ -35,6 +35,7 @@ const SCOPED_TABLES = [
   'expenses',
   'recurring',
   'goals',
+  'settlements',
   'categories',
 ] as const;
 

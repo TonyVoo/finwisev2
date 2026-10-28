@@ -39,6 +39,7 @@ export interface PruneResult {
   readonly categories: number;
   readonly recurring: number;
   readonly goals: number;
+  readonly settlements: number;
   /** Idempotency-ledger rows swept on the same horizon. */
   readonly ledgerEntries: number;
   /** Rows older than the horizon that could not be pruned yet; see below. */
@@ -110,6 +111,14 @@ export async function pruneTombstones(
       RETURNING "revision"
     `;
 
+    const settlements = await tx.$queryRaw<{ revision: number }[]>`
+      DELETE FROM "settlements"
+       WHERE "user_id" = ${userId}::uuid
+         AND "deleted_at" IS NOT NULL
+         AND "deleted_at" < ${horizon}
+      RETURNING "revision"
+    `;
+
     // Repair before the category delete: free expired tombstones of the live expenses that
     // would otherwise hold them forever (see above). Skipped, and the category retained and
     // counted, if the account somehow has no live default to move them to.
@@ -171,9 +180,13 @@ export async function pruneTombstones(
     const counter = await tx.revisionCounter.findUnique({ where: { userId } });
     // Only *deleted* rows move the watermark. A reassigned expense is a live row that clients
     // will pull by its new revision, so it must not be counted as pruned history.
-    const deletedRevisions = [...expenses, ...recurring, ...goals, ...categories].map(
-      (row) => row.revision,
-    );
+    const deletedRevisions = [
+      ...expenses,
+      ...recurring,
+      ...goals,
+      ...settlements,
+      ...categories,
+    ].map((row) => row.revision);
     // The watermark is the *highest* revision destroyed, not a count: a client whose
     // `since` is at or above it has already seen every delete that was pruned, so it can
     // still be served incrementally. Monotonic, because a lower value would re-open a
@@ -196,6 +209,7 @@ export async function pruneTombstones(
       categories: categories.length,
       recurring: recurring.length,
       goals: goals.length,
+      settlements: settlements.length,
       ledgerEntries: ledgerEntries.count,
       categoriesRetained: retained,
       expensesReassigned,
@@ -227,6 +241,7 @@ export async function pruneAllTombstones(now = new Date()): Promise<{
   categories: number;
   recurring: number;
   goals: number;
+  settlements: number;
   ledgerEntries: number;
   /** Expired category tombstones still held after this run. An operator wants this at 0. */
   categoriesRetained: number;
@@ -245,6 +260,8 @@ export async function pruneAllTombstones(now = new Date()): Promise<{
       UNION ALL
       SELECT "user_id" FROM "goals" WHERE "deleted_at" IS NOT NULL AND "deleted_at" < ${horizon}
       UNION ALL
+      SELECT "user_id" FROM "settlements" WHERE "deleted_at" IS NOT NULL AND "deleted_at" < ${horizon}
+      UNION ALL
       SELECT "user_id" FROM "sync_mutations" WHERE "created_at" < ${horizon}
     ) AS "stale"
   `;
@@ -253,6 +270,7 @@ export async function pruneAllTombstones(now = new Date()): Promise<{
   let categories = 0;
   let recurring = 0;
   let goals = 0;
+  let settlements = 0;
   let ledgerEntries = 0;
   let categoriesRetained = 0;
   let expensesReassigned = 0;
@@ -262,6 +280,7 @@ export async function pruneAllTombstones(now = new Date()): Promise<{
     categories += result.categories;
     recurring += result.recurring;
     goals += result.goals;
+    settlements += result.settlements;
     ledgerEntries += result.ledgerEntries;
     categoriesRetained += result.categoriesRetained;
     expensesReassigned += result.expensesReassigned;
@@ -274,6 +293,7 @@ export async function pruneAllTombstones(now = new Date()): Promise<{
     categories,
     recurring,
     goals,
+    settlements,
     ledgerEntries,
     categoriesRetained,
     expensesReassigned,
@@ -284,6 +304,7 @@ export async function pruneAllTombstones(now = new Date()): Promise<{
     categories,
     recurring,
     goals,
+    settlements,
     ledgerEntries,
     categoriesRetained,
     expensesReassigned,

@@ -729,3 +729,104 @@ export async function renameCategories(
     options,
   );
 }
+
+/** A recorded payment as the settle-up sheet submits it. */
+export interface NewSettlement {
+  /** Who paid. */
+  readonly fromUserId: string;
+  /** Who was paid. */
+  readonly toUserId: string;
+  readonly amountMinor: number;
+  readonly date: string;
+  readonly note?: string | null;
+}
+
+/** A note as it is sent: trimmed, and absent rather than empty when nothing is left. */
+function settlementNote(note: string | null | undefined): { note?: string } {
+  const trimmed = note?.trim() ?? '';
+  return trimmed === '' ? {} : { note: trimmed };
+}
+
+/**
+ * Record that one member paid another.
+ *
+ * Who may do so is the server's call (a household member, between two current members, one of
+ * whom is the person writing); the device only refuses what can never be valid - a payment to
+ * oneself, or of nothing - before anything is written.
+ */
+export async function createSettlement(
+  database: SqliteDatabase,
+  settlement: NewSettlement,
+  options: LocalMutationOptions & { readonly id?: string } = {},
+): Promise<QueuedMutation> {
+  if (settlement.fromUserId === settlement.toUserId) {
+    throw new Error('A payment needs two different people.');
+  }
+  return await applyLocalMutation(
+    database,
+    {
+      entity: 'settlement',
+      id: options.id ?? uuidv7(),
+      fields: {
+        fromUserId: settlement.fromUserId,
+        toUserId: settlement.toUserId,
+        amountMinor: settlement.amountMinor,
+        date: settlement.date,
+        ...settlementNote(settlement.note),
+      },
+    },
+    options,
+  );
+}
+
+/** Correct a payment. Only the fields given are sent, so another device's edit is not undone. */
+export async function updateSettlement(
+  database: SqliteDatabase,
+  id: string,
+  changes: Partial<NewSettlement>,
+  options: LocalMutationOptions = {},
+): Promise<QueuedMutation> {
+  const { note, ...rest } = changes;
+  return await applyLocalMutation(
+    database,
+    {
+      entity: 'settlement',
+      id,
+      fields: {
+        ...rest,
+        // `null` clears the note; absent leaves it alone.
+        ...(note === undefined
+          ? {}
+          : { note: note === null || note.trim() === '' ? null : note.trim() }),
+      },
+    },
+    options,
+  );
+}
+
+/** Undo a payment: a soft delete, so it reaches every member as a tombstone. */
+export async function deleteSettlement(
+  database: SqliteDatabase,
+  id: string,
+  options: LocalMutationOptions = {},
+): Promise<QueuedMutation> {
+  const stamp = (options.clock ?? systemClock)();
+  return await applyLocalMutation(
+    database,
+    { entity: 'settlement', id, fields: { deletedAt: toTimestamp(stamp) } },
+    options,
+  );
+}
+
+/** Bring a deleted payment back. An ordinary update, so it works even after the delete synced. */
+export async function restoreSettlement(
+  database: SqliteDatabase,
+  id: string,
+  options: LocalMutationOptions = {},
+): Promise<QueuedMutation> {
+  return await applyLocalMutation(
+    database,
+    { entity: 'settlement', id, fields: { deletedAt: null } },
+    options,
+  );
+}

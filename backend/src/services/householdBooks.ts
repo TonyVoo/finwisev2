@@ -24,6 +24,7 @@ const BOOK_TABLES = [
   'expenses',
   'recurring_rules',
   'goals',
+  'settlements',
   'sync_mutations',
   'expense_receipts',
 ] as const;
@@ -140,6 +141,10 @@ export async function mergeBooks(tx: Db, from: string, into: string): Promise<vo
     where: { id: { in: keep.filter((id) => id !== promoteToDefault) } },
     data: { isDefault: false },
   });
+
+  // Recorded payments only mean something between household members, so they do not follow the
+  // book into someone's own account: deleting a household discards its settlement history.
+  await tx.$executeRaw`DELETE FROM "settlements" WHERE "user_id" = ${from}::uuid`;
 
   const counts = {
     categories: keep.length,

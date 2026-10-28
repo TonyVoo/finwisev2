@@ -950,3 +950,34 @@ export async function listLiveGoals(database: SqliteDatabase): Promise<readonly 
   );
   return rows.map((row) => ({ ...row, pending: row.pending === 1 }));
 }
+
+/** A recorded payment as the lists consume it: the row plus its local sync state. */
+export interface SettlementListItem {
+  readonly id: string;
+  readonly fromUserId: string;
+  readonly toUserId: string;
+  readonly amountMinor: number;
+  readonly date: string;
+  readonly note: string | null;
+  readonly createdBy: string | null;
+  readonly pending: boolean;
+}
+
+/** Every live payment, newest first. */
+export async function listSettlements(
+  database: SqliteDatabase,
+): Promise<readonly SettlementListItem[]> {
+  const rows = await database.getAllAsync<
+    Omit<SettlementListItem, 'pending'> & { pending: number }
+  >(
+    `SELECT s.id, s.fromUserId, s.toUserId, s.amountMinor, s.date, s.note, s.createdBy,
+            EXISTS (
+              SELECT 1 FROM outbox o WHERE o.entity = 'settlement' AND o.recordId = s.id
+            ) AS pending
+       FROM settlements s
+      WHERE s.deletedAt IS NULL
+      ORDER BY s.date DESC, s.updatedAt DESC, s.id DESC`,
+    [],
+  );
+  return rows.map((row) => ({ ...row, pending: row.pending === 1 }));
+}

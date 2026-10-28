@@ -6,7 +6,13 @@ import {
 } from '@expense-tracker/shared';
 import type { Db } from '../db/client.ts';
 import { getPrisma } from '../db/client.ts';
-import { toWireCategory, toWireExpense, toWireGoal, toWireRecurringRule } from '../db/mappers.ts';
+import {
+  toWireCategory,
+  toWireExpense,
+  toWireGoal,
+  toWireRecurringRule,
+  toWireSettlement,
+} from '../db/mappers.ts';
 import { needsResync } from '../sync/resolver.ts';
 
 /**
@@ -77,7 +83,7 @@ async function readPage(
 
   const run = async (tx: Db): Promise<PageSnapshot> => {
     const counter = await tx.revisionCounter.findUnique({ where: { userId } });
-    const [categories, recurring, goals, expenses] = await Promise.all([
+    const [categories, recurring, goals, expenses, settlements] = await Promise.all([
       tx.category.findMany({
         where: { userId, revision: { gt: since } },
         orderBy: { revision: 'asc' },
@@ -94,6 +100,11 @@ async function readPage(
         take,
       }),
       tx.expense.findMany({
+        where: { userId, revision: { gt: since } },
+        orderBy: { revision: 'asc' },
+        take,
+      }),
+      tx.settlement.findMany({
         where: { userId, revision: { gt: since } },
         orderBy: { revision: 'asc' },
         take,
@@ -120,6 +131,10 @@ async function readPage(
       ...expenses.map((row) => ({
         revision: row.revision,
         change: { entity: 'expense', record: toWireExpense(row, viewerId) } satisfies SyncChange,
+      })),
+      ...settlements.map((row) => ({
+        revision: row.revision,
+        change: { entity: 'settlement', record: toWireSettlement(row) } satisfies SyncChange,
       })),
     ].sort((a, b) => a.revision - b.revision);
 

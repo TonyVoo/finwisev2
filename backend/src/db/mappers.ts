@@ -4,6 +4,7 @@ import type {
   Expense as WireExpense,
   Goal as WireGoal,
   RecurringRule as WireRecurringRule,
+  Settlement as WireSettlement,
   User as WireUser,
 } from '@expense-tracker/shared';
 import type {
@@ -11,6 +12,7 @@ import type {
   Expense as ExpenseRow,
   Goal as GoalRow,
   RecurringRule as RecurringRuleRow,
+  Settlement as SettlementRow,
   User as UserRow,
 } from './generated/client.ts';
 
@@ -149,6 +151,22 @@ export function toWireGoal(row: GoalRow): WireGoal {
     savedMinor: Number(row.savedMinor),
     currency: row.currency,
     deadline: row.deadline === null ? null : toCalendarDate(row.deadline),
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    deletedAt: row.deletedAt?.toISOString() ?? null,
+    revision: row.revision,
+  };
+}
+
+export function toWireSettlement(row: SettlementRow): WireSettlement {
+  return {
+    id: row.id,
+    fromUserId: row.fromUserId,
+    toUserId: row.toUserId,
+    amountMinor: Number(row.amountMinor),
+    date: toCalendarDate(row.date),
+    note: row.note,
+    createdBy: row.createdBy,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     deletedAt: row.deletedAt?.toISOString() ?? null,

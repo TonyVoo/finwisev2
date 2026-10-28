@@ -2,6 +2,7 @@ import type {
   Category,
   Expense,
   Goal,
+  Settlement,
   RecurringRule,
   SyncChange,
   SyncPullResponse,
@@ -48,6 +49,7 @@ export interface FakeSyncServer {
   expense(id: string): Expense | undefined;
   recurring(id: string): RecurringRule | undefined;
   goal(id: string): Goal | undefined;
+  settlement(id: string): Settlement | undefined;
   /** Rows the server holds, live and tombstoned, oldest revision first. */
   snapshot(): ReadonlyArray<SyncChange>;
 }
@@ -66,6 +68,7 @@ export function createFakeSyncServer(options: FakeSyncServerOptions = {}): FakeS
   const expenses = new Map<string, Expense>();
   const rules = new Map<string, RecurringRule>();
   const goals = new Map<string, Goal>();
+  const settlements = new Map<string, Settlement>();
   const replays = new Map<string, SyncPushResult>();
   const requests: TransportRequest[] = [];
   let revision = 0;
@@ -76,6 +79,7 @@ export function createFakeSyncServer(options: FakeSyncServerOptions = {}): FakeS
       ...[...rules.values()].map((record) => ({ entity: 'recurring' as const, record })),
       ...[...goals.values()].map((record) => ({ entity: 'goal' as const, record })),
       ...[...expenses.values()].map((record) => ({ entity: 'expense' as const, record })),
+      ...[...settlements.values()].map((record) => ({ entity: 'settlement' as const, record })),
     ];
     return rows.sort((left, right) => left.record.revision - right.record.revision);
   }
@@ -110,6 +114,9 @@ export function createFakeSyncServer(options: FakeSyncServerOptions = {}): FakeS
     }
     if (item.entity === 'goal') {
       return { ...base, entity: 'goal', record: goals.get(item.id) ?? null };
+    }
+    if (item.entity === 'settlement') {
+      return { ...base, entity: 'settlement', record: settlements.get(item.id) ?? null };
     }
     return { ...base, entity: 'expense', record: expenses.get(item.id) ?? null };
   }
@@ -261,6 +268,59 @@ export function createFakeSyncServer(options: FakeSyncServerOptions = {}): FakeS
     return applied(item, { entity: 'goal', record: merged });
   }
 
+  function applySettlement(
+    item: Extract<SyncPushRequest['changes'][number], { entity: 'settlement' }>,
+  ) {
+    const stored = settlements.get(item.id);
+
+    if (stored === undefined) {
+      const { fromUserId, toUserId, amountMinor, date } = item.fields;
+      if (
+        fromUserId === undefined ||
+        toUserId === undefined ||
+        amountMinor === undefined ||
+        date === undefined
+      ) {
+        return invalid(item, 'fromUserId, toUserId, amountMinor and date are required');
+      }
+      revision += 1;
+      const created: Settlement = {
+        id: item.id,
+        fromUserId,
+        toUserId,
+        amountMinor,
+        date,
+        note: item.fields.note ?? null,
+        createdBy: null,
+        createdAt: item.updatedAt,
+        updatedAt: item.updatedAt,
+        deletedAt: item.fields.deletedAt ?? null,
+        revision,
+      };
+      settlements.set(item.id, created);
+      return applied(item, { entity: 'settlement', record: created });
+    }
+
+    if (item.updatedAt <= stored.updatedAt) {
+      return conflict(item, { entity: 'settlement', record: stored });
+    }
+
+    revision += 1;
+    const merged: Settlement = {
+      ...stored,
+      fromUserId: item.fields.fromUserId ?? stored.fromUserId,
+      toUserId: item.fields.toUserId ?? stored.toUserId,
+      amountMinor: item.fields.amountMinor ?? stored.amountMinor,
+      date: item.fields.date ?? stored.date,
+      note: item.fields.note === undefined ? stored.note : item.fields.note,
+      deletedAt: item.fields.deletedAt === undefined ? stored.deletedAt : item.fields.deletedAt,
+      updatedAt: item.updatedAt,
+      revision,
+    };
+    settlements.set(item.id, merged);
+    return applied(item, { entity: 'settlement', record: merged });
+  }
+
   function applyExpense(item: Extract<SyncPushRequest['changes'][number], { entity: 'expense' }>) {
     const stored = expenses.get(item.id);
 
@@ -346,7 +406,7 @@ export function createFakeSyncServer(options: FakeSyncServerOptions = {}): FakeS
   function push(body: SyncPushRequest): SyncPushResponse {
     // Categories before expenses, as the contract says the server sorts internally - so a
     // client that sent them the other way round still gets a usable answer.
-    const rank = { category: 0, recurring: 1, goal: 2, expense: 3 } as const;
+    const rank = { category: 0, recurring: 1, goal: 2, expense: 3, settlement: 4 } as const;
     const items = [...body.changes].sort((left, right) => rank[left.entity] - rank[right.entity]);
 
     const byMutation = new Map<string, SyncPushResult>();
@@ -364,7 +424,9 @@ export function createFakeSyncServer(options: FakeSyncServerOptions = {}): FakeS
             ? applyRecurring(item)
             : item.entity === 'goal'
               ? applyGoal(item)
-              : applyExpense(item);
+              : item.entity === 'settlement'
+                ? applySettlement(item)
+                : applyExpense(item);
       replays.set(item.clientMutationId, result);
       byMutation.set(item.clientMutationId, result);
     }
@@ -404,6 +466,7 @@ export function createFakeSyncServer(options: FakeSyncServerOptions = {}): FakeS
     expense: (id) => expenses.get(id),
     recurring: (id) => rules.get(id),
     goal: (id) => goals.get(id),
+    settlement: (id) => settlements.get(id),
     snapshot: () => ordered(),
   };
 }

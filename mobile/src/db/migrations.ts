@@ -415,6 +415,69 @@ const PAID_BY = `
 ALTER TABLE expenses ADD COLUMN paidBy TEXT;
 `;
 
+/**
+ * Settlements: recorded payments between two household members, a fifth synced entity
+ * (`docs/design/12-settle-up.md`). The table, and the two CHECKs that name the entities, rebuilt
+ * the same way migrations 6 and 10 did (create, copy, drop, rename, recreate the indexes), carrying
+ * the undrained queue and the AUTOINCREMENT high-water mark across.
+ *
+ * The amount is at least 1 and the two people differ, as on the server. There is no foreign key
+ * to anyone: a member leaving must not cost the household its history.
+ */
+const SETTLEMENTS = `
+CREATE TABLE settlements (
+  id          TEXT    NOT NULL PRIMARY KEY,
+  fromUserId  TEXT    NOT NULL,
+  toUserId    TEXT    NOT NULL,
+  amountMinor INTEGER NOT NULL CHECK (amountMinor >= 1),
+  date        TEXT    NOT NULL,
+  note        TEXT,
+  createdBy   TEXT,
+  createdAt   TEXT,
+  updatedAt   TEXT    NOT NULL,
+  deletedAt   TEXT,
+  revision    INTEGER NOT NULL DEFAULT 0,
+  CHECK (fromUserId <> toUserId)
+);
+
+CREATE INDEX idx_settlements_live ON settlements (deletedAt, date);
+
+CREATE TABLE outbox_v16 (
+  seq              INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+  entity           TEXT    NOT NULL CHECK (entity IN ('category', 'recurring', 'goal', 'expense', 'settlement')),
+  recordId         TEXT    NOT NULL,
+  fields           TEXT    NOT NULL,
+  updatedAt        TEXT    NOT NULL,
+  clientMutationId TEXT    NOT NULL UNIQUE,
+  queuedAt         TEXT    NOT NULL,
+  attempts         INTEGER NOT NULL DEFAULT 0,
+  lastError        TEXT
+);
+INSERT INTO outbox_v16 (seq, entity, recordId, fields, updatedAt, clientMutationId, queuedAt, attempts, lastError)
+  SELECT seq, entity, recordId, fields, updatedAt, clientMutationId, queuedAt, attempts, lastError
+    FROM outbox;
+DELETE FROM sqlite_sequence WHERE name = 'outbox_v16';
+INSERT INTO sqlite_sequence (name, seq)
+  SELECT 'outbox_v16', COALESCE(MAX(seq), 0) FROM sqlite_sequence WHERE name = 'outbox';
+DROP TABLE outbox;
+ALTER TABLE outbox_v16 RENAME TO outbox;
+CREATE INDEX idx_outbox_entity_seq ON outbox (entity, seq);
+CREATE INDEX idx_outbox_record ON outbox (entity, recordId);
+
+CREATE TABLE sync_rejections_v16 (
+  entity     TEXT NOT NULL CHECK (entity IN ('category', 'recurring', 'goal', 'expense', 'settlement')),
+  recordId   TEXT NOT NULL,
+  code       TEXT NOT NULL,
+  message    TEXT NOT NULL,
+  rejectedAt TEXT NOT NULL,
+  PRIMARY KEY (entity, recordId)
+);
+INSERT INTO sync_rejections_v16 (entity, recordId, code, message, rejectedAt)
+  SELECT entity, recordId, code, message, rejectedAt FROM sync_rejections;
+DROP TABLE sync_rejections;
+ALTER TABLE sync_rejections_v16 RENAME TO sync_rejections;
+`;
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: 'initial-schema', up: INITIAL_SCHEMA },
   { version: 2, name: 'store-owner', up: STORE_OWNER },
@@ -431,6 +494,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 13, name: 'display-name', up: DISPLAY_NAME },
   { version: 14, name: 'private-expenses', up: PRIVATE_EXPENSES },
   { version: 15, name: 'paid-by', up: PAID_BY },
+  { version: 16, name: 'settlements', up: SETTLEMENTS },
 ];
 
 /** Highest version `MIGRATIONS` can bring a database to. */

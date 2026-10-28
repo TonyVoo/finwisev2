@@ -22,12 +22,15 @@ import {
   SYNC_APPLY_ORDER,
   SYNC_ENTITIES,
   SyncPullQuery,
+  SyncChange,
   SyncPushItem,
   SyncPushRequest,
   Timestamp,
   UNCATEGORIZED_NAME,
   Uuid,
   apiError,
+  Settlement,
+  SettlementSyncFields,
 } from '../src/index.js';
 
 /**
@@ -339,7 +342,7 @@ describe('sync push shapes', () => {
   });
 
   it('applies categories, then recurring rules, then goals, then expenses', () => {
-    expect(SYNC_APPLY_ORDER).toEqual(['category', 'recurring', 'goal', 'expense']);
+    expect(SYNC_APPLY_ORDER).toEqual(['category', 'recurring', 'goal', 'expense', 'settlement']);
     expect([...SYNC_APPLY_ORDER].sort()).toEqual([...SYNC_ENTITIES].sort());
   });
 });
@@ -434,5 +437,79 @@ describe('who paid an expense', () => {
   it('can be pushed, set or cleared', () => {
     expect(ExpenseSyncFields.safeParse({ paidBy: UUID_V7 }).success).toBe(true);
     expect(ExpenseSyncFields.safeParse({ paidBy: null }).success).toBe(true);
+  });
+});
+
+describe('a settlement', () => {
+  const OTHER = '0192f5a0-0000-7000-8000-00000000b002';
+  const row = {
+    id: UUID_V7,
+    fromUserId: UUID_V7,
+    toUserId: OTHER,
+    amountMinor: 4200,
+    date: '2026-10-06',
+    note: null,
+    createdBy: UUID_V7,
+    createdAt: NOW,
+    updatedAt: NOW,
+    deletedAt: null,
+    revision: 3,
+  };
+
+  it('parses, and needs every field of a server row', () => {
+    expect(Settlement.safeParse(row).success).toBe(true);
+    for (const key of Object.keys(row)) {
+      const partial = { ...row } as Record<string, unknown>;
+      delete partial[key];
+      expect(Settlement.safeParse(partial).success, `missing ${key}`).toBe(false);
+    }
+  });
+
+  it('rejects an amount of zero or less, and unknown fields', () => {
+    expect(Settlement.safeParse({ ...row, amountMinor: 0 }).success).toBe(false);
+    expect(Settlement.safeParse({ ...row, amountMinor: -5 }).success).toBe(false);
+    expect(Settlement.safeParse({ ...row, currency: 'USD' }).success).toBe(false);
+  });
+
+  it('allows a note up to 200 characters', () => {
+    expect(Settlement.safeParse({ ...row, note: 'x'.repeat(200) }).success).toBe(true);
+    expect(Settlement.safeParse({ ...row, note: 'x'.repeat(201) }).success).toBe(false);
+  });
+
+  it('can be pushed whole, in part, or as a delete', () => {
+    const fields = { fromUserId: UUID_V7, toUserId: OTHER, amountMinor: 100, date: '2026-10-06' };
+    expect(SettlementSyncFields.safeParse(fields).success).toBe(true);
+    expect(SettlementSyncFields.safeParse({ amountMinor: 250 }).success).toBe(true);
+    expect(SettlementSyncFields.safeParse({ deletedAt: NOW }).success).toBe(true);
+    expect(SettlementSyncFields.safeParse({}).success).toBe(false);
+  });
+
+  it('turns a note that trims to nothing into null when pushed', () => {
+    expect(SettlementSyncFields.parse({ note: '   ' }).note).toBeNull();
+    expect(SettlementSyncFields.parse({ note: ' paid in cash ' }).note).toBe('paid in cash');
+    expect(SettlementSyncFields.parse({ note: null }).note).toBeNull();
+  });
+
+  it('rejects a push with a bad amount, a bad id or a field the server owns', () => {
+    expect(SettlementSyncFields.safeParse({ amountMinor: 0 }).success).toBe(false);
+    expect(SettlementSyncFields.safeParse({ fromUserId: 'ana' }).success).toBe(false);
+    expect(SettlementSyncFields.safeParse({ amountMinor: 5, createdBy: UUID_V7 }).success).toBe(
+      false,
+    );
+  });
+
+  it('travels in the sync stream as its own entity, applied last', () => {
+    expect(SYNC_ENTITIES).toContain('settlement');
+    expect(SYNC_APPLY_ORDER[SYNC_APPLY_ORDER.length - 1]).toBe('settlement');
+    expect(SyncChange.safeParse({ entity: 'settlement', record: row }).success).toBe(true);
+    expect(
+      SyncPushItem.safeParse({
+        entity: 'settlement',
+        id: UUID_V7,
+        updatedAt: NOW,
+        clientMutationId: UUID_V7,
+        fields: { amountMinor: 100 },
+      }).success,
+    ).toBe(true);
   });
 });

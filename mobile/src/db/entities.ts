@@ -2,6 +2,7 @@ import {
   CategorySyncFields,
   ExpenseSyncFields,
   GoalSyncFields,
+  SettlementSyncFields,
   RecurringSyncFields,
   type SyncEntity,
 } from '@expense-tracker/shared';
@@ -59,6 +60,23 @@ export interface ExpenseRow {
   readonly revision: number;
 }
 
+/** A row of the local `settlements` table (migration 16): a recorded payment between two members. */
+export interface SettlementRow {
+  readonly id: string;
+  readonly fromUserId: string;
+  readonly toUserId: string;
+  readonly amountMinor: number;
+  /** Calendar date `YYYY-MM-DD`. */
+  readonly date: string;
+  readonly note: string | null;
+  /** Who recorded it (server-assigned); null until the server answers. */
+  readonly createdBy: string | null;
+  readonly createdAt: string | null;
+  readonly updatedAt: string;
+  readonly deletedAt: string | null;
+  readonly revision: number;
+}
+
 /** A row of the local `goals` table (migration 10). */
 export interface GoalRow {
   readonly id: string;
@@ -96,6 +114,7 @@ export interface LocalRowByEntity {
   readonly recurring: RecurringRow;
   readonly goal: GoalRow;
   readonly expense: ExpenseRow;
+  readonly settlement: SettlementRow;
 }
 
 export interface EntitySpec {
@@ -205,11 +224,21 @@ const GOAL_SPEC: EntitySpec = {
   parseFields: (fields) => GoalSyncFields.parse(fields),
 };
 
+const SETTLEMENT_SPEC: EntitySpec = {
+  entity: 'settlement',
+  table: 'settlements',
+  mutableColumns: ['fromUserId', 'toUserId', 'amountMinor', 'date', 'note', 'deletedAt'],
+  requiredOnCreate: ['fromUserId', 'toUserId', 'amountMinor', 'date'],
+  insertDefaults: { note: null, createdBy: null, createdAt: null, deletedAt: null, revision: 0 },
+  parseFields: (fields) => SettlementSyncFields.parse(fields),
+};
+
 export const ENTITY_SPECS: Readonly<Record<SyncEntity, EntitySpec>> = {
   category: CATEGORY_SPEC,
   recurring: RECURRING_SPEC,
   goal: GOAL_SPEC,
   expense: EXPENSE_SPEC,
+  settlement: SETTLEMENT_SPEC,
 };
 
 export function entitySpec(entity: SyncEntity): EntitySpec {

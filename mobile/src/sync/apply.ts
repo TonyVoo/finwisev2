@@ -96,6 +96,19 @@ export const SERVER_COLUMNS: Readonly<Record<SyncEntity, readonly string[]>> = {
     'deletedAt',
     'revision',
   ],
+  settlement: [
+    'id',
+    'fromUserId',
+    'toUserId',
+    'amountMinor',
+    'date',
+    'note',
+    'createdBy',
+    'createdAt',
+    'updatedAt',
+    'deletedAt',
+    'revision',
+  ],
 };
 
 function toBindValue(value: unknown): SqliteBindValue {

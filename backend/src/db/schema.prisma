@@ -61,6 +61,7 @@ model User {
   authoredExpenses Expense[]      @relation("ExpenseAuthor")
   recurringRules  RecurringRule[]
   goals           Goal[]
+  settlements     Settlement[]
   refreshTokens   RefreshToken[]
   passwordResetCode PasswordResetCode?
   emailVerificationCode EmailVerificationCode?
@@ -255,6 +256,35 @@ model Goal {
 
   @@unique([userId, revision])
   @@map("goals")
+}
+
+/// A recorded payment between two members of a household (`shared/src/settlement.ts`,
+/// `docs/design/12-settle-up.md`). Syncable, in the household's book, so every member sees it.
+///
+/// `from_user_id`, `to_user_id` and `created_by` carry no foreign key on purpose: a member leaving
+/// must not cost the household its history, so the ids stay on the rows. Membership is checked
+/// when a payment is written, not held by the schema.
+model Settlement {
+  id     String @id @db.Uuid
+  /// The household's book, as on every syncable row.
+  userId String @map("user_id") @db.Uuid
+
+  fromUserId  String   @map("from_user_id") @db.Uuid
+  toUserId    String   @map("to_user_id") @db.Uuid
+  amountMinor BigInt   @map("amount_minor")
+  date        DateTime @db.Date
+  note        String?  @db.VarChar(200)
+  createdBy   String?  @map("created_by") @db.Uuid
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime  @map("updated_at") @db.Timestamptz(3)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)
+  revision  Int
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, revision])
+  @@map("settlements")
 }
 
 /// The idempotency ledger for `POST /v1/sync`: one row per `clientMutationId`.

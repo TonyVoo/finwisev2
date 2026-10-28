@@ -43,6 +43,7 @@ describe('migrate', () => {
       'outbox',
       'receipts',
       'recurring',
+      'settlements',
       'sync_rejections',
       'user',
     ]);

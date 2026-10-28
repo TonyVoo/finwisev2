@@ -9,6 +9,8 @@ import {
   type GoalSyncFields,
   type RecurringRule as WireRecurringRule,
   type RecurringSyncFields,
+  type Settlement as WireSettlement,
+  type SettlementSyncFields,
   type SyncEntity,
   type SyncPushItem,
   type SyncPushResponse,
@@ -25,6 +27,7 @@ import {
   toWireExpense,
   toWireGoal,
   toWireRecurringRule,
+  toWireSettlement,
 } from '../db/mappers.ts';
 import { nextRevision } from '../db/revision.ts';
 import { ApiProblem, isApiProblem, problems } from '../errors.ts';
@@ -44,6 +47,7 @@ import type {
   Goal as GoalRow,
   Prisma,
   RecurringRule as RecurringRuleRow,
+  Settlement as SettlementRow,
 } from '../db/generated/client.ts';
 
 /**
@@ -72,10 +76,12 @@ type RecordFor<E extends SyncEntity> = E extends 'category'
     ? WireRecurringRule
     : E extends 'goal'
       ? WireGoal
-      : WireExpense;
+      : E extends 'settlement'
+        ? WireSettlement
+        : WireExpense;
 
 /** Any row the sync can report. */
-type WireRecord = WireCategory | WireExpense | WireRecurringRule | WireGoal;
+type WireRecord = WireCategory | WireExpense | WireRecurringRule | WireGoal | WireSettlement;
 
 /** What applying (or declining to apply) one item produced. */
 interface Outcome {
@@ -692,8 +698,159 @@ async function currentRecord(
     const row = await tx.category.findFirst({ where: { id, userId } });
     return row ? toWireCategory(row) : null;
   }
+  if (entity === 'settlement') {
+    const row = await tx.settlement.findFirst({ where: { id, userId } });
+    return row ? toWireSettlement(row) : null;
+  }
   const row = await tx.expense.findFirst({ where: { id, userId } });
   return row ? toWireExpense(row, viewerId) : null;
+}
+
+// ---------------------------------------------------------------------------
+// Settlement (a recorded payment between two household members)
+// ---------------------------------------------------------------------------
+
+/**
+ * The household's current members, or null for a book that belongs to no household. Settlements
+ * only mean something between members, so a null answers every write with `invalid`.
+ */
+async function settlementMembers(tx: Db, bookId: string): Promise<ReadonlySet<string> | null> {
+  const household = await tx.household.findUnique({
+    where: { scopeId: bookId },
+    select: { id: true },
+  });
+  if (household === null) return null;
+  const members = await tx.householdMember.findMany({
+    where: { householdId: household.id },
+    select: { userId: true },
+  });
+  return new Set(members.map((member) => member.userId));
+}
+
+function settlementRefused(path: string, message: string): ApiProblem {
+  return problems.validation(`Settlement refused: ${message}.`, { issues: [{ path, message }] });
+}
+
+/**
+ * Who a payment may name: two different current members, one of whom is the person writing it.
+ * The same rule applies when an edit changes who it names.
+ */
+function requireSettlementPair(
+  members: ReadonlySet<string>,
+  actorId: string,
+  from: string,
+  to: string,
+): void {
+  if (from === to)
+    throw settlementRefused('fields.toUserId', 'a payment needs two different people');
+  if (!members.has(from)) {
+    throw settlementRefused('fields.fromUserId', 'not a member of this household');
+  }
+  if (!members.has(to))
+    throw settlementRefused('fields.toUserId', 'not a member of this household');
+  if (actorId !== from && actorId !== to) {
+    throw settlementRefused('fields.fromUserId', 'you must be one of the two people it names');
+  }
+}
+
+async function applySettlementItem(
+  tx: Db,
+  userId: string,
+  item: Extract<SyncPushItem, { entity: 'settlement' }>,
+  now: Date,
+  actorId: string,
+): Promise<Outcome> {
+  const fields: SettlementSyncFields = item.fields;
+  const existing: SettlementRow | null = await tx.settlement.findUnique({ where: { id: item.id } });
+  if (existing && existing.userId !== userId) throw idAlreadyInUse();
+
+  const members = await settlementMembers(tx, userId);
+  if (members === null) throw settlementRefused('fields', 'settling up needs a household');
+
+  const incomingUpdatedAt = clampPushedUpdatedAt(item.updatedAt, now, {
+    userId,
+    entity: 'settlement',
+    id: item.id,
+  });
+
+  if (!existing) {
+    const { fromUserId, toUserId, amountMinor, date } = fields;
+    if (
+      fromUserId === undefined ||
+      toUserId === undefined ||
+      amountMinor === undefined ||
+      date === undefined
+    ) {
+      throw requiredToCreate(
+        'settlement',
+        [
+          fromUserId === undefined ? 'fromUserId' : undefined,
+          toUserId === undefined ? 'toUserId' : undefined,
+          amountMinor === undefined ? 'amountMinor' : undefined,
+          date === undefined ? 'date' : undefined,
+        ].filter((name): name is string => name !== undefined),
+      );
+    }
+    requireSettlementPair(members, actorId, fromUserId, toUserId);
+    const deletedAt = fields.deletedAt === undefined ? null : toDate(fields.deletedAt);
+
+    const revision = await nextRevision(tx, userId);
+    const created = await tx.settlement.create({
+      data: {
+        id: item.id,
+        userId,
+        fromUserId,
+        toUserId,
+        amountMinor: BigInt(amountMinor),
+        date: fromCalendarDate(date),
+        note: fields.note ?? null,
+        createdBy: actorId,
+        createdAt: now,
+        updatedAt: incomingUpdatedAt,
+        deletedAt,
+        revision,
+      },
+    });
+    return applied(toWireSettlement(created));
+  }
+
+  // Only the two people a payment names may change or delete it. Checked before last-write-wins,
+  // so a refused write never looks like a lost race.
+  if (actorId !== existing.fromUserId && actorId !== existing.toUserId) {
+    throw settlementRefused('fields', 'only the two people a payment names can change it');
+  }
+  if (decideLww({ incomingUpdatedAt, storedUpdatedAt: existing.updatedAt }) !== 'applied') {
+    return conflict(toWireSettlement(existing));
+  }
+
+  // Membership is re-checked only when an edit changes who it names: correcting an amount on a
+  // payment whose other person has since left must still work.
+  if (fields.fromUserId !== undefined || fields.toUserId !== undefined) {
+    requireSettlementPair(
+      members,
+      actorId,
+      fields.fromUserId ?? existing.fromUserId,
+      fields.toUserId ?? existing.toUserId,
+    );
+  }
+
+  const deletedAt = fields.deletedAt === undefined ? existing.deletedAt : toDate(fields.deletedAt);
+  const revision = await nextRevision(tx, userId);
+  const updated = await tx.settlement.update({
+    where: { id: existing.id },
+    data: {
+      ...(fields.fromUserId === undefined ? {} : { fromUserId: fields.fromUserId }),
+      ...(fields.toUserId === undefined ? {} : { toUserId: fields.toUserId }),
+      ...(fields.amountMinor === undefined ? {} : { amountMinor: BigInt(fields.amountMinor) }),
+      ...(fields.date === undefined ? {} : { date: fromCalendarDate(fields.date) }),
+      // `note` is nullable *and* optional: `undefined` leaves it, `null` clears it.
+      ...(fields.note === undefined ? {} : { note: fields.note }),
+      deletedAt,
+      updatedAt: incomingUpdatedAt,
+      revision,
+    },
+  });
+  return applied(toWireSettlement(updated));
 }
 
 // ---------------------------------------------------------------------------
@@ -788,6 +945,13 @@ function buildResult(args: {
   if (args.entity === 'goal') {
     return { entity: 'goal', ...base, record: args.outcome.record as RecordFor<'goal'> | null };
   }
+  if (args.entity === 'settlement') {
+    return {
+      entity: 'settlement',
+      ...base,
+      record: args.outcome.record as RecordFor<'settlement'> | null,
+    };
+  }
   return { entity: 'expense', ...base, record: args.outcome.record as RecordFor<'expense'> | null };
 }
 
@@ -877,6 +1041,8 @@ async function attemptItem(
             return applyRecurringItem(tx, userId, parsed.item, now);
           case 'goal':
             return applyGoalItem(tx, userId, parsed.item, now);
+          case 'settlement':
+            return applySettlementItem(tx, userId, parsed.item, now, actorId);
           default:
             return applyExpenseItem(tx, userId, parsed.item, now, actorId);
         }
@@ -947,6 +1113,7 @@ const PRIMARY_KEY_TABLE: Readonly<Record<SyncEntity, string>> = {
   recurring: 'recurring_rules',
   goal: 'goals',
   expense: 'expenses',
+  settlement: 'settlements',
 };
 
 /**

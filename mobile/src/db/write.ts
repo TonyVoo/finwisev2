@@ -3,6 +3,7 @@ import {
   type RecurringSyncFields,
   type ExpenseSyncFields,
   type GoalSyncFields,
+  type SettlementSyncFields,
   type SyncEntity,
   Uuid,
 } from '@expense-tracker/shared';
@@ -39,7 +40,12 @@ export type LocalMutation =
       readonly fields: RecurringSyncFields;
     }
   | { readonly entity: 'goal'; readonly id: string; readonly fields: GoalSyncFields }
-  | { readonly entity: 'expense'; readonly id: string; readonly fields: ExpenseSyncFields };
+  | { readonly entity: 'expense'; readonly id: string; readonly fields: ExpenseSyncFields }
+  | {
+      readonly entity: 'settlement';
+      readonly id: string;
+      readonly fields: SettlementSyncFields;
+    };
 
 export interface LocalMutationOptions {
   /** Injectable so tests can pin `updatedAt`. Defaults to the system clock. */

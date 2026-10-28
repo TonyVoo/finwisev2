@@ -1,4 +1,11 @@
-import type { Category, Expense, Goal, RecurringRule, SyncPushItem } from '@expense-tracker/shared';
+import type {
+  Category,
+  Expense,
+  Goal,
+  RecurringRule,
+  Settlement,
+  SyncPushItem,
+} from '@expense-tracker/shared';
 import { v7 as uuidv7 } from 'uuid';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createUser, type TestUser } from './support/fixtures.ts';
@@ -27,7 +34,7 @@ beforeEach(async () => {
   user = await createUser();
 });
 
-type Row = Category | Expense | Goal | RecurringRule;
+type Row = Category | Expense | Goal | RecurringRule | Settlement;
 
 /** A simulated offline client: local rows, an outbox, and a revision watermark. */
 class Device {
