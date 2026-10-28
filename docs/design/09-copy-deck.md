@@ -433,6 +433,7 @@ them as proposals the Designer can reword; changing a row here means changing
 | `home.search.placeholder`    | `Search notes and categories`                                        | Home, search field         |
 | `home.search.clear`          | `Clear search`                                                       | Home, a11y label           |
 | `home.search.allCategories`  | `All categories`                                                     | Home, filter chip          |
+| `home.search.private`        | `Private`                                                            | Search, filter chip        |
 | `home.search.resultsOne`     | `1 result`                                                           | Home, result summary       |
 | `home.search.resultsMany`    | `{count} results`                                                    | Home, result summary       |
 | `home.search.empty.headline` | `No matches`                                                         | Home, empty search         |

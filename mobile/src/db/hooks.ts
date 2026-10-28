@@ -349,8 +349,13 @@ export function useExpenseSearch(
   const database = useDatabase();
   const text = search.text.trim();
   return useQuery({
-    queryKey: queryKeys.expenses.search(text, search.categoryId),
-    queryFn: () => searchExpenses(database, { text, categoryId: search.categoryId }),
+    queryKey: queryKeys.expenses.search(text, search.categoryId, search.privateOnly === true),
+    queryFn: () =>
+      searchExpenses(database, {
+        text,
+        categoryId: search.categoryId,
+        privateOnly: search.privateOnly,
+      }),
     enabled: isSearchActive(search),
   });
 }
@@ -362,8 +367,16 @@ export function useExpenseSearchSummary(
   const database = useDatabase();
   const text = search.text.trim();
   return useQuery({
-    queryKey: [...queryKeys.expenses.search(text, search.categoryId), 'summary'] as const,
-    queryFn: () => searchSummary(database, { text, categoryId: search.categoryId }),
+    queryKey: [
+      ...queryKeys.expenses.search(text, search.categoryId, search.privateOnly === true),
+      'summary',
+    ] as const,
+    queryFn: () =>
+      searchSummary(database, {
+        text,
+        categoryId: search.categoryId,
+        privateOnly: search.privateOnly,
+      }),
     enabled: isSearchActive(search),
   });
 }

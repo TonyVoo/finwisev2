@@ -119,6 +119,7 @@ export const VIETNAMESE_COPY: CopyBundle = {
         placeholder: 'Tìm theo ghi chú và danh mục',
         clear: 'Xóa tìm kiếm',
         allCategories: 'Tất cả danh mục',
+        private: 'Riêng tư',
         resultsOne: '1 kết quả',
         resultsMany: '{count} kết quả',
         empty: {

@@ -22,12 +22,17 @@ export function SearchBar({
   categoryId,
   onChangeCategory,
   categories,
+  privateOnly = false,
+  onChangePrivateOnly,
 }: {
   readonly text: string;
   readonly onChangeText: (next: string) => void;
   readonly categoryId: string | null;
   readonly onChangeCategory: (next: string | null) => void;
   readonly categories: readonly SearchBarCategory[];
+  readonly privateOnly?: boolean;
+  /** Given only where there is a household to be private from; without it no chip is shown. */
+  readonly onChangePrivateOnly?: (next: boolean) => void;
 }) {
   const color = useColors();
   const { isDark } = useTheme();
@@ -74,6 +79,14 @@ export function SearchBar({
           selected={categoryId === null}
           onPress={() => onChangeCategory(null)}
         />
+        {onChangePrivateOnly === undefined ? null : (
+          <Chip
+            testID="search-chip-private"
+            label={COPY.home.search.private}
+            selected={privateOnly}
+            onPress={() => onChangePrivateOnly(!privateOnly)}
+          />
+        )}
         {categories.map((category) => (
           <Chip
             key={category.id}

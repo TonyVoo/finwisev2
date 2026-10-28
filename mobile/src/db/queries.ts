@@ -815,11 +815,13 @@ export interface ExpenseSearch {
   readonly text: string;
   /** Restrict to one category, or null for all of them. */
   readonly categoryId: string | null;
+  /** Only the expenses kept private. Absent or false leaves them in with the rest. */
+  readonly privateOnly?: boolean;
 }
 
 /** True when the search would narrow anything. Whitespace alone is not a search. */
 export function isSearchActive(search: ExpenseSearch): boolean {
-  return search.text.trim() !== '' || search.categoryId !== null;
+  return search.text.trim() !== '' || search.categoryId !== null || search.privateOnly === true;
 }
 
 /** Escape `%`, `_` and the escape character itself, so user text is matched literally. */
@@ -842,6 +844,7 @@ function searchWhere(search: ExpenseSearch): { where: string; params: (string | 
     clauses.push('e.categoryId = ?');
     params.push(search.categoryId);
   }
+  if (search.privateOnly === true) clauses.push('e.private = 1');
   return { where: clauses.join(' AND '), params };
 }
 

@@ -124,6 +124,8 @@ export const COPY = {
       placeholder: 'Search notes and categories',
       clear: 'Clear search',
       allCategories: 'All categories',
+      /** Filter chip: only the expenses you kept private (households only). */
+      private: 'Private',
       /** `{count}` results, e.g. `3 results`; one has its own form (deck §0: no `(s)`). */
       resultsOne: '1 result',
       resultsMany: '{count} results',

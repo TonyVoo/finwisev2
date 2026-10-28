@@ -163,6 +163,9 @@ Haptics and animation can only be judged by hand. Run this on a real phone.
 - [ ] **Search** is a screen of its own: tapping the magnifier on Home opens it with the keyboard up, a
       back arrow, category chips and a prompt. Typing finds expenses from any month with "N results - total";
       a result opens its editor; swipe-delete works with Undo; back returns to an unchanged Home.
+- [ ] **Private filter in Search:** in a household a **Private** chip leads the category chips. Selecting it
+      lists only your private expenses (with their locks) and the result total; tapping it again clears it.
+      Outside a household there is no such chip.
 - [ ] **Display name:** Settings -> **Display name** -> type a name -> Save. The row shows it. In a household,
       the Members list, the member action sheet, the hand-over and remove dialogs and the "Added by" line on
       expenses all use that name instead of the start of the email; a member with no name still shows the

@@ -18,6 +18,7 @@ import { SearchBar } from '@/expenses/SearchBar';
 import { groupByDate } from '@/expenses/listModel';
 import { useDeleteExpense } from '@/expenses/useDeleteExpense';
 import { useAddedBy } from '@/household/useAddedBy';
+import { useInHousehold } from '@/household/useInHousehold';
 import { formatMoney } from '@/lib/money';
 import { useSelectedMonth } from '@/month/MonthProvider';
 import { space, type } from '@/theme/tokens';
@@ -41,9 +42,11 @@ export default function SearchScreen() {
   const onDelete = useDeleteExpense();
   const categories = useLiveCategories();
   const currency = useUserCurrency().data ?? null;
+  const inHousehold = useInHousehold();
 
   const [text, setText] = useState('');
   const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [privateOnly, setPrivateOnly] = useState(false);
   const [debounced, setDebounced] = useState('');
   useEffect(() => {
     // Clearing is immediate; typing waits 200ms so a query is not run per keystroke.
@@ -55,9 +58,9 @@ export default function SearchScreen() {
     return () => clearTimeout(handle);
   }, [text]);
 
-  const search = { text: debounced, categoryId };
+  const search = { text: debounced, categoryId, privateOnly: inHousehold && privateOnly };
   const searching = isSearchActive(search);
-  const none = { text: '', categoryId: null };
+  const none = { text: '', categoryId: null, privateOnly: false };
   const rows = useExpenseSearch(searching ? search : none);
   const summary = useExpenseSearchSummary(searching ? search : none);
   const sections = groupByDate(searching ? (rows.data ?? []) : [], today);
@@ -83,6 +86,8 @@ export default function SearchScreen() {
         categoryId={categoryId}
         onChangeCategory={setCategoryId}
         categories={categories.data ?? []}
+        privateOnly={privateOnly}
+        onChangePrivateOnly={inHousehold ? setPrivateOnly : undefined}
       />
 
       {searching ? (
