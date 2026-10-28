@@ -205,6 +205,7 @@ export default function ExpenseListScreen() {
   return (
     <View style={styles.screen}>
       <AppBar
+        large
         title={COPY.home.title}
         // `elevation.1` only once the list has scrolled past 0 (element 1).
         elevated={scrolled}

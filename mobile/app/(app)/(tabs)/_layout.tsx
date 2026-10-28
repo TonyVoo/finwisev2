@@ -1,5 +1,5 @@
-import Feather from '@expo/vector-icons/Feather';
 import { Tabs } from 'expo-router';
+import { TabIcon, tabPressHaptic } from '@/navigation/tabBar';
 import { useColors } from '@/theme/ThemeProvider';
 import { COPY } from '@/copy/strings';
 
@@ -17,6 +17,10 @@ export default function TabsLayout() {
   const color = useColors();
   return (
     <Tabs
+      // Fires for the tab being pressed, so `isFocused` is whether it is the current one.
+      screenListeners={({ navigation }) => ({
+        tabPress: () => tabPressHaptic(navigation.isFocused()),
+      })}
       screenOptions={{
         headerShown: false,
         sceneStyle: { backgroundColor: color.bg.canvas },
@@ -26,6 +30,7 @@ export default function TabsLayout() {
         },
         tabBarActiveTintColor: color.primary.default,
         tabBarInactiveTintColor: color.text.tertiary,
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
       }}
     >
       {/* Without a `tabBarIcon` the navigator draws nothing at all - a bare label. */}
@@ -33,15 +38,17 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: COPY.home.title,
-          tabBarIcon: ({ color: tint, size }) => <Feather name="list" size={size} color={tint} />,
+          tabBarIcon: ({ color: tint, focused }) => (
+            <TabIcon name="list" focused={focused} tint={tint} />
+          ),
         }}
       />
       <Tabs.Screen
         name="summary"
         options={{
           title: COPY.summary.title,
-          tabBarIcon: ({ color: tint, size }) => (
-            <Feather name="pie-chart" size={size} color={tint} />
+          tabBarIcon: ({ color: tint, focused }) => (
+            <TabIcon name="pie-chart" focused={focused} tint={tint} />
           ),
         }}
       />

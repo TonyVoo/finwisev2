@@ -109,7 +109,7 @@ export default function SummaryScreen() {
     <View style={styles.screen}>
       {/* The pill, in the same trailing slot as on Home (§3): the one place this screen
           mentions connectivity, and the only thing it knows about sync. */}
-      <AppBar title={COPY.summary.title} elevated={scrolled} trailing={<SyncIndicator />} />
+      <AppBar large title={COPY.summary.title} elevated={scrolled} trailing={<SyncIndicator />} />
 
       {/* Pinned, exactly as on Home, and reading the same shared selection. */}
       <MonthSwitcher onOpenPicker={() => router.push('/(app)/month-picker')} />

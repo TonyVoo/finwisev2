@@ -1,7 +1,7 @@
 import { Text } from 'react-native';
 import { screen, userEvent } from '@testing-library/react-native';
 import { AppBar, Fab, IconButton, PendingGlyph, SkeletonBlock } from '@/components/Chrome';
-import { HIT_SLOP_44, color, elevation, size, space } from '@/theme/tokens';
+import { HIT_SLOP_44, color, elevation, size, space, type } from '@/theme/tokens';
 import { SAFE_AREA_METRICS, flattenStyle, renderWithSafeArea } from '../support/safeArea';
 
 /**
@@ -78,6 +78,34 @@ describe('AppBar', () => {
     await renderWithSafeArea(<AppBar title="Expenses" />);
 
     expect(flattenStyle(screen.getByRole('header').props.style).textAlign).toBeUndefined();
+  });
+
+  it('draws a large title when asked, as the two tab screens do', async () => {
+    await renderWithSafeArea(<AppBar title="Expenses" large />);
+
+    expect(flattenStyle(screen.getByRole('header').props.style).fontSize).toBe(
+      type.title1.fontSize,
+    );
+  });
+
+  it('keeps the regular title otherwise', async () => {
+    await renderWithSafeArea(<AppBar title="Settings" />);
+
+    expect(flattenStyle(screen.getByRole('header').props.style).fontSize).toBe(
+      type.headline.fontSize,
+    );
+  });
+
+  it('reserves no space for a leading button it does not have, so the title sits on the margin', async () => {
+    await renderWithSafeArea(<AppBar title="Expenses" testID="bar" />);
+
+    expect(screen.queryByTestId('bar-leading', { includeHiddenElements: true })).toBeNull();
+  });
+
+  it('keeps the leading slot when there is a button in it', async () => {
+    await renderWithSafeArea(<AppBar title="Settings" testID="bar" leading={<Text>Back</Text>} />);
+
+    expect(screen.getByTestId('bar-leading', { includeHiddenElements: true })).toBeTruthy();
   });
 
   it('centres the title when asked, as the expense form does', async () => {

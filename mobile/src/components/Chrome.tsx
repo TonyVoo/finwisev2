@@ -24,6 +24,11 @@ export interface AppBarProps {
   readonly centred?: boolean;
   /** `elevation.1` once the list below has scrolled past 0 (`04-expense-list.md` 1). */
   readonly elevated?: boolean;
+  /**
+   * A large title, for the top-level tab screens. Sub-screens keep the regular one, so the
+   * size tells you where you are in the app.
+   */
+  readonly large?: boolean;
   readonly testID?: string;
 }
 
@@ -33,6 +38,7 @@ export function AppBar({
   trailing,
   centred = false,
   elevated = false,
+  large = false,
   testID,
 }: AppBarProps) {
   const styles = useStyles();
@@ -51,9 +57,22 @@ export function AppBar({
         testID={testID === undefined ? undefined : `${testID}-content`}
         style={styles.appBarContent}
       >
-        <View style={styles.appBarSide}>{leading}</View>
+        {/* No empty slot when there is nothing to put in it: it would push the title in from the
+            margin the rest of the screen's content sits on. */}
+        {leading === undefined || leading === null ? null : (
+          <View
+            testID={testID === undefined ? undefined : `${testID}-leading`}
+            style={styles.appBarSide}
+          >
+            {leading}
+          </View>
+        )}
         <Text
-          style={[styles.appBarTitle, centred ? styles.appBarTitleCentred : null]}
+          style={[
+            styles.appBarTitle,
+            large ? styles.appBarTitleLarge : null,
+            centred ? styles.appBarTitleCentred : null,
+          ]}
           accessibilityRole="header"
           numberOfLines={1}
         >
@@ -236,6 +255,9 @@ const useStyles = createStyles((color) =>
       ...type.headline,
       color: color.text.primary,
       flex: 1,
+    },
+    appBarTitleLarge: {
+      ...type.title1,
     },
     appBarTitleCentred: {
       textAlign: 'center',
