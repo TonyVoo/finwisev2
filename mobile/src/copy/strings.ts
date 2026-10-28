@@ -361,6 +361,17 @@ export const COPY = {
     },
     addedBy: 'Added by {name}',
     addedByYou: 'Added by you',
+    /** Picking several of your own expenses to make private or shared. */
+    bulk: {
+      selectedOne: '1 selected',
+      selectedMany: '{count} selected',
+      makePrivate: 'Make private',
+      makeShared: 'Make shared',
+      madePrivateOne: '1 expense is now private.',
+      madePrivateMany: '{count} expenses are now private.',
+      madeSharedOne: '1 expense is now shared.',
+      madeSharedMany: '{count} expenses are now shared.',
+    },
     members: 'Members',
     role: {
       owner: 'Owner',

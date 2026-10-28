@@ -321,6 +321,16 @@ export const VIETNAMESE_COPY: CopyBundle = {
       },
       addedBy: 'Thêm bởi {name}',
       addedByYou: 'Bạn đã thêm',
+      bulk: {
+        selectedOne: 'Đã chọn 1',
+        selectedMany: 'Đã chọn {count}',
+        makePrivate: 'Chuyển sang riêng tư',
+        makeShared: 'Chuyển sang chung',
+        madePrivateOne: '1 khoản chi đã chuyển sang riêng tư.',
+        madePrivateMany: '{count} khoản chi đã chuyển sang riêng tư.',
+        madeSharedOne: '1 khoản chi đã chuyển sang chung.',
+        madeSharedMany: '{count} khoản chi đã chuyển sang chung.',
+      },
       members: 'Thành viên',
       role: {
         owner: 'Chủ hộ',

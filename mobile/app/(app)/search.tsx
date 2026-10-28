@@ -18,6 +18,8 @@ import { SearchBar } from '@/expenses/SearchBar';
 import { groupByDate } from '@/expenses/listModel';
 import { useDeleteExpense } from '@/expenses/useDeleteExpense';
 import { useAddedBy } from '@/household/useAddedBy';
+import { SelectionBar } from '@/household/SelectionBar';
+import { useExpenseSelection } from '@/household/useExpenseSelection';
 import { useInHousehold } from '@/household/useInHousehold';
 import { formatMoney } from '@/lib/money';
 import { useSelectedMonth } from '@/month/MonthProvider';
@@ -43,6 +45,7 @@ export default function SearchScreen() {
   const categories = useLiveCategories();
   const currency = useUserCurrency().data ?? null;
   const inHousehold = useInHousehold();
+  const selection = useExpenseSelection();
 
   const [text, setText] = useState('');
   const [categoryId, setCategoryId] = useState<string | null>(null);
@@ -79,6 +82,8 @@ export default function SearchScreen() {
           />
         }
       />
+
+      {selection.active ? <SelectionBar selection={selection} /> : null}
 
       <SearchBar
         text={text}
@@ -121,7 +126,7 @@ export default function SearchScreen() {
             today={today}
             lastInGroup={index === section.data.length - 1}
             addedBy={addedBy(item.createdBy)}
-            onPress={() => router.push(`/(app)/expense/${item.id}`)}
+            {...selection.rowProps(item, () => router.push(`/(app)/expense/${item.id}`))}
             onDelete={() => void onDelete(item.id)}
           />
         )}

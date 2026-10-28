@@ -166,6 +166,12 @@ Haptics and animation can only be judged by hand. Run this on a real phone.
 - [ ] **Private filter in Search:** in a household a **Private** chip leads the category chips. Selecting it
       lists only your private expenses (with their locks) and the result total; tapping it again clears it.
       Outside a household there is no such chip.
+- [ ] **Bulk private / shared:** in a household, long-press one of your own expenses on Home or in Search: a
+      bar appears with "1 selected", a circle on your own rows, **Make private**, **Make shared** and a close
+      button. Tap more of your own to add or remove them; the other person's expenses cannot be picked and
+      do not open while picking. Deselecting the last one, or the close button, ends it. **Make private** locks
+      them and shows "N expenses are now private." with **Undo**; on the other phone they vanish after a sync.
+      **Make shared** reverses it. Outside a household a long press does nothing.
 - [ ] **Display name:** Settings -> **Display name** -> type a name -> Save. The row shows it. In a household,
       the Members list, the member action sheet, the hand-over and remove dialogs and the "Added by" line on
       expenses all use that name instead of the start of the email; a member with no name still shows the

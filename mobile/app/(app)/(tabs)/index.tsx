@@ -1,6 +1,8 @@
 import { useTabBarReserve } from '@/navigation/tabBar';
 import { useDeleteExpense } from '@/expenses/useDeleteExpense';
 import { useAddedBy } from '@/household/useAddedBy';
+import { SelectionBar } from '@/household/SelectionBar';
+import { useExpenseSelection } from '@/household/useExpenseSelection';
 import { useCallback, useEffect, useState } from 'react';
 import { SectionList, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -143,6 +145,7 @@ export default function ExpenseListScreen() {
   const currencyCode = currency.data ?? null;
 
   const onDelete = useDeleteExpense();
+  const selection = useExpenseSelection();
 
   return (
     <View style={styles.screen}>
@@ -165,6 +168,8 @@ export default function ExpenseListScreen() {
           </>
         }
       />
+
+      {selection.active ? <SelectionBar selection={selection} /> : null}
 
       <MonthSwitcher onOpenPicker={() => router.push('/(app)/month-picker')} />
 
@@ -231,7 +236,7 @@ export default function ExpenseListScreen() {
             today={today}
             lastInGroup={index === section.data.length - 1}
             addedBy={addedBy(item.createdBy)}
-            onPress={() => router.push(`/(app)/expense/${item.id}`)}
+            {...selection.rowProps(item, () => router.push(`/(app)/expense/${item.id}`))}
             onDelete={() => void onDelete(item.id)}
           />
         )}

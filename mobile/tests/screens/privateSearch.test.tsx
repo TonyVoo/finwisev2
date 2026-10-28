@@ -116,4 +116,18 @@ describe('the Private chip', () => {
     fireEvent.press(screen.getByTestId(PRIVATE_CHIP));
     await waitFor(() => expect(screen.queryByTestId('search-prompt')).not.toBeNull());
   });
+
+  it('lets you pick private expenses and share them again from the results', async () => {
+    await mountScreen(<SearchScreen />, { clock: () => NOW, seed: (db) => seed(db, true) });
+    await waitFor(() => expect(screen.queryByTestId(PRIVATE_CHIP)).not.toBeNull());
+    fireEvent.press(screen.getByTestId(PRIVATE_CHIP));
+    await waitFor(() => expect(screen.queryByText('Gift')).not.toBeNull());
+
+    fireEvent(screen.getByTestId(`expense-row-${expenseId(2)}`), 'longPress');
+    await waitFor(() => expect(screen.queryByTestId('selection-bar')).not.toBeNull());
+    fireEvent.press(screen.getByTestId('selection-make-shared'));
+
+    await waitFor(() => expect(screen.queryByText('Gift')).toBeNull());
+    expect(screen.getByText(COPY.household.bulk.madeSharedOne)).toBeTruthy();
+  });
 });

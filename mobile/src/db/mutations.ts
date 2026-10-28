@@ -178,6 +178,37 @@ export async function updateExpense(
   );
 }
 
+/**
+ * Make several expenses private, or shared again, as one change.
+ *
+ * Only the ones not already as asked are written, and which those are is decided inside the
+ * transaction that writes them, so a sync pull cannot slip in between. Deleted and unknown ids
+ * are skipped. Resolves to the ids that changed - what an Undo has to put back.
+ */
+export async function setExpensesPrivate(
+  database: SqliteDatabase,
+  ids: readonly string[],
+  value: boolean,
+  options: LocalMutationOptions = {},
+): Promise<readonly string[]> {
+  if (ids.length === 0) return [];
+  const queued = await applyLocalMutationPlan(
+    database,
+    async (txn) => {
+      const rows = await txn.getAllAsync<{ id: string; private: number }>(
+        `SELECT id, private FROM expenses
+          WHERE deletedAt IS NULL AND id IN (${ids.map(() => '?').join(', ')})`,
+        [...ids],
+      );
+      return rows
+        .filter((row) => (row.private === 1) !== value)
+        .map((row) => ({ entity: 'expense' as const, id: row.id, fields: { private: value } }));
+    },
+    options,
+  );
+  return queued.map((entry) => entry.recordId);
+}
+
 /** `note` normalised when the caller is changing it, and absent when they are not. */
 function noteIfPresent(changes: Partial<ExpenseDraft>): string | null | undefined {
   return 'note' in changes ? normaliseNote(changes.note) : undefined;

@@ -560,6 +560,14 @@ them as proposals the Designer can reword; changing a row here means changing
 | `a11y.private` | `private` | Spoken in an expense row's label |
 | `household.addedBy` | `Added by {name}` | Expense row, in a shared household |
 | `household.addedByYou` | `Added by you` | Expense row, in a shared household |
+| `household.bulk.selectedOne` | `1 selected` | Selection bar, one expense picked |
+| `household.bulk.selectedMany` | `{count} selected` | Selection bar |
+| `household.bulk.makePrivate` | `Make private` | Selection bar |
+| `household.bulk.makeShared` | `Make shared` | Selection bar |
+| `household.bulk.madePrivateOne` | `1 expense is now private.` | Snackbar, `Undo` |
+| `household.bulk.madePrivateMany` | `{count} expenses are now private.` | Snackbar, `Undo` |
+| `household.bulk.madeSharedOne` | `1 expense is now shared.` | Snackbar, `Undo` |
+| `household.bulk.madeSharedMany` | `{count} expenses are now shared.` | Snackbar, `Undo` |
 | `household.members` | `Members` | Household screen |
 | `household.role.owner` | `Owner` | Household screen |
 | `household.role.member` | `Member` | Household screen |

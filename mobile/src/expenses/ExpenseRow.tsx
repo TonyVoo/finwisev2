@@ -41,6 +41,10 @@ export interface ExpenseRowProps {
   readonly lastInGroup?: boolean;
   /** "Added by Bao": who put it in a shared household's books. Absent when not shared. */
   readonly addedBy?: string | null;
+  /** A long press, which starts picking several expenses. */
+  readonly onLongPress?: () => void;
+  /** Present while picking: whether this row is chosen, and whether it can be (only your own). */
+  readonly selection?: { readonly selected: boolean; readonly selectable: boolean };
 }
 
 export function ExpenseRow({
@@ -50,6 +54,8 @@ export function ExpenseRow({
   onDelete,
   lastInGroup,
   addedBy,
+  onLongPress,
+  selection,
 }: ExpenseRowProps) {
   const styles = useStyles();
   const color = useColors();
@@ -68,6 +74,12 @@ export function ExpenseRow({
       <Row
         testID={`expense-row-${item.id}`}
         onPress={onPress}
+        onLongPress={onLongPress}
+        accessibilityState={
+          selection === undefined
+            ? undefined
+            : { selected: selection.selected, disabled: !selection.selectable }
+        }
         lastInGroup={lastInGroup}
         leading={<Swatch colorHex={rowCategoryColor(item)} name={item.categoryName ?? undefined} />}
         accessibilityLabel={expenseRowLabel(item, today, undefined, addedBy)}
@@ -80,6 +92,16 @@ export function ExpenseRow({
         }}
         trailing={
           <View style={styles.trailing}>
+            {selection?.selectable === true ? (
+              <Feather
+                testID={`expense-select-${item.id}`}
+                name={selection.selected ? 'check-circle' : 'circle'}
+                size={20}
+                color={selection.selected ? color.primary.default : color.text.tertiary}
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+              />
+            ) : null}
             {/* Mutually exclusive by construction: `needsAttention` means the server
                 refused the row *and* nothing is queued for it (`db/queries.ts`). */}
             {item.needsAttention ? <NeedsAttentionGlyph /> : item.pending ? <PendingGlyph /> : null}

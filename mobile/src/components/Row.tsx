@@ -43,6 +43,8 @@ export interface RowProps {
   /** Draw the `chevron-right` that means "this opens something" (§5). */
   readonly chevron?: boolean;
   readonly onPress?: () => void;
+  /** A long press, which starts a selection where a list offers one. */
+  readonly onLongPress?: () => void;
   /** Omit the bottom separator - for the last row of a group. */
   readonly lastInGroup?: boolean;
   readonly accessibilityLabel?: string;
@@ -68,6 +70,7 @@ export function Row({
   trailing,
   chevron = false,
   onPress,
+  onLongPress,
   lastInGroup = false,
   accessibilityLabel,
   accessibilityHint,
@@ -84,6 +87,7 @@ export function Row({
     <Pressable
       testID={testID}
       onPress={onPress}
+      onLongPress={onLongPress}
       disabled={!interactive}
       // One element, so a screen reader announces the composed label rather than each
       // child in turn (`00-foundations.md` §8 rule 6).
