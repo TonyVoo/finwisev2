@@ -38,11 +38,16 @@ currency is read as that amount in the account's units, and the person fixes the
 the form if it differs (the form's currency row is right there).
 
 - **Reading is in two steps, so each can be tested alone.** A `TextReader` turns the JPEG into
-  text (Google Cloud Vision's `DOCUMENT_TEXT_DETECTION` over HTTPS, no SDK, behind one small
-  interface like the mailer). A pure `parseReceiptText` turns the text into the fields.
-- **Off by default.** Without `GOOGLE_VISION_API_KEY` the endpoint answers `503`
-  `ocr_unavailable`, and the app hides **Read receipt** after the first such answer. Nothing in
-  the rest of the product depends on it.
+  text (behind one small interface, like the mailer; one HTTPS request each, no SDK). A pure
+  `parseReceiptText` turns the text into the fields. Two readers exist: **OCR.space** (a free
+  plan with a free API key and no card: 25,000 requests a month, 500 a day per server address,
+  files up to 1 MB) and **Google Cloud Vision** (pay as you go, billing account required, 1,000
+  requests a month free). OCR.space is preferred when both keys are set. The 1 MB limit is why
+  the app's usual 200-600 KB photo is fine, and an oversized one fails as `ocr_failed` rather
+  than being sent.
+- **Off by default.** With neither `OCR_SPACE_API_KEY` nor `GOOGLE_VISION_API_KEY` the endpoint
+  answers `503` `ocr_unavailable`, and the app hides **Read receipt** after the first such
+  answer. Nothing in the rest of the product depends on it.
 - **A provider failure is `502` `ocr_failed`.** Not cached, not retried by the server.
 - **Throttled per account** (`LIMITS.RECEIPT_SCAN_MAX_PER_USER` per window): each call spends
   the server's outbound budget.

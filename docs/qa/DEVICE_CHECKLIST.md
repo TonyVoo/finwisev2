@@ -210,7 +210,7 @@ Haptics and animation can only be judged by hand. Run this on a real phone.
 
 ## 10b. Reading a receipt
 
-Needs a backend started with `GOOGLE_VISION_API_KEY` (see `backend/.env.example`). Without it, skip to the last step.
+Needs a backend started with `OCR_SPACE_API_KEY` (free key) or `GOOGLE_VISION_API_KEY` (see `backend/.env.example`). Without either, skip to the last step.
 
 - [ ] Add expense -> **Receipt** -> **Take photo** (a real receipt, flat and well lit). Reopen the **Receipt** row:
       **Read receipt** is there, with a line saying the photo is sent to our server. Nothing was sent before you tapped it.
@@ -222,7 +222,7 @@ Needs a backend started with `GOOGLE_VISION_API_KEY` (see `backend/.env.example`
 - [ ] Try a blurry photo, a crumpled one and a non-receipt: you should get "Nothing could be read..." or a card
       with only some fields, never a confident wrong total you cannot see.
 - [ ] Airplane mode -> **Read receipt**: "Could not read that receipt. Enter the details yourself.", form untouched.
-- [ ] Backend without the key: tapping **Read receipt** says "Reading receipts isn't available right now." and
+- [ ] Backend without a key: tapping **Read receipt** says "Reading receipts isn't available right now." and
       the button is gone for the rest of the session (it returns after a restart).
 
 ## 11. Both platforms

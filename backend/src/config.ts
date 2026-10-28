@@ -66,6 +66,13 @@ const EnvSchema = z.object({
   RESEND_API_KEY: z.string().min(1).optional(),
 
   /**
+   * Reading receipts (`POST /v1/receipts/scan`) with OCR.space, which has a free plan (a free API
+   * key, no card). Preferred over Google Vision when both are set. Same opt-in as below: unset,
+   * and with no Vision key either, the endpoint answers `503 ocr_unavailable`.
+   */
+  OCR_SPACE_API_KEY: z.string().min(1).optional(),
+
+  /**
    * Reading receipts (`POST /v1/receipts/scan`): a Google Cloud Vision API key. Unset, the
    * endpoint answers `503 ocr_unavailable` and the app stops offering it; nothing else
    * depends on it. The photo is sent to Google when this is set, which is why it is opt-in.
@@ -127,7 +134,10 @@ function build() {
     },
     refreshTokenTtlDays: env.REFRESH_TOKEN_TTL_DAYS,
     mail: { resendApiKey: env.RESEND_API_KEY, from: env.MAIL_FROM },
-    ocr: { googleVisionApiKey: env.GOOGLE_VISION_API_KEY },
+    ocr: {
+      ocrSpaceApiKey: env.OCR_SPACE_API_KEY,
+      googleVisionApiKey: env.GOOGLE_VISION_API_KEY,
+    },
     /** Express's `trust proxy` setting. See `TRUST_PROXY` above for why it matters. */
     trustProxy: env.TRUST_PROXY,
     logFormat: env.LOG_FORMAT ?? (isTest ? 'silent' : isProduction ? 'json' : 'pretty'),
