@@ -172,6 +172,9 @@ Haptics and animation can only be judged by hand. Run this on a real phone.
       do not open while picking. Deselecting the last one, or the close button, ends it. **Make private** locks
       them and shows "N expenses are now private." with **Undo**; on the other phone they vanish after a sync.
       **Make shared** reverses it. Outside a household a long press does nothing.
+      With VoiceOver/TalkBack, the row's actions include **Select expense**, which starts the same selection.
+      If the long press does not start a selection on a device, say so: in the iOS simulator it started
+      reliably only some of the time, and this has not been seen on hardware.
 - [ ] **Display name:** Settings -> **Display name** -> type a name -> Save. The row shows it. In a household,
       the Members list, the member action sheet, the hand-over and remove dialogs and the "Added by" line on
       expenses all use that name instead of the start of the email; a member with no name still shows the

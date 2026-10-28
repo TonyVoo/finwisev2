@@ -363,6 +363,8 @@ export const COPY = {
     addedByYou: 'Added by you',
     /** Picking several of your own expenses to make private or shared. */
     bulk: {
+      /** Screen-reader action on an expense row: start picking, as a long press does. */
+      selectAction: 'Select expense',
       selectedOne: '1 selected',
       selectedMany: '{count} selected',
       makePrivate: 'Make private',

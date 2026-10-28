@@ -1,4 +1,4 @@
-import { fireEvent, screen, userEvent, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, screen, userEvent, waitFor } from '@testing-library/react-native';
 import { COPY } from '@/copy/strings';
 import { META_KEYS, writeMeta } from '@/db/meta';
 import { writeUser } from '@/db/user';
@@ -108,6 +108,27 @@ describe('starting a selection', () => {
     fireEvent(row(MINE_UNSYNCED), 'longPress');
 
     await waitFor(() => expect(screen.queryByTestId('selection-bar')).not.toBeNull());
+  });
+
+  it('can also be started from the screen-reader actions, which cannot long press', async () => {
+    await mountHome();
+    expect(row(MINE).props.accessibilityActions).toEqual(
+      expect.arrayContaining([{ name: 'select', label: COPY.household.bulk.selectAction }]),
+    );
+
+    await act(async () => {
+      row(MINE).props.onAccessibilityAction({ nativeEvent: { actionName: 'select' } });
+    });
+
+    await waitFor(() => expect(screen.queryByTestId('selection-bar')).not.toBeNull());
+  });
+
+  it("offers no select action on someone else's expense", async () => {
+    await mountHome();
+
+    expect(
+      (row(BAOS).props.accessibilityActions as { name: string }[]).map((action) => action.name),
+    ).not.toContain('select');
   });
 
   it("does not start on someone else's expense", async () => {

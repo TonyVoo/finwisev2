@@ -86,9 +86,16 @@ export function ExpenseRow({
         accessibilityHint={COPY.a11y.editExpense}
         // The gesture's screen-reader equivalent. Named `delete` because that is the
         // standard action name both platforms surface in their own UI.
-        accessibilityActions={[{ name: 'delete', label: COPY.a11y.deleteExpense }]}
+        accessibilityActions={[
+          { name: 'delete', label: COPY.a11y.deleteExpense },
+          // The long press's equivalent: a screen reader cannot hold a row down.
+          ...(onLongPress === undefined
+            ? []
+            : [{ name: 'select', label: COPY.household.bulk.selectAction }]),
+        ]}
         onAccessibilityAction={(event) => {
           if (event.nativeEvent.actionName === 'delete') onDelete();
+          if (event.nativeEvent.actionName === 'select') onLongPress?.();
         }}
         trailing={
           <View style={styles.trailing}>

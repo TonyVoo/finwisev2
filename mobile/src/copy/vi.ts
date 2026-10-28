@@ -322,6 +322,7 @@ export const VIETNAMESE_COPY: CopyBundle = {
       addedBy: 'Thêm bởi {name}',
       addedByYou: 'Bạn đã thêm',
       bulk: {
+        selectAction: 'Chọn khoản chi',
         selectedOne: 'Đã chọn 1',
         selectedMany: 'Đã chọn {count}',
         makePrivate: 'Chuyển sang riêng tư',
