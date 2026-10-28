@@ -1,3 +1,5 @@
+import type { ReceiptScan } from '@expense-tracker/shared';
+import { ApiRequestError } from '../api/errors';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AccessibilityInfo,
@@ -58,7 +60,14 @@ import {
 import { useApiClient } from '../bootstrap/AppProviders';
 import { convertMinor, impliedRate, isValidRate } from '../lib/conversion';
 import { currencyDecimals, formatMoney } from '../lib/money';
-import { dateRowLabel, monthKeyOf, monthName, monthParts, spokenDate } from '../lib/calendar';
+import {
+  dateRowLabel,
+  dayLabel,
+  monthKeyOf,
+  monthName,
+  monthParts,
+  spokenDate,
+} from '../lib/calendar';
 import { useSelectedMonth } from '../month/MonthProvider';
 import { size, space, type } from '../theme/tokens';
 import { createStyles, useColors } from '../theme/ThemeProvider';
@@ -74,6 +83,9 @@ import { hasEdits, saveState } from './formModel';
 import { getReceiptPicker, type PickOutcome } from '../receipts/receiptPicker';
 import { savedHaptic } from '../lib/haptics';
 import { ReceiptSheet } from '../receipts/ReceiptSheet';
+import { ReceiptSuggestionCard } from '../receipts/ReceiptSuggestionCard';
+import { isScanUnavailable, markScanUnavailable } from '../receipts/scanAvailability';
+import { isEmptyScan, planSuggestion, suggestionSummary } from '../receipts/receiptSuggestion';
 import { attachReceipt, detachReceipt, hasReceipt } from '../receipts/receiptStore';
 import { useReceipt } from '../receipts/useReceipt';
 
@@ -178,6 +190,10 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
   const [rateLocked, setRateLocked] = useState(false);
   const api = useApiClient();
   const storedReceipt = useReceipt(expenseId ?? null).data ?? null;
+  // A receipt reading waiting for the person to take or leave it, and whether one is in flight.
+  const [scan, setScan] = useState<ReceiptScan | null>(null);
+  const [scanning, setScanning] = useState(false);
+  const [scanOff, setScanOff] = useState(isScanUnavailable);
 
   const currencyCode = currency.data ?? null;
   const storedRow = isEdit ? (stored.data ?? null) : null;
@@ -456,6 +472,8 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
     (outcome: PickOutcome, source: 'camera' | 'library') => {
       if (outcome.status === 'picked') {
         setReceiptChange({ kind: 'set', dataBase64: outcome.dataBase64 });
+        // A reading belongs to the photo it came from.
+        setScan(null);
         setOverlay('none');
       } else if (outcome.status === 'denied') {
         showSnackbar({
@@ -468,6 +486,57 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
     },
     [showSnackbar],
   );
+
+  const onScan = useCallback(async () => {
+    if (receiptData === null || scanning) return;
+    setScanning(true);
+    try {
+      const { data } = await api.scanReceipt({
+        contentType: 'image/jpeg',
+        dataBase64: receiptData,
+      });
+      if (isEmptyScan(data)) {
+        showSnackbar({ message: COPY.form.receipt.scan.nothingFound });
+        return;
+      }
+      setScan(data);
+      setOverlay('none');
+    } catch (error) {
+      if (error instanceof ApiRequestError && error.code === 'ocr_unavailable') {
+        markScanUnavailable();
+        setScanOff(true);
+        showSnackbar({ message: COPY.form.receipt.scan.unavailable });
+      } else {
+        showSnackbar({ message: COPY.form.receipt.scan.failed });
+      }
+    } finally {
+      setScanning(false);
+    }
+  }, [api, receiptData, scanning, showSnackbar]);
+
+  /** Put the reading's safe values in the fields, as if typed; saving stays the person's own act. */
+  const onUseSuggestion = useCallback(() => {
+    if (scan === null || draft === null) return;
+    const patch = planSuggestion(scan, {
+      currentNote: draft.note,
+      decimalsMatch:
+        currencyCode !== null && currencyDecimals(entryCode) === currencyDecimals(currencyCode),
+      categories: liveCategories,
+      today,
+    });
+    if (patch.amountMinor !== undefined) setAmount(amountInputFrom(patch.amountMinor));
+    setDraft((current) =>
+      current === null
+        ? current
+        : {
+            ...current,
+            ...(patch.date === undefined ? {} : { date: patch.date }),
+            ...(patch.note === undefined ? {} : { note: normaliseNote(patch.note) }),
+            ...(patch.categoryId === undefined ? {} : { categoryId: patch.categoryId }),
+          },
+    );
+    setScan(null);
+  }, [scan, draft, currencyCode, entryCode, liveCategories, today]);
 
   const onDeleteExpense = useCallback(async () => {
     if (expenseId === undefined) return;
@@ -577,6 +646,13 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
               Delete is always reachable - the keypad never covers content
               (§Accessibility rule 4). */}
           <ScrollView contentContainerStyle={styles.rows}>
+            {scan === null ? null : (
+              <ReceiptSuggestionCard
+                summary={suggestionSummary(scan, (date) => dayLabel(date, today))}
+                onUse={onUseSuggestion}
+                onDismiss={() => setScan(null)}
+              />
+            )}
             <Row
               testID={CURRENCY_ROW_TEST_ID}
               onPress={() => setOverlay('currency')}
@@ -842,8 +918,12 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
         }
         onRemove={() => {
           setReceiptChange({ kind: 'removed' });
+          setScan(null);
           setOverlay('none');
         }}
+        canScan={!scanOff}
+        scanning={scanning}
+        onScan={() => void onScan()}
       />
 
       <CategoryFormSheet

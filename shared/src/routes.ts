@@ -248,6 +248,14 @@ export const API_ROUTES = [
     successStatus: 200,
   },
 
+  {
+    method: 'post',
+    path: '/v1/receipts/scan',
+    operationId: 'scanReceipt',
+    auth: true,
+    successStatus: 200,
+  },
+
   { method: 'get', path: '/v1/rates', operationId: 'getRate', auth: true, successStatus: 200 },
 
   { method: 'get', path: '/v1/sync', operationId: 'pullSync', auth: true, successStatus: 200 },

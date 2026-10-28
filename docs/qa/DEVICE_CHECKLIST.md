@@ -208,6 +208,23 @@ Haptics and animation can only be judged by hand. Run this on a real phone.
       Tiếng Việt: a one-time offer to rename the untouched default categories appears. Accepting
       renames only those you had not changed, and it syncs to a second device. Declining never asks again.
 
+## 10b. Reading a receipt
+
+Needs a backend started with `GOOGLE_VISION_API_KEY` (see `backend/.env.example`). Without it, skip to the last step.
+
+- [ ] Add expense -> **Receipt** -> **Take photo** (a real receipt, flat and well lit). Reopen the **Receipt** row:
+      **Read receipt** is there, with a line saying the photo is sent to our server. Nothing was sent before you tapped it.
+- [ ] Tap **Read receipt**: the button shows progress, the sheet closes, and a card **From the receipt** shows
+      what was found (amount - date - shop). **No field has changed yet.**
+- [ ] **Use** fills the amount, the date, the note (only if it was empty) and a category (only if you have the
+      matching default one). Check the amount against the paper: this is where a misread shows. Nothing is saved until **Save**.
+- [ ] **Dismiss** leaves everything as it was. Taking another photo or removing the photo discards the card.
+- [ ] Try a blurry photo, a crumpled one and a non-receipt: you should get "Nothing could be read..." or a card
+      with only some fields, never a confident wrong total you cannot see.
+- [ ] Airplane mode -> **Read receipt**: "Could not read that receipt. Enter the details yourself.", form untouched.
+- [ ] Backend without the key: tapping **Read receipt** says "Reading receipts isn't available right now." and
+      the button is gone for the rest of the session (it returns after a restart).
+
 ## 11. Both platforms
 
 Do sections 1, 2, 4, 7, 9 and 10 on **iOS and Android** if you have both. Things that differ most:

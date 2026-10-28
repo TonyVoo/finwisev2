@@ -2071,6 +2071,92 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /v1/receipts/scan:
+    post:
+      operationId: scanReceipt
+      tags: [expenses]
+      summary: Read a receipt photo and suggest values
+      description: |
+        Reads one JPEG with the server's text-recognition provider and answers what it could
+        find: the total, the date, the merchant and a suggested default category. **Nothing is
+        stored and no expense is involved** - the image is read and dropped, and neither it nor
+        the text read from it is logged. Every suggestion is nullable: what the text does not
+        clearly say is left out rather than guessed, and the app only ever offers the values for
+        the person to accept.
+
+        The body is the same as a receipt upload (base64 JPEG, 3 MB route limit, 1,500,000
+        bytes decoded) and a file that is not a JPEG is a `validation_error`, checked before the
+        provider is called. `currency` is always the account's currency: the amount is read in
+        that currency's minor units (so a currency with no decimals reads `150.000` as
+        150000), and the person corrects the currency in the form if the receipt differs.
+
+        Each call spends the server's budget with the provider, so an account may make 20 per
+        15 minutes (`429` with `Retry-After` beyond that). When reading is not configured on
+        the server the answer is `503 ocr_unavailable`, and a provider failure is `502
+        ocr_failed` (its message is never passed on); neither blocks adding an expense by hand.
+      x-errorCodes:
+        - validation_error
+        - malformed_request
+        - unsupported_media_type
+        - batch_too_large
+        - unauthorized
+        - token_expired
+        - token_invalid
+        - rate_limited
+        - internal_error
+        - ocr_unavailable
+        - ocr_failed
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReceiptScanRequest' }
+            example:
+              contentType: image/jpeg
+              dataBase64: /9j/4AAQSkZJRg==
+      responses:
+        '200':
+          description: What was found. Any field may be null.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReceiptScanResponse' }
+              example:
+                data:
+                  amountMinor: 650
+                  currency: USD
+                  date: '2026-10-14'
+                  merchant: Fresh Supermarket
+                  category: groceries
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '413':
+          description: |
+            The body exceeded this route's 3 MB limit. Code: `batch_too_large`. Downsize the
+            image and try again.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              example:
+                error:
+                  code: batch_too_large
+                  message: Request body exceeds the 3mb limit.
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '502':
+          $ref: '#/components/responses/OcrFailed'
+        '503':
+          $ref: '#/components/responses/OcrUnavailable'
+
   /v1/rates:
     get:
       operationId: getRate
@@ -2787,6 +2873,33 @@ components:
             error:
               code: rates_unavailable
               message: Exchange rates are unavailable right now.
+    OcrUnavailable:
+      description: |
+        Receipt reading is not set up on this server. Code: `ocr_unavailable`. The app stops
+        offering it; adding an expense by hand is unaffected.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            error:
+              code: ocr_unavailable
+              message: Reading receipts is not available on this server.
+    OcrFailed:
+      description: |
+        The receipt-reading provider could not be reached or failed. Code: `ocr_failed`.
+        Nothing was stored, and the provider's own message is never passed on. Retry later, or
+        type the expense.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            error:
+              code: ocr_failed
+              message: The receipt could not be read right now.
     InternalError:
       description: |
         Unexpected server fault. Code: `internal_error`. The message never leaks
@@ -2922,6 +3035,8 @@ components:
         | `owner_cannot_leave` | 409 | The owner cannot leave their own household; they delete it instead. |
         | `household_has_members` | 409 | An account that owns a household with other members cannot be deleted until ownership is handed over or the household is deleted. |
         | `rates_unavailable` | 502 | The exchange-rate provider could not be reached or gave an unusable answer. Retry later, or enter the rate by hand. |
+        | `ocr_unavailable` | 503 | Receipt reading is not set up on this server. The app stops offering it; entering an expense by hand is unaffected. |
+        | `ocr_failed` | 502 | The receipt-reading provider could not be reached or failed. Nothing was stored; retry later or type the expense. |
         | `internal_error` | 500 | Unexpected server fault. Never leaks internals; correlate via `X-Request-Id`. |
       enum:
         - validation_error
@@ -2951,6 +3066,8 @@ components:
         - owner_cannot_leave
         - household_has_members
         - rates_unavailable
+        - ocr_unavailable
+        - ocr_failed
         - internal_error
 
     ErrorDetails:
@@ -3929,6 +4046,55 @@ components:
       required: [data]
       properties:
         data: { $ref: '#/components/schemas/Receipt' }
+
+    ReceiptScanRequest:
+      type: object
+      additionalProperties: false
+      required: [contentType, dataBase64]
+      properties:
+        contentType:
+          type: string
+          enum: [image/jpeg]
+        dataBase64:
+          type: string
+          minLength: 1
+          maxLength: 2000000
+          pattern: '^[A-Za-z0-9+/]+={0,2}$'
+          description: The JPEG, base64-encoded. At most 1,500,000 bytes decoded.
+
+    ReceiptScan:
+      type: object
+      additionalProperties: false
+      required: [amountMinor, currency, date, merchant, category]
+      properties:
+        amountMinor:
+          type: [integer, 'null']
+          minimum: 1
+          description: The total, in minor units of `currency`, or null when none was found.
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+          description: The account's currency, which the amount is read in.
+        date:
+          type: [string, 'null']
+          format: date
+          description: The receipt date, or null.
+        merchant:
+          type: [string, 'null']
+          minLength: 1
+          maxLength: 80
+          description: The shop or business name, or null.
+        category:
+          type: [string, 'null']
+          enum: [groceries, eating_out, transport, health, bills, null]
+          description: A suggested default category, or null.
+
+    ReceiptScanResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/ReceiptScan' }
 
     ReceiptIndexItem:
       type: object

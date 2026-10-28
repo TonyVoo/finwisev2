@@ -102,6 +102,8 @@ export const LIMITS = {
   RECEIPT_MAX_BYTES: 1_500_000,
   /** Longest `dataBase64` that can encode `RECEIPT_MAX_BYTES` (4 chars per 3 bytes). */
   RECEIPT_MAX_BASE64_LENGTH: 2_000_000,
+  /** Receipt readings one account may ask for per rate-limit window: each spends the server's OCR budget. */
+  RECEIPT_SCAN_MAX_PER_USER: 20,
 } as const;
 
 /**

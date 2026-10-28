@@ -7,6 +7,8 @@ import {
   ReceiptIndexResponse,
   ReceiptPutRequest,
   ReceiptResponse,
+  ReceiptScanRequest,
+  ReceiptScanResponse,
 } from '@expense-tracker/shared';
 import { Router, type Request, type Response } from 'express';
 import { getPrisma } from '../db/client.ts';
@@ -21,6 +23,8 @@ import {
   validatedQuery,
 } from '../middleware/validate.ts';
 import { deleteReceipt, getReceipt, listReceipts, putReceipt } from '../services/receiptService.ts';
+import { scanReceipt } from '../services/receiptScanService.ts';
+import { receiptScanRateLimit } from '../middleware/receiptScanRateLimit.ts';
 import {
   createExpense,
   deleteExpense,
@@ -121,3 +125,18 @@ expensesRouter.get('/receipts', async (req: Request, res: Response) => {
   const data = await listReceipts(getPrisma(), dataOwnerIdOf(req), userIdOf(req));
   sendJson(res, 200, ReceiptIndexResponse, { data });
 });
+
+/**
+ * `POST /receipts/scan`: read a photo and suggest values. Throttled before anything else, and
+ * tied to no expense: the image is read and dropped, not stored.
+ */
+expensesRouter.post(
+  '/receipts/scan',
+  receiptScanRateLimit,
+  validateBody(ReceiptScanRequest),
+  async (req: Request, res: Response) => {
+    const body = req.body as ReceiptScanRequest;
+    const data = await scanReceipt(getPrisma(), userIdOf(req), body.dataBase64);
+    sendJson(res, 200, ReceiptScanResponse, { data });
+  },
+);

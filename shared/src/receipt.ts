@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { LIMITS, Timestamp, Uuid } from './primitives.js';
+import { CalendarDate, CurrencyCode, LIMITS, Timestamp, Uuid } from './primitives.js';
 
 /**
  * A receipt photo attached to an expense: at most one per expense.
@@ -42,8 +42,43 @@ export const ReceiptIndexItem = z.strictObject({
 
 export const ReceiptIndexResponse = z.strictObject({ data: z.array(ReceiptIndexItem) });
 
+/**
+ * `POST /v1/receipts/scan`: read a photo and suggest values. The body is the same JPEG as an
+ * upload, but nothing is stored and no expense is involved. Every suggestion is nullable: what
+ * the text does not clearly say is left out rather than guessed.
+ */
+export const ReceiptScanRequest = ReceiptPutRequest;
+
+/** The default category a reading may point at; the app maps it to the person's own category. */
+export const ReceiptCategoryKey = z.enum([
+  'groceries',
+  'eating_out',
+  'transport',
+  'health',
+  'bills',
+]);
+
+export const ReceiptScan = z.strictObject({
+  amountMinor: z
+    .number()
+    .int()
+    .positive()
+    .nullable()
+    .describe('The total, in minor units of `currency`, or null when none was found.'),
+  currency: CurrencyCode.describe("The account's currency, which the amount is read in."),
+  date: CalendarDate.nullable().describe('The receipt date, or null.'),
+  merchant: z.string().min(1).max(80).nullable().describe('The shop or business name, or null.'),
+  category: ReceiptCategoryKey.nullable().describe('A suggested default category, or null.'),
+});
+
+export const ReceiptScanResponse = z.strictObject({ data: ReceiptScan });
+
 export type ReceiptPutRequest = z.infer<typeof ReceiptPutRequest>;
 export type Receipt = z.infer<typeof Receipt>;
 export type ReceiptResponse = z.infer<typeof ReceiptResponse>;
 export type ReceiptIndexItem = z.infer<typeof ReceiptIndexItem>;
 export type ReceiptIndexResponse = z.infer<typeof ReceiptIndexResponse>;
+export type ReceiptScanRequest = z.infer<typeof ReceiptScanRequest>;
+export type ReceiptCategoryKey = z.infer<typeof ReceiptCategoryKey>;
+export type ReceiptScan = z.infer<typeof ReceiptScan>;
+export type ReceiptScanResponse = z.infer<typeof ReceiptScanResponse>;

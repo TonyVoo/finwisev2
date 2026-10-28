@@ -66,6 +66,10 @@ export const ERROR_CODES = [
   'household_has_members',
   /** 502 — the exchange-rate provider could not be reached or gave an unusable answer. Retry later, or enter the rate by hand. */
   'rates_unavailable',
+  /** 503 — receipt reading is not set up on this server. The app stops offering it; entering an expense by hand is unaffected. */
+  'ocr_unavailable',
+  /** 502 — the receipt-reading provider could not be reached or failed. Nothing was stored; retry later or type the expense. */
+  'ocr_failed',
   /** 500 — unexpected server fault. Never leaks internals; correlate via the logged request id. */
   'internal_error',
 ] as const;
@@ -138,6 +142,8 @@ export const ERROR_CODE_STATUS: Readonly<Record<ErrorCode, number>> = {
   owner_cannot_leave: 409,
   household_has_members: 409,
   rates_unavailable: 502,
+  ocr_unavailable: 503,
+  ocr_failed: 502,
   internal_error: 500,
 };
 

@@ -208,6 +208,18 @@ export const COPY = {
       deniedLibrary: 'Allow photo access in Settings to attach a receipt.',
       failed: 'Could not use that photo. Try another.',
       imageLabel: 'Receipt photo',
+      /** Reading the photo into suggestions; the person always chooses whether to use them. */
+      scan: {
+        action: 'Read receipt',
+        hint: 'Sends this photo to our server to find the amount, date and shop.',
+        reading: 'Reading receipt…',
+        suggestionTitle: 'From the receipt',
+        use: 'Use',
+        dismiss: 'Dismiss',
+        nothingFound: 'Nothing could be read from that photo.',
+        failed: 'Could not read that receipt. Enter the details yourself.',
+        unavailable: "Reading receipts isn't available right now.",
+      },
     },
     save: 'Save',
     delete: 'Delete expense',

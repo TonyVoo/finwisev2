@@ -81,6 +81,15 @@ is no `(s)` anywhere.
 | `form.receipt.deniedLibrary` | `Allow photo access in Settings to attach a receipt.` | Snackbar |
 | `form.receipt.failed` | `Could not use that photo. Try another.` | Snackbar |
 | `form.receipt.imageLabel` | `Receipt photo` | Receipt sheet, image label |
+| `form.receipt.scan.action` | `Read receipt` | Receipt sheet, button |
+| `form.receipt.scan.hint` | `Sends this photo to our server to find the amount, date and shop.` | Receipt sheet, under the button |
+| `form.receipt.scan.reading` | `Reading receipt…` | Receipt sheet, button while working |
+| `form.receipt.scan.suggestionTitle` | `From the receipt` | Expense form, suggestion card |
+| `form.receipt.scan.use` | `Use` | Suggestion card, button |
+| `form.receipt.scan.dismiss` | `Dismiss` | Suggestion card, button |
+| `form.receipt.scan.nothingFound` | `Nothing could be read from that photo.` | Snackbar |
+| `form.receipt.scan.failed` | `Could not read that receipt. Enter the details yourself.` | Snackbar |
+| `form.receipt.scan.unavailable` | `Reading receipts isn't available right now.` | Snackbar |
 | `form.save`                       | `Save`                                       | Expense form                      |
 | `form.delete`                     | `Delete expense`                             | Expense form                      |
 | `form.close`                      | `Close without saving`                       | a11y label                        |
@@ -160,6 +169,8 @@ blank banner.
 | `owner_cannot_leave`     | `The owner cannot leave the household. Delete it instead.`                            | Household screen, banner                         |
 | `household_has_members`  | `Transfer or delete your household before deleting your account.`                                 | Delete account, banner                           |
 | `rates_unavailable`      | `Could not get today's exchange rate. Enter it yourself.`                             | Expense form, Rate field                         |
+| `ocr_unavailable`        | `Reading receipts isn't available right now.`                                         | Expense form, Receipt sheet                      |
+| `ocr_failed`             | `Could not read that receipt. Enter the details yourself.`                            | snackbar                                         |
 | `internal_error`         | `Something went wrong on our end. Try again.`                                         | form banner                                      |
 
 Notes:

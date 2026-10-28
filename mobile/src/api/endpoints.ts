@@ -12,6 +12,7 @@ import {
   RatesResponse,
   ReceiptIndexResponse,
   ReceiptResponse,
+  ReceiptScanResponse,
   MeResponse,
   RefreshResponse,
   type RouteSpec,
@@ -92,6 +93,7 @@ export const ENDPOINTS = {
   getReceipt: endpoint('getReceipt', ReceiptResponse),
   deleteReceipt: emptyEndpoint('deleteReceipt'),
   listReceipts: endpoint('listReceipts', ReceiptIndexResponse),
+  scanReceipt: endpoint('scanReceipt', ReceiptScanResponse),
 
   listCategories: endpoint('listCategories', CategoryListResponse),
   createCategory: endpoint('createCategory', CategoryResponse),

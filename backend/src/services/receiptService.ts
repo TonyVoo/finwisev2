@@ -24,7 +24,7 @@ function invalid(message: string) {
   return problems.validation(message, { issues: [{ path: 'dataBase64', message }] });
 }
 
-function decodeJpeg(dataBase64: string): Uint8Array<ArrayBuffer> {
+export function decodeJpeg(dataBase64: string): Uint8Array<ArrayBuffer> {
   const bytes = new Uint8Array(Buffer.from(dataBase64, 'base64'));
   if (bytes.length === 0) throw invalid('The image is empty.');
   if (bytes.length > LIMITS.RECEIPT_MAX_BYTES) {

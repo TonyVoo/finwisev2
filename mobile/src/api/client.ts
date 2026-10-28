@@ -27,6 +27,8 @@ import type {
   ReceiptIndexResponse,
   ReceiptPutRequest,
   ReceiptResponse,
+  ReceiptScanRequest,
+  ReceiptScanResponse,
   LoginRequest,
   LogoutRequest,
   MeResponse,
@@ -117,6 +119,8 @@ export interface ApiClient {
   deleteReceipt(expenseId: string): Promise<void>;
   /** Which expenses have a receipt, without the images. */
   listReceipts(): Promise<ReceiptIndexResponse>;
+  /** Reads a receipt photo and suggests values. Stores nothing; every field may be null. */
+  scanReceipt(body: ReceiptScanRequest): Promise<ReceiptScanResponse>;
 
   /** What to multiply a foreign amount by. Called only while entering one; fails soft. */
   getRate(query: RatesQuery): Promise<RatesResponse>;
@@ -217,6 +221,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     getReceipt: (id) => send(ENDPOINTS.getReceipt, { pathParams: { id } }),
     deleteReceipt: (id) => send(ENDPOINTS.deleteReceipt, { pathParams: { id } }),
     listReceipts: () => send(ENDPOINTS.listReceipts),
+    scanReceipt: (body) => send(ENDPOINTS.scanReceipt, { body }),
 
     getRate: (query) => send(ENDPOINTS.getRate, { query: toQuery(query) }),
     pullSync: (query) => send(ENDPOINTS.pullSync, { query: toQuery(query) }),

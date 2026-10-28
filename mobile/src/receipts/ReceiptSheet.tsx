@@ -26,6 +26,7 @@ export const RECEIPT_IMAGE_TEST_ID = 'receipt-image';
 export const RECEIPT_TAKE_TEST_ID = 'receipt-take';
 export const RECEIPT_CHOOSE_TEST_ID = 'receipt-choose';
 export const RECEIPT_REMOVE_TEST_ID = 'receipt-remove';
+export const RECEIPT_SCAN_TEST_ID = 'receipt-scan';
 
 export interface ReceiptSheetProps {
   readonly visible: boolean;
@@ -40,6 +41,11 @@ export interface ReceiptSheetProps {
   readonly onTake: () => void;
   readonly onChoose: () => void;
   readonly onRemove: () => void;
+  /** Whether to offer reading the photo: false when the server has said it cannot. */
+  readonly canScan: boolean;
+  /** True while a reading is in flight. */
+  readonly scanning: boolean;
+  readonly onScan: () => void;
 }
 
 export function ReceiptSheet(props: ReceiptSheetProps) {
@@ -94,6 +100,22 @@ export function ReceiptSheet(props: ReceiptSheetProps) {
           </Text>
         ) : null}
 
+        {dataBase64 !== null && props.canScan ? (
+          <>
+            <Button
+              label={
+                props.scanning ? COPY.form.receipt.scan.reading : COPY.form.receipt.scan.action
+              }
+              onPress={props.onScan}
+              busy={props.scanning}
+              fullWidth
+              testID={RECEIPT_SCAN_TEST_ID}
+            />
+            {/* The photo leaves the phone for this, so the sheet says so before it is tapped. */}
+            <Text style={styles.hint}>{COPY.form.receipt.scan.hint}</Text>
+          </>
+        ) : null}
+
         <Button
           label={COPY.form.receipt.take}
           onPress={props.onTake}
@@ -132,6 +154,7 @@ const useStyles = createStyles((color) =>
       borderRadius: radius.md,
       backgroundColor: color.bg.sunken,
     },
+    hint: { ...type.footnote, color: color.text.secondary, textAlign: 'center' },
     status: {
       ...type.body,
       color: color.text.secondary,

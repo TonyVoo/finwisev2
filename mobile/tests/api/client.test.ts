@@ -121,6 +121,10 @@ describe('every client method', () => {
     ['getReceipt', (client) => client.getReceipt(ID)],
     ['deleteReceipt', (client) => client.deleteReceipt(ID)],
     ['listReceipts', (client) => client.listReceipts()],
+    [
+      'scanReceipt',
+      (client) => client.scanReceipt({ contentType: 'image/jpeg', dataBase64: '/9j/AAAA' }),
+    ],
     ['getHousehold', (client) => client.getHousehold()],
     ['createHousehold', (client) => client.createHousehold()],
     ['deleteHousehold', (client) => client.deleteHousehold()],

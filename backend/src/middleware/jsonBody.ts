@@ -44,10 +44,18 @@ const standardParser: RequestHandler = express.json({ limit: BODY_LIMIT, strict:
 const RECEIPT_BODY_LIMIT = '3mb';
 const receiptParser: RequestHandler = express.json({ limit: RECEIPT_BODY_LIMIT, strict: true });
 const RECEIPT_PUT = /^\/v1\/expenses\/[^/]+\/receipt$/;
+const RECEIPT_SCAN = '/v1/receipts/scan';
+
+/** Does this request carry a receipt image? The upload and the reading both do. */
+function carriesReceipt(req: Request): boolean {
+  return (
+    (req.method === 'PUT' && RECEIPT_PUT.test(req.path)) ||
+    (req.method === 'POST' && req.path === RECEIPT_SCAN)
+  );
+}
 
 export const parseJsonBody: RequestHandler = (req, res, next) => {
-  const isReceiptUpload = req.method === 'PUT' && RECEIPT_PUT.test(req.path);
-  (isReceiptUpload ? receiptParser : standardParser)(req, res, next);
+  (carriesReceipt(req) ? receiptParser : standardParser)(req, res, next);
 };
 
 /**
@@ -72,7 +80,7 @@ export function jsonBodyErrors(
         next(
           problems.batchTooLarge(
             `Request body exceeds the ${
-              req.method === 'PUT' && RECEIPT_PUT.test(req.path) ? RECEIPT_BODY_LIMIT : BODY_LIMIT
+              carriesReceipt(req) ? RECEIPT_BODY_LIMIT : BODY_LIMIT
             } limit.`,
           ),
         );
