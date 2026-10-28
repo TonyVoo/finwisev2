@@ -92,6 +92,25 @@ export const VerifyEmailRequest = z.strictObject({
   ),
 });
 
+/**
+ * A display name. Trimmed; blank means "none", the same as `null`, so a person who clears the
+ * field does not have to know there are two ways to say it.
+ */
+export const DisplayName = z
+  .string()
+  .trim()
+  .max(LIMITS.DISPLAY_NAME_MAX)
+  .transform((value) => (value === '' ? null : value))
+  .describe(
+    'What other people see for this account, up to 40 characters after trimming. Blank clears it.',
+  );
+
+export const UpdateProfileRequest = z.strictObject({
+  displayName: DisplayName.nullable().describe(
+    'The new display name, or `null` (or blank) to go back to showing the start of the email address. Not a credential, so no password is asked for.',
+  ),
+});
+
 export const ChangeEmailRequest = z.strictObject({
   email: Email.describe(
     'The new sign-in email. Normalised like every other email; must not already belong to an account, and must differ from the current one.',
@@ -135,6 +154,7 @@ export const RefreshResponse = TokenPair;
 
 export type ChangePasswordRequest = z.infer<typeof ChangePasswordRequest>;
 export type ChangeEmailRequest = z.infer<typeof ChangeEmailRequest>;
+export type UpdateProfileRequest = z.infer<typeof UpdateProfileRequest>;
 export type RequestEmailVerificationRequest = z.infer<typeof RequestEmailVerificationRequest>;
 export type VerifyEmailRequest = z.infer<typeof VerifyEmailRequest>;
 export type ForgotPasswordRequest = z.infer<typeof ForgotPasswordRequest>;

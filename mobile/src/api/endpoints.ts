@@ -73,6 +73,7 @@ export const ENDPOINTS = {
   resetPassword: emptyEndpoint('resetPassword'),
   getMe: endpoint('getMe', MeResponse),
   changePassword: endpoint('changePassword', TokenPair),
+  updateProfile: endpoint('updateProfile', MeResponse),
   changeEmail: endpoint('changeEmail', MeResponse),
   requestEmailVerification: emptyEndpoint('requestEmailVerification'),
   confirmEmailVerification: endpoint('confirmEmailVerification', MeResponse),

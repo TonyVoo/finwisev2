@@ -39,6 +39,10 @@ model User {
   /// the storage layer so a code path that forgets to normalise fails loudly.
   email String @unique @db.VarChar(254)
 
+  /// What other people see instead of the first part of the email: set by the person, optional,
+  /// 1-40 characters, trimmed. NULL when they have not chosen one. Not a credential.
+  displayName String? @map("display_name") @db.VarChar(40)
+
   /// argon2id. Never logged, never returned on the wire.
   passwordHash String @map("password_hash") @db.Text
 

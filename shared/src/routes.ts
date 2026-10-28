@@ -92,6 +92,13 @@ export const API_ROUTES = [
   },
   {
     method: 'patch',
+    path: '/v1/me/profile',
+    operationId: 'updateProfile',
+    auth: true,
+    successStatus: 200,
+  },
+  {
+    method: 'patch',
     path: '/v1/me/email',
     operationId: 'changeEmail',
     auth: true,

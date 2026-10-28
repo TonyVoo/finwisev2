@@ -37,6 +37,13 @@ export const Password = z
 export const User = z.strictObject({
   id: Uuid,
   email: Email,
+  displayName: z
+    .string()
+    .nullable()
+    .optional()
+    .describe(
+      'What other people see instead of the first part of the email: chosen by the person, 1-40 characters, or `null` when they have not chosen one. Absent from servers that predate it; treat absent as `null`.',
+    ),
   currency: CurrencyCode.describe(
     "The user's single currency, captured at signup. Every expense of this user defaults to it. While the account is in a household this is the household's (the owner's) currency, because that is what every shared amount is in.",
   ),

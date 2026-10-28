@@ -38,6 +38,7 @@ import type {
   SyncPushRequest,
   SyncPushResponse,
   TokenPair,
+  UpdateProfileRequest,
 } from '@expense-tracker/shared';
 import { ENDPOINTS, type Endpoint } from './endpoints';
 import { ResponseShapeError, toApiRequestError } from './errors';
@@ -72,6 +73,8 @@ export interface ApiClient {
   getMe(): Promise<MeResponse>;
   /** Replaces the password and ends every other session; returns this device's new pair. */
   changePassword(body: ChangePasswordRequest): Promise<TokenPair>;
+  /** Sets or clears the display name (no password: it is not a credential). */
+  updateProfile(body: UpdateProfileRequest): Promise<MeResponse>;
   /** Replaces the sign-in email (password re-entered); returns the updated user. */
   changeEmail(body: ChangeEmailRequest): Promise<MeResponse>;
   /** Emails a 6-digit code to the account's address. 204; a no-op once verified. */
@@ -184,6 +187,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     resetPassword: (body) => send(ENDPOINTS.resetPassword, { body }),
     getMe: () => send(ENDPOINTS.getMe),
     changePassword: (body) => send(ENDPOINTS.changePassword, { body }),
+    updateProfile: (body) => send(ENDPOINTS.updateProfile, { body }),
     changeEmail: (body) => send(ENDPOINTS.changeEmail, { body }),
     requestEmailVerification: (body) => send(ENDPOINTS.requestEmailVerification, { body }),
     confirmEmailVerification: (body) => send(ENDPOINTS.confirmEmailVerification, { body }),

@@ -6,6 +6,7 @@ import {
   VerifyEmailRequest,
   MeResponse,
   TokenPair,
+  UpdateProfileRequest,
 } from '@expense-tracker/shared';
 import { Router, type Request, type Response } from 'express';
 import { getPrisma } from '../db/client.ts';
@@ -18,7 +19,12 @@ import {
 } from '../middleware/passwordConfirmRateLimit.ts';
 import { emailVerificationSendRateLimit } from '../middleware/emailVerificationRateLimit.ts';
 import { validateBody } from '../middleware/validate.ts';
-import { changeEmail, changePassword, deleteAccount } from '../services/authService.ts';
+import {
+  changeEmail,
+  changePassword,
+  deleteAccount,
+  updateProfile,
+} from '../services/authService.ts';
 import {
   confirmEmailVerification,
   sendEmailVerification,
@@ -93,6 +99,16 @@ meRouter.post(
     const body = req.body as ChangePasswordRequest;
     const tokens = await confirmed(userId, () => changePassword(getPrisma(), userId, body));
     sendJson(res, 200, TokenPair, tokens);
+  },
+);
+
+meRouter.patch(
+  '/me/profile',
+  validateBody(UpdateProfileRequest),
+  async (req: Request, res: Response) => {
+    const body = req.body as UpdateProfileRequest;
+    const user = await updateProfile(getPrisma(), userIdOf(req), body.displayName);
+    sendJson(res, 200, MeResponse, { user });
   },
 );
 

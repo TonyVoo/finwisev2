@@ -350,6 +350,12 @@ export async function changeEmail(db: Db, userId: string, input: ChangeEmailInpu
   }
 }
 
+/** Set or clear the display name. Not a credential, so it asks for no password. */
+export async function updateProfile(db: Db, userId: string, displayName: string | null) {
+  const updated = await db.user.update({ where: { id: userId }, data: { displayName } });
+  return toWireUser(updated);
+}
+
 /**
  * Permanently delete the account and everything it owns.
  *

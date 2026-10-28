@@ -35,6 +35,10 @@ export const HouseholdRole = z
 export const HouseholdMember = z.strictObject({
   userId: Uuid,
   email: Email,
+  displayName: z
+    .string()
+    .nullable()
+    .describe('The name the member chose, or `null` when they have not chosen one.'),
   role: HouseholdRole,
   joinedAt: Timestamp,
 });

@@ -759,6 +759,55 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /v1/me/profile:
+    patch:
+      operationId: updateProfile
+      tags: [auth]
+      summary: Set or clear the display name
+      description: |
+        Sets what other people see for this account - in a household, in place of the start of the
+        email address - or clears it with `null` (a blank name does the same). Trimmed, at most 40
+        characters. It is not a credential, so unlike changing the email or password it asks for no
+        password. Returns the updated user.
+      x-errorCodes:
+        - validation_error
+        - malformed_request
+        - unsupported_media_type
+        - unauthorized
+        - token_expired
+        - token_invalid
+        - internal_error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateProfileRequest' }
+            example: { displayName: Ana }
+      responses:
+        '200':
+          description: Updated.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MeResponse' }
+              example:
+                user:
+                  id: '0192f5a0-0000-7000-8000-0000000000a1'
+                  email: ana@example.com
+                  displayName: Ana
+                  currency: USD
+                  emailVerified: true
+                  createdAt: '2026-10-05T12:00:00.000Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /v1/me/email:
     patch:
       operationId: changeEmail
@@ -849,7 +898,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/HouseholdResponse' }
-              example: { household: { id: '0192f5a0-0000-7000-8000-0000000000b1', role: owner, ownerId: '0192f5a0-0000-7000-8000-0000000000a1', currency: USD, members: [{ userId: '0192f5a0-0000-7000-8000-0000000000a1', email: ana@example.com, role: owner, joinedAt: '2026-10-27T09:00:00.000Z' }] } }
+              example: { household: { id: '0192f5a0-0000-7000-8000-0000000000b1', role: owner, ownerId: '0192f5a0-0000-7000-8000-0000000000a1', currency: USD, members: [{ userId: '0192f5a0-0000-7000-8000-0000000000a1', email: ana@example.com, displayName: null, role: owner, joinedAt: '2026-10-27T09:00:00.000Z' }] } }
         '401':
           $ref: '#/components/responses/Unauthorized'
         '500':
@@ -885,7 +934,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/HouseholdResponse' }
-              example: { household: { id: '0192f5a0-0000-7000-8000-0000000000b1', role: owner, ownerId: '0192f5a0-0000-7000-8000-0000000000a1', currency: USD, members: [{ userId: '0192f5a0-0000-7000-8000-0000000000a1', email: ana@example.com, role: owner, joinedAt: '2026-10-27T09:00:00.000Z' }] } }
+              example: { household: { id: '0192f5a0-0000-7000-8000-0000000000b1', role: owner, ownerId: '0192f5a0-0000-7000-8000-0000000000a1', currency: USD, members: [{ userId: '0192f5a0-0000-7000-8000-0000000000a1', email: ana@example.com, displayName: null, role: owner, joinedAt: '2026-10-27T09:00:00.000Z' }] } }
         '400':
           $ref: '#/components/responses/BadRequest'
         '409':
@@ -1054,7 +1103,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/HouseholdResponse' }
-              example: { household: { id: '0192f5a0-0000-7000-8000-0000000000b1', role: owner, ownerId: '0192f5a0-0000-7000-8000-0000000000a1', currency: USD, members: [{ userId: '0192f5a0-0000-7000-8000-0000000000a1', email: ana@example.com, role: owner, joinedAt: '2026-10-27T09:00:00.000Z' }] } }
+              example: { household: { id: '0192f5a0-0000-7000-8000-0000000000b1', role: owner, ownerId: '0192f5a0-0000-7000-8000-0000000000a1', currency: USD, members: [{ userId: '0192f5a0-0000-7000-8000-0000000000a1', email: ana@example.com, displayName: null, role: owner, joinedAt: '2026-10-27T09:00:00.000Z' }] } }
         '400':
           $ref: '#/components/responses/BadRequest'
         '409':
@@ -1176,7 +1225,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/HouseholdResponse' }
-              example: { household: { id: '0192f5a0-0000-7000-8000-0000000000b1', role: member, ownerId: '0192f5a0-0000-7000-8000-0000000000b2', currency: USD, members: [{ userId: '0192f5a0-0000-7000-8000-0000000000b2', email: bao@example.com, role: owner, joinedAt: '2026-10-27T09:00:00.000Z' }, { userId: '0192f5a0-0000-7000-8000-0000000000a1', email: ana@example.com, role: member, joinedAt: '2026-10-27T09:00:00.000Z' }] } }
+              example: { household: { id: '0192f5a0-0000-7000-8000-0000000000b1', role: member, ownerId: '0192f5a0-0000-7000-8000-0000000000b2', currency: USD, members: [{ userId: '0192f5a0-0000-7000-8000-0000000000b2', email: bao@example.com, displayName: null, role: owner, joinedAt: '2026-10-27T09:00:00.000Z' }, { userId: '0192f5a0-0000-7000-8000-0000000000a1', email: ana@example.com, displayName: null, role: member, joinedAt: '2026-10-27T09:00:00.000Z' }] } }
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -3020,6 +3069,14 @@ components:
       properties:
         id: { $ref: '#/components/schemas/Uuid' }
         email: { $ref: '#/components/schemas/Email' }
+        displayName:
+          oneOf:
+            - { type: string, maxLength: 40 }
+            - { type: 'null' }
+          description: |
+            What other people see instead of the first part of the email: chosen by the person,
+            1-40 characters, or `null` when they have not chosen one. Absent from servers that
+            predate it: treat absent as `null`.
         currency:
           allOf: [{ $ref: '#/components/schemas/CurrencyCode' }]
           description: |
@@ -3108,6 +3165,19 @@ components:
         newPassword: { $ref: '#/components/schemas/Password' }
       description: The new password must differ from the current one.
 
+    UpdateProfileRequest:
+      type: object
+      additionalProperties: false
+      required: [displayName]
+      properties:
+        displayName:
+          oneOf:
+            - { type: string, maxLength: 40 }
+            - { type: 'null' }
+          description: |
+            The new display name, or `null` (or blank) to clear it. Trimmed, at most 40 characters.
+            Not a credential, so no password is asked for.
+
     ChangeEmailRequest:
       type: object
       additionalProperties: false
@@ -3167,6 +3237,11 @@ components:
       properties:
         userId: { $ref: '#/components/schemas/Uuid' }
         email: { $ref: '#/components/schemas/Email' }
+        displayName:
+          oneOf:
+            - { type: string, maxLength: 40 }
+            - { type: 'null' }
+          description: The name the member chose, or `null` when they have not chosen one.
         role: { $ref: '#/components/schemas/HouseholdRole' }
         joinedAt: { $ref: '#/components/schemas/Timestamp' }
 

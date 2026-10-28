@@ -68,7 +68,7 @@ async function loadHousehold(db: Db, userId: string): Promise<Household | null> 
               userId: true,
               role: true,
               joinedAt: true,
-              user: { select: { email: true } },
+              user: { select: { email: true, displayName: true } },
             },
           },
         },
@@ -86,6 +86,7 @@ async function loadHousehold(db: Db, userId: string): Promise<Household | null> 
     members: household.members.map((member) => ({
       userId: member.userId,
       email: member.user.email,
+      displayName: member.user.displayName,
       role: member.role as Household['role'],
       joinedAt: member.joinedAt.toISOString(),
     })),

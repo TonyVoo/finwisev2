@@ -90,6 +90,8 @@ export const LIMITS = {
   RESET_ATTEMPT_MAX_PER_IP: 30,
   /** Verification codes one account may request per window (each send counts). */
   VERIFY_REQUEST_MAX_PER_USER: 5,
+  /** Longest display name, in characters, after trimming. */
+  DISPLAY_NAME_MAX: 40,
   /** Characters in a household invite code. */
   INVITE_CODE_LENGTH: 8,
   /** How long an invite code works, in hours. */
