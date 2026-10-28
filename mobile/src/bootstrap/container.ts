@@ -14,6 +14,7 @@ import { reconcileDataScope } from '../household/dataScope';
 import { syncGoalReminders } from '../notifications/goalReminders';
 import { META_KEYS, readMeta } from '../db/meta';
 import { type LanguagePreference, parseLanguagePreference } from '../i18n/language';
+import { type TabBarStyle, parseTabBarStyle } from '../navigation/tabBarStyle';
 import { type ThemePreference, parseThemePreference } from '../theme/ThemeProvider';
 import { openLocalDatabase } from '../db/open';
 import type { SqliteDatabase } from '../db/sqlite';
@@ -70,6 +71,7 @@ export interface AppContainer {
    * not in the wiped meta keys, so logging out leaves it alone.
    */
   readonly themePreference: ThemePreference;
+  readonly tabBarStyle: TabBarStyle;
   /** Whether the app locks itself (`lock/AppLockProvider.tsx`). Read at boot, like the theme. */
   readonly appLockEnabled: boolean;
   /** The language chosen in Settings (`i18n/LanguageProvider.tsx`). Read at boot, like the theme. */
@@ -181,6 +183,7 @@ export async function createAppContainer(options: AppContainerOptions = {}): Pro
   });
 
   const themePreference = parseThemePreference(await readMeta(database, META_KEYS.themePreference));
+  const tabBarStyle = parseTabBarStyle(await readMeta(database, META_KEYS.tabBarStyle));
 
   const appLockEnabled = (await readMeta(database, META_KEYS.appLockEnabled)) === '1';
 
@@ -196,6 +199,7 @@ export async function createAppContainer(options: AppContainerOptions = {}): Pro
     clock,
     sync,
     themePreference,
+    tabBarStyle,
     appLockEnabled,
     languagePreference,
   };

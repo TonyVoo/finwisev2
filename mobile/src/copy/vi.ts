@@ -243,6 +243,7 @@ export const VIETNAMESE_COPY: CopyBundle = {
       goals: 'Mục tiêu tiết kiệm',
       goalsHint: 'Tiết kiệm cho điều bạn muốn.',
       household: 'Hộ gia đình',
+      tabBar: 'Thanh tab',
       householdHint: 'Chia sẻ sổ chi tiêu với người khác.',
       renameCategories: 'Đổi tên danh mục mặc định',
       renameCategoriesHint: 'Chuyển tên gốc sang tiếng Việt.',
@@ -277,6 +278,17 @@ export const VIETNAMESE_COPY: CopyBundle = {
       settingsHint: 'Yêu cầu Face ID hoặc mật mã.',
     },
 
+    tabBarStyle: {
+      title: 'Kiểu thanh tab',
+      compact: 'Gọn',
+      wide: 'Rộng',
+      labelled: 'Có nhãn',
+      hint: {
+        compact: 'Một thanh nhỏ nổi ở giữa.',
+        wide: 'Trải rộng toàn màn hình, mỗi tab một ô như nhau.',
+        labelled: 'Trải rộng toàn màn hình, có tên dưới mỗi biểu tượng.',
+      },
+    },
     /** Shared households (`docs/design/10-households.md`). */
     household: {
       title: 'Hộ gia đình',

@@ -28,6 +28,8 @@ import { LanguageSheet, languagePreferenceLabel } from '@/i18n/LanguageSheet';
 import { useLanguage } from '@/i18n/LanguageProvider';
 import { useAppLock } from '@/lock/AppLockProvider';
 import { space, type } from '@/theme/tokens';
+import { TabBarStyleSheet, tabBarStyleLabel } from '@/navigation/TabBarStyleSheet';
+import { useTabBarStyle } from '@/navigation/tabBarStyle';
 import { ThemeSheet, themePreferenceLabel } from '@/theme/ThemeSheet';
 import { createStyles, useTheme } from '@/theme/ThemeProvider';
 
@@ -72,6 +74,8 @@ export default function SettingsScreen() {
   const [confirmingLogout, setConfirmingLogout] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [choosingTheme, setChoosingTheme] = useState(false);
+  const [choosingTabBar, setChoosingTabBar] = useState(false);
+  const tabBar = useTabBarStyle();
   const [choosingLanguage, setChoosingLanguage] = useState(false);
   const language = useLanguage();
   const { preference } = useTheme();
@@ -226,6 +230,16 @@ export default function SettingsScreen() {
             <RowTitle>{COPY.settings.appearance}</RowTitle>
           </Row>
           <Row
+            testID="settings-tab-bar"
+            leading={<IconBadge name="layout" />}
+            onPress={() => setChoosingTabBar(true)}
+            chevron
+            accessibilityLabel={`${COPY.settings.tabBar}, ${tabBarStyleLabel(tabBar.style)}`}
+            trailing={<Text style={styles.value}>{tabBarStyleLabel(tabBar.style)}</Text>}
+          >
+            <RowTitle>{COPY.settings.tabBar}</RowTitle>
+          </Row>
+          <Row
             testID="settings-language"
             leading={<IconBadge name="globe" />}
             onPress={() => setChoosingLanguage(true)}
@@ -315,6 +329,7 @@ export default function SettingsScreen() {
       </ScrollView>
 
       <ThemeSheet visible={choosingTheme} onClose={() => setChoosingTheme(false)} />
+      <TabBarStyleSheet visible={choosingTabBar} onClose={() => setChoosingTabBar(false)} />
       <LanguageSheet visible={choosingLanguage} onClose={() => setChoosingLanguage(false)} />
 
       <Dialog

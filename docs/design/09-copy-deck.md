@@ -536,6 +536,14 @@ them as proposals the Designer can reword; changing a row here means changing
 | `household.transfer.confirm` | `Make owner` | Household screen, confirm |
 | `household.snack.transferred` | `Ownership handed over.` | Household screen, snackbar |
 | `household.a11y.memberActions` | `Actions for {email}` | Household screen, member row |
+| `settings.tabBar` | `Tab bar` | Settings row |
+| `tabBarStyle.title` | `Tab bar style` | Tab bar style sheet |
+| `tabBarStyle.compact` | `Compact` | Tab bar style sheet |
+| `tabBarStyle.wide` | `Wide` | Tab bar style sheet |
+| `tabBarStyle.labelled` | `With labels` | Tab bar style sheet |
+| `tabBarStyle.hint.compact` | `A small bar that floats in the middle.` | Tab bar style sheet |
+| `tabBarStyle.hint.wide` | `Spans the screen, with the same slot for each tab.` | Tab bar style sheet |
+| `tabBarStyle.hint.labelled` | `Spans the screen, with a name under every icon.` | Tab bar style sheet |
 | `household.addedBy` | `Added by {name}` | Expense row, in a shared household |
 | `household.addedByYou` | `Added by you` | Expense row, in a shared household |
 | `household.members` | `Members` | Household screen |

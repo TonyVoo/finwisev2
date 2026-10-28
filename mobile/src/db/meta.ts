@@ -78,6 +78,11 @@ export const META_KEYS = {
    * it names other people.
    */
   householdMembers: 'householdMembers',
+  /**
+   * `compact`, `wide` or `labelled`: how the floating tab bar looks, chosen in Settings. A property
+   * of this device, like the theme, so deliberately absent from {@link WIPED_META_KEYS}.
+   */
+  tabBarStyle: 'tabBarStyle',
 } as const;
 
 export type MetaKey = (typeof META_KEYS)[keyof typeof META_KEYS];

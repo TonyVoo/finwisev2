@@ -127,6 +127,26 @@ describe('the settings screen', () => {
     );
   });
 
+  it('lets the person pick the tab bar style, applies it at once and remembers it on the device', async () => {
+    await waitFor(() => expect(screen.getByTestId('settings-tab-bar')).toBeTruthy());
+    expect(
+      screen.getByLabelText(`${COPY.settings.tabBar}, ${COPY.tabBarStyle.compact}`),
+    ).toBeTruthy();
+
+    await fireEvent.press(screen.getByTestId('settings-tab-bar'));
+    await waitFor(() => expect(screen.getByTestId('tab-bar-style-wide')).toBeTruthy());
+    await fireEvent.press(screen.getByTestId('tab-bar-style-wide'));
+
+    await waitFor(() =>
+      expect(
+        screen.getByLabelText(`${COPY.settings.tabBar}, ${COPY.tabBarStyle.wide}`),
+      ).toBeTruthy(),
+    );
+    await waitFor(async () =>
+      expect(await readMeta(mounted.database, META_KEYS.tabBarStyle)).toBe('wide'),
+    );
+  });
+
   it('gives every settings row a leading icon', async () => {
     await waitFor(() => expect(screen.getByText('ada@example.com')).toBeTruthy());
 

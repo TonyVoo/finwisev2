@@ -8,6 +8,7 @@ import { SyncProvider } from '../sync/SyncProvider';
 import { LanguageProvider } from '../i18n/LanguageProvider';
 import { AppLockProvider } from '../lock/AppLockProvider';
 import { META_KEYS, writeMeta } from '../db/meta';
+import { TabBarStyleProvider } from '../navigation/tabBarStyle';
 import { ThemeProvider } from '../theme/ThemeProvider';
 import type { ApiClient } from '../api/client';
 import type { AppContainer } from './container';
@@ -75,7 +76,12 @@ export function AppProviders({ container, startSync = true, children }: AppProvi
                         database={container.database}
                         initialPreference={container.languagePreference}
                       >
-                        {children}
+                        <TabBarStyleProvider
+                          database={container.database}
+                          initialStyle={container.tabBarStyle}
+                        >
+                          {children}
+                        </TabBarStyleProvider>
                       </LanguageProvider>
                     </MonthProvider>
                   </AppLockProvider>

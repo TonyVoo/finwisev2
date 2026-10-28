@@ -277,6 +277,7 @@ export const COPY = {
     goals: 'Savings goals',
     goalsHint: 'Save towards something you want.',
     household: 'Household',
+    tabBar: 'Tab bar',
     householdHint: 'Share your books with someone.',
     renameCategories: 'Rename default categories',
     renameCategoriesHint: 'Switch the starter names to Vietnamese.',
@@ -314,6 +315,17 @@ export const COPY = {
   },
 
   /** Savings goals: a target, what has been put towards it, and an optional deadline. */
+  tabBarStyle: {
+    title: 'Tab bar style',
+    compact: 'Compact',
+    wide: 'Wide',
+    labelled: 'With labels',
+    hint: {
+      compact: 'A small bar that floats in the middle.',
+      wide: 'Spans the screen, with the same slot for each tab.',
+      labelled: 'Spans the screen, with a name under every icon.',
+    },
+  },
   /** Shared households (`docs/design/10-households.md`). */
   household: {
     title: 'Household',

@@ -1,4 +1,4 @@
-import { TAB_BAR_RESERVE } from '@/navigation/tabBar';
+import { useTabBarReserve } from '@/navigation/tabBar';
 import { useDeleteExpense } from '@/expenses/useDeleteExpense';
 import { useAddedBy } from '@/household/useAddedBy';
 import { useCallback, useEffect, useState } from 'react';
@@ -76,6 +76,7 @@ export default function ExpenseListScreen() {
   const styles = useStyles();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const tabBarReserve = useTabBarReserve();
   const { month, currentMonth, today, isCurrent, goToCurrent } = useSelectedMonth();
 
   const [scrolled, setScrolled] = useState(false);
@@ -215,7 +216,7 @@ export default function ExpenseListScreen() {
         // (§Elements, FAB position).
         // The floating tab bar covers the bottom of the screen, so the last row has to clear it
         // as well as the add button.
-        contentContainerStyle={{ paddingBottom: FAB_CLEARANCE + insets.bottom + TAB_BAR_RESERVE }}
+        contentContainerStyle={{ paddingBottom: FAB_CLEARANCE + insets.bottom + tabBarReserve }}
         renderSectionHeader={({ section }) => (
           <Text style={styles.sectionHeader} accessibilityRole="header">
             {section.title}
@@ -254,7 +255,7 @@ export default function ExpenseListScreen() {
       <Fab
         label={COPY.home.fab}
         // Above the floating bar, which is over the screen rather than under it.
-        bottomOffset={TAB_BAR_RESERVE}
+        bottomOffset={tabBarReserve}
         onPress={() => router.push('/(app)/expense/new')}
         testID="home-fab"
       />

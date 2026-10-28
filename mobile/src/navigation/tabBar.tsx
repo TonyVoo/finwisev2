@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { keyHaptic } from '../lib/haptics';
+import { TAB_BAR_GAP, tabBarHeight, tabBarReserve, useTabBarStyle } from './tabBarStyle';
 import { elevation, radius, space, type } from '../theme/tokens';
 import { createStyles, useColors } from '../theme/ThemeProvider';
 
@@ -41,19 +42,17 @@ export interface FloatingTabBarProps {
   };
 }
 
-/** The floating bar's own height, and the gap between it and the screen's bottom edge. */
-const BAR_HEIGHT = 64;
-const BAR_GAP = 6;
+/** What the compact bar covers; the default, and what a screen without a style context assumes. */
+export const TAB_BAR_RESERVE = tabBarReserve('compact');
 
-/**
- * How much of the screen the floating bar covers, below the home indicator: what a screen
- * adds to its bottom padding (and the add button to its offset) so nothing ends up under it.
- */
-export const TAB_BAR_RESERVE = BAR_HEIGHT + BAR_GAP + space[3];
+/** How much of the screen the bar covers, below the home indicator, in the current style. */
+export function useTabBarReserve(): number {
+  return tabBarReserve(useTabBarStyle().style);
+}
 
 /** The bar's footprint including the home-indicator inset, for a screen's bottom padding. */
 export function useTabBarClearance(): number {
-  return useSafeAreaInsets().bottom + TAB_BAR_RESERVE;
+  return useSafeAreaInsets().bottom + useTabBarReserve();
 }
 
 /** A light tick when you switch tabs; nothing for pressing the tab you are already on. */
@@ -73,14 +72,24 @@ export function FloatingTabBar({ state, descriptors, navigation }: FloatingTabBa
   const color = useColors();
   const styles = useStyles();
   const insets = useSafeAreaInsets();
+  const { style } = useTabBarStyle();
+  const spans = style !== 'compact';
+  const labelled = style === 'labelled';
 
   return (
     <View
       testID="tab-bar"
       pointerEvents="box-none"
-      style={[styles.wrap, { bottom: insets.bottom + BAR_GAP }]}
+      style={[styles.wrap, { bottom: insets.bottom + TAB_BAR_GAP }, spans ? styles.wrapWide : null]}
     >
-      <View style={styles.bar}>
+      <View
+        testID="tab-bar-surface"
+        style={[
+          styles.bar,
+          { height: tabBarHeight(style) },
+          spans ? styles.barWide : styles.barCompact,
+        ]}
+      >
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key] ?? { options: {} };
           const focused = state.index === index;
@@ -106,10 +115,23 @@ export function FloatingTabBar({ state, descriptors, navigation }: FloatingTabBa
               accessibilityRole="tab"
               accessibilityLabel={title}
               accessibilityState={{ selected: focused }}
-              style={[styles.item, focused ? { backgroundColor: color.primary.subtle } : null]}
+              style={[
+                styles.item,
+                { height: tabBarHeight(style) - space[2] * 2 },
+                spans ? styles.itemSlot : null,
+                labelled ? styles.itemStacked : null,
+                focused ? { backgroundColor: color.primary.subtle } : null,
+              ]}
             >
               {options.tabBarIcon?.({ focused, color: tint, size: 22 })}
-              {focused ? <Text style={[styles.label, { color: tint }]}>{title}</Text> : null}
+              {focused || labelled ? (
+                <Text
+                  style={[labelled ? styles.labelSmall : styles.label, { color: tint }]}
+                  numberOfLines={1}
+                >
+                  {title}
+                </Text>
+              ) : null}
             </Pressable>
           );
         })}
@@ -126,30 +148,43 @@ const useStyles = createStyles((color) =>
       right: 0,
       alignItems: 'center',
     },
+    // The wide styles leave a margin each side and let the bar fill what is left.
+    wrapWide: {
+      paddingHorizontal: space[4],
+      alignItems: 'stretch',
+    },
     bar: {
       ...elevation[2],
       flexDirection: 'row',
       alignItems: 'center',
       gap: space[1],
-      height: BAR_HEIGHT,
       padding: space[2],
       borderRadius: radius.pill,
       backgroundColor: color.bg.surface,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: color.border.hairline,
     },
+    barCompact: { alignSelf: 'center' },
+    barWide: { alignSelf: 'stretch' },
     item: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
       gap: space[2],
-      height: BAR_HEIGHT - space[2] * 2,
-      minWidth: BAR_HEIGHT - space[2] * 2 + space[3],
+      minWidth: 48 + space[3],
       paddingHorizontal: space[4],
       borderRadius: radius.pill,
     },
+    // Equal slots across the wide bar.
+    itemSlot: { flex: 1, paddingHorizontal: space[2] },
+    // A label under the icon, which is what lets every tab carry one.
+    itemStacked: { flexDirection: 'column', gap: 2 },
     label: {
       ...type.callout,
+      fontWeight: '600',
+    },
+    labelSmall: {
+      ...type.caption,
       fontWeight: '600',
     },
   }),

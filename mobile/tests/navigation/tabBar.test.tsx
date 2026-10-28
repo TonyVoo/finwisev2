@@ -7,6 +7,7 @@ import {
   TAB_BAR_RESERVE,
   tabPressHaptic,
 } from '@/navigation/tabBar';
+import { TabBarStyleProvider, type TabBarStyle } from '@/navigation/tabBarStyle';
 import { SAFE_AREA_METRICS, flattenStyle, renderWithSafeArea } from '../support/safeArea';
 
 const hidden = { includeHiddenElements: true };
@@ -112,6 +113,51 @@ describe('FloatingTabBar', () => {
 
   it('reserves a clearance the screens can add to their bottom padding', () => {
     expect(TAB_BAR_RESERVE).toBeGreaterThan(64);
+  });
+});
+
+describe('the bar styles', () => {
+  async function renderStyled(style: TabBarStyle, index = 0) {
+    await renderWithSafeArea(
+      <TabBarStyleProvider database={undefined} initialStyle={style}>
+        <FloatingTabBar {...props(index).bar} />
+      </TabBarStyleProvider>,
+    );
+  }
+
+  it('compact hugs its tabs and names only the active one', async () => {
+    await renderStyled('compact');
+
+    expect(flattenStyle(screen.getByTestId('tab-bar-surface', hidden).props.style).alignSelf).toBe(
+      'center',
+    );
+    expect(screen.queryByText('Summary')).toBeNull();
+  });
+
+  it('wide spans the screen with equal slots, still naming only the active tab', async () => {
+    await renderStyled('wide');
+
+    expect(flattenStyle(screen.getByTestId('tab-bar-surface', hidden).props.style).alignSelf).toBe(
+      'stretch',
+    );
+    expect(flattenStyle(screen.getByTestId('tab-summary').props.style).flex).toBe(1);
+    expect(screen.queryByText('Summary')).toBeNull();
+    expect(screen.getByText('Expenses')).toBeTruthy();
+  });
+
+  it('labelled names every tab, active or not', async () => {
+    await renderStyled('labelled', 1);
+
+    expect(screen.getByText('Expenses')).toBeTruthy();
+    expect(screen.getByText('Summary')).toBeTruthy();
+    expect(screen.getByText('Settings')).toBeTruthy();
+  });
+
+  it('labelled is taller than compact', async () => {
+    await renderStyled('labelled');
+    const labelled = flattenStyle(screen.getByTestId('tab-bar-surface', hidden).props.style);
+
+    expect(labelled.height as number).toBeGreaterThan(64);
   });
 });
 
