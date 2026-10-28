@@ -13,6 +13,8 @@ export function SelectionBar({ selection }: { readonly selection: ExpenseSelecti
   const color = useColors();
   const styles = useStyles();
   const { count } = selection;
+  // Nothing picked, nothing to change: the actions wait.
+  const none = count === 0;
   return (
     <View testID="selection-bar" style={styles.bar}>
       <Pressable
@@ -25,25 +27,35 @@ export function SelectionBar({ selection }: { readonly selection: ExpenseSelecti
         <Feather name="x" size={22} color={color.text.primary} />
       </Pressable>
       <Text testID="selection-count" style={styles.count} accessibilityLiveRegion="polite">
-        {count === 1
-          ? COPY.household.bulk.selectedOne
-          : COPY.household.bulk.selectedMany.replace('{count}', String(count))}
+        {count === 0
+          ? COPY.household.bulk.selectedNone
+          : count === 1
+            ? COPY.household.bulk.selectedOne
+            : COPY.household.bulk.selectedMany.replace('{count}', String(count))}
       </Text>
       <Pressable
         testID="selection-make-private"
         accessibilityRole="button"
+        accessibilityState={{ disabled: none }}
+        disabled={none}
         onPress={() => void selection.apply(true)}
         hitSlop={8}
       >
-        <Text style={styles.action}>{COPY.household.bulk.makePrivate}</Text>
+        <Text style={[styles.action, none ? styles.actionOff : null]}>
+          {COPY.household.bulk.makePrivate}
+        </Text>
       </Pressable>
       <Pressable
         testID="selection-make-shared"
         accessibilityRole="button"
+        accessibilityState={{ disabled: none }}
+        disabled={none}
         onPress={() => void selection.apply(false)}
         hitSlop={8}
       >
-        <Text style={styles.action}>{COPY.household.bulk.makeShared}</Text>
+        <Text style={[styles.action, none ? styles.actionOff : null]}>
+          {COPY.household.bulk.makeShared}
+        </Text>
       </Pressable>
     </View>
   );
@@ -65,5 +77,6 @@ const useStyles = createStyles((color) =>
     },
     count: { ...type.bodyStrong, color: color.text.primary, flexGrow: 1 },
     action: { ...type.bodyStrong, color: color.primary.default },
+    actionOff: { color: color.text.tertiary },
   }),
 );

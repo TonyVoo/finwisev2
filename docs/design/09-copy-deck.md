@@ -572,6 +572,8 @@ them as proposals the Designer can reword; changing a row here means changing
 | `household.addedBy` | `Added by {name}` | Expense row, in a shared household |
 | `household.addedByYou` | `Added by you` | Expense row, in a shared household |
 | `household.bulk.selectAction` | `Select expense` | Screen-reader action on an expense row |
+| `household.bulk.select` | `Select expenses` | Home and Search header, button that starts picking |
+| `household.bulk.selectedNone` | `None selected` | Selection bar, nothing picked yet |
 | `household.bulk.selectedOne` | `1 selected` | Selection bar, one expense picked |
 | `household.bulk.selectedMany` | `{count} selected` | Selection bar |
 | `household.bulk.makePrivate` | `Make private` | Selection bar |

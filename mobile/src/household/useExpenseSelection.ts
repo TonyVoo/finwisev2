@@ -20,8 +20,13 @@ import { useHouseholdMembers } from './useHouseholdMembers';
  */
 
 export interface ExpenseSelection {
+  /** Whether this account can pick at all: only a household has anyone to hide an expense from. */
+  readonly available: boolean;
+  /** True while picking, even with nothing picked yet. */
   readonly active: boolean;
   readonly count: number;
+  /** Begin picking with nothing chosen: the Select button, for those who do not long press. */
+  readonly start: () => void;
   readonly cancel: () => void;
   readonly apply: (makePrivate: boolean) => Promise<void>;
   readonly rowProps: (
@@ -39,6 +44,7 @@ export function useExpenseSelection(): ExpenseSelection {
   const myEmail = useUserEmail().data;
   const localWrite = useLocalWrite();
   const showSnackbar = useSnackbar();
+  const [selecting, setSelecting] = useState(false);
   const [ids, setIds] = useState<readonly string[]>([]);
 
   const inHousehold = members.length > 0;
@@ -51,12 +57,18 @@ export function useExpenseSelection(): ExpenseSelection {
     [members, myEmail],
   );
 
-  const cancel = useCallback(() => setIds([]), []);
+  const start = useCallback(() => setSelecting(true), []);
+  const cancel = useCallback(() => {
+    setIds([]);
+    setSelecting(false);
+  }, []);
 
   const apply = useCallback(
     async (makePrivate: boolean) => {
       const chosen = ids;
+      if (chosen.length === 0) return;
       setIds([]);
+      setSelecting(false);
       const changed = await localWrite((database) =>
         setExpensesPrivate(database, chosen, makePrivate),
       );
@@ -96,10 +108,15 @@ export function useExpenseSelection(): ExpenseSelection {
 
   const rowProps: ExpenseSelection['rowProps'] = (item, open) => {
     const selectable = inHousehold && isMine(item.createdBy);
-    if (ids.length === 0) {
+    if (!selecting) {
       return {
         onPress: open,
-        onLongPress: selectable ? () => setIds([item.id]) : undefined,
+        onLongPress: selectable
+          ? () => {
+              setIds([item.id]);
+              setSelecting(true);
+            }
+          : undefined,
         selection: undefined,
       };
     }
@@ -110,5 +127,13 @@ export function useExpenseSelection(): ExpenseSelection {
     };
   };
 
-  return { active: ids.length > 0, count: ids.length, cancel, apply, rowProps };
+  return {
+    available: inHousehold,
+    active: selecting,
+    count: ids.length,
+    start,
+    cancel,
+    apply,
+    rowProps,
+  };
 }

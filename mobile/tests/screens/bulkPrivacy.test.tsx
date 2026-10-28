@@ -174,17 +174,82 @@ describe('while selecting', () => {
     expect(routerRecord.push).toEqual([]);
   });
 
-  it('ends when the last one is deselected, or on cancel', async () => {
+  it('stays open when the last one is deselected, and ends on cancel', async () => {
     await mountHome();
     await select();
 
     await userEvent.press(row(MINE));
-    expect(screen.queryByTestId('selection-bar')).toBeNull();
+    expect(screen.getByTestId('selection-count').props.children).toBe(
+      COPY.household.bulk.selectedNone,
+    );
 
-    await select();
+    await userEvent.press(row(MINE_UNSYNCED));
+    expect(screen.getByTestId('selection-count').props.children).toBe(
+      COPY.household.bulk.selectedOne,
+    );
+
     await userEvent.press(screen.getByTestId('selection-cancel'));
     expect(screen.queryByTestId('selection-bar')).toBeNull();
     expect(locks()).toHaveLength(0);
+  });
+});
+
+describe('the Select button', () => {
+  const disabled = (testID: string) =>
+    (screen.getByTestId(testID).props.accessibilityState as { disabled?: boolean } | undefined)
+      ?.disabled === true;
+
+  it('is not offered outside a household', async () => {
+    await mountHome(false);
+
+    expect(screen.queryByTestId('home-select')).toBeNull();
+  });
+
+  it('starts a selection with nothing picked, so no long press is needed', async () => {
+    await mountHome();
+
+    await userEvent.press(screen.getByTestId('home-select'));
+
+    expect(screen.getByTestId('selection-count').props.children).toBe(
+      COPY.household.bulk.selectedNone,
+    );
+    expect(row(MINE).props.accessibilityState).toMatchObject({ selected: false });
+    // Not offered again while selecting.
+    expect(screen.queryByTestId('home-select')).toBeNull();
+  });
+
+  it('cannot make anything private or shared until something is picked', async () => {
+    await mountHome();
+    await userEvent.press(screen.getByTestId('home-select'));
+
+    expect(disabled('selection-make-private')).toBe(true);
+    expect(disabled('selection-make-shared')).toBe(true);
+
+    await userEvent.press(row(MINE));
+
+    expect(disabled('selection-make-private')).toBe(false);
+    expect(disabled('selection-make-shared')).toBe(false);
+  });
+
+  it('does nothing when pressing a disabled action', async () => {
+    const { database } = await mountHome();
+    await userEvent.press(screen.getByTestId('home-select'));
+
+    await userEvent.press(screen.getByTestId('selection-make-private'));
+
+    expect(await outboxEntries(database)).toEqual([]);
+    expect(screen.queryByTestId('selection-bar')).not.toBeNull();
+  });
+
+  it('then works like any selection: pick, make private, and the bar closes', async () => {
+    await mountHome();
+    await userEvent.press(screen.getByTestId('home-select'));
+    await userEvent.press(row(MINE));
+
+    await userEvent.press(screen.getByTestId('selection-make-private'));
+
+    await waitFor(() => expect(locks()).toHaveLength(1));
+    expect(screen.queryByTestId('selection-bar')).toBeNull();
   });
 });
 

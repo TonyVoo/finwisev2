@@ -1,6 +1,7 @@
 import { useTabBarReserve } from '@/navigation/tabBar';
 import { useDeleteExpense } from '@/expenses/useDeleteExpense';
 import { useAddedBy } from '@/household/useAddedBy';
+import { SelectButton } from '@/household/SelectButton';
 import { SelectionBar } from '@/household/SelectionBar';
 import { useExpenseSelection } from '@/household/useExpenseSelection';
 import { useCallback, useEffect, useState } from 'react';
@@ -159,6 +160,7 @@ export default function ExpenseListScreen() {
             {/* The sync pill leads the search button, trailing in the bar in a fixed-width slot so
                 the title never shifts when sync state changes (`02-offline-and-sync.md` §3). */}
             <SyncIndicator />
+            <SelectButton selection={selection} testID="home-select" />
             <IconButton
               icon="search"
               label={COPY.home.search.open}

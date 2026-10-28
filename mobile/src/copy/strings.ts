@@ -377,6 +377,9 @@ export const COPY = {
     bulk: {
       /** Screen-reader action on an expense row: start picking, as a long press does. */
       selectAction: 'Select expense',
+      /** The button that starts picking, so it does not depend on a long press. */
+      select: 'Select expenses',
+      selectedNone: 'None selected',
       selectedOne: '1 selected',
       selectedMany: '{count} selected',
       makePrivate: 'Make private',

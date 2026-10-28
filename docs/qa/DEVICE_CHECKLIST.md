@@ -166,15 +166,17 @@ Haptics and animation can only be judged by hand. Run this on a real phone.
 - [ ] **Private filter in Search:** in a household a **Private** chip leads the category chips. Selecting it
       lists only your private expenses (with their locks) and the result total; tapping it again clears it.
       Outside a household there is no such chip.
-- [ ] **Bulk private / shared:** in a household, long-press one of your own expenses on Home or in Search: a
-      bar appears with "1 selected", a circle on your own rows, **Make private**, **Make shared** and a close
-      button. Tap more of your own to add or remove them; the other person's expenses cannot be picked and
-      do not open while picking. Deselecting the last one, or the close button, ends it. **Make private** locks
-      them and shows "N expenses are now private." with **Undo**; on the other phone they vanish after a sync.
-      **Make shared** reverses it. Outside a household a long press does nothing.
-      With VoiceOver/TalkBack, the row's actions include **Select expense**, which starts the same selection.
-      If the long press does not start a selection on a device, say so: in the iOS simulator it started
-      reliably only some of the time, and this has not been seen on hardware.
+- [ ] **Bulk private / shared:** in a household, tap the **Select expenses** button in the header of Home or
+      Search. A bar appears reading "None selected" with a close button, **Make private** and **Make shared**
+      (both greyed until something is picked), and a circle on your own rows. Tap your own expenses to pick
+      them ("1 selected", "2 selected"); tapping again unpicks. The other person's expenses cannot be picked
+      and do not open while picking. Only the close button ends it. **Make private** locks the picked ones and
+      shows "N expenses are now private." with **Undo**; on the other phone they vanish after a sync.
+      **Make shared** reverses it. Outside a household there is no Select button and a long press does nothing.
+- [ ] **Bulk selection, the other ways in:** long-pressing one of your own expenses starts the same selection
+      with that one picked; with VoiceOver/TalkBack the row's actions include **Select expense**. If the long
+      press does not start a selection on a device, say so: in the iOS simulator it started reliably only some
+      of the time, and this has not been seen on hardware.
 - [ ] **Display name:** Settings -> **Display name** -> type a name -> Save. The row shows it. In a household,
       the Members list, the member action sheet, the hand-over and remove dialogs and the "Added by" line on
       expenses all use that name instead of the start of the email; a member with no name still shows the

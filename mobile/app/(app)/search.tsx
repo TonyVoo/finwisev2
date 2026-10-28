@@ -18,6 +18,7 @@ import { SearchBar } from '@/expenses/SearchBar';
 import { groupByDate } from '@/expenses/listModel';
 import { useDeleteExpense } from '@/expenses/useDeleteExpense';
 import { useAddedBy } from '@/household/useAddedBy';
+import { SelectButton } from '@/household/SelectButton';
 import { SelectionBar } from '@/household/SelectionBar';
 import { useExpenseSelection } from '@/household/useExpenseSelection';
 import { useInHousehold } from '@/household/useInHousehold';
@@ -81,6 +82,7 @@ export default function SearchScreen() {
             testID="search-back"
           />
         }
+        trailing={<SelectButton selection={selection} testID="search-select" />}
       />
 
       {selection.active ? <SelectionBar selection={selection} /> : null}

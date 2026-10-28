@@ -130,4 +130,21 @@ describe('the Private chip', () => {
     await waitFor(() => expect(screen.queryByText('Gift')).toBeNull());
     expect(screen.getByText(COPY.household.bulk.madeSharedOne)).toBeTruthy();
   });
+
+  it('has a Select button of its own, only in a household', async () => {
+    await mountScreen(<SearchScreen />, { clock: () => NOW, seed: (db) => seed(db, true) });
+    await waitFor(() => expect(screen.queryByTestId(PRIVATE_CHIP)).not.toBeNull());
+
+    fireEvent.press(screen.getByTestId('search-select'));
+
+    await waitFor(() => expect(screen.queryByTestId('selection-bar')).not.toBeNull());
+    expect(screen.queryByTestId('search-select')).toBeNull();
+  });
+
+  it('has no Select button outside a household', async () => {
+    await mountScreen(<SearchScreen />, { clock: () => NOW, seed: (db) => seed(db, false) });
+    await waitFor(() => expect(screen.queryByTestId('search-input')).not.toBeNull());
+
+    expect(screen.queryByTestId('search-select')).toBeNull();
+  });
 });
