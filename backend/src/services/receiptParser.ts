@@ -61,7 +61,13 @@ function fold(text: string): string {
 // --- Amount -----------------------------------------------------------------------------
 
 const TOTAL_LABEL = /\b(total|amount due|balance due|grand total|tong cong|tong|thanh toan)\b/;
-const NOT_A_TOTAL = /sub\s*-?\s*total|\btax\b|\bvat\b|\bchange\b|\bcash\b|tender|\btip\b|discount/;
+/**
+ * Lines that name a total of something other than what was paid: a subtotal, tax, a tip, what was
+ * handed over or given back, a saving, a count of items or points. Matched on folded text, so the
+ * Vietnamese `tien mat` (cash), `tien thua` (change) and `khach dua` (tendered) are here too.
+ */
+const NOT_A_TOTAL =
+  /sub\s*-?\s*total|\btax\b|\bvat\b|\bchange\b|\bcash\b|tender|\btip\b|discount|\bsavings?\b|\bitems?\b|\bqty\b|\bquantity\b|\bpoints?\b|\bnumber\b|\bcount\b|tien mat|tien thua|khach dua|so luong/;
 const NUMBER_TOKEN = /\d[\d.,]*\d|\d/g;
 
 /**
@@ -171,7 +177,7 @@ function dateCandidates(text: string, monthFirst: boolean): string[] {
   const found: Found[] = [];
   const add = (index: number, iso: string | null) => found.push({ index, iso });
 
-  for (const m of text.matchAll(/\b(\d{4})-(\d{1,2})-(\d{1,2})\b/g)) {
+  for (const m of text.matchAll(/(?<![\d./-])(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?![\d])/g)) {
     add(m.index, isoDate(Number(m[1]), Number(m[2]), Number(m[3])));
   }
   for (const m of text.matchAll(/(?<![\d./-])(\d{1,2})[./-](\d{1,2})[./-](\d{4}|\d{2})(?![\d])/g)) {
@@ -182,7 +188,7 @@ function dateCandidates(text: string, monthFirst: boolean): string[] {
     add(m.index, asMonthFirst ? isoDate(year, a, b) : isoDate(year, b, a));
   }
   for (const m of text.matchAll(
-    new RegExp(`\\b(\\d{1,2})[ -]${MONTH_NAME}[ ,-]+(\\d{4})\\b`, 'g'),
+    new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?[ -]${MONTH_NAME}[ ,-]+(\\d{4})\\b`, 'g'),
   )) {
     add(m.index, isoDate(Number(m[3]), MONTHS.indexOf(m[2] ?? '') + 1, Number(m[1])));
   }

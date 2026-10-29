@@ -74,3 +74,10 @@ the form if it differs (the form's currency row is right there).
 
 No line items, no tax split, no currency detection, no storing of the scan, no automatic
 saving, and no on-device reading (that needs a native module, so it needs more than Expo Go).
+
+## Tuning on real receipts
+
+`pnpm scan:receipts <folder> [currency]` (in `backend/`) reads every JPEG in a folder the way the app does and
+prints the raw text and what the parser made of it, writing `<name>.txt` beside each photo. Photos over the free
+plan's 1 MB are shrunk like the app shrinks them (macOS `sips`). When a receipt misreads, the `.txt` is what to
+share: the parser's rules are tuned on the text, not on the photo. It sends each photo to the OCR provider.

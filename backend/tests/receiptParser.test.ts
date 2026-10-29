@@ -206,3 +206,67 @@ describe('the contract', () => {
     expect([...RECEIPT_CATEGORY_KEYS]).toEqual(ReceiptCategoryKey.options);
   });
 });
+
+describe('lines that say total but are not the amount', () => {
+  it.each([
+    'Total items 3',
+    'TOTAL ITEMS: 3',
+    'Total qty 4',
+    'Total savings 2.00',
+    'TOTAL POINTS EARNED 120',
+    'Total number of items 5',
+  ])('skips %j', (noise) => {
+    expect(parse(`Shop\nBread 3.20\n${noise}\nTOTAL 3.20`).amountMinor).toBe(320);
+  });
+
+  it('still falls back to the largest amount when only such lines say total', () => {
+    expect(parse('Shop\nBread 3.20\nCheese 8.40\nTotal items 2').amountMinor).toBe(840);
+  });
+
+  it('reads a total tucked between item and payment lines', () => {
+    const text = [
+      'Cafe',
+      'Latte 4.50',
+      'Total items 1',
+      'TOTAL DUE 4.50',
+      'VISA ****1234 4.50',
+    ].join('\n');
+    expect(parse(text).amountMinor).toBe(450);
+  });
+});
+
+describe('Vietnamese receipts', () => {
+  it.each([
+    ['Tiền mặt 200.000', 150000],
+    ['Tiền thừa 50.000', 150000],
+    ['Khách đưa 200.000', 150000],
+  ])('skips %j as the total', (noise, expected) => {
+    expect(parse(`Cua hang\nTong cong 150.000\n${noise}`, 'VND').amountMinor).toBe(expected);
+  });
+
+  it('reads the accented total line', () => {
+    expect(parse('Cửa hàng\nTổng cộng: 150.000đ', 'VND').amountMinor).toBe(150000);
+    expect(parse('Quán cơm\nTổng tiền 85.000 VND', 'VND').amountMinor).toBe(85000);
+  });
+});
+
+describe('more date writings', () => {
+  it.each([
+    ['2026/10/14', '2026-10-14'],
+    ['2026.10.14', '2026-10-14'],
+    ['14th Oct 2026', '2026-10-14'],
+    ['1st October 2026', '2026-10-01'],
+    ['Oct 14 2026', '2026-10-14'],
+    ['Wed 14 Oct 2026', '2026-10-14'],
+    ['14 OCTOBER 2026', '2026-10-14'],
+  ])('reads %s', (written, iso) => {
+    expect(parse(`Shop\nDate: ${written}\nTotal 5.00`).date).toBe(iso);
+  });
+
+  it('prefers the first date on the page that is plausible', () => {
+    // A due or expiry date later on the receipt is in the future and is dropped.
+    expect(parse('Shop\nDate 2026-10-14\nValid until 2027-10-14\nTotal 5.00').date).toBe(
+      '2026-10-14',
+    );
+  });
+});

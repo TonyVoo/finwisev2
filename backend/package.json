@@ -15,6 +15,7 @@
     "test:watch": "vitest",
     "generate": "prisma generate",
     "prune:tombstones": "tsx src/scripts/pruneTombstones.ts",
+    "scan:receipts": "tsx src/scripts/scanReceipts.ts",
     "migrate:dev": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
     "migrate:reset": "prisma migrate reset --force",
