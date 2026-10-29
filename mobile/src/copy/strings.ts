@@ -368,6 +368,9 @@ export const COPY = {
       owes: '{from} owes {to} {amount}',
       settleUp: 'Settle up',
       history: 'Payment history',
+      /** On a member's row with three or more members: what they are owed, or owe, overall. */
+      isOwed: 'Is owed {amount}',
+      owesNet: 'Owes {amount}',
       /** Added to the leave and remove dialogs while anyone owes anyone: a warning, never a block. */
       unsettledLeave:
         "You haven't settled up yet. If you leave now, the others' balances are worked out without you.",

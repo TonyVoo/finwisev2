@@ -24,6 +24,7 @@ import {
   useHouseholdActions,
 } from '@/household/useHousehold';
 import { savedHaptic, warnHaptic } from '@/lib/haptics';
+import { formatMoney } from '@/lib/money';
 import { space, type } from '@/theme/tokens';
 import { createStyles } from '@/theme/ThemeProvider';
 
@@ -221,9 +222,17 @@ export default function HouseholdScreen() {
                   >
                     <RowTitle>{memberLabel(member)}</RowTitle>
                     <RowSubtitle>
-                      {isYou
-                        ? `${COPY.household.role[member.role]} · ${COPY.household.you}`
-                        : COPY.household.role[member.role]}
+                      {[
+                        isYou
+                          ? `${COPY.household.role[member.role]} · ${COPY.household.you}`
+                          : COPY.household.role[member.role],
+                        // With only two people the Balances line already says it.
+                        data.members.length >= 3
+                          ? netText(balances.balances, member.userId, data.currency)
+                          : null,
+                      ]
+                        .filter((part): part is string => part !== null)
+                        .join(' · ')}
                     </RowSubtitle>
                   </Row>
                 );
@@ -296,6 +305,21 @@ export default function HouseholdScreen() {
         testID={`household-${confirming?.kind ?? 'leave'}-dialog`}
       />
     </View>
+  );
+}
+
+/** What a member is owed, or owes, overall; null when they are square. */
+function netText(
+  balances: readonly { readonly userId: string; readonly netMinor: number }[],
+  userId: string,
+  currency: string,
+): string | null {
+  const net = balances.find((balance) => balance.userId === userId)?.netMinor ?? 0;
+  if (net === 0) return null;
+  const amount = formatMoney(Math.abs(net), currency);
+  return (net > 0 ? COPY.household.balances.isOwed : COPY.household.balances.owesNet).replace(
+    '{amount}',
+    amount,
   );
 }
 

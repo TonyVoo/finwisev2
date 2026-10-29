@@ -295,3 +295,40 @@ describe('leaving or removing someone while balances are open', () => {
     expect(screen.queryByText(COPY.household.balances.unsettledRemove)).toBeNull();
   });
 });
+
+describe('each member’s net, with three or more members', () => {
+  it('says who is owed and who owes, on the member rows', async () => {
+    // Bao paid 90.00 for three: Bao is owed 60.00, you and Cam owe 30.00 each.
+    await mount(THREE, (db) => spend(db, 9000, BAO));
+
+    await waitFor(() => expect(screen.queryByText(/Is owed \$60\.00/)).not.toBeNull());
+    expect(screen.getAllByText(/Owes \$30\.00/)).toHaveLength(2);
+  });
+
+  it('says nothing for someone who is even', async () => {
+    // Each paid 30.00: everyone is square.
+    await mount(THREE, async (db) => {
+      await spend(db, 3000, ME);
+      await spend(db, 3000, BAO);
+      await spend(db, 3000, CAM);
+    });
+
+    expect(screen.queryByText(/Is owed|Owes \$/)).toBeNull();
+  });
+
+  it('is not shown with only two members, where the Balances line already says it', async () => {
+    await mount(TWO, (db) => spend(db, 10000, BAO));
+    await waitFor(() => expect(screen.queryByText('You owe Bao $50.00')).not.toBeNull());
+
+    expect(screen.queryByText(/Is owed|Owes \$/)).toBeNull();
+  });
+
+  it('keeps the role and the You marker', async () => {
+    await mount(THREE, (db) => spend(db, 9000, BAO));
+
+    await waitFor(() => expect(screen.queryByText(/Is owed/)).not.toBeNull());
+    expect(
+      screen.getByText(new RegExp(`${COPY.household.role.member} · ${COPY.household.you}`)),
+    ).toBeTruthy();
+  });
+});

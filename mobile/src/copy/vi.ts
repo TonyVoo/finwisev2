@@ -324,6 +324,8 @@ export const VIETNAMESE_COPY: CopyBundle = {
         owes: '{from} nợ {to} {amount}',
         settleUp: 'Thanh toán',
         history: 'Lịch sử thanh toán',
+        isOwed: 'Được nợ {amount}',
+        owesNet: 'Nợ {amount}',
         unsettledLeave:
           'Bạn chưa thanh toán xong. Nếu rời đi bây giờ, số dư của những người còn lại sẽ được tính mà không có bạn.',
         unsettledRemove:
