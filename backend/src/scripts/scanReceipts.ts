@@ -111,6 +111,12 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (!existsSync(folder) || !statSync(folder).isDirectory()) {
+    console.error(`${folder} is not a folder. Pass the folder that holds the receipt photos.`);
+    process.exitCode = 2;
+    return;
+  }
+
   const files = readdirSync(folder)
     .filter((name) => /\.jpe?g$/i.test(name))
     .sort();
