@@ -17,9 +17,23 @@ const app = readJson('app.json').expo as Record<string, any>;
 const eas = readJson('eas.json') as Record<string, any>;
 const vi = readJson('locales/vi.json') as Record<string, any>;
 
+/** Builds that run only on a developer's own machine, so a local server address is correct for them. */
+const LOCAL_PROFILES = ['development', 'simulator'];
+
 describe('eas.json', () => {
-  it('has a development, a preview and a production build', () => {
-    expect(Object.keys(eas.build).sort()).toEqual(['development', 'preview', 'production']);
+  it('has a development, a preview, a production and a simulator build', () => {
+    expect(Object.keys(eas.build).sort()).toEqual([
+      'development',
+      'preview',
+      'production',
+      'simulator',
+    ]);
+  });
+
+  it('keeps the simulator build to the iOS simulator, where a local address is meant to work', () => {
+    expect(eas.build.simulator.ios.simulator).toBe(true);
+    expect(eas.build.simulator.distribution).toBe('internal');
+    expect(eas.build.simulator.developmentClient).toBeUndefined();
   });
 
   it('keeps the dev client out of preview and production', () => {
@@ -38,7 +52,7 @@ describe('eas.json', () => {
       for (const [key, value] of Object.entries<string>(profile.env ?? {})) {
         expect(key).toMatch(/^EXPO_PUBLIC_/);
         expect(key).not.toMatch(/KEY|SECRET|TOKEN|PASSWORD/);
-        if (key === 'EXPO_PUBLIC_API_BASE_URL' && name !== 'development') {
+        if (key === 'EXPO_PUBLIC_API_BASE_URL' && !LOCAL_PROFILES.includes(name)) {
           expect(value).toMatch(/^https:\/\//);
           expect(value).not.toMatch(/localhost|127\.0\.0\.1|10\.0\.2\.2|192\.168\./);
         }
