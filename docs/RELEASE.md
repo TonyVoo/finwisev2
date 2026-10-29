@@ -10,6 +10,13 @@ Expo Go ships its own native modules, so these only show up in a development or 
 users will see it, background sync (`expo-background-task`), Face ID, and any change to `app.json` plugins. Run
 `docs/qa/DEVICE_CHECKLIST.md` once more on such a build before submitting.
 
+To see the real icon and splash without a device or a local native build, make the EAS simulator build
+(`npx eas-cli build --profile simulator --platform ios`; no Apple account needed) and install it in a booted iOS
+simulator: `npx eas-cli build:run --platform ios --latest`, or download the `.tar.gz` artifact and
+`xcrun simctl install booted ExpenseTracker.app`. Checked this way: the icon, and the light and dark splash.
+Building SDK 57 for iOS **on your own Mac** needs Xcode 26.2 or newer (Swift 6.2.3). `eas init` also rewrites
+`mobile/app.json` (it turns `apiBaseUrl: null` into `{}`); keep only the project id and owner it adds.
+
 ## Missing today
 
 | Item                                  | State                                                                                                                                    | Needed                                                                                                                                                                                                                                                                                                           |

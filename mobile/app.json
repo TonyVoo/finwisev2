@@ -57,11 +57,15 @@
       "typedRoutes": true
     },
     "extra": {
-      "apiBaseUrl": null
+      "apiBaseUrl": null,
+      "eas": {
+        "projectId": "cdd5bfb0-d3f3-4daf-aa90-45906eda24cd"
+      }
     },
     "locales": {
       "vi": "./locales/vi.json"
     },
-    "icon": "./assets/icon.png"
+    "icon": "./assets/icon.png",
+    "owner": "tonyvoo"
   }
 }
