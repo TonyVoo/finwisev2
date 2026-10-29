@@ -87,7 +87,14 @@ saving, and no on-device reading (that needs a native module, so it needs more t
 
 ## Tuning on real receipts
 
-`pnpm scan:receipts <folder> [currency]` (in `backend/`) reads every JPEG in a folder the way the app does and
-prints the raw text and what the parser made of it, writing `<name>.txt` beside each photo. Photos over the free
-plan's 1 MB are shrunk like the app shrinks them (macOS `sips`). When a receipt misreads, the `.txt` is what to
-share: the parser's rules are tuned on the text, not on the photo. It sends each photo to the OCR provider.
+`pnpm scan:receipts <folder> [currency] [--reader gemini|ocr|both]` (in `backend/`) reads every JPEG in a folder the
+way the app does and prints what each reader made of it. The default, `ocr`, prints the raw text and what the parser
+made of it, writing `<name>.txt` beside each photo. Photos over the free plan's 1 MB are shrunk like the app shrinks
+them (macOS `sips`). When a receipt misreads, the `.txt` is what to share: the parser's rules are tuned on the text,
+not on the photo. `gemini` and `both` use the vision model of `14-ai-receipt-reading.md` (writing `<name>.model.json`).
+It sends each photo to the provider.
+
+To score a reader, write `<name>.expected.json` beside a photo, with any of `amountMinor` (minor units), `date`
+(`YYYY-MM-DD`), `merchant` and `category`; `null` means "none on this receipt" and a field left out is not scored.
+The run ends with correct / wrong / missed counts per field per reader. A merchant matches ignoring case, accents and
+punctuation, or when one name contains the other.
