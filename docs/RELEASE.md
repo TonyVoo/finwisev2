@@ -86,4 +86,7 @@ Delete account) and removes the account's data on the server; the privacy policy
 - Confirm Gemini's current free-tier limits and model name in AI Studio, and run the live check (section 10b of the
   device checklist) once with the real key.
 - Run the device checklist on iOS and Android release builds.
+- Run `npx expo-doctor` in `mobile/` and clear what it reports. At the time of writing it failed two checks
+  (a duplicate native dependency, and 8 packages behind the SDK's expected versions); neither was caused by
+  release configuration, and upgrading them is its own change to test.
 - Decide whether receipt reading ships turned on: it needs a provider key, sends photos to a third party, and on Gemini's free tier Google may use them to improve its products (a paid plan on the same project removes that).
