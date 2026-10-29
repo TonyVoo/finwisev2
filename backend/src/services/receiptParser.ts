@@ -202,12 +202,26 @@ function dateCandidates(text: string, monthFirst: boolean): string[] {
     .flatMap((entry) => (entry.iso === null ? [] : [entry.iso]));
 }
 
-function parseDate(text: string, currency: string, today: Date): string | null {
-  const monthFirst = currency.toUpperCase() === 'USD';
+/** The oldest and newest dates a receipt may carry: two years back, to tomorrow (time zones). */
+function dateWindow(today: Date): { earliest: string; latest: string } {
   const latest = new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const earliestDate = new Date(today);
   earliestDate.setUTCFullYear(earliestDate.getUTCFullYear() - 2);
-  const earliest = earliestDate.toISOString().slice(0, 10);
+  return { earliest: earliestDate.toISOString().slice(0, 10), latest };
+}
+
+/** Whether `iso` (`YYYY-MM-DD`) is a real calendar day inside the window a receipt may carry. */
+export function isPlausibleReceiptDate(iso: string, today: Date): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (match === null) return false;
+  if (isoDate(Number(match[1]), Number(match[2]), Number(match[3])) !== iso) return false;
+  const { earliest, latest } = dateWindow(today);
+  return iso >= earliest && iso <= latest;
+}
+
+function parseDate(text: string, currency: string, today: Date): string | null {
+  const monthFirst = currency.toUpperCase() === 'USD';
+  const { earliest, latest } = dateWindow(today);
   return (
     dateCandidates(fold(text), monthFirst).find((iso) => iso >= earliest && iso <= latest) ?? null
   );
