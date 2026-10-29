@@ -5,6 +5,9 @@ fills anything in on its own: the person sees what was found and taps **Use** or
 A wrong total that nobody noticed is worse than typing one, so accuracy is handled by a human
 check, not by trusting the reader.
 
+> A vision-model reading that replaces the OCR + parser pair (OCR stays as the fallback) is designed in
+> `14-ai-receipt-reading.md`; the contract and the phone are unchanged.
+
 ## Flow
 
 1. In the expense form, open **Receipt** and attach a photo (camera or library), as today.
@@ -29,8 +32,15 @@ check, not by trusting the reader.
 an expense, and **stores nothing**: the image is read and dropped. It answers
 
 ```json
-{ "data": { "amountMinor": 1250, "currency": "USD", "date": "2026-10-14",
-            "merchant": "Milk Mart", "category": "groceries" } }
+{
+  "data": {
+    "amountMinor": 1250,
+    "currency": "USD",
+    "date": "2026-10-14",
+    "merchant": "Milk Mart",
+    "category": "groceries"
+  }
+}
 ```
 
 with every field nullable. `currency` is always the account's currency: a receipt in another
