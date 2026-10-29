@@ -81,6 +81,17 @@ const EnvSchema = z.object({
   MAIL_FROM: z.string().min(3).optional(),
 
   /**
+   * Reading receipts with a vision model (Google Gemini; `docs/design/14-ai-receipt-reading.md`),
+   * tried before OCR when a key is set. Free-tier requests may be used by Google to improve its
+   * products, which is why this is opt-in and disclosed in the app. `GEMINI_MODEL` is config
+   * because Google retires model names; `GEMINI_DAILY_BUDGET` caps calls per Pacific day, kept under
+   * the free quota so a busy day falls back to OCR instead of failing.
+   */
+  GEMINI_API_KEY: z.string().min(1).optional(),
+  GEMINI_MODEL: z.string().min(1).default('gemini-3.5-flash-lite'),
+  GEMINI_DAILY_BUDGET: z.coerce.number().int().min(0).default(500),
+
+  /**
    * How many reverse proxies sit in front of this process, or `false` for none.
    *
    * This is a rate-limiting setting, not a cosmetic one. `req.ip` is the socket's remote
@@ -137,6 +148,11 @@ function build() {
     ocr: {
       ocrSpaceApiKey: env.OCR_SPACE_API_KEY,
       googleVisionApiKey: env.GOOGLE_VISION_API_KEY,
+    },
+    vision: {
+      geminiApiKey: env.GEMINI_API_KEY,
+      geminiModel: env.GEMINI_MODEL,
+      geminiDailyBudget: env.GEMINI_DAILY_BUDGET,
     },
     /** Express's `trust proxy` setting. See `TRUST_PROXY` above for why it matters. */
     trustProxy: env.TRUST_PROXY,

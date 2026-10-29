@@ -29,29 +29,6 @@ const ModelReading = z.object({
   category: z.string().nullish(),
 });
 
-/** The JSON schema the provider is asked to follow; the same shape as {@link ModelReading}. */
-export const MODEL_READING_JSON_SCHEMA = {
-  type: 'object',
-  properties: {
-    isReceipt: { type: 'boolean' },
-    total: { type: ['number', 'null'] },
-    printedCurrency: { type: ['string', 'null'] },
-    date: { type: ['string', 'null'] },
-    dateAmbiguous: { type: 'boolean' },
-    merchant: { type: ['string', 'null'] },
-    category: { type: ['string', 'null'], enum: [...RECEIPT_CATEGORY_KEYS, null] },
-  },
-  required: [
-    'isReceipt',
-    'total',
-    'printedCurrency',
-    'date',
-    'dateAmbiguous',
-    'merchant',
-    'category',
-  ],
-} as const;
-
 export class ModelAnswerError extends Error {
   override readonly name = 'ModelAnswerError';
   constructor() {

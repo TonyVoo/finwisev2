@@ -29,10 +29,17 @@ Read from Google's pages on 2026-10-29; re-check before building, since model na
 - **Limits are per project, not per key**, differ per model, are not printed on the docs page (AI Studio shows
   them), and the daily quota resets at midnight Pacific. So one busy day can use up everyone's share.
 - Images can be sent inline as base64 (total request up to 20 MB), so the app's 200-600 KB JPEG needs no upload
-  step. The current API is `POST https://generativelanguage.googleapis.com/v1beta/interactions` with
-  `x-goog-api-key`, an `input` list of `{type: "text"}` and `{type: "image", data, mime_type}` parts, and
-  `response_format` carrying a JSON schema; the result is in `output_text`. Not every constraint in the schema
-  (such as string lengths) is enforced by the provider, so the server validates anyway.
+  step. Google documents two endpoints, the newer `interactions` and the long-standing
+  `models/<model>:generateContent`; neither page marks the other deprecated. **This build uses
+  `generateContent`**: its request and response shapes are fully documented (`contents` with an `inlineData`
+  part, `systemInstruction`, `generationConfig.responseMimeType` / `responseSchema`; the answer is the text of
+  `candidates[0].content.parts`), where the Interactions pages leave the raw response and error bodies
+  undocumented. Not every constraint in a schema (such as string lengths) is enforced by the provider, so the
+  server validates anyway.
+- A `429` is either the per-minute or the per-day limit. The adapter treats it as "out for the day" only when
+  the error body names a per-day quota (`quotaId` containing `PerDay`); otherwise it is an ordinary failure and
+  the next photo tries the model again. That body shape is from memory and unverified, so the first live check
+  should provoke a `429` or read one from AI Studio.
 
 ## Server
 

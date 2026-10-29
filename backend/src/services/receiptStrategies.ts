@@ -1,18 +1,17 @@
+import { getConfig } from '../config.ts';
 import { logger } from '../logger.ts';
+import { createReceiptReader } from './geminiReader.ts';
 import { normalizeModelReading } from './modelReading.ts';
 import { parseReceiptText, type ParsedReceipt } from './receiptParser.ts';
+import { ReaderQuotaError, type ReceiptReader, type ScanContext } from './receiptReader.ts';
 import { getTextReader, type TextReader } from './textReader.ts';
+
+export { ReaderQuotaError, type ReceiptReader, type ScanContext } from './receiptReader.ts';
 
 /**
  * The ways to turn a receipt photo into suggestions, behind one `scan`: a vision model, or OCR text
  * through the parser. `scanReceipt` tries them in order; `docs/design/14-ai-receipt-reading.md`.
  */
-
-export interface ScanContext {
-  /** The account's currency. */
-  readonly currency: string;
-  readonly today: Date;
-}
 
 export interface ReceiptStrategy {
   /** For a log line: which strategy failed. Never anything from the photo or a provider. */
@@ -21,24 +20,11 @@ export interface ReceiptStrategy {
   scan(image: Uint8Array, context: ScanContext): Promise<ParsedReceipt>;
 }
 
-/** A model that looks at a photo and answers with the fields, as untrusted JSON. */
-export interface ReceiptReader {
-  readReceipt(image: Uint8Array, context: ScanContext): Promise<unknown>;
-}
-
 /** The strategy was not tried (for now): its budget is spent. Not a failure of the reading. */
 export class StrategySkipped extends Error {
   override readonly name = 'StrategySkipped';
   constructor() {
     super('strategy skipped');
-  }
-}
-
-/** A reader throws this when the provider says the quota is gone, so the rest of the day is skipped. */
-export class ReaderQuotaError extends Error {
-  override readonly name = 'ReaderQuotaError';
-  constructor() {
-    super('provider quota used up');
   }
 }
 
@@ -118,23 +104,25 @@ export function textStrategy(reader: TextReader): ReceiptStrategy {
 
 // --- What is configured -----------------------------------------------------------------
 
-/** Well under a free tier's daily quota; the Gemini client (step 2) reads its own from config. */
-const DEFAULT_DAILY_BUDGET = 500;
+let receiptReader: ReceiptReader | null | undefined;
+let modelBudget: DailyBudget | undefined;
 
-let receiptReader: ReceiptReader | null = null;
-let modelBudget = createDailyBudget(DEFAULT_DAILY_BUDGET);
-
-/** Test seam, and where the configured model is installed: a reader or `null` for none. */
+/**
+ * Test seam: a reader, `null` for "no model", or `undefined` to read the configuration again.
+ * The budget is the day's limit for the model, or the configured one when omitted.
+ */
 export function setReceiptReaderForTests(
-  reader: ReceiptReader | null,
-  dailyBudget: number = DEFAULT_DAILY_BUDGET,
+  reader: ReceiptReader | null | undefined,
+  dailyBudget?: number,
 ): void {
   receiptReader = reader;
-  modelBudget = createDailyBudget(dailyBudget);
+  modelBudget = dailyBudget === undefined ? undefined : createDailyBudget(dailyBudget);
 }
 
 /** In the order they are tried: the model first, OCR + parser behind it. Empty means reading is off. */
 export function getReceiptStrategies(): ReceiptStrategy[] {
+  receiptReader ??= createReceiptReader();
+  modelBudget ??= createDailyBudget(getConfig().vision.geminiDailyBudget);
   const textReader = getTextReader();
   return [
     ...(receiptReader === null ? [] : [modelStrategy(receiptReader, modelBudget)]),
