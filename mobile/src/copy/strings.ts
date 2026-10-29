@@ -83,6 +83,9 @@ export const COPY = {
   password: { show: 'Show password', hide: 'Hide password' },
 
   home: {
+    /** Under the month total, in a household: how many more balance lines there are beyond the one shown. */
+    balanceMore: '+{count} more',
+    balanceHint: 'Opens the household.',
     title: 'Expenses',
     /** Element 6: the label changes with the month, the figure beside it does not. */
     total: { current: 'Total this month', other: 'Total' },

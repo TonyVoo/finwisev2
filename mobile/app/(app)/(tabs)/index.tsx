@@ -1,6 +1,7 @@
 import { useTabBarReserve } from '@/navigation/tabBar';
 import { useDeleteExpense } from '@/expenses/useDeleteExpense';
 import { useAddedBy } from '@/household/useAddedBy';
+import { HomeBalanceLine } from '@/household/HomeBalanceLine';
 import { SelectButton } from '@/household/SelectButton';
 import { SelectionBar } from '@/household/SelectionBar';
 import { useExpenseSelection } from '@/household/useExpenseSelection';
@@ -206,6 +207,8 @@ export default function ExpenseListScreen() {
         }
         daysInMonth={monthDays}
       />
+
+      <HomeBalanceLine onOpen={() => router.push('/(app)/settings/household')} />
 
       <SectionList
         testID={HOME_LIST_TEST_ID}

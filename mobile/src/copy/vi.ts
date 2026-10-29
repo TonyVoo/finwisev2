@@ -86,6 +86,8 @@ export const VIETNAMESE_COPY: CopyBundle = {
     password: { show: 'Hiện mật khẩu', hide: 'Ẩn mật khẩu' },
 
     home: {
+      balanceMore: '+{count} nữa',
+      balanceHint: 'Mở hộ gia đình.',
       title: 'Chi tiêu',
       total: { current: 'Tổng tháng này', other: 'Tổng' },
       balance: { income: 'Thu nhập {amount}', net: 'Còn lại {amount}' },

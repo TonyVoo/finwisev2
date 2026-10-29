@@ -99,7 +99,10 @@ nothing on a private expense, and the form hides the row there.
   the stored list.
 - **Expense form** gets a **Paid by** row (household only, hidden on a private expense), defaulting to
   *You*, opening a list of members.
-- Home, Summary, Search and budgets are unchanged: they still show what the household spent, not who
+- **Home** shows one line under the month total in a household, from the phone's own rows so it works
+  offline: what you owe or are owed (*You owe Bao US$20,00*), with *+N more* when several lines are about
+  you, tapping through to the Household screen. It speaks only about you and is absent when settled up.
+- Summary, Search and budgets are unchanged: they still show what the household spent, not who
   fronted it.
 
 ## Consequences, stated plainly
