@@ -1,5 +1,6 @@
 import { type ReactNode, type Ref, useState } from 'react';
 import { StyleSheet, Text, TextInput, type TextInputProps, View } from 'react-native';
+import { singleLineInput } from '../theme/inputText';
 import { radius, size, space, type } from '../theme/tokens';
 import { createStyles, useColors, useTheme } from '../theme/ThemeProvider';
 
@@ -163,7 +164,8 @@ const useStyles = createStyles((color) =>
       paddingHorizontal: space[3],
     },
     input: {
-      ...type.body,
+      // No lineHeight: see `singleLineInput`. The field's `minHeight` and the padding set the size.
+      ...singleLineInput,
       color: color.text.primary,
       flex: 1,
       // Vertical padding rather than a fixed height, for the same font-scale reason.

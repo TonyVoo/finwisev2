@@ -1,6 +1,7 @@
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
 import { COPY } from '@/copy/strings';
+import { singleLineInput } from '@/theme/inputText';
 import { radius, size, space, type } from '@/theme/tokens';
 import { createStyles, useColors, useTheme } from '@/theme/ThemeProvider';
 
@@ -141,7 +142,7 @@ const useStyles = createStyles((color) =>
       borderColor: color.border.input,
       backgroundColor: color.bg.surface,
     },
-    input: { flex: 1, ...type.body, color: color.text.primary, paddingVertical: 0 },
+    input: { flex: 1, ...singleLineInput, color: color.text.primary, paddingVertical: 0 },
     chips: { gap: space[2], paddingHorizontal: space[4], paddingTop: space[2] },
     chip: {
       paddingHorizontal: space[3],

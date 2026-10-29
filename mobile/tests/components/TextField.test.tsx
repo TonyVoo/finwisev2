@@ -21,6 +21,17 @@ function flatten(style: unknown): Record<string, unknown> {
 }
 
 describe('TextField', () => {
+  it('sets no lineHeight on the input, or iOS draws single-line text low and clips its descenders', async () => {
+    // A lineHeight taller than the font (24 on 16) makes iOS sit the glyphs at the bottom of the
+    // line box inside a field that has no room below them: the tail of a g, y, p or q is cut off.
+    await render(<TextField label="Email" value="gypsy" onChangeText={jest.fn()} testID="email" />);
+
+    const style = flatten(screen.getByTestId('email').props.style);
+
+    expect(style.lineHeight).toBeUndefined();
+    expect(style.fontSize).toBe(16);
+  });
+
   it('renders the label and the value', async () => {
     await render(
       <TextField label="Email" value="ada@example.com" onChangeText={jest.fn()} testID="email" />,
