@@ -6,6 +6,8 @@ import { resetPasswordResetRateLimitForTests } from '../src/middleware/passwordR
 import { resetHouseholdJoinRateLimitForTests } from '../src/middleware/householdJoinRateLimit.ts';
 import { resetReceiptScanRateLimitForTests } from '../src/middleware/receiptScanRateLimit.ts';
 import { resetPasswordConfirmRateLimitForTests } from '../src/middleware/passwordConfirmRateLimit.ts';
+import { setReceiptReaderForTests } from '../src/services/receiptStrategies.ts';
+import { setTextReaderForTests } from '../src/services/textReader.ts';
 import { truncateAll } from './support/db.ts';
 
 /**
@@ -29,6 +31,13 @@ beforeEach(async () => {
   resetEmailVerificationRateLimitForTests();
   resetHouseholdJoinRateLimitForTests();
   resetReceiptScanRateLimitForTests();
+  /**
+   * Receipt readers come from `.env` (the config reads it even under test), so a developer who
+   * has set real keys would otherwise have any test that forgot to fake a reader send its fake
+   * photo to the real provider. Off by default; a test that wants one installs it.
+   */
+  setReceiptReaderForTests(null);
+  setTextReaderForTests(null);
 });
 
 // Without this the pool keeps the worker's event loop alive and vitest hangs on exit.

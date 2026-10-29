@@ -121,7 +121,8 @@ export function setReceiptReaderForTests(
 
 /** In the order they are tried: the model first, OCR + parser behind it. Empty means reading is off. */
 export function getReceiptStrategies(): ReceiptStrategy[] {
-  receiptReader ??= createReceiptReader();
+  // `null` means "no model" and must stay that way; only `undefined` means "not built yet".
+  if (receiptReader === undefined) receiptReader = createReceiptReader();
   modelBudget ??= createDailyBudget(getConfig().vision.geminiDailyBudget);
   const textReader = getTextReader();
   return [

@@ -1,6 +1,7 @@
 import { LIMITS } from '@expense-tracker/shared';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getPrisma } from '../src/db/client.ts';
+import { logger } from '../src/logger.ts';
 import {
   ReaderQuotaError,
   setReceiptReaderForTests,
@@ -375,5 +376,21 @@ describe('POST /v1/receipts/scan with a vision model', () => {
 
     expect((await scan(user.auth, Buffer.from('not an image'))).status).toBe(400);
     expect(model.calls).toBe(0);
+  });
+
+  it.each([
+    ['the model when it answers', 'model'],
+    ['OCR when there is no model', 'ocr'],
+  ])('logs which strategy answered: %s', async (_name, expected) => {
+    const info = vi.spyOn(logger, 'info');
+    if (expected === 'model') setReceiptReaderForTests(vision(() => modelAnswer()));
+    setTextReaderForTests(reading(RECEIPT(yesterday())));
+    const user = await createUser();
+
+    await scan(user.auth);
+
+    const entry = info.mock.calls.find(([message]) => message === 'receipt read');
+    expect(entry?.[1]).toEqual({ userId: expect.any(String), strategy: expected });
+    info.mockRestore();
   });
 });

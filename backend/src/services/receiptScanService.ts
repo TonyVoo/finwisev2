@@ -40,6 +40,8 @@ export async function scanReceipt(
   for (const strategy of strategies) {
     try {
       const found = await strategy.scan(image, context);
+      // Which strategy answered, so "is the model being used" is visible. Nothing from the photo.
+      logger.info('receipt read', { userId, strategy: strategy.name });
       return {
         amountMinor: found.amountMinor,
         currency: user.currency,
