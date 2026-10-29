@@ -198,7 +198,7 @@ export const VIETNAMESE_COPY: CopyBundle = {
         imageLabel: 'Ảnh hóa đơn',
         scan: {
           action: 'Đọc hóa đơn',
-          hint: 'Gửi ảnh này lên máy chủ để tìm số tiền, ngày và cửa hàng.',
+          hint: 'Gửi ảnh này qua máy chủ của chúng tôi tới một dịch vụ đọc bên ngoài (như Google Gemini) để tìm số tiền, ngày và cửa hàng. Với gói miễn phí, dịch vụ đó có thể dùng ảnh để cải thiện sản phẩm của họ.',
           reading: 'Đang đọc hóa đơn…',
           suggestionTitle: 'Từ hóa đơn',
           use: 'Dùng',

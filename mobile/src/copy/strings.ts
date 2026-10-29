@@ -219,7 +219,7 @@ export const COPY = {
       /** Reading the photo into suggestions; the person always chooses whether to use them. */
       scan: {
         action: 'Read receipt',
-        hint: 'Sends this photo to our server to find the amount, date and shop.',
+        hint: 'Sends this photo through our server to an outside reading service (such as Google Gemini) to find the amount, date and shop. On a free plan, that service may use it to improve its products.',
         reading: 'Reading receipt…',
         suggestionTitle: 'From the receipt',
         use: 'Use',

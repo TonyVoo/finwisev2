@@ -132,7 +132,7 @@
 "COPY.form.receipt.failed","Snackbar","Could not use that photo. Try another.","Không dùng được ảnh đó. Hãy thử ảnh khác.","",""
 "COPY.form.receipt.imageLabel","Receipt sheet, image label","Receipt photo","Ảnh hóa đơn","",""
 "COPY.form.receipt.scan.action","Receipt sheet, button","Read receipt","Đọc hóa đơn","",""
-"COPY.form.receipt.scan.hint","Receipt sheet, under the button","Sends this photo to our server to find the amount, date and shop.","Gửi ảnh này lên máy chủ để tìm số tiền, ngày và cửa hàng.","",""
+"COPY.form.receipt.scan.hint","Receipt sheet, under the button","Sends this photo through our server to an outside reading service (such as Google Gemini) to find the amount, date and shop. On a free plan, that service may use it to improve its products.","Gửi ảnh này qua máy chủ của chúng tôi tới một dịch vụ đọc bên ngoài (như Google Gemini) để tìm số tiền, ngày và cửa hàng. Với gói miễn phí, dịch vụ đó có thể dùng ảnh để cải thiện sản phẩm của họ.","",""
 "COPY.form.receipt.scan.reading","Receipt sheet, button while working","Reading receipt…","Đang đọc hóa đơn…","",""
 "COPY.form.receipt.scan.suggestionTitle","Expense form, suggestion card","From the receipt","Từ hóa đơn","",""
 "COPY.form.receipt.scan.use","Suggestion card, button","Use","Dùng","",""

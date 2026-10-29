@@ -86,7 +86,7 @@ backend **restarted after pulling** (it adds three tables: `pnpm --filter backen
       sheet text includes the code.
 - [ ] Phone B (its own account, with a few of its own expenses): Household -> **Join with a code**.
       A wrong code shows "That code is incorrect or has expired." and nothing changes.
-- [ ] Phone B with an unsynced change (airplane mode, add an expense, back online *before* it syncs)
+- [ ] Phone B with an unsynced change (airplane mode, add an expense, back online _before_ it syncs)
       is told to **sync first**; once synced, the correct code works.
 - [ ] After joining, B sees **A's** books and currency; B's own expenses are gone from view.
       Add an expense on B: it appears on A after a sync, and the other way round.
@@ -242,10 +242,10 @@ Haptics and animation can only be judged by hand. Run this on a real phone.
 
 ## 10b. Reading a receipt
 
-Needs a backend started with `OCR_SPACE_API_KEY` (free key) or `GOOGLE_VISION_API_KEY` (see `backend/.env.example`). Without either, skip to the last step.
+Needs a backend started with `GEMINI_API_KEY` (free key, read first), and/or `OCR_SPACE_API_KEY` / `GOOGLE_VISION_API_KEY` (the fallback); see `backend/.env.example`. Without any, skip to the last step. Run it once with only Gemini, once with only OCR, and once with both.
 
 - [ ] Add expense -> **Receipt** -> **Take photo** (a real receipt, flat and well lit). Reopen the **Receipt** row:
-      **Read receipt** is there, with a line saying the photo is sent to our server. Nothing was sent before you tapped it.
+      **Read receipt** is there, with a line saying the photo goes through our server to an outside reading service (such as Google Gemini) that may use it on a free plan. Nothing was sent before you tapped it. Switch to Tiếng Việt: the same line is in Vietnamese.
 - [ ] Tap **Read receipt**: the button shows progress, the sheet closes, and a card **From the receipt** shows
       what was found (amount - date - shop). **No field has changed yet.**
 - [ ] **Use** fills the amount, the date, the note (only if it was empty) and a category (only if you have the
@@ -253,6 +253,12 @@ Needs a backend started with `OCR_SPACE_API_KEY` (free key) or `GOOGLE_VISION_AP
 - [ ] **Dismiss** leaves everything as it was. Taking another photo or removing the photo discards the card.
 - [ ] Try a blurry photo, a crumpled one and a non-receipt: you should get "Nothing could be read..." or a card
       with only some fields, never a confident wrong total you cannot see.
+- [ ] With Gemini on: a shop receipt in Vietnamese (dong, `150.000`) gives the right whole-number amount, and a
+      receipt with a day/month like `04/03` either gets the right date or **no date** (never a guessed one).
+- [ ] Stop Gemini from answering (a wrong `GEMINI_API_KEY`) with OCR configured: **Read receipt** still works
+      through OCR, with no error shown. With only Gemini configured: "Could not read that receipt...".
+- [ ] Photograph something that is not a receipt (a menu, a page of text): "Nothing could be read..." or an
+      empty card, never an amount.
 - [ ] Airplane mode -> **Read receipt**: "Could not read that receipt. Enter the details yourself.", form untouched.
 - [ ] Backend without a key: tapping **Read receipt** says "Reading receipts isn't available right now." and
       the button is gone for the rest of the session (it returns after a restart).
