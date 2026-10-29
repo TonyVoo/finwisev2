@@ -12,6 +12,7 @@
     "test": "jest --ci --forceExit",
     "test:watch": "jest --watch",
     "doctor": "expo-doctor",
+    "make:icons": "node scripts/make-icons.mjs",
     "bundle:check": "expo export --platform ios --platform android --output-dir .expo/export-check --clear"
   },
   "dependencies": {
@@ -52,6 +53,7 @@
     "zod": "4.6.5"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "2.6.2",
     "@testing-library/react-native": "14.0.1",
     "@types/jest": "29.5.14",
     "@types/react": "19.2.18",

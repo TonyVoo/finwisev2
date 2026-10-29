@@ -14,7 +14,12 @@
       }
     },
     "android": {
-      "package": "com.expensetracker.app"
+      "package": "com.expensetracker.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon-foreground.png",
+        "monochromeImage": "./assets/adaptive-icon-monochrome.png",
+        "backgroundColor": "#FFFFFF"
+      }
     },
     "plugins": [
       "expo-router",
@@ -40,8 +45,11 @@
         {
           "backgroundColor": "#F7F8FA",
           "dark": {
-            "backgroundColor": "#0F1115"
-          }
+            "backgroundColor": "#0F1115",
+            "image": "./assets/splash-icon-dark.png"
+          },
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 160
         }
       ]
     ],
@@ -53,6 +61,7 @@
     },
     "locales": {
       "vi": "./locales/vi.json"
-    }
+    },
+    "icon": "./assets/icon.png"
   }
 }
