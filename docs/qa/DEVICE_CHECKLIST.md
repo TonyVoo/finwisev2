@@ -190,6 +190,12 @@ Haptics and animation can only be judged by hand. Run this on a real phone.
       person paid: the figures net off. A **private** expense, an **income** entry, and an expense dated
       before the other person joined change nothing. Setting **Paid by** to the other person flips who owes.
       With nothing owed it says "All settled up".
+- [ ] **Balance on Home:** in a household with something owed, a line under the month total reads "You owe Bao ..."
+      or "Bao owes you ..." (with "+1 more" if there are several about you). Tapping it opens the Household screen.
+      It is absent when you are settled up, not in a household, or when only two other people owe each other.
+      Airplane mode: it still shows, from the phone's own data.
+- [ ] **Each member's net (three or more members):** on the Household screen each member row adds "Is owed ..." or
+      "Owes ..." after their role; someone who is square shows nothing extra. With only two members the rows show no net.
 - [ ] **Settle up:** tap **Settle up**. It opens on what you owe (or are owed) with that person, the direction
       and the amount filled in; the first key you press replaces the amount. Flip **I paid / They paid me**,
       pick another person (with three members), change the date and add a note, then **Record**. You return
