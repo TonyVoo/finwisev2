@@ -10,6 +10,18 @@ import {
 } from './receiptStrategies.ts';
 
 /**
+ * The adapters' own messages ("receipt model answered 503") are fixed strings that never carry a key,
+ * a quota or anything from the photo - their tests assert that - so they may be logged, which is what
+ * tells an operator *why* a strategy failed. Any other message could be anything and stays out.
+ */
+const OWN_MESSAGE = /^(receipt model |text provider |image too large|the model did not)/;
+
+function safeDetail(error: unknown): { detail?: string } {
+  const message = error instanceof Error ? error.message : '';
+  return OWN_MESSAGE.test(message) ? { detail: message } : {};
+}
+
+/**
  * Reading a receipt photo into suggestions: `docs/design/11-receipt-scan.md` and, for the
  * vision-model strategy, `docs/design/14-ai-receipt-reading.md`.
  *
@@ -56,6 +68,7 @@ export async function scanReceipt(
         userId,
         strategy: strategy.name,
         reason: (error as Error).name,
+        ...safeDetail(error),
       });
     }
   }

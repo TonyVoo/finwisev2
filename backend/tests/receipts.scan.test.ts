@@ -393,4 +393,26 @@ describe('POST /v1/receipts/scan with a vision model', () => {
     expect(entry?.[1]).toEqual({ userId: expect.any(String), strategy: expected });
     info.mockRestore();
   });
+
+  it.each([
+    ["an adapter's own fixed message", 'receipt model answered 503', 'receipt model answered 503'],
+    ['any other message, which could hold a key', 'key AIza-model-secret rejected', undefined],
+  ])('logs why a strategy failed: %s', async (_name, message, detail) => {
+    const warn = vi.spyOn(logger, 'warn');
+    setReceiptReaderForTests(
+      vision(() => {
+        throw new Error(message);
+      }),
+    );
+    setTextReaderForTests(reading(RECEIPT(yesterday())));
+    const user = await createUser();
+
+    await scan(user.auth);
+
+    const entry = warn.mock.calls.find(([text]) => text === 'receipt reading failed');
+    expect(entry?.[1]).toMatchObject({ strategy: 'model', reason: 'Error' });
+    expect((entry?.[1] as { detail?: string }).detail).toBe(detail);
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('AIza-model-secret');
+    warn.mockRestore();
+  });
 });
