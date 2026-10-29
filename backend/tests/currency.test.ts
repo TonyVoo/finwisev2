@@ -24,7 +24,9 @@ import { createUser } from './support/fixtures.ts';
  */
 
 const signUpWith = async (currency: string) =>
-  api().post('/v1/auth/signup').send({ email: uniqueEmail('cur'), password: TEST_PASSWORD, currency });
+  api()
+    .post('/v1/auth/signup')
+    .send({ email: uniqueEmail('cur'), password: TEST_PASSWORD, currency });
 
 /**
  * Both resolutions of GAP 21 are acceptable and this helper accepts either, so the case

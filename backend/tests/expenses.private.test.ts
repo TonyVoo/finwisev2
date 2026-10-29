@@ -164,7 +164,7 @@ describe('changing and deleting', () => {
 });
 
 describe('sync', () => {
-  it("sends everyone else a deleted placeholder with no content, at the same revision", async () => {
+  it('sends everyone else a deleted placeholder with no content, at the same revision', async () => {
     const { owner, member } = await householdOfTwo();
     const secret = await add(member, { private: true, note: 'surprise gift', amountMinor: 7777 });
 
@@ -199,12 +199,11 @@ describe('sync', () => {
     const { owner, member } = await householdOfTwo();
     const expense = await add(member);
     const first = await pullAll(owner);
-    expect((changeFor(first.changes, expense.id)?.record as { deletedAt: unknown }).deletedAt).toBeNull();
+    expect(
+      (changeFor(first.changes, expense.id)?.record as { deletedAt: unknown }).deletedAt,
+    ).toBeNull();
 
-    await api()
-      .patch(`/v1/expenses/${expense.id}`)
-      .set('Authorization', owner.auth)
-      .send({});
+    await api().patch(`/v1/expenses/${expense.id}`).set('Authorization', owner.auth).send({});
     await api()
       .patch(`/v1/expenses/${expense.id}`)
       .set('Authorization', member.auth)
@@ -270,7 +269,7 @@ describe('sync', () => {
     expect(Number(row.amountMinor)).toBe(7777);
   });
 
-  it('refuses a push that makes someone else\'s shared expense private', async () => {
+  it("refuses a push that makes someone else's shared expense private", async () => {
     const { owner, member } = await householdOfTwo();
     const expense = await add(member);
 
@@ -285,7 +284,7 @@ describe('sync', () => {
 });
 
 describe('receipts', () => {
-  it("do not follow a private expense to other members", async () => {
+  it('do not follow a private expense to other members', async () => {
     const { owner, member } = await householdOfTwo();
     const secret = await add(member, { private: true });
     const bytes = Buffer.alloc(64, 7);
@@ -298,7 +297,9 @@ describe('receipts', () => {
       .send({ contentType: 'image/jpeg', dataBase64: bytes.toString('base64') });
     expect(put.status).toBe(200);
 
-    const get = await api().get(`/v1/expenses/${secret.id}/receipt`).set('Authorization', owner.auth);
+    const get = await api()
+      .get(`/v1/expenses/${secret.id}/receipt`)
+      .set('Authorization', owner.auth);
     const index = await api().get('/v1/receipts').set('Authorization', owner.auth);
 
     expect(get.status).toBe(404);
@@ -307,7 +308,7 @@ describe('receipts', () => {
 });
 
 describe('leaving takes private expenses along', () => {
-  it('moves a leaving member\'s private expenses to their own books, and leaves the shared ones', async () => {
+  it("moves a leaving member's private expenses to their own books, and leaves the shared ones", async () => {
     const { owner, member } = await householdOfTwo();
     const shared = await add(member, { note: 'shared' });
     const secret = await add(member, { private: true, note: 'mine' });
@@ -324,7 +325,9 @@ describe('leaving takes private expenses along', () => {
     expect(row.userId).toBe(member.user.id);
     expect(row.private).toBe(false);
     // It sits in a category of their own, not one of the household's.
-    const category = await getPrisma().category.findUniqueOrThrow({ where: { id: row.categoryId } });
+    const category = await getPrisma().category.findUniqueOrThrow({
+      where: { id: row.categoryId },
+    });
     expect(category.userId).toBe(member.user.id);
   });
 

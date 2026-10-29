@@ -30,9 +30,7 @@ describe('AUTH-01 — sign up creates an account and a usable session', () => {
     expect(() => AuthResponse.parse(signup.body)).not.toThrow();
 
     const body = signup.body as AuthResponse;
-    expect(body.user.id).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
-    );
+    expect(body.user.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
     expect(body.user.email).toBe(email);
     expect(body.user.currency).toBe('USD');
     expect(body.accessTokenExpiresIn).toBe(3600);
@@ -95,9 +93,9 @@ describe('AUTH-04 — password length is enforced at both bounds', () => {
       // The field has to be identifiable or the form cannot show the message under the
       // right input. `password` reaches the client through `path` here, unlike the
       // unknown-key case in `API-03`, because a length failure carries a real path.
-      expect(
-        (error.details?.issues ?? []).some((issue) => issue.path.includes('password')),
-      ).toBe(true);
+      expect((error.details?.issues ?? []).some((issue) => issue.path.includes('password'))).toBe(
+        true,
+      );
     }
 
     for (const length of [LIMITS.PASSWORD_MIN, LIMITS.PASSWORD_MAX]) {
@@ -159,7 +157,11 @@ describe('AUTH-07 — logout is idempotent and forgiving', () => {
     const user = await createUser();
     const r1 = user.refreshToken;
 
-    for (const body of [{ refreshToken: r1 }, { refreshToken: r1 }, { refreshToken: 'v1.never-issued' }]) {
+    for (const body of [
+      { refreshToken: r1 },
+      { refreshToken: r1 },
+      { refreshToken: 'v1.never-issued' },
+    ]) {
       const response = await api().post('/v1/auth/logout').send(body);
       expect(response.status).toBe(204);
       expect(response.body).toEqual({});

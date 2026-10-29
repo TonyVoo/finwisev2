@@ -188,16 +188,12 @@ describe('EXP-06 — delete is soft, returns the tombstone, and is idempotent', 
     const { user, expenses } = await createMonth();
     const target = expenses[0]!;
 
-    const first = await api()
-      .delete(`/v1/expenses/${target.id}`)
-      .set('Authorization', user.auth);
+    const first = await api().delete(`/v1/expenses/${target.id}`).set('Authorization', user.auth);
     expect(first.status).toBe(200);
     expect(first.body.data).toBeDefined();
     expect(first.body.data.deletedAt).not.toBeNull();
 
-    const second = await api()
-      .delete(`/v1/expenses/${target.id}`)
-      .set('Authorization', user.auth);
+    const second = await api().delete(`/v1/expenses/${target.id}`).set('Authorization', user.auth);
     expect(second.status).toBe(200);
     expect(second.body.data.updatedAt).toBe(first.body.data.updatedAt);
     expect(second.body.data.revision).toBe(first.body.data.revision);

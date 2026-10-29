@@ -150,12 +150,11 @@ export interface MonthFixture {
   byCategory(name: string): readonly Expense[];
 }
 
-export async function createMonth(
-  overrides: { currency?: string } = {},
-): Promise<MonthFixture> {
+export async function createMonth(overrides: { currency?: string } = {}): Promise<MonthFixture> {
   const user = await createUser(overrides);
   const names = Object.keys(user.categories).sort();
-  if (names.length !== 6) throw new Error(`F-MONTH expected 6 seeded categories, got ${names.length}`);
+  if (names.length !== 6)
+    throw new Error(`F-MONTH expected 6 seeded categories, got ${names.length}`);
 
   const expenses: Expense[] = [];
   for (let i = 0; i < F_MONTH.liveCount; i += 1) {
@@ -187,7 +186,8 @@ export async function createMonth(
     throw new Error('F-MONTH built the wrong number of expenses');
   }
   const distinct = new Set(expenses.map((e) => e.categoryId));
-  if (distinct.size !== 6) throw new Error(`F-MONTH spread over ${distinct.size} categories, not 6`);
+  if (distinct.size !== 6)
+    throw new Error(`F-MONTH spread over ${distinct.size} categories, not 6`);
 
   return {
     user,

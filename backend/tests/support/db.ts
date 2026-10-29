@@ -38,5 +38,17 @@ export async function truncateAll(): Promise<void> {
   // One statement so foreign keys never see a partially-wiped database. CASCADE covers
   // references from any table not in the list; RESTART IDENTITY resets sequences, which
   // matters because `revision_counters` is what the sync cursor is read from.
-  await getPrisma().$executeRawUnsafe(`TRUNCATE ${list} RESTART IDENTITY CASCADE`);
+  // A test's own lingering work can still hold a lock for a moment as the next test starts, and
+  // Postgres answers a collision with `deadlock detected` (40P01). Nothing is wrong with the code
+  // under test, and the statement is safe to repeat, so try a few times before failing.
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      await getPrisma().$executeRawUnsafe(`TRUNCATE ${list} RESTART IDENTITY CASCADE`);
+      return;
+    } catch (error) {
+      const deadlock = String((error as { message?: unknown }).message).includes('40P01');
+      if (!deadlock || attempt >= 4) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 50 * attempt));
+    }
+  }
 }

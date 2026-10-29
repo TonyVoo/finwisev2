@@ -171,7 +171,9 @@ describe('SYNC-09 — a byte-identical retry replays the original result', () =>
 
     // A bumped revision would mean the row was written a second time.
     expect(secondResult.record).toEqual(firstResult.record);
-    expect((secondResult.record as Expense).revision).toBe((firstResult.record as Expense).revision);
+    expect((secondResult.record as Expense).revision).toBe(
+      (firstResult.record as Expense).revision,
+    );
     expect(second.body.serverRevision).toBe(first.body.serverRevision);
 
     const listed = await pull(user, { since: 0 });
@@ -286,9 +288,7 @@ describe('SYNC-16 — a stale cursor triggers a resync rather than resurrecting 
     // A tombstone, then a prune past the horizon, which is what advances
     // `prunedThroughRevision` — the horizon expressed in the only unit a cursor knows.
     const doomed = await createExpense(user, { categoryId: user.defaultCategory.id });
-    const deleted = await api()
-      .delete(`/v1/expenses/${doomed.id}`)
-      .set('Authorization', user.auth);
+    const deleted = await api().delete(`/v1/expenses/${doomed.id}`).set('Authorization', user.auth);
     expect(deleted.status).toBe(200);
 
     const pruneResult = await pruneTombstones(db, user.user.id, new Date(Date.now() + 91 * DAY_MS));

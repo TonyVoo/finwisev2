@@ -198,7 +198,11 @@ describe('EDGE-02 — very large amounts', () => {
         id: good,
         updatedAt: editedAt(),
         clientMutationId: uuidv7(),
-        fields: { categoryId: user.categories.Groceries!.id, amountMinor: 1234, date: '2026-10-06' },
+        fields: {
+          categoryId: user.categories.Groceries!.id,
+          amountMinor: 1234,
+          date: '2026-10-06',
+        },
       },
     ]);
 
