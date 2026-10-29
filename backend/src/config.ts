@@ -112,6 +112,13 @@ const EnvSchema = z.object({
     .transform((value) => (value === 'false' ? false : value)),
 });
 
+/** A signing key that is obviously not random: a placeholder word, or too few distinct characters. */
+function isPlaceholderSecret(secret: string): boolean {
+  return (
+    /change-?me|dev-only|insecure|placeholder|example/i.test(secret) || new Set(secret).size < 10
+  );
+}
+
 function build() {
   const parsed = EnvSchema.safeParse(process.env);
   if (!parsed.success) {
@@ -123,6 +130,15 @@ function build() {
   const env = parsed.data;
   const isTest = env.NODE_ENV === 'test';
   const isProduction = env.NODE_ENV === 'production';
+
+  // A copied `.env.example` is the likeliest way to ship the development key. Anyone who has seen the repository
+  // can then sign a token for any account, so production refuses it rather than running quietly.
+  if (isProduction && isPlaceholderSecret(env.JWT_SECRET)) {
+    throw new Error(
+      'Invalid environment:\n  - JWT_SECRET: looks like a placeholder; generate one with ' +
+        `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`,
+    );
+  }
 
   // Under NODE_ENV=test this is not DATABASE_URL: the suite gets its own database and
   // refuses to run against one not named like a test database.

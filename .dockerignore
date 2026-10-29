@@ -1,0 +1,17 @@
+# Keep secrets and bulk out of the build context. The Dockerfile copies shared/ and backend/ only.
+.env
+.env.*
+!backend/.env.example
+**/.env
+**/.env.*
+**/node_modules
+.git
+.gitignore
+mobile
+!mobile/package.json
+docs
+**/coverage
+**/dist
+**/*.log
+backend/src/db/generated
+.DS_Store
