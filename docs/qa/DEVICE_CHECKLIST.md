@@ -95,17 +95,20 @@ marked **(dev build)**.
 ## 6b. Shared household
 
 Needs **two phones** (or a phone and a simulator) signed in to **two different accounts**, and the
-backend **restarted after pulling** (it adds three tables: `pnpm --filter backend migrate:deploy`).
+backend **restarted after pulling** (it adds tables and, for several households, a migration:
+`pnpm --filter backend migrate:deploy`).
 
-- [ ] Phone A: Settings -> **Household** -> **Create a household**. The members list shows A as
-      Owner and "You". Nothing about A's expenses changes.
+- [ ] Phone A: Settings -> **Households** -> **Create a household**, give it a name. A lands in the new, empty
+      household (Home shows a chip with its name); A's own expenses are still there under **Personal**. Open the
+      household from the list: the members list shows A as Owner and "You".
 - [ ] Phone A: **Invite someone** shows an 8-character code once, with **Share code**. The share
       sheet text includes the code.
-- [ ] Phone B (its own account, with a few of its own expenses): Household -> **Join with a code**.
+- [ ] Phone B (its own account, with a few of its own expenses): Settings -> Households -> **Join with a code**.
       A wrong code shows "That code is incorrect or has expired." and nothing changes.
 - [ ] Phone B with an unsynced change (airplane mode, add an expense, back online _before_ it syncs)
       is told to **sync first**; once synced, the correct code works.
-- [ ] After joining, B sees **A's** books and currency; B's own expenses are gone from view.
+- [ ] After joining, B is in **A's household** (the chip names it) with its books and currency; B's own expenses
+      are under **Personal**, untouched.
       Add an expense on B: it appears on A after a sync, and the other way round.
 - [ ] The same code does **not** work a second time, or after 48 hours.
 - [ ] **Who added it:** in a household, each new expense on Home reads "... - Added by <name>" (the
@@ -122,20 +125,46 @@ backend **restarted after pulling** (it adds three tables: `pnpm --filter backen
       Uncategorized), and none of them appear in A's books. A member who deletes their account takes their
       private expenses with them.
 - [ ] Airplane mode: the "Added by" lines still show (the names are kept on the phone).
-- [ ] B: **Leave household**. B is back on its own books and currency, its own expenses are back, and
+- [ ] B: open the household -> **Leave household**. B is back on **Personal** with its own currency, and
       A still has everything B added while in.
-- [ ] A removes B while B is in: B's phone returns to its own books on its next sync (no crash, no
+- [ ] A removes B while B has the household open: B's phone returns to **Personal** on its next sync (no crash, no
       A data left behind).
-- [ ] **Create** asks first ("Your current expenses move into the household..."). After creating, A's
-      Home is unchanged. Creating with unsynced changes is refused ("Sync your changes first").
+- [ ] **Create** asks for a name and says the household starts empty and A's expenses stay A's. Creating with
+      unsynced changes is refused ("Sync your changes first").
 - [ ] **Hand over:** A taps B's row -> **Make owner** -> confirm. A now sees **Leave household**; B sees
       Invite and Delete. Nothing disappears from either phone.
-- [ ] A (the original creator) leaves after handing over: A's own books are fresh default categories and
-      the history stays in the household. A can add an expense straight away.
+- [ ] A (the original creator) leaves after handing over: A's **Personal** space is exactly as it was, and the
+      history stays in the household.
 - [ ] A cannot delete their account while others are in and they own it; after handing over, they can.
-- [ ] **Delete household** (as the owner): the owner gets the shared books, merged into their own
-      (same-named categories combined, no duplicates); everyone else is back on their own books.
+- [ ] **Delete household** (as the owner): the dialog says the shared expenses are merged into the owner's
+      personal expenses; they are (same-named categories combined, no duplicates), and every member's
+      private expenses go back to them. Everyone else is back on **Personal**.
 - [ ] A cannot delete their account while B is in; the banner says to delete the household first.
+
+## 6c. More than one household
+
+Needs the setup of 6b and a **third** account (C), or one account that is in two households.
+
+- [ ] A creates **Home** and **Flat**. Home's chip shows the open space; tapping it lists **Personal**, **Home**
+      and **Flat** with a check on the open one. A person in no household has no chip at all.
+- [ ] Switching to **Flat** clears Home's rows and shows Flat's (empty, with default categories), in Flat's
+      currency. Add an expense there; switch to **Personal** and **Home**: the expense appears in none of them.
+      Switch back to **Flat**: it is there after the sync.
+- [ ] **Switching is refused** with changes waiting ("Sync your changes first"), and offline the sheet says
+      "Connect to the internet to switch." with the rows disabled.
+- [ ] B joins both A's households with two codes (one code per household): B's list shows both; joining the
+      same household again says "You are already in that household." and the code still works for C.
+- [ ] A is in 10 households: an 11th create or join says "You are in as many households as you can be."
+- [ ] **Rename** Flat (owner only; members do not see the button): the chip and the list show the new name.
+- [ ] B leaves **Flat** from the list while **Home** is open: nothing is cleared, and Home is still open.
+      B leaves the household that **is** open: B lands on **Personal**.
+- [ ] A deletes the household B has open: B's phone returns to **Personal** on its next sync, without an error
+      banner that does not go away.
+- [ ] Bill and goal reminders follow the open space: after switching, the old space's reminders do not fire.
+- [ ] Settle up and Balances show only the open household's members and currency.
+- [ ] Force-quit and reopen: the app returns to the space that was open.
+- [ ] An **older build** of the app (before this change) against the updated server: see `docs/RELEASE.md` -> Several
+      households. It may not be able to read `GET /v1/me`; update such builds first.
 
 ## 7. App lock
 

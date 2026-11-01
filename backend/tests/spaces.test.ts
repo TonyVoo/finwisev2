@@ -8,10 +8,9 @@ import { makeHousehold } from './support/spaces.ts';
 
 /**
  * Spaces (`docs/design/13-multiple-households.md`): a person can be in several households, and each request
- * names the book it works in with `X-Space-Id`. These cases are the server's half of step 1: the model
- * allows it, the header is resolved and validated every time, and `GET /v1/me` lists the choices. The routes
- * that create or join a household still refuse a second one until step 2, so the extra households are built
- * in the database (`tests/support/spaces.ts`).
+ * names the book it works in with `X-Space-Id`. These cases are about the model and the header: it is
+ * resolved and validated every time, and `GET /v1/me` lists the choices. Households are built in the
+ * database (`tests/support/spaces.ts`); `households.test.ts` drives the routes that manage them.
  */
 
 const me = (user: TestUser, space?: string) => {

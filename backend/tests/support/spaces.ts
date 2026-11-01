@@ -6,8 +6,8 @@ import type { TestUser } from './fixtures.ts';
 /**
  * Households built straight in the database, for the cases about a person being in **several**.
  *
- * The HTTP routes still refuse a second household for the same person (`household_exists`, until
- * `docs/design/13-multiple-households.md` step 2), so a person in two can only be set up here. The
+ * The HTTP routes can build these too (`POST /v1/household`), but a household with a given join order or a
+ * given currency, or one scoped by its owner's own id, is quicker to state directly. The
  * rows are the ones the routes write: a book of its own, the household, and its memberships.
  */
 

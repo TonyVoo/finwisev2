@@ -100,6 +100,19 @@ Both stores require in-app account deletion when accounts can be created in-app.
 Delete account) and removes the account's data on the server; the privacy policy should say what is retained
 (nothing, other than deleted-row tombstones that are pruned after 90 days).
 
+## Several households
+
+- **Order of deployment.** Apply the migration (`pnpm migrate:deploy`) with the new server, then ship the app. It
+  adds a name to households and lifts the one-household limits; it keeps every existing household and member
+  (rehearsed on a scratch database with households made under the old rules).
+- **Older apps.** The server adds `spaces` to `GET /v1/me` and `name` to a household. The app's strict response
+  parsing rejects unknown fields (open gap 19, `mobile/tests/api/responseForwardCompat.test.ts`), so a build made before
+  this change can fail to read those responses. No build has been released to a store; update any preview
+  builds installed on testers' phones before they use the new server.
+- **Release note.** A household made under the old rules took its creator's expenses with it. They stay in the
+  household; there is no way to take them back out. Households made now start empty and leave personal
+  expenses alone.
+
 ## Before a public release
 
 - Review the Vietnamese strings (`docs/i18n/vietnamese-review.csv`).

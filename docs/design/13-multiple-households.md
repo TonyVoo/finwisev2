@@ -1,5 +1,7 @@
 # 13 - More than one household
 
+_Built: all five steps. Device checks are in `docs/qa/DEVICE_CHECKLIST.md` section 6c._
+
 Today a person is in at most one household, and being in one means working in its books and nothing
 else (`10-households.md`). This lets a person be in several, and keeps their own books too. Decided
 with the product owner:
