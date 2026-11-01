@@ -78,6 +78,7 @@ describe('the language setting', () => {
     expect(screen.getByText('Ngôn ngữ')).toBeTruthy();
     expect(screen.getByText('Tiếng Việt')).toBeTruthy();
     expect(screen.getByText('Chi tiêu định kỳ')).toBeTruthy();
+    expect(screen.getByText('Mục tiêu tiết kiệm')).toBeTruthy();
     expect(screen.getByLabelText('Đăng xuất')).toBeTruthy();
     // And none of it is still English.
     expect(screen.queryByText('Settings')).toBeNull();

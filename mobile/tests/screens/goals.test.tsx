@@ -4,7 +4,7 @@ import { act, screen, userEvent, waitFor } from '@testing-library/react-native';
 import { COPY, SNACK_COPY } from '@/copy/strings';
 import { createGoal } from '@/db/mutations';
 import type { SqliteDatabase } from '@/db/sqlite';
-import GoalsScreen, { GOAL_ROW_TEST_ID_PREFIX } from '../../app/(app)/(tabs)/goals';
+import GoalsScreen, { GOAL_ROW_TEST_ID_PREFIX } from '../../app/(app)/settings/goals';
 import { resetRouter } from '../support/router';
 import { mountScreen } from '../support/mount';
 import { seedFallbackCategory } from '../support/seed';

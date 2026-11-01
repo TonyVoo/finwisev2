@@ -211,6 +211,17 @@ export default function SettingsScreen() {
         </Row>
 
         <Row
+          testID="settings-goals"
+          leading={<IconBadge name="target" />}
+          onPress={() => router.push('/(app)/settings/goals')}
+          chevron
+          accessibilityLabel={`${COPY.settings.goals}. ${COPY.settings.goalsHint}`}
+        >
+          <RowTitle>{COPY.settings.goals}</RowTitle>
+          <RowSubtitle lines={2}>{COPY.settings.goalsHint}</RowSubtitle>
+        </Row>
+
+        <Row
           testID="settings-household"
           leading={<IconBadge name="users" />}
           onPress={() => router.push('/(app)/settings/household')}

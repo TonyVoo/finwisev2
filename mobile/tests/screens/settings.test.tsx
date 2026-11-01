@@ -107,11 +107,6 @@ describe('the settings screen', () => {
     await refreshReads();
   }
 
-  it('does not list savings goals: they are a tab of their own', async () => {
-    await waitFor(() => expect(screen.getByTestId('settings-appearance')).toBeTruthy());
-    expect(screen.queryByTestId('settings-goals')).toBeNull();
-  });
-
   it('lets the person pick a theme, applies it at once and remembers it on the device', async () => {
     await waitFor(() => expect(screen.getByTestId('settings-appearance')).toBeTruthy());
     // Both the Appearance and the Language row start as "Match system", so look at the
@@ -160,6 +155,7 @@ describe('the settings screen', () => {
       'dollar-sign',
       'tag',
       'repeat',
+      'target',
       'users',
       'moon',
       'globe',
