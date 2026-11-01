@@ -4,6 +4,7 @@ import { writeUser } from '@/db/user';
 import type { SqliteDatabase } from '@/db/sqlite';
 import { AMOUNT_DISPLAY_TEST_ID } from '@/expenses/AmountDisplay';
 import { CLOSE_TEST_ID, RECEIPT_ROW_TEST_ID, SAVE_TEST_ID } from '@/expenses/ExpenseFormScreen';
+import { clearStashedPhoto, peekStashedPhoto, stashPhoto } from '@/receipts/pendingPhoto';
 import { setReceiptPickerForTests, type PickOutcome } from '@/receipts/receiptPicker';
 import {
   RECEIPT_CHOOSE_TEST_ID,
@@ -102,7 +103,42 @@ const isSaveDisabled = () =>
 beforeEach(() => {
   resetRouter();
 });
-afterEach(() => setReceiptPickerForTests(null));
+afterEach(() => {
+  setReceiptPickerForTests(null);
+  clearStashedPhoto();
+});
+
+describe('a photo taken from the camera shortcut', () => {
+  it('is already attached when Add expense opens, and saves with the expense', async () => {
+    stashPhoto(IMG);
+    const { database } = await mountAdd();
+
+    expect(rowLabel()).toBe(`${COPY.form.field.receipt}, ${COPY.form.field.receiptAttached}`);
+    await userEvent.press(screen.getByTestId('keypad-5'));
+    await userEvent.press(screen.getByTestId(SAVE_TEST_ID));
+
+    await waitFor(async () => expect(await outboxEntries(database)).toHaveLength(1));
+    const queued = await outboxEntries(database);
+    expect(await readReceipt(database, queued[0]!.recordId)).toMatchObject({
+      state: 'pending-upload',
+      dataBase64: IMG,
+    });
+  });
+
+  it('is used once: the next Add expense starts without it', async () => {
+    stashPhoto(IMG);
+    await mountAdd();
+    await waitFor(() => expect(peekStashedPhoto()).toBeNull());
+  });
+
+  it('is not attached to an expense being edited, and is dropped rather than kept for the next add', async () => {
+    stashPhoto(IMG);
+    await mountEdit();
+
+    expect(rowLabel()).toBe(`${COPY.form.field.receipt}, ${COPY.form.field.receiptAdd}`);
+    await waitFor(() => expect(peekStashedPhoto()).toBeNull());
+  });
+});
 
 describe('the Receipt row', () => {
   it('invites a photo when there is none', async () => {

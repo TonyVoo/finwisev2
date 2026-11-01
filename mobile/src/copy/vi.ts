@@ -337,6 +337,10 @@ export const VIETNAMESE_COPY: CopyBundle = {
       },
     },
     /** Shared households (`docs/design/10-households.md`). */
+    scan: {
+      tab: 'Quét hóa đơn',
+      hint: 'Chụp ảnh rồi mở màn hình Thêm khoản chi cùng ảnh đó.',
+    },
     spaces: {
       personal: 'Cá nhân',
       chipLabel: 'Sổ đang mở: {name}',

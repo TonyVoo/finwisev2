@@ -242,6 +242,8 @@
 "COPY.tabBarStyle.hint.compact","Tab bar style sheet","A small bar that floats in the middle.","Một thanh nhỏ nổi ở giữa.","",""
 "COPY.tabBarStyle.hint.wide","Tab bar style sheet","Spans the screen, with the same slot for each tab.","Trải rộng toàn màn hình, mỗi tab một ô như nhau.","",""
 "COPY.tabBarStyle.hint.labelled","Tab bar style sheet","Spans the screen, with a name under every icon.","Trải rộng toàn màn hình, có tên dưới mỗi biểu tượng.","",""
+"COPY.scan.tab","Tab bar, camera button, screen-reader label","Scan receipt","Quét hóa đơn","",""
+"COPY.scan.hint","Tab bar, camera button, screen-reader hint","Takes a photo and opens Add expense with it.","Chụp ảnh rồi mở màn hình Thêm khoản chi cùng ảnh đó.","",""
 "COPY.spaces.personal","Space chip and switcher, the person’s own books","Personal","Cá nhân","",""
 "COPY.spaces.chipLabel","Space chip, screen-reader label","Open space: {name}","Sổ đang mở: {name}","",""
 "COPY.spaces.chipHint","Space chip, screen-reader hint","Switch between your personal expenses and your households.","Chuyển giữa khoản chi cá nhân và các hộ gia đình của bạn.","",""

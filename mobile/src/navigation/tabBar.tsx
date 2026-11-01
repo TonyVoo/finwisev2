@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { COPY } from '../copy/strings';
 import { keyHaptic } from '../lib/haptics';
 import { TAB_BAR_GAP, tabBarHeight, tabBarReserve, useTabBarStyle } from './tabBarStyle';
 import { elevation, radius, space, type } from '../theme/tokens';
@@ -40,7 +41,15 @@ export interface FloatingTabBarProps {
     };
     navigate(name: string, params?: object): void;
   };
+  /**
+   * What the camera button does. The `scan` route is not a place to go to but an action, so the bar draws
+   * it as a raised button that calls this and never navigates; without a handler it is left out.
+   */
+  readonly onScan?: (() => void) | undefined;
 }
+
+/** The route the bar draws as the camera button. */
+export const SCAN_ROUTE = 'scan';
 
 /** What the compact bar covers; the default, and what a screen without a style context assumes. */
 export const TAB_BAR_RESERVE = tabBarReserve('compact');
@@ -68,7 +77,7 @@ export function tabPressHaptic(alreadyFocused: boolean): void {
  * It floats *over* the screen, so it takes no space in the layout: screens add
  * `useTabBarClearance()` to their bottom padding.
  */
-export function FloatingTabBar({ state, descriptors, navigation }: FloatingTabBarProps) {
+export function FloatingTabBar({ state, descriptors, navigation, onScan }: FloatingTabBarProps) {
   const color = useColors();
   const styles = useStyles();
   const insets = useSafeAreaInsets();
@@ -95,6 +104,23 @@ export function FloatingTabBar({ state, descriptors, navigation }: FloatingTabBa
           const focused = state.index === index;
           const title = options.title ?? route.name;
           const tint = focused ? color.primary.default : color.text.tertiary;
+
+          if (route.name === SCAN_ROUTE) {
+            if (onScan === undefined) return null;
+            return (
+              <Pressable
+                key={route.key}
+                testID={`tab-${route.name}`}
+                onPress={onScan}
+                accessibilityRole="button"
+                accessibilityLabel={title}
+                accessibilityHint={COPY.scan.hint}
+                style={({ pressed }) => [styles.scan, pressed ? styles.scanPressed : null]}
+              >
+                {options.tabBarIcon?.({ focused: false, color: color.text.inverse, size: 22 })}
+              </Pressable>
+            );
+          }
 
           const onPress = () => {
             const event = navigation.emit({
@@ -164,6 +190,17 @@ const useStyles = createStyles((color) =>
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: color.border.hairline,
     },
+    // The camera: a filled circle, so it reads as the one action among the places.
+    scan: {
+      width: 52,
+      height: 52,
+      borderRadius: radius.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: color.primary.default,
+      marginHorizontal: space[1],
+    },
+    scanPressed: { backgroundColor: color.primary.pressed },
     barCompact: { alignSelf: 'center' },
     barWide: { alignSelf: 'stretch' },
     item: {

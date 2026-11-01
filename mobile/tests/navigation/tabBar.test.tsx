@@ -172,3 +172,71 @@ describe('tabPressHaptic', () => {
     expect(Haptics.selectionAsync).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('FloatingTabBar with the camera shortcut', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  function withScan(onScan?: () => void) {
+    const emit = jest.fn(() => ({ defaultPrevented: false }));
+    const navigate = jest.fn();
+    const routes = [
+      { key: 'index-1', name: 'index' },
+      { key: 'summary-1', name: 'summary' },
+      { key: 'scan-1', name: 'scan' },
+      { key: 'settings-1', name: 'settings' },
+    ];
+    const titles: Record<string, string> = {
+      index: 'Expenses',
+      summary: 'Summary',
+      scan: 'Scan receipt',
+      settings: 'Settings',
+    };
+    const descriptors = Object.fromEntries(
+      routes.map((route) => [
+        route.key,
+        {
+          options: {
+            title: titles[route.name],
+            tabBarIcon: () => <Text>{`icon-${route.name}`}</Text>,
+          },
+        },
+      ]),
+    );
+    const bar = {
+      state: { index: 0, routes },
+      descriptors,
+      navigation: { emit, navigate },
+    } as unknown as FloatingTabBarProps;
+    return { emit, navigate, element: <FloatingTabBar {...bar} onScan={onScan} /> };
+  }
+
+  it('puts the camera between Summary and Settings, named for a screen reader', async () => {
+    const { element } = withScan(jest.fn());
+    await renderWithSafeArea(element);
+
+    const names = screen.getAllByRole('button').map((node) => node.props.accessibilityLabel);
+    expect(screen.getByRole('button', { name: 'Scan receipt' })).toBeTruthy();
+    expect(names.indexOf('Scan receipt')).toBeGreaterThan(-1);
+    // Three real tabs remain; the camera is an action, not a place.
+    expect(screen.getAllByRole('tab')).toHaveLength(3);
+  });
+
+  it('runs the shortcut when pressed, without changing tab', async () => {
+    const onScan = jest.fn();
+    const { navigate, emit, element } = withScan(onScan);
+    await renderWithSafeArea(element);
+
+    fireEvent.press(screen.getByTestId('tab-scan'));
+
+    expect(onScan).toHaveBeenCalledTimes(1);
+    expect(navigate).not.toHaveBeenCalled();
+    expect(emit).not.toHaveBeenCalled();
+  });
+
+  it('is left out of the bar when nothing handles it', async () => {
+    const { element } = withScan(undefined);
+    await renderWithSafeArea(element);
+
+    expect(screen.queryByTestId('tab-scan')).toBeNull();
+  });
+});

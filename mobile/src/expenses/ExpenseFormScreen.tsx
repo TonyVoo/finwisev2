@@ -95,6 +95,7 @@ import { shouldAskModel } from '../quickAdd/askModel';
 import { mergeQuickAdd } from '../quickAdd/mergeQuickAdd';
 import { isQuickAddUnavailable, markQuickAddUnavailable } from '../quickAdd/quickAddAvailability';
 import { useOptionalSyncStatus } from '../sync/SyncProvider';
+import { clearStashedPhoto, peekStashedPhoto } from '../receipts/pendingPhoto';
 import { isScanUnavailable, markScanUnavailable } from '../receipts/scanAvailability';
 import { isEmptyScan, planSuggestion, suggestionSummary } from '../receipts/receiptSuggestion';
 import { attachReceipt, detachReceipt, hasReceipt } from '../receipts/receiptStore';
@@ -196,7 +197,15 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
   const [initial, setInitial] = useState<ExpenseDraft | null>(null);
   const [overlay, setOverlay] = useState<Overlay>('none');
   const [rejections, setRejections] = useState(0);
-  const [receiptChange, setReceiptChange] = useState<ReceiptChange>({ kind: 'unchanged' });
+  // A photo from the camera shortcut is already attached when Add expense opens. It is read here, in the
+  // initial state, and cleared in the effect below, so it is used once and an edit never keeps it.
+  const [receiptChange, setReceiptChange] = useState<ReceiptChange>(() => {
+    const waiting = isEdit ? null : peekStashedPhoto();
+    return waiting === null ? { kind: 'unchanged' } : { kind: 'set', dataBase64: waiting };
+  });
+  useEffect(() => {
+    clearStashedPhoto();
+  }, []);
   // Paying in another currency. `null` is the account's own, which is almost always the case.
   const [entryCurrency, setEntryCurrency] = useState<string | null>(null);
   const [rateText, setRateText] = useState('');

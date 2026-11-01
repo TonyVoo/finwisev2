@@ -383,6 +383,11 @@ export const COPY = {
       labelled: 'Spans the screen, with a name under every icon.',
     },
   },
+  /** The camera button in the tab bar. */
+  scan: {
+    tab: 'Scan receipt',
+    hint: 'Takes a photo and opens Add expense with it.',
+  },
   /** Which book is open, and the switcher (`docs/design/13-multiple-households.md`). */
   spaces: {
     personal: 'Personal',
