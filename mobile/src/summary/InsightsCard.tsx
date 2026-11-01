@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { COPY } from '../copy/strings';
 import { radius, space, type } from '../theme/tokens';
@@ -10,10 +11,13 @@ export function InsightsCard({
   insights,
   previousLabel,
   currency,
+  children,
 }: {
   readonly insights: readonly Insight[];
   readonly previousLabel: string;
   readonly currency: string;
+  /** What goes under the list: the recap, which the screen supplies and the card does not depend on. */
+  readonly children?: ReactNode;
 }) {
   const styles = useStyles();
   if (insights.length === 0) return null;
@@ -27,6 +31,7 @@ export function InsightsCard({
           {insightText(insight, COPY.summary.insights, previousLabel, currency)}
         </Text>
       ))}
+      {children}
     </View>
   );
 }

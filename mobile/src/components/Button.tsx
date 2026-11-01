@@ -24,8 +24,8 @@ import { createStyles, useColors, useTheme } from '../theme/ThemeProvider';
  *   mounted at zero opacity and the indicator is overlaid on top of it, which is the only
  *   way to hold the exact width of the label rather than an approximation of it.
  *
- * Busy is used for exactly two actions in the app - Sign up and Log in - because they are
- * the only two that wait on the network (`docs/design/03-auth.md`).
+ * Busy is for the actions where the person waits on the network: Sign up and Log in
+ * (`docs/design/03-auth.md`), and the two that ask a model for help, Fill (quick add) and Write my recap.
  */
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'destructive';

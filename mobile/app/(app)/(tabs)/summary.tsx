@@ -19,7 +19,8 @@ import { useSelectedMonth } from '@/month/MonthProvider';
 import { CategoryDonut } from '@/summary/CategoryDonut';
 import { SpendLegend } from '@/summary/SpendLegend';
 import { InsightsCard } from '@/summary/InsightsCard';
-import { buildInsights, daysLeftInMonth } from '@/summary/insightsModel';
+import { buildInsights, daysLeftInMonth, insightText } from '@/summary/insightsModel';
+import { RecapSection } from '@/summary/RecapSection';
 import { monthName, stepMonth } from '@/lib/calendar';
 import { SpendTrend } from '@/summary/SpendTrend';
 import { buildTrend } from '@/summary/trendModel';
@@ -108,6 +109,20 @@ export default function SummaryScreen() {
   const awaitingFirstSync = useAwaitingFirstSync();
   const pending = showSkeleton || currencyCode === null || awaitingFirstSync;
 
+  // Worked out once: the card shows these sentences, and the recap is asked to reword exactly them.
+  const insights =
+    !pending && currencyCode !== null && previousSpend.data !== undefined
+      ? buildInsights(
+          spend.data ?? [],
+          previousSpend.data,
+          { current: income.data ?? 0, previous: previousIncome.data ?? 0 },
+          isCurrent ? daysLeftInMonth(today) : null,
+        )
+      : [];
+  const insightSentences = insights.map((insight) =>
+    insightText(insight, COPY.summary.insights, monthName(previousMonth), currencyCode ?? ''),
+  );
+
   return (
     <View style={styles.screen}>
       {/* The pill, in the same trailing slot as on Home (§3): the one place this screen
@@ -161,20 +176,14 @@ export default function SummaryScreen() {
           <SummaryEmpty />
         )}
 
-        {!pending && currencyCode !== null && previousSpend.data !== undefined ? (
+        {insights.length > 0 && currencyCode !== null ? (
           <InsightsCard
-            insights={buildInsights(
-              spend.data ?? [],
-              previousSpend.data,
-              {
-                current: income.data ?? 0,
-                previous: previousIncome.data ?? 0,
-              },
-              isCurrent ? daysLeftInMonth(today) : null,
-            )}
+            insights={insights}
             previousLabel={monthName(previousMonth)}
             currency={currencyCode}
-          />
+          >
+            <RecapSection month={month} facts={insightSentences} />
+          </InsightsCard>
         ) : null}
 
         {/* Below the month's own figures, and shown even for an empty month: "nothing this month"

@@ -152,6 +152,14 @@ export const VIETNAMESE_COPY: CopyBundle = {
         budgetPaceLast: 'Bạn đã dùng {percent}% ngân sách {name}, và hôm nay là ngày cuối tháng.',
         budgetOver: 'Bạn đã vượt ngân sách {name} {amount}.',
       },
+      recap: {
+        button: 'Viết tóm tắt cho tôi',
+        again: 'Viết lại',
+        hint: 'Gửi các câu ở trên, gồm tên danh mục và số tiền của bạn, tới một dịch vụ bên ngoài (Google Gemini) để viết một đoạn tóm tắt ngắn. Với gói miễn phí, dịch vụ đó có thể dùng chúng để cải thiện sản phẩm của họ.',
+        offline: 'Hãy kết nối mạng để viết tóm tắt.',
+        byAi: 'Do AI viết từ các số liệu ở trên.',
+        failed: 'Hiện chưa viết được tóm tắt.',
+      },
     },
 
     form: {

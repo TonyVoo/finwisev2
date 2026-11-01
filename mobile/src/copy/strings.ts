@@ -167,6 +167,15 @@ export const COPY = {
       budgetPaceLast: "You have used {percent}% of {name}'s budget, and today is the last day.",
       budgetOver: "You are over {name}'s budget by {amount}.",
     },
+    /** The recap under the Insights card: the card's own sentences, reworded by a model on request. */
+    recap: {
+      button: 'Write my recap',
+      again: 'Write again',
+      hint: 'Sends the sentences above, including your category names and amounts, to an outside service (Google Gemini) to word a short recap. On a free plan it may use them to improve its products.',
+      offline: 'Connect to the internet to write a recap.',
+      byAi: 'Written by AI from the figures above.',
+      failed: "Couldn't write a recap right now.",
+    },
   },
 
   form: {
