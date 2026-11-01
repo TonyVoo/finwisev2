@@ -288,10 +288,10 @@ export const VIETNAMESE_COPY: CopyBundle = {
       recurringHint: 'Tiền nhà, gói đăng ký và các khoản định kỳ.',
       goals: 'Mục tiêu tiết kiệm',
       goalsHint: 'Tiết kiệm cho điều bạn muốn.',
-      household: 'Hộ gia đình',
+      household: 'Các hộ gia đình',
       tabBar: 'Thanh tab',
       displayName: 'Tên hiển thị',
-      householdHint: 'Chia sẻ sổ chi tiêu với người khác.',
+      householdHint: 'Chia sẻ sổ chi tiêu với người khác, hoặc dùng nhiều sổ.',
       renameCategories: 'Đổi tên danh mục mặc định',
       renameCategoriesHint: 'Chuyển tên gốc sang tiếng Việt.',
       appearance: 'Giao diện',
@@ -337,6 +337,17 @@ export const VIETNAMESE_COPY: CopyBundle = {
       },
     },
     /** Shared households (`docs/design/10-households.md`). */
+    spaces: {
+      personal: 'Cá nhân',
+      chipLabel: 'Sổ đang mở: {name}',
+      chipHint: 'Chuyển giữa khoản chi cá nhân và các hộ gia đình của bạn.',
+      switcherTitle: 'Chuyển sổ',
+      manage: 'Quản lý hộ gia đình',
+      current: 'Đang mở',
+      offline: 'Hãy kết nối internet để chuyển.',
+      unavailable: 'Sổ đó không còn nữa.',
+      switched: 'Đang ở {name}.',
+    },
     household: {
       title: 'Hộ gia đình',
       balances: {
@@ -379,11 +390,22 @@ export const VIETNAMESE_COPY: CopyBundle = {
       },
       create: 'Tạo hộ gia đình',
       join: 'Tham gia bằng mã',
-      createConfirm: {
-        title: 'Tạo hộ gia đình?',
-        body: 'Các khoản chi hiện tại của bạn sẽ chuyển vào hộ gia đình và được chia sẻ với những người bạn mời. Nếu sau này bạn rời đi, chúng vẫn ở lại với hộ gia đình.',
-        confirm: 'Tạo',
+      nameSheet: {
+        createTitle: 'Hộ gia đình mới',
+        renameTitle: 'Đổi tên hộ gia đình',
+        field: 'Tên',
+        createHint: 'Một hộ gia đình mới, còn trống. Các khoản chi của bạn vẫn là của bạn.',
+        empty: 'Hãy nhập tên.',
+        create: 'Tạo',
+        save: 'Lưu',
       },
+      listTitle: 'Các hộ gia đình',
+      listEmpty: 'Bạn chưa ở trong hộ gia đình nào.',
+      memberCountOne: '1 thành viên',
+      memberCountMany: '{count} thành viên',
+      openNow: 'Đang mở',
+      switchTo: 'Chuyển sang hộ gia đình này',
+      rename: 'Đổi tên',
       memberSheet: {
         transfer: 'Chuyển quyền chủ hộ',
         remove: 'Xóa khỏi hộ gia đình',
@@ -426,19 +448,19 @@ export const VIETNAMESE_COPY: CopyBundle = {
       joinSheet: {
         title: 'Tham gia hộ gia đình',
         field: 'Mã mời',
-        hint: 'Bạn sẽ thấy sổ chi tiêu của hộ gia đình. Khoản chi riêng của bạn vẫn được giữ kín và quay lại nếu bạn rời đi.',
+        hint: 'Bạn sẽ chuyển sang được hộ gia đình này. Các khoản chi của bạn vẫn ở nguyên chỗ cũ.',
         submit: 'Tham gia',
       },
       leave: {
         action: 'Rời hộ gia đình',
         title: 'Rời hộ gia đình này?',
-        body: 'Bạn sẽ quay lại với các khoản chi riêng của mình. Hộ gia đình giữ lại những gì mọi người đã thêm.',
+        body: 'Bạn sẽ không còn thấy hộ gia đình này. Nó giữ lại những gì mọi người đã thêm; các khoản chi của bạn và các hộ gia đình khác vẫn như cũ.',
         confirm: 'Rời đi',
       },
       delete: {
         action: 'Xóa hộ gia đình',
         title: 'Xóa hộ gia đình này?',
-        body: 'Mọi người quay lại với các khoản chi riêng. Bạn giữ lại các khoản chi chung.',
+        body: 'Hộ gia đình bị xóa với tất cả mọi người. Các khoản chi chung được gộp vào khoản chi cá nhân của bạn, còn khoản chi riêng của từng thành viên trả về cho họ.',
         confirm: 'Xóa',
       },
       remove: {
@@ -456,6 +478,7 @@ export const VIETNAMESE_COPY: CopyBundle = {
         removed: 'Đã xóa thành viên.',
         transferred: 'Đã chuyển quyền chủ hộ.',
         deleted: 'Đã xóa hộ gia đình.',
+        renamed: 'Đã đổi tên hộ gia đình.',
       },
       a11y: {
         removeMember: 'Xóa {email}',

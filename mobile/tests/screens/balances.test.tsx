@@ -3,7 +3,7 @@ import { screen, userEvent, waitFor } from '@testing-library/react-native';
 import { COPY } from '@/copy/strings';
 import { writeUser } from '@/db/user';
 import type { SqliteDatabase } from '@/db/sqlite';
-import HouseholdScreen from '../../app/(app)/settings/household';
+import HouseholdScreen from '../../app/(app)/settings/household-detail';
 import { resetRouter, routerRecord } from '../support/router';
 import { mountScreen, ok } from '../support/mount';
 import {
@@ -110,8 +110,8 @@ async function mount(
 ) {
   const mounted = await mountScreen(<HouseholdScreen />, {
     transport: async (request) => {
-      if (request.method === 'get' && request.path === '/v1/household') {
-        return ok(200, { household: data });
+      if (request.method === 'get' && request.path === '/v1/households') {
+        return ok(200, { households: [data] });
       }
       throw new Error(`unexpected request ${request.method} ${request.path}`);
     },

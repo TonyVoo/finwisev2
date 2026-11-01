@@ -16,6 +16,10 @@ export const queryKeys = {
    * deliberately does not start with `local` and is not cleared by a local invalidation.
    */
   household: () => ['household'] as const,
+  /** Every household the caller is in, from the server. Under `household`, so one invalidation covers both. */
+  households: () => ['household', 'list'] as const,
+  /** The books the account can work in and the one the store holds, as last stored - a SQLite read. */
+  spaces: () => ['local', 'spaces'] as const,
   /** Who is in the household, as last stored from `/v1/me` - a SQLite read, so under `local`. */
   householdMembers: () => ['local', 'household', 'members'] as const,
   /** Everything read out of SQLite, i.e. the whole cache. See `localWrite.ts`. */

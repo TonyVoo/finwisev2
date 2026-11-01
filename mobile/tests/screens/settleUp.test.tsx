@@ -79,8 +79,8 @@ async function mount(
   const mounted = await mountScreen(<SettleUpScreen />, {
     clock: () => NOW,
     transport: async (request) => {
-      if (request.method === 'get' && request.path === '/v1/household') {
-        return ok(200, { household: data });
+      if (request.method === 'get' && request.path === '/v1/households') {
+        return ok(200, { households: [data] });
       }
       throw new Error(`unexpected request ${request.method} ${request.path}`);
     },

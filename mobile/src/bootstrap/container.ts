@@ -154,6 +154,8 @@ export async function createAppContainer(options: AppContainerOptions = {}): Pro
       } else if (scope === 'unchanged') {
         // Someone may have joined or left without changing whose books this device holds.
         void queryClient.invalidateQueries({ queryKey: queryKeys.householdMembers() });
+        // ...or joined, left or been removed from another, which changes the list but not the books held.
+        void queryClient.invalidateQueries({ queryKey: queryKeys.spaces() });
       }
       const created = await generateDueRecurring(database, { clock });
       if (created > 0) void queryClient.invalidateQueries({ queryKey: queryKeys.local() });

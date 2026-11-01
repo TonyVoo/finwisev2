@@ -332,10 +332,10 @@ export const COPY = {
     recurringHint: 'Rent, subscriptions and other regular payments.',
     goals: 'Savings goals',
     goalsHint: 'Save towards something you want.',
-    household: 'Household',
+    household: 'Households',
     tabBar: 'Tab bar',
     displayName: 'Display name',
-    householdHint: 'Share your books with someone.',
+    householdHint: 'Share your books with someone, or keep several.',
     renameCategories: 'Rename default categories',
     renameCategoriesHint: 'Switch the starter names to Vietnamese.',
     appearance: 'Appearance',
@@ -382,6 +382,18 @@ export const COPY = {
       wide: 'Spans the screen, with the same slot for each tab.',
       labelled: 'Spans the screen, with a name under every icon.',
     },
+  },
+  /** Which book is open, and the switcher (`docs/design/13-multiple-households.md`). */
+  spaces: {
+    personal: 'Personal',
+    chipLabel: 'Open space: {name}',
+    chipHint: 'Switch between your personal expenses and your households.',
+    switcherTitle: 'Switch space',
+    manage: 'Manage households',
+    current: 'Open now',
+    offline: 'Connect to the internet to switch.',
+    unavailable: 'That space is not available any more.',
+    switched: 'Now in {name}.',
   },
   /** Shared households (`docs/design/10-households.md`). */
   household: {
@@ -431,11 +443,24 @@ export const COPY = {
     },
     create: 'Create a household',
     join: 'Join with a code',
-    createConfirm: {
-      title: 'Create a household?',
-      body: 'Your current expenses move into the household and are shared with everyone you invite. If you leave later, they stay with the household.',
-      confirm: 'Create',
+    /** The sheet that names a household: when making one, and when renaming it. */
+    nameSheet: {
+      createTitle: 'New household',
+      renameTitle: 'Rename household',
+      field: 'Name',
+      createHint: 'A new, empty household. Your own expenses stay yours.',
+      empty: 'Enter a name.',
+      create: 'Create',
+      save: 'Save',
     },
+    /** The list of households, and the page of one. */
+    listTitle: 'Households',
+    listEmpty: 'You are not in a household yet.',
+    memberCountOne: '1 member',
+    memberCountMany: '{count} members',
+    openNow: 'Open now',
+    switchTo: 'Switch to this household',
+    rename: 'Rename',
     memberSheet: {
       transfer: 'Make owner',
       remove: 'Remove from household',
@@ -482,19 +507,19 @@ export const COPY = {
     joinSheet: {
       title: 'Join a household',
       field: 'Invite code',
-      hint: "You will see the household's books. Your own expenses stay private and come back if you leave.",
+      hint: 'You will be able to switch to this household. Your own expenses stay where they are.',
       submit: 'Join',
     },
     leave: {
       action: 'Leave household',
       title: 'Leave this household?',
-      body: 'You will go back to your own expenses. The household keeps what everyone added.',
+      body: 'You will no longer see this household. It keeps what everyone added; your own expenses and other households stay as they are.',
       confirm: 'Leave',
     },
     delete: {
       action: 'Delete household',
       title: 'Delete this household?',
-      body: 'Everyone goes back to their own expenses. You keep the shared ones.',
+      body: 'The household is deleted for everyone. Its shared expenses are merged into your personal expenses, and each member’s private ones go back to them.',
       confirm: 'Delete',
     },
     remove: {
@@ -512,6 +537,7 @@ export const COPY = {
       removed: 'Member removed.',
       transferred: 'Ownership handed over.',
       deleted: 'Household deleted.',
+      renamed: 'Household renamed.',
     },
     a11y: {
       removeMember: 'Remove {email}',

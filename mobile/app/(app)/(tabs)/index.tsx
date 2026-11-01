@@ -40,6 +40,7 @@ import { useAwaitingFirstSync } from '@/sync/useAwaitingFirstSync';
 import { daysInMonth as daysIn, monthLabel } from '@/lib/calendar';
 import { cumulativeSeries, projectedMonthEnd } from '@/expenses/spendPace';
 import { MonthSwitcher } from '@/month/MonthSwitcher';
+import { SpaceChip } from '@/household/SpaceChip';
 import { SyncIndicator } from '@/sync/SyncIndicator';
 import { usePullToRefresh } from '@/sync/usePullToRefresh';
 import { useSelectedMonth } from '@/month/MonthProvider';
@@ -173,6 +174,9 @@ export default function ExpenseListScreen() {
       />
 
       {selection.active ? <SelectionBar selection={selection} /> : null}
+
+      {/* Which book is open, for a person with more than their own (`13-multiple-households.md`). */}
+      <SpaceChip />
 
       <MonthSwitcher onOpenPicker={() => router.push('/(app)/month-picker')} />
 
