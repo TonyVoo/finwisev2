@@ -118,6 +118,12 @@ export const problems = {
   /** An email-verification code that did not work. Same single message as a reset code. */
   invalidVerificationCode: () =>
     new ApiProblem('invalid_verification_code', 'That code is incorrect or has expired.'),
+  /** An older, single-household route was asked by a person who is in several: it cannot tell which. */
+  householdAmbiguous: () =>
+    new ApiProblem(
+      'household_ambiguous',
+      'You are in more than one household. Update the app to manage them.',
+    ),
   /** The exchange-rate provider failed or answered something unusable. Retryable. */
   ratesUnavailable: () =>
     new ApiProblem('rates_unavailable', 'Exchange rates are unavailable right now.'),

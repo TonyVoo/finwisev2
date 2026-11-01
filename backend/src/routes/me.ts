@@ -29,7 +29,7 @@ import {
   confirmEmailVerification,
   sendEmailVerification,
 } from '../services/emailVerificationService.ts';
-import { getHousehold } from '../services/householdService.ts';
+import { getHousehold, listSpaces } from '../services/householdService.ts';
 import { sendJson } from '../http/respond.ts';
 import { dataOwnerIdOf, userIdOf } from '../http/types.ts';
 
@@ -68,7 +68,9 @@ meRouter.get('/me', async (req: Request, res: Response) => {
   sendJson(res, 200, MeResponse, {
     user: { ...toWireUser(user), currency },
     dataOwnerId,
-    household: (await getHousehold(getPrisma(), userId)).household,
+    // The household of the space in view, not "the person's household": a person in several has one per space.
+    household: (await getHousehold(getPrisma(), userId, dataOwnerId)).household,
+    spaces: await listSpaces(getPrisma(), user),
   });
 });
 

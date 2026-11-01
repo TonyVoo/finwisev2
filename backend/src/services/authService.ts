@@ -383,13 +383,14 @@ export async function deleteAccount(db: Db, userId: string, password: string): P
   await db.$transaction(async (tx) => {
     // A household with only its owner in it goes with them, books and all: nobody else could
     // ever reach the rows. (Expenses first: they hold their categories in place.)
-    const owned = await tx.household.findUnique({
+    const owned = await tx.household.findMany({
       where: { ownerId: userId },
       select: { scopeId: true },
     });
-    if (owned !== null && owned.scopeId !== userId) {
-      await tx.expense.deleteMany({ where: { userId: owned.scopeId } });
-      await tx.user.delete({ where: { id: owned.scopeId } });
+    for (const household of owned) {
+      if (household.scopeId === userId) continue;
+      await tx.expense.deleteMany({ where: { userId: household.scopeId } });
+      await tx.user.delete({ where: { id: household.scopeId } });
     }
     // Private expenses they added to a household's book are theirs alone: with the account
     // gone nobody could ever see them, and leaving them behind would orphan them.

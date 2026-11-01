@@ -90,6 +90,32 @@ export type HouseholdJoinRequest = z.infer<typeof HouseholdJoinRequest>;
 export type HouseholdTransferRequest = z.infer<typeof HouseholdTransferRequest>;
 
 /**
+ * A book a person can work in (`docs/design/13-multiple-households.md`): their own, or a household's.
+ * Which one a request works in is named by its `X-Space-Id` header, validated every time.
+ */
+export const Space = z.discriminatedUnion('kind', [
+  z.strictObject({
+    id: Uuid.describe("The account's own id, which is what `X-Space-Id` carries to select it."),
+    kind: z.literal('personal'),
+    name: z.null(),
+    currency: CurrencyCode,
+  }),
+  z.strictObject({
+    id: Uuid.describe("The household's book, which is what `X-Space-Id` carries to select it."),
+    kind: z.literal('household'),
+    householdId: Uuid,
+    name: z
+      .string()
+      .min(1)
+      .max(40)
+      .describe("How the household is told apart from the person's others."),
+    role: z.enum(['owner', 'member']),
+    currency: CurrencyCode,
+  }),
+]);
+export type Space = z.infer<typeof Space>;
+
+/**
  * `GET /v1/me`: who the token belongs to, and the books it works in.
  *
  * Lives here rather than beside `User` because it carries the household, and `Household`
@@ -103,7 +129,13 @@ export const MeResponse = z.strictObject({
   household: Household.nullable()
     .optional()
     .describe(
-      'The household the account is in, with its members, or `null`. It rides on `/v1/me` so a device can label each shared expense with who added it, offline, from the call it already makes at the start of every sync pass. Absent from servers that predate it and from endpoints that return only the user.',
+      'The household of the active space, with its members, or `null` (in the personal space there is none in view, even for a person who belongs to a household). It rides on `/v1/me` so a device can label each shared expense with who added it, offline, from the call it already makes at the start of every sync pass. Absent from servers that predate it and from endpoints that return only the user.',
+    ),
+  spaces: z
+    .array(Space)
+    .optional()
+    .describe(
+      'Every book the person can work in: their own first, then their households by when they joined (a person whose household is scoped by their own id, from before households had books, has just that household). The same whichever space is active. Absent from servers that predate spaces; treat absent as the one the account is already in.',
     ),
 });
 

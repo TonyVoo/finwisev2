@@ -27,6 +27,27 @@ function extractBearerToken(req: Request): string | undefined {
   return match?.[1]?.trim() || undefined;
 }
 
+/**
+ * Which book a request works in: `X-Space-Id`, validated every time (`docs/design/13-multiple-households.md`).
+ *
+ * Stateless on purpose: nothing remembers "which space this person is in", so two devices of one account can be
+ * in different ones and a retried request cannot land in the wrong book. The value must be the caller's own
+ * account id or the book of a household they belong to; anything else - another person's, one that does not
+ * exist, one that is not even an id - is the same `404 not_found`, so spaces cannot be probed. With no header,
+ * a person in exactly one household works in it (an older app, which never sends one, is unaffected) and
+ * anyone else works in their own.
+ */
+function resolveSpace(
+  header: string | undefined,
+  userId: string,
+  householdScopes: readonly string[],
+): string {
+  if (header === undefined) return householdScopes.length === 1 ? householdScopes[0]! : userId;
+  const requested = header.trim().toLowerCase();
+  if (requested === userId || householdScopes.includes(requested)) return requested;
+  throw problems.notFound('No such space.');
+}
+
 export const requireAuth: RequestHandler = (
   req: Request,
   _res: Response,
@@ -54,16 +75,19 @@ export const requireAuth: RequestHandler = (
         where: { id: userId },
         select: {
           id: true,
-          // The data scope, found in the same lookup: a household member reads and writes
-          // the owner's rows, everyone else their own.
-          householdMember: { select: { household: { select: { scopeId: true } } } },
+          // The books the person may work in, found in the same lookup (`docs/design/13-multiple-households.md`).
+          householdMemberships: { select: { household: { select: { scopeId: true } } } },
         },
       });
       if (account === null) {
         throw problems.tokenInvalid('Access token does not belong to an existing account.');
       }
       req.userId = userId;
-      req.dataOwnerId = account.householdMember?.household.scopeId ?? userId;
+      req.dataOwnerId = resolveSpace(
+        req.get('X-Space-Id'),
+        userId,
+        account.householdMemberships.map((membership) => membership.household.scopeId),
+      );
       next();
     })
     .catch(next);

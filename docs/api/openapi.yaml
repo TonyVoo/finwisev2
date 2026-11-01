@@ -20,6 +20,10 @@ info:
     ## Conventions
 
     - **Base path** is `/v1`. A breaking change ships as `/v2`; this version is additive-only.
+    - **Space.** A person may be in several households, and each request names the book it works in with an
+      optional `X-Space-Id` header (an id from `GET /v1/me` `spaces`). It is checked every time: a value that is not one
+      of the caller's own spaces is `404 not_found`, the same answer as for an id that does not exist. Absent, a person
+      in exactly one household works in it (so an older app is unaffected) and anyone else in their personal space.
     - **Auth** is `Authorization: Bearer <accessToken>` on every operation except
       `/v1/health` and the `/v1/auth/*` endpoints.
     - **Tenancy** comes from the access token. No request body or query parameter anywhere
@@ -890,6 +894,7 @@ paths:
         - token_expired
         - token_invalid
         - internal_error
+        - household_ambiguous
       responses:
         '200':
           description: Done.
@@ -920,6 +925,8 @@ paths:
                 }
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/HouseholdAmbiguous'
         '500':
           $ref: '#/components/responses/InternalError'
     post:
@@ -1007,6 +1014,7 @@ paths:
         - not_in_household
         - household_owner_only
         - internal_error
+        - household_ambiguous
       responses:
         '204':
           description: Done. No body.
@@ -1036,6 +1044,8 @@ paths:
                   message: You are not in a household.
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/HouseholdAmbiguous'
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -1058,6 +1068,7 @@ paths:
         - not_in_household
         - household_owner_only
         - internal_error
+        - household_ambiguous
       requestBody:
         required: true
         content:
@@ -1101,6 +1112,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '415':
           $ref: '#/components/responses/UnsupportedMediaType'
+        '409':
+          $ref: '#/components/responses/HouseholdAmbiguous'
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -1201,6 +1214,7 @@ paths:
         - not_in_household
         - owner_cannot_leave
         - internal_error
+        - household_ambiguous
       requestBody:
         required: true
         content:
@@ -1268,6 +1282,7 @@ paths:
         - not_in_household
         - household_owner_only
         - internal_error
+        - household_ambiguous
       requestBody:
         required: true
         content:
@@ -1328,6 +1343,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '415':
           $ref: '#/components/responses/UnsupportedMediaType'
+        '409':
+          $ref: '#/components/responses/HouseholdAmbiguous'
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -1355,6 +1372,7 @@ paths:
         - household_owner_only
         - owner_cannot_leave
         - internal_error
+        - household_ambiguous
       responses:
         '204':
           description: Done. No body.
@@ -3216,6 +3234,20 @@ components:
             error:
               code: recap_failed
               message: The recap could not be written right now.
+    HouseholdAmbiguous:
+      description: |
+        The person is in more than one household, and this single-household route cannot tell which
+        is meant. Code: `household_ambiguous`. Only an app that predates spaces can ask: a current
+        one names the household in the route.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            error:
+              code: household_ambiguous
+              message: You are in more than one household. Update the app to manage them.
     InternalError:
       description: |
         Unexpected server fault. Code: `internal_error`. The message never leaks
@@ -3346,6 +3378,7 @@ components:
         | `rate_limited` | 429 | Too many requests. `Retry-After` is set. |
         | `invalid_invite_code` | 400 | A household invite code was wrong, expired or already used. Does not say which. |
         | `household_exists` | 409 | The person is already in a household. |
+        | `household_ambiguous` | 409 | The person is in more than one household and this single-household route cannot tell which is meant. Name a space with `X-Space-Id` and use the id-addressed routes. |
         | `not_in_household` | 404 | The person is in no household. |
         | `household_owner_only` | 403 | Only the household's owner may do this. |
         | `owner_cannot_leave` | 409 | The owner cannot leave their own household; they delete it instead. |
@@ -3381,6 +3414,7 @@ components:
         - rate_limited
         - invalid_invite_code
         - household_exists
+        - household_ambiguous
         - not_in_household
         - household_owner_only
         - owner_cannot_leave
@@ -3560,6 +3594,50 @@ components:
             a device can label each shared expense with who added it, offline, from the call it
             already makes at the start of every sync pass. Absent from servers that predate it
             and from endpoints that return only the user.
+        spaces:
+          type: array
+          description: |
+            Every book the person can work in: their own first, then their households by when they
+            joined. The same whichever space is active. Absent from servers that predate spaces.
+          items:
+            oneOf:
+              - { $ref: '#/components/schemas/PersonalSpace' }
+              - { $ref: '#/components/schemas/HouseholdSpace' }
+            discriminator:
+              propertyName: kind
+              mapping:
+                personal: '#/components/schemas/PersonalSpace'
+                household: '#/components/schemas/HouseholdSpace'
+
+    PersonalSpace:
+      type: object
+      additionalProperties: false
+      required: [id, kind, name, currency]
+      properties:
+        id:
+          allOf: [{ $ref: '#/components/schemas/Uuid' }]
+          description: The account's own id, which is what `X-Space-Id` carries to select it.
+        kind: { type: string, enum: [personal] }
+        name: { type: 'null' }
+        currency: { $ref: '#/components/schemas/CurrencyCode' }
+
+    HouseholdSpace:
+      type: object
+      additionalProperties: false
+      required: [id, kind, householdId, name, role, currency]
+      properties:
+        id:
+          allOf: [{ $ref: '#/components/schemas/Uuid' }]
+          description: The household's book, which is what `X-Space-Id` carries to select it.
+        kind: { type: string, enum: [household] }
+        householdId: { $ref: '#/components/schemas/Uuid' }
+        name:
+          type: string
+          minLength: 1
+          maxLength: 40
+          description: How the household is told apart from the person's others.
+        role: { type: string, enum: [owner, member] }
+        currency: { $ref: '#/components/schemas/CurrencyCode' }
 
     SignupRequest:
       type: object

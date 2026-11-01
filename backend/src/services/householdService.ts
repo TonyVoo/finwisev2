@@ -3,13 +3,13 @@ import {
   INVITE_CODE_ALPHABET,
   LIMITS,
   type Household,
+  type Space,
   type HouseholdInvite,
   type HouseholdResponse,
 } from '@expense-tracker/shared';
 import { v7 as uuidv7 } from 'uuid';
 import { getConfig } from '../config.ts';
 import type { Db } from '../db/client.ts';
-import { isUniqueViolation } from '../db/errors.ts';
 import {
   createBook,
   ensureOwnDefaultCategory,
@@ -52,10 +52,33 @@ function generateInviteCode(): string {
   return code;
 }
 
-/** The household a person is in, with who is in it; `null` for a person in none. */
-async function loadHousehold(db: Db, userId: string): Promise<Household | null> {
-  const membership = await db.householdMember.findUnique({
-    where: { userId },
+/**
+ * The person's one household, `null` for none, or `household_ambiguous` for several: the older routes
+ * address "the caller's household", which only means something while there is exactly one
+ * (`docs/design/13-multiple-households.md`; the id-addressed routes come in step 2).
+ */
+async function soleMembership(db: Db, userId: string) {
+  const memberships = await db.householdMember.findMany({ where: { userId }, take: 2 });
+  if (memberships.length > 1)
+    throw new ApiProblem(
+      'household_ambiguous',
+      'You are in more than one household. Update the app to manage them.',
+    );
+  return memberships[0] ?? null;
+}
+
+/**
+ * The household a person is in, with who is in it; `null` for a person in none. With `scopeId` it is the
+ * household whose book that is (what `GET /v1/me` reports for the active space); without, the person's one.
+ */
+async function loadHousehold(db: Db, userId: string, scopeId?: string): Promise<Household | null> {
+  const sole = scopeId === undefined ? await soleMembership(db, userId) : null;
+  if (scopeId === undefined && sole === null) return null;
+  const membership = await db.householdMember.findFirst({
+    where:
+      scopeId === undefined
+        ? { userId, householdId: sole!.householdId }
+        : { userId, household: { scopeId } },
     select: {
       role: true,
       household: {
@@ -94,15 +117,25 @@ async function loadHousehold(db: Db, userId: string): Promise<Household | null> 
   };
 }
 
-export async function getHousehold(db: Db, userId: string): Promise<HouseholdResponse> {
-  return { household: await loadHousehold(db, userId) };
+export async function getHousehold(
+  db: Db,
+  userId: string,
+  scopeId?: string,
+): Promise<HouseholdResponse> {
+  return { household: await loadHousehold(db, userId, scopeId) };
+}
+
+/**
+ * Serialises the changes of one person's memberships, so "at most one household" holds without a unique
+ * index: two simultaneous creates or joins by the same person take turns and the second sees the first.
+ * Released with the transaction.
+ */
+async function lockPerson(tx: Db, userId: string): Promise<void> {
+  // `$executeRaw`: the function returns `void`, which a query cannot read back.
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${userId}))`;
 }
 
 export async function createHousehold(db: Db, userId: string): Promise<HouseholdResponse> {
-  if ((await db.householdMember.findUnique({ where: { userId } })) !== null) {
-    throw householdExists();
-  }
-
   const owner = await db.user.findUniqueOrThrow({
     where: { id: userId },
     select: { currency: true },
@@ -110,22 +143,19 @@ export async function createHousehold(db: Db, userId: string): Promise<Household
   const passwordHash = await unusablePasswordHash();
 
   const id = uuidv7();
-  try {
-    await db.$transaction(async (tx) => {
-      // The creator's books go into the household's own book, so they belong to the household
-      // and not to the person: that is what lets ownership change hands later.
-      const scopeId = await createBook(tx, owner.currency, passwordHash);
-      await moveBooks(tx, userId, scopeId);
-      await tx.household.create({
-        data: { id, ownerId: userId, scopeId, members: { create: { userId, role: 'owner' } } },
-      });
+  await db.$transaction(async (tx) => {
+    await lockPerson(tx, userId);
+    if ((await tx.householdMember.findFirst({ where: { userId } })) !== null) {
+      throw householdExists();
+    }
+    // The creator's books go into the household's own book, so they belong to the household
+    // and not to the person: that is what lets ownership change hands later.
+    const scopeId = await createBook(tx, owner.currency, passwordHash);
+    await moveBooks(tx, userId, scopeId);
+    await tx.household.create({
+      data: { id, ownerId: userId, scopeId, members: { create: { userId, role: 'owner' } } },
     });
-  } catch (error) {
-    // Two concurrent creates by the same person: the unique indexes decide, and the loser
-    // gets the same answer as if it had arrived second.
-    if (isUniqueViolation(error)) throw householdExists();
-    throw error;
-  }
+  });
 
   logger.info('household created', { userId, householdId: id });
   return await getHousehold(db, userId);
@@ -133,7 +163,7 @@ export async function createHousehold(db: Db, userId: string): Promise<Household
 
 /** The caller's membership, or the right refusal: not in one, or not the owner. */
 async function requireOwnerMembership(db: Db, userId: string) {
-  const membership = await db.householdMember.findUnique({ where: { userId } });
+  const membership = await soleMembership(db, userId);
   if (membership === null) throw notInHousehold();
   if (membership.role !== 'owner') throw ownerOnly();
   return membership;
@@ -166,14 +196,14 @@ export async function joinHousehold(
   code: string,
   now: Date = new Date(),
 ): Promise<HouseholdResponse> {
-  if ((await db.householdMember.findUnique({ where: { userId } })) !== null) {
-    throw householdExists();
-  }
-
   const invite = await db.householdInvite.findUnique({ where: { codeHash: inviteHash(code) } });
   if (invite === null || invite.expiresAt <= now) throw invalidInvite();
 
   await db.$transaction(async (tx) => {
+    await lockPerson(tx, userId);
+    if ((await tx.householdMember.findFirst({ where: { userId } })) !== null) {
+      throw householdExists();
+    }
     // Deleting the invite is the single-use gate: if a second person with the same code got
     // here first, this deletes nothing and this one is refused.
     const consumed = await tx.householdInvite.deleteMany({
@@ -190,7 +220,7 @@ export async function joinHousehold(
 }
 
 export async function leaveHousehold(db: Db, userId: string): Promise<void> {
-  const membership = await db.householdMember.findUnique({ where: { userId } });
+  const membership = await soleMembership(db, userId);
   if (membership === null) throw notInHousehold();
   if (membership.role === 'owner') throw ownerCannotLeave();
 
@@ -199,7 +229,9 @@ export async function leaveHousehold(db: Db, userId: string): Promise<void> {
       where: { id: membership.householdId },
       select: { scopeId: true },
     });
-    await tx.householdMember.delete({ where: { userId } });
+    await tx.householdMember.delete({
+      where: { householdId_userId: { householdId: membership.householdId, userId } },
+    });
     await ensureOwnDefaultCategory(tx, userId);
     // Private means "only I see it": it goes with the person, not into books they can't open.
     await handBackPrivateExpenses(tx, scopeId, userId);
@@ -324,4 +356,38 @@ export async function ownsHouseholdWithOthers(db: Db, userId: string): Promise<b
     where: { household: { ownerId: userId }, userId: { not: userId } },
   });
   return owned > 0;
+}
+
+/**
+ * Every book a person can work in: their own first, then their households by when they joined
+ * (`docs/design/13-multiple-households.md`). A person whose household is scoped by their own id, from before
+ * households had books of their own, has no separate personal space: that household *is* the book their id
+ * selects, so it is listed once, as the household.
+ */
+export async function listSpaces(
+  db: Db,
+  user: { readonly id: string; readonly currency: string },
+): Promise<Space[]> {
+  const memberships = await db.householdMember.findMany({
+    where: { userId: user.id },
+    orderBy: { joinedAt: 'asc' },
+    select: {
+      role: true,
+      household: {
+        select: { id: true, name: true, scopeId: true, book: { select: { currency: true } } },
+      },
+    },
+  });
+  const households: Space[] = memberships.map((membership) => ({
+    id: membership.household.scopeId,
+    kind: 'household',
+    householdId: membership.household.id,
+    name: membership.household.name,
+    role: membership.role as 'owner' | 'member',
+    currency: membership.household.book.currency,
+  }));
+  const personalIsAHousehold = memberships.some((m) => m.household.scopeId === user.id);
+  return personalIsAHousehold
+    ? households
+    : [{ id: user.id, kind: 'personal', name: null, currency: user.currency }, ...households];
 }

@@ -149,42 +149,43 @@ The authoritative code list is `ERROR_CODES` in `shared/src/errors.ts`. Every co
 including ones the UI should never provoke, because an unmapped code reaching a user shows a
 blank banner.
 
-| Code                        | User-facing message                                                                   | Placement                                          |
-| --------------------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| `validation_error`          | mapped per field from `details.issues`; unmapped paths fall back to `error.generic`   | field, else form banner                            |
-| `malformed_request`         | `Something went wrong on our end. Try again.`                                         | form banner                                        |
-| `invalid_verification_code` | `That code is incorrect or has expired.`                                              | Verify email, Code field                           |
-| `invalid_reset_code`        | `That code is incorrect or has expired.`                                              | Reset password, Code field                         |
-| `invalid_cursor`            | _(never shown)_ — the client resets its cursor and retries silently                   | none                                               |
-| `unsupported_media_type`    | `Something went wrong on our end. Try again.`                                         | form banner                                        |
-| `unauthorized`              | _(never shown)_ — triggers a token refresh, then a retry                              | none                                               |
-| `invalid_credentials`       | `That email or password is incorrect.`                                                | Log in, form banner                                |
-| `token_expired`             | _(never shown)_ — triggers a token refresh, then a retry                              | none                                               |
-| `token_invalid`             | `Your session expired. Please log in again.`                                          | Welcome banner, after being returned to `(auth)`   |
-| `forbidden`                 | `Something went wrong on our end. Try again.`                                         | form banner                                        |
-| `not_found`                 | `This expense no longer exists.` / `This category no longer exists.`                  | inline on the affected screen                      |
-| `email_already_exists`      | `That email is already registered.`                                                   | Sign up, Email field                               |
-| `category_name_taken`       | `You already have a category called "{name}".`                                        | Category sheet, Name field                         |
-| `category_not_deletable`    | `{fallbackName} can't be deleted. It's where expenses go when you delete a category.` | snackbar                                           |
-| `unknown_category`          | `This category no longer exists. Pick another.`                                       | Expense form, Category field                       |
-| `immutable_field`           | `Something went wrong on our end. Try again.`                                         | form banner                                        |
-| `mutation_id_reused`        | _(never shown)_ — a client bug; logged, and the record is flagged `needs-attention`   | none                                               |
-| `batch_too_large`           | _(never shown)_ — the client splits the batch and retries                             | none                                               |
-| `rate_limited`              | `Too many attempts. Try again in a moment.`                                           | form banner                                        |
-| `invalid_invite_code`       | `That code is incorrect or has expired.`                                              | Join household, Code field                         |
-| `household_exists`          | `You are already in a household.`                                                     | Household screen, banner                           |
-| `not_in_household`          | `You are not in a household.`                                                         | Household screen, banner                           |
-| `household_owner_only`      | `Only the household owner can do that.`                                               | Household screen, banner                           |
-| `owner_cannot_leave`        | `The owner cannot leave the household. Delete it instead.`                            | Household screen, banner                           |
-| `household_has_members`     | `Transfer or delete your household before deleting your account.`                     | Delete account, banner                             |
-| `rates_unavailable`         | `Could not get today's exchange rate. Enter it yourself.`                             | Expense form, Rate field                           |
-| `ocr_unavailable`           | `Reading receipts isn't available right now.`                                         | Expense form, Receipt sheet                        |
-| `ocr_failed`                | `Could not read that receipt. Enter the details yourself.`                            | snackbar                                           |
-| `quick_add_unavailable`     | `Reading descriptions isn't available right now.`                                     | Not shown: the phone keeps what it read itself     |
-| `quick_add_failed`          | `Could not read that description online.`                                             | Not shown: the phone keeps what it read itself     |
-| `recap_unavailable`         | `Writing a recap isn't available right now.`                                          | Summary, Insights card: the recap button is hidden |
-| `recap_failed`              | `Couldn't write a recap right now.`                                                   | Summary, snackbar                                  |
-| `internal_error`            | `Something went wrong on our end. Try again.`                                         | form banner                                        |
+| Code                        | User-facing message                                                                   | Placement                                            |
+| --------------------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `validation_error`          | mapped per field from `details.issues`; unmapped paths fall back to `error.generic`   | field, else form banner                              |
+| `malformed_request`         | `Something went wrong on our end. Try again.`                                         | form banner                                          |
+| `invalid_verification_code` | `That code is incorrect or has expired.`                                              | Verify email, Code field                             |
+| `invalid_reset_code`        | `That code is incorrect or has expired.`                                              | Reset password, Code field                           |
+| `invalid_cursor`            | _(never shown)_ — the client resets its cursor and retries silently                   | none                                                 |
+| `unsupported_media_type`    | `Something went wrong on our end. Try again.`                                         | form banner                                          |
+| `unauthorized`              | _(never shown)_ — triggers a token refresh, then a retry                              | none                                                 |
+| `invalid_credentials`       | `That email or password is incorrect.`                                                | Log in, form banner                                  |
+| `token_expired`             | _(never shown)_ — triggers a token refresh, then a retry                              | none                                                 |
+| `token_invalid`             | `Your session expired. Please log in again.`                                          | Welcome banner, after being returned to `(auth)`     |
+| `forbidden`                 | `Something went wrong on our end. Try again.`                                         | form banner                                          |
+| `not_found`                 | `This expense no longer exists.` / `This category no longer exists.`                  | inline on the affected screen                        |
+| `email_already_exists`      | `That email is already registered.`                                                   | Sign up, Email field                                 |
+| `category_name_taken`       | `You already have a category called "{name}".`                                        | Category sheet, Name field                           |
+| `category_not_deletable`    | `{fallbackName} can't be deleted. It's where expenses go when you delete a category.` | snackbar                                             |
+| `unknown_category`          | `This category no longer exists. Pick another.`                                       | Expense form, Category field                         |
+| `immutable_field`           | `Something went wrong on our end. Try again.`                                         | form banner                                          |
+| `mutation_id_reused`        | _(never shown)_ — a client bug; logged, and the record is flagged `needs-attention`   | none                                                 |
+| `batch_too_large`           | _(never shown)_ — the client splits the batch and retries                             | none                                                 |
+| `rate_limited`              | `Too many attempts. Try again in a moment.`                                           | form banner                                          |
+| `invalid_invite_code`       | `That code is incorrect or has expired.`                                              | Join household, Code field                           |
+| `household_exists`          | `You are already in a household.`                                                     | Household screen, banner                             |
+| `household_ambiguous`       | `You are in more than one household. Update the app to manage them.`                  | Household screen, banner (only an older app sees it) |
+| `not_in_household`          | `You are not in a household.`                                                         | Household screen, banner                             |
+| `household_owner_only`      | `Only the household owner can do that.`                                               | Household screen, banner                             |
+| `owner_cannot_leave`        | `The owner cannot leave the household. Delete it instead.`                            | Household screen, banner                             |
+| `household_has_members`     | `Transfer or delete your household before deleting your account.`                     | Delete account, banner                               |
+| `rates_unavailable`         | `Could not get today's exchange rate. Enter it yourself.`                             | Expense form, Rate field                             |
+| `ocr_unavailable`           | `Reading receipts isn't available right now.`                                         | Expense form, Receipt sheet                          |
+| `ocr_failed`                | `Could not read that receipt. Enter the details yourself.`                            | snackbar                                             |
+| `quick_add_unavailable`     | `Reading descriptions isn't available right now.`                                     | Not shown: the phone keeps what it read itself       |
+| `quick_add_failed`          | `Could not read that description online.`                                             | Not shown: the phone keeps what it read itself       |
+| `recap_unavailable`         | `Writing a recap isn't available right now.`                                          | Summary, Insights card: the recap button is hidden   |
+| `recap_failed`              | `Couldn't write a recap right now.`                                                   | Summary, snackbar                                    |
+| `internal_error`            | `Something went wrong on our end. Try again.`                                         | form banner                                          |
 
 Notes:
 
@@ -552,6 +553,7 @@ them as proposals the Designer can reword; changing a row here means changing
 | `goals.fab`                             | `Add savings goal`                                                                                                                                                                           | Goals screen, add button                                                 |
 | `household.error.invalid_invite_code`   | `That code is incorrect or has expired.`                                                                                                                                                     | Household screen, banner                                                 |
 | `household.error.household_exists`      | `You are already in a household.`                                                                                                                                                            | Household screen, banner                                                 |
+| `household.error.household_ambiguous`   | `You are in more than one household. Update the app to manage them.`                                                                                                                         | Household screen, banner (only an older app sees it)                     |
 | `household.error.not_in_household`      | `You are not in a household.`                                                                                                                                                                | Household screen, banner                                                 |
 | `household.error.household_owner_only`  | `Only the household owner can do that.`                                                                                                                                                      | Household screen, banner                                                 |
 | `household.error.owner_cannot_leave`    | `The owner cannot leave the household. Delete it instead.`                                                                                                                                   | Household screen, banner                                                 |

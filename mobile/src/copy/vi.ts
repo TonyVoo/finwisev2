@@ -464,6 +464,8 @@ export const VIETNAMESE_COPY: CopyBundle = {
       error: {
         invalid_invite_code: 'Mã không đúng hoặc đã hết hạn.',
         household_exists: 'Bạn đã ở trong một hộ gia đình.',
+        household_ambiguous:
+          'Bạn đang ở trong nhiều hộ gia đình. Hãy cập nhật ứng dụng để quản lý chúng.',
         not_in_household: 'Bạn chưa ở trong hộ gia đình nào.',
         household_owner_only: 'Chỉ chủ hộ mới làm được việc này.',
         owner_cannot_leave: 'Chủ hộ không thể rời đi. Hãy xóa hộ gia đình thay vào đó.',

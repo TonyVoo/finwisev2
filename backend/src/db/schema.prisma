@@ -67,9 +67,9 @@ model User {
   emailVerificationCode EmailVerificationCode?
   expenseReceipts ExpenseReceipt[]
   syncMutations   SyncMutation[]
-  ownedHousehold  Household?       @relation("HouseholdOwner")
+  ownedHouseholds Household[]      @relation("HouseholdOwner")
   bookOf          Household?       @relation("HouseholdBook")
-  householdMember HouseholdMember?
+  householdMemberships HouseholdMember[]
 
   @@map("users")
 }
@@ -410,8 +410,10 @@ model RefreshToken {
 /// *role*.
 model Household {
   id        String   @id @db.Uuid
-  ownerId   String   @unique @map("owner_id") @db.Uuid
+  ownerId   String   @map("owner_id") @db.Uuid
   scopeId   String   @unique @map("scope_id") @db.Uuid
+  /// Tells a person's households apart; a CHECK constraint holds it to 1-40 characters once trimmed.
+  name      String   @default("Household") @db.VarChar(40)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
   owner   User              @relation("HouseholdOwner", fields: [ownerId], references: [id], onDelete: Cascade)
@@ -419,14 +421,15 @@ model Household {
   members HouseholdMember[]
   invite  HouseholdInvite?
 
+  @@index([ownerId])
   @@map("households")
 }
 
-/// One row per person in a household, the owner included. `user_id` is unique: a person is in
-/// at most one household at a time.
+/// One row per person in a household, the owner included. A person may be in several households
+/// (`docs/design/13-multiple-households.md`), so `user_id` is indexed, not unique.
 model HouseholdMember {
   householdId String   @map("household_id") @db.Uuid
-  userId      String   @unique @map("user_id") @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
   /// `owner` | `member`; a CHECK constraint holds it.
   role        String   @db.VarChar(6)
   joinedAt    DateTime @default(now()) @map("joined_at") @db.Timestamptz(3)
@@ -435,6 +438,7 @@ model HouseholdMember {
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([householdId, userId])
+  @@index([userId])
   @@map("household_members")
 }
 

@@ -14,7 +14,7 @@ with the product owner:
 ## The one idea
 
 A **space** is a book you can work in: your own (`id` = your account id) or a household's (`id` = its
-`scope_id`). The server already scopes every row by one id, so a space is just *which* id a request works
+`scope_id`). The server already scopes every row by one id, so a space is just _which_ id a request works
 in. Nothing about how rows are stored, revisioned, synced or pruned changes.
 
 What changes is how a request names its space. Today the token's single membership decides it. Now
@@ -40,10 +40,19 @@ found changes (`middleware/requireAuth.ts`).
 `GET /v1/me` gains `spaces`, in a stable order (personal first, then households by when you joined):
 
 ```json
-{ "spaces": [
-  { "id": "<account id>", "kind": "personal", "name": null, "currency": "USD" },
-  { "id": "<scope id>", "kind": "household", "householdId": "...", "name": "Home", "role": "owner", "currency": "VND" }
-] }
+{
+  "spaces": [
+    { "id": "<account id>", "kind": "personal", "name": null, "currency": "USD" },
+    {
+      "id": "<scope id>",
+      "kind": "household",
+      "householdId": "...",
+      "name": "Home",
+      "role": "owner",
+      "currency": "VND"
+    }
+  ]
+}
 ```
 
 `dataOwnerId` stays the active space's id (as resolved from the header or the default above), and
@@ -55,16 +64,16 @@ them apart. The owner can rename it.
 
 ## Rules that change
 
-| Today | Now |
-| --- | --- |
-| `household_members.user_id` is unique: one household per person | Dropped. The key is `(household_id, user_id)`. A person may be in up to **10** (a safety bound on `/v1/me` and the switcher, raised easily); the 11th is `409 household_limit` |
-| `households.owner_id` is unique: one owned household | Dropped. A person may own several |
-| Creating moves the creator's current rows into the new book | **Creating makes an empty household.** Personal data stays personal. (Copying personal data in is out of scope for now) |
-| Joining requires being in none (`household_exists`) | Joining requires only not already being a member of *that* one (`409 already_member`). `household_exists` is retired |
-| A person's old books are parked while in a household | The personal space is always there and always switchable |
-| Leaving or removal hands private expenses back to the person's own books | Same, and "their own books" is now simply the personal space |
-| Deleting a household merges the shared books into the owner's books | Unchanged: the shared rows are merged into the owner's **personal** space and the others return to theirs. The confirm dialog says so |
-| An owner with other members cannot delete their account | The same, for *any* household they own: the error names how many |
+| Today                                                                    | Now                                                                                                                                                                            |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `household_members.user_id` is unique: one household per person          | Dropped. The key is `(household_id, user_id)`. A person may be in up to **10** (a safety bound on `/v1/me` and the switcher, raised easily); the 11th is `409 household_limit` |
+| `households.owner_id` is unique: one owned household                     | Dropped. A person may own several                                                                                                                                              |
+| Creating moves the creator's current rows into the new book              | **Creating makes an empty household.** Personal data stays personal. (Copying personal data in is out of scope for now)                                                        |
+| Joining requires being in none (`household_exists`)                      | Joining requires only not already being a member of _that_ one (`409 already_member`). `household_exists` is retired                                                           |
+| A person's old books are parked while in a household                     | The personal space is always there and always switchable                                                                                                                       |
+| Leaving or removal hands private expenses back to the person's own books | Same, and "their own books" is now simply the personal space                                                                                                                   |
+| Deleting a household merges the shared books into the owner's books      | Unchanged: the shared rows are merged into the owner's **personal** space and the others return to theirs. The confirm dialog says so                                          |
+| An owner with other members cannot delete their account                  | The same, for _any_ household they own: the error names how many                                                                                                               |
 
 Everything else in `10-households.md` and `12-settle-up.md` holds per household: roles, transfer, invite
 codes (one live code per household), private expenses, `paidBy`, settlements, balances. Each household has
@@ -75,17 +84,17 @@ its own currency, members and balances, and balances never span spaces.
 Management is addressed by household id, so you can act on a household you are not currently working in
 (leave one from the list while in your personal space):
 
-| Operation | Route | Who |
-| --- | --- | --- |
-| `listHouseholds` | `GET /v1/households` | anyone: every household you are in, with members |
-| `createHousehold` | `POST /v1/household` `{ name? }` | anyone, up to the limit |
-| `joinHousehold` | `POST /v1/household/join` `{ code }` | anyone, up to the limit |
-| `renameHousehold` | `PATCH /v1/households/{id}` `{ name }` | owner |
-| `deleteHousehold` | `DELETE /v1/households/{id}` | owner |
-| `createHouseholdInvite` | `POST /v1/households/{id}/invite` | owner |
-| `leaveHousehold` | `POST /v1/households/{id}/leave` | member (not owner) |
-| `removeHouseholdMember` | `DELETE /v1/households/{id}/members/{memberId}` | owner |
-| `transferHousehold` | `POST /v1/households/{id}/transfer` `{ memberId }` | owner |
+| Operation               | Route                                              | Who                                              |
+| ----------------------- | -------------------------------------------------- | ------------------------------------------------ |
+| `listHouseholds`        | `GET /v1/households`                               | anyone: every household you are in, with members |
+| `createHousehold`       | `POST /v1/household` `{ name? }`                   | anyone, up to the limit                          |
+| `joinHousehold`         | `POST /v1/household/join` `{ code }`               | anyone, up to the limit                          |
+| `renameHousehold`       | `PATCH /v1/households/{id}` `{ name }`             | owner                                            |
+| `deleteHousehold`       | `DELETE /v1/households/{id}`                       | owner                                            |
+| `createHouseholdInvite` | `POST /v1/households/{id}/invite`                  | owner                                            |
+| `leaveHousehold`        | `POST /v1/households/{id}/leave`                   | member (not owner)                               |
+| `removeHouseholdMember` | `DELETE /v1/households/{id}/members/{memberId}`    | owner                                            |
+| `transferHousehold`     | `POST /v1/households/{id}/transfer` `{ memberId }` | owner                                            |
 
 The old single-household routes (`/v1/household`, `.../invite`, `.../leave` and so on) stay and act on "the
 caller's household" while the caller is in exactly one, so an older app keeps working; they answer
@@ -108,12 +117,12 @@ caller's household" while the caller is in exactly one, so an older app keeps wo
 
 ### Screens
 
-- **Home header** gets a space chip: the active space's name (*Personal*, *Home*...) with a chevron. Tapping it
-  opens the **switcher**, a sheet listing spaces with a check on the active one, and *Manage households*.
+- **Home header** gets a space chip: the active space's name (_Personal_, _Home_...) with a chevron. Tapping it
+  opens the **switcher**, a sheet listing spaces with a check on the active one, and _Manage households_.
   A solo account that has never joined one sees no chip at all.
-- **Settings -> Household** becomes **Households**: a list (name, role, member count) plus *Create* and *Join
-  with a code*. A row opens the household's screen, which is today's Household screen scoped to that household,
-  with its name, a *Rename* action for the owner, and *Switch to this household*.
+- **Settings -> Household** becomes **Households**: a list (name, role, member count) plus _Create_ and _Join
+  with a code_. A row opens the household's screen, which is today's Household screen scoped to that household,
+  with its name, a _Rename_ action for the owner, and _Switch to this household_.
 - **Create** asks for a name and says what will happen: a new, empty household; your own expenses stay yours.
 - Everything inside a space (Home, Summary, Search, balances) is unchanged: it shows the active space.
 
@@ -135,8 +144,13 @@ caller's household" while the caller is in exactly one, so an older app keeps wo
 Each step ships on its own, with tests first:
 
 1. **Server model and resolution.** Migration (drop the two unique constraints, add `households.name`),
-   `X-Space-Id` resolution and validation, `spaces` on `/v1/me`, the limit and the new errors. Old routes keep
-   working for one-household people.
+   `X-Space-Id` resolution and validation, `spaces` on `/v1/me`, and `409 household_ambiguous` on the older
+   single-household routes for a person in several. Old routes keep working for one-household people, and
+   "at most one household" is still enforced by the create and join routes (under a per-person lock, now that
+   no unique index does it) until step 2 lifts it. The limit of 10 and the `household_limit` / `already_member`
+   errors arrive with that step, where they first become reachable.
+   _A household made before households had books of their own is scoped by its owner's account id, so its owner has
+   no separate personal space: `spaces` lists it once, as the household, and the personal id selects it._
 2. **Household management by id.** The `/v1/households/{id}` family, `GET /v1/households`, rename, and the
    changed create/join/delete/account-deletion rules, with the old routes as aliases.
 3. **Phone core.** Spaces list in the store, the header on every request, a chosen-target `reconcileDataScope`,

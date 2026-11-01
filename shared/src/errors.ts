@@ -56,6 +56,8 @@ export const ERROR_CODES = [
   'invalid_invite_code',
   /** 409 — the person is already in a household (one at a time). */
   'household_exists',
+  /** 409 — the person is in more than one household and this older, single-household route cannot tell which is meant. */
+  'household_ambiguous',
   /** 404 — the person is not in a household. */
   'not_in_household',
   /** 403 — only the household's owner may do this (invite, remove a member, delete the household). */
@@ -145,6 +147,7 @@ export const ERROR_CODE_STATUS: Readonly<Record<ErrorCode, number>> = {
   rate_limited: 429,
   invalid_invite_code: 400,
   household_exists: 409,
+  household_ambiguous: 409,
   not_in_household: 404,
   household_owner_only: 403,
   owner_cannot_leave: 409,
