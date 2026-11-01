@@ -147,6 +147,10 @@ export const VIETNAMESE_COPY: CopyBundle = {
         incomeSame: 'Thu nhập của bạn gần bằng {month}.',
         kept: 'Tháng này bạn đã giữ lại {amount} từ thu nhập.',
         overspent: 'Tháng này bạn đã chi nhiều hơn thu nhập {amount}.',
+        budgetPace: 'Bạn đã dùng {percent}% ngân sách {name}, còn {days} ngày nữa là hết tháng.',
+        budgetPaceOne: 'Bạn đã dùng {percent}% ngân sách {name}, còn 1 ngày nữa là hết tháng.',
+        budgetPaceLast: 'Bạn đã dùng {percent}% ngân sách {name}, và hôm nay là ngày cuối tháng.',
+        budgetOver: 'Bạn đã vượt ngân sách {name} {amount}.',
       },
     },
 

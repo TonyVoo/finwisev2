@@ -14,6 +14,7 @@ import {
   TREND_LEGEND_TEST_ID,
   TREND_TEST_ID,
 } from '@/summary/SpendTrend';
+import { INSIGHTS_TEST_ID } from '@/summary/InsightsCard';
 import { SUMMARY_EMPTY_TEST_ID } from '@/summary/SummaryStates';
 import { categoryColor } from '@/theme/tokens';
 import SummaryScreen from '../../app/(app)/(tabs)/summary';
@@ -553,5 +554,54 @@ describe('the trend card', () => {
     });
 
     expect(screen.queryByTestId(TREND_TEST_ID)).toBeNull();
+  });
+});
+
+/**
+ * The budget line in the Insights card (`docs/design/16-monthly-insights.md`): the current month only,
+ * with the days left worked out from the screen's own clock.
+ */
+describe('the budget line in the insights', () => {
+  async function seedBudgeted(database: SqliteDatabase): Promise<void> {
+    await seedUser(database);
+    await seedFallbackCategory(database);
+    await seedCategory(database, {
+      id: EATING_OUT,
+      name: 'Eating out',
+      color: categoryColor.indigo,
+      monthlyBudgetMinor: 20000,
+    });
+    // October: 90% of the budget used. September: well over it.
+    await seedExpense(database, {
+      id: expenseId(1),
+      categoryId: EATING_OUT,
+      amountMinor: 18000,
+      date: '2026-10-10',
+    });
+    await seedExpense(database, {
+      id: expenseId(2),
+      categoryId: EATING_OUT,
+      amountMinor: 30000,
+      date: '2026-09-10',
+    });
+  }
+
+  it('says how much of a budget is used and the days left, for the current month', async () => {
+    await mountSummary(seedBudgeted);
+
+    await waitFor(() => expect(screen.queryByTestId(INSIGHTS_TEST_ID)).not.toBeNull());
+    // The 14th of a 31-day month: 17 days left.
+    expect(
+      screen.getByText("You have used 90% of Eating out's budget with 17 days left."),
+    ).toBeTruthy();
+  });
+
+  it('says nothing about a budget for a month that is over', async () => {
+    await mountSummary(seedBudgeted);
+
+    await pressOn(MONTH_PREVIOUS_TEST_ID);
+    await waitFor(() => expect(totalLabel()).toBe('Total, $300.00, 1 expense'));
+
+    expect(screen.queryByText(/budget/)).toBeNull();
   });
 });

@@ -162,6 +162,10 @@ export const COPY = {
       incomeSame: 'Your income is about the same as in {month}.',
       kept: 'You have kept {amount} of your income this month.',
       overspent: 'You have spent {amount} more than you earned this month.',
+      budgetPace: "You have used {percent}% of {name}'s budget with {days} days left.",
+      budgetPaceOne: "You have used {percent}% of {name}'s budget with 1 day left.",
+      budgetPaceLast: "You have used {percent}% of {name}'s budget, and today is the last day.",
+      budgetOver: "You are over {name}'s budget by {amount}.",
     },
   },
 

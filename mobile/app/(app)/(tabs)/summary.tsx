@@ -19,7 +19,7 @@ import { useSelectedMonth } from '@/month/MonthProvider';
 import { CategoryDonut } from '@/summary/CategoryDonut';
 import { SpendLegend } from '@/summary/SpendLegend';
 import { InsightsCard } from '@/summary/InsightsCard';
-import { buildInsights } from '@/summary/insightsModel';
+import { buildInsights, daysLeftInMonth } from '@/summary/insightsModel';
 import { monthName, stepMonth } from '@/lib/calendar';
 import { SpendTrend } from '@/summary/SpendTrend';
 import { buildTrend } from '@/summary/trendModel';
@@ -79,7 +79,7 @@ export default function SummaryScreen() {
   // The floating tab bar covers the bottom of the screen; the last card has to clear it.
   const tabBarClearance = useTabBarClearance();
   const router = useRouter();
-  const { month, isCurrent } = useSelectedMonth();
+  const { month, isCurrent, today } = useSelectedMonth();
 
   const [scrolled, setScrolled] = useState(false);
   const pullToRefresh = usePullToRefresh();
@@ -163,10 +163,15 @@ export default function SummaryScreen() {
 
         {!pending && currencyCode !== null && previousSpend.data !== undefined ? (
           <InsightsCard
-            insights={buildInsights(spend.data ?? [], previousSpend.data, {
-              current: income.data ?? 0,
-              previous: previousIncome.data ?? 0,
-            })}
+            insights={buildInsights(
+              spend.data ?? [],
+              previousSpend.data,
+              {
+                current: income.data ?? 0,
+                previous: previousIncome.data ?? 0,
+              },
+              isCurrent ? daysLeftInMonth(today) : null,
+            )}
             previousLabel={monthName(previousMonth)}
             currency={currencyCode}
           />

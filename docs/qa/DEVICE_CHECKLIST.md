@@ -47,6 +47,10 @@ marked **(dev build)**.
 - [ ] Add **income**. It shows green with a `+`, and Home shows `Income … · Net …`.
 - [ ] Summary shows the donut, the 6-month bars (blue income bar beside spending) and the Insights card.
 - [ ] With spending in two months, the insights say "more/less than in {month}" with the right month name.
+- [ ] Give a category a monthly budget, then spend 80% or more of it this month: the Insights card says how much of
+      the budget is used and how many days are left in the month (with "1 day left" and "today is the last day"
+      worded properly). Go past the budget: it says how far over. Only one budget line shows: the one that has used
+      the largest share. In Tiếng Việt the same lines read naturally. Switch to a past month: no budget line.
 
 ## 4. Budgets and notifications
 
