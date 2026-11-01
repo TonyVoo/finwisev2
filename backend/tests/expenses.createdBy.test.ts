@@ -13,7 +13,12 @@ import { changeFor, pullAll, push, pushItem } from './support/sync.ts';
  * costs the household its history.
  */
 
-async function householdOfTwo(): Promise<{ owner: TestUser; member: TestUser }> {
+/** `categoryId` is the household book's default category: the book starts empty but for its seeded categories. */
+async function householdOfTwo(): Promise<{
+  owner: TestUser;
+  member: TestUser;
+  categoryId: string;
+}> {
   const owner = await createUser();
   const member = await createUser();
   await api().post('/v1/household').set('Authorization', owner.auth).send({});
@@ -22,7 +27,11 @@ async function householdOfTwo(): Promise<{ owner: TestUser; member: TestUser }> 
     .post('/v1/household/join')
     .set('Authorization', member.auth)
     .send({ code: invite.body.data.code });
-  return { owner, member };
+  const categories = await api().get('/v1/categories').set('Authorization', owner.auth);
+  const categoryId = (categories.body.data as Array<{ id: string; isDefault: boolean }>).find(
+    (c) => c.isDefault,
+  )!.id;
+  return { owner, member, categoryId };
 }
 
 describe('expenses.createdBy', () => {
@@ -37,9 +46,9 @@ describe('expenses.createdBy', () => {
   });
 
   it('is the member, not the owner, when a member adds to the shared books', async () => {
-    const { owner, member } = await householdOfTwo();
+    const { owner, member, categoryId } = await householdOfTwo();
 
-    const expense = await createExpense(member, { categoryId: owner.defaultCategory.id });
+    const expense = await createExpense(member, { categoryId });
 
     expect(expense.createdBy).toBe(member.user.id);
     // The row lives in the household's book: neither person's own account.
@@ -51,14 +60,14 @@ describe('expenses.createdBy', () => {
   });
 
   it('is the member when they create through sync, and the owner sees it on pull', async () => {
-    const { owner, member } = await householdOfTwo();
+    const { owner, member, categoryId } = await householdOfTwo();
     const id = clientId();
 
     const outcome = await push(member, [
       pushItem({
         entity: 'expense',
         id,
-        fields: { categoryId: owner.defaultCategory.id, amountMinor: 500, date: '2026-10-09' },
+        fields: { categoryId, amountMinor: 500, date: '2026-10-09' },
       } as never),
     ]);
     expect(outcome.status).toBe(200);
@@ -68,8 +77,8 @@ describe('expenses.createdBy', () => {
   });
 
   it('does not change when someone else edits the expense', async () => {
-    const { owner, member } = await householdOfTwo();
-    const expense = await createExpense(owner, { categoryId: owner.defaultCategory.id });
+    const { owner, member, categoryId } = await householdOfTwo();
+    const expense = await createExpense(owner, { categoryId });
 
     const edited = await api()
       .patch(`/v1/expenses/${expense.id}`)
@@ -117,8 +126,8 @@ describe('expenses.createdBy', () => {
   });
 
   it('becomes null, and the expense stays, when the account that added it is deleted', async () => {
-    const { owner, member } = await householdOfTwo();
-    const expense = await createExpense(member, { categoryId: owner.defaultCategory.id });
+    const { owner, member, categoryId } = await householdOfTwo();
+    const expense = await createExpense(member, { categoryId });
 
     const deleted = await api()
       .delete('/v1/me')

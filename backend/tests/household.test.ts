@@ -43,6 +43,14 @@ async function householdOfTwo(): Promise<{ owner: TestUser; member: TestUser }> 
   return { owner, member };
 }
 
+/** The default category of the book the caller works in: the household's, once they are in exactly one. */
+async function defaultCategoryOf(user: TestUser): Promise<string> {
+  const response = await api().get('/v1/categories').set('Authorization', user.auth);
+  expect(response.status).toBe(200);
+  return (response.body.data as Array<{ id: string; isDefault: boolean }>).find((c) => c.isDefault)!
+    .id;
+}
+
 async function expensesOf(user: TestUser): Promise<string[]> {
   const response = await api().get('/v1/expenses').set('Authorization', user.auth);
   expect(response.status).toBe(200);
@@ -78,23 +86,27 @@ describe('POST /v1/household', () => {
     ]);
   });
 
-  it('moves nothing: the creator keeps seeing their own books', async () => {
+  it('moves nothing: the household starts empty and the creator keeps their own books', async () => {
     const owner = await createUser();
     const expense = await createExpense(owner, { categoryId: owner.defaultCategory.id });
 
     await createHousehold(owner);
 
-    expect(await expensesOf(owner)).toEqual([expense.id]);
+    expect(await expensesOf(owner)).toEqual([]);
+    const own = await api()
+      .get('/v1/expenses')
+      .set('Authorization', owner.auth)
+      .set('X-Space-Id', owner.user.id);
+    expect(own.body.data.map((e: { id: string }) => e.id)).toEqual([expense.id]);
   });
 
-  it('is 409 household_exists when the caller is already in one', async () => {
+  it('lets a caller who is already in one make another', async () => {
     const owner = await createUser();
     await createHousehold(owner);
 
     const again = await createHousehold(owner);
 
-    expect(again.status).toBe(409);
-    expect(again.body.error.code).toBe('household_exists');
+    expect(again.status).toBe(201);
   });
 });
 
@@ -222,7 +234,7 @@ describe('POST /v1/household/join', () => {
     expect(expired.body.error).toEqual(wrong.body.error);
   });
 
-  it('is 409 household_exists when the caller is already in one', async () => {
+  it('lets a caller who is already in one household join another', async () => {
     const owner = await createUser();
     const other = await createUser();
     await createHousehold(owner);
@@ -230,8 +242,7 @@ describe('POST /v1/household/join', () => {
 
     const response = await join(other, await invite(owner));
 
-    expect(response.status).toBe(409);
-    expect(response.body.error.code).toBe('household_exists');
+    expect(response.status).toBe(200);
   });
 
   it('is rate limited per account, whatever the outcome', async () => {
@@ -259,14 +270,16 @@ describe('POST /v1/household/join', () => {
 describe('the shared data scope', () => {
   it('shows a member the owner books, and the owner what the member adds', async () => {
     const owner = await createUser();
-    const ownerExpense = await createExpense(owner, { categoryId: owner.defaultCategory.id });
     const member = await createUser();
     await createHousehold(owner);
+    const ownerExpense = await createExpense(owner, { categoryId: await defaultCategoryOf(owner) });
     await join(member, await invite(owner));
 
     expect(await expensesOf(member)).toEqual([ownerExpense.id]);
 
-    const memberExpense = await createExpense(member, { categoryId: owner.defaultCategory.id });
+    const memberExpense = await createExpense(member, {
+      categoryId: await defaultCategoryOf(member),
+    });
     expect((await expensesOf(owner)).sort()).toEqual([ownerExpense.id, memberExpense.id].sort());
   });
 
@@ -286,9 +299,9 @@ describe('the shared data scope', () => {
 
   it('serves the owner stream through /v1/sync to a member', async () => {
     const owner = await createUser();
-    const expense = await createExpense(owner, { categoryId: owner.defaultCategory.id });
     const member = await createUser();
     await createHousehold(owner);
+    const expense = await createExpense(owner, { categoryId: await defaultCategoryOf(owner) });
     await join(member, await invite(owner));
 
     const pull = await api().get('/v1/sync').query({ since: 0 }).set('Authorization', member.auth);
@@ -300,7 +313,7 @@ describe('the shared data scope', () => {
 
   it('lets a member push changes, which the owner then pulls', async () => {
     const { owner, member } = await householdOfTwo();
-    const expense = await createExpense(member, { categoryId: owner.defaultCategory.id });
+    const expense = await createExpense(member, { categoryId: await defaultCategoryOf(member) });
 
     const pull = await api().get('/v1/sync').query({ since: 0 }).set('Authorization', owner.auth);
 
@@ -450,7 +463,7 @@ describe('DELETE /v1/household/members/{userId}', () => {
 describe('DELETE /v1/household', () => {
   it('dissolves it: every member returns to their own books, the owner keeps the shared ones', async () => {
     const { owner, member } = await householdOfTwo();
-    const shared = await createExpense(member, { categoryId: owner.defaultCategory.id });
+    const shared = await createExpense(member, { categoryId: await defaultCategoryOf(member) });
 
     const response = await api().delete('/v1/household').set('Authorization', owner.auth);
 

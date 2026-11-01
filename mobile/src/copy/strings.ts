@@ -519,7 +519,8 @@ export const COPY = {
     },
     error: {
       invalid_invite_code: 'That code is incorrect or has expired.',
-      household_exists: 'You are already in a household.',
+      already_member: 'You are already in that household.',
+      household_limit: 'You are in as many households as you can be.',
       household_ambiguous: 'You are in more than one household. Update the app to manage them.',
       not_in_household: 'You are not in a household.',
       household_owner_only: 'Only the household owner can do that.',

@@ -164,6 +164,7 @@ describe('reconcileDataScope', () => {
   describe('who is in the household, for labelling rows offline', () => {
     const household = {
       id: '0192f5a0-0000-7000-8000-00000000c001',
+      name: 'Household',
       role: 'member' as const,
       ownerId: OWNER_ID,
       currency: 'USD',

@@ -22,6 +22,7 @@ import {
   joinHousehold,
   leaveHousehold,
   removeMember,
+  requireSoleHouseholdId,
   transferHousehold,
 } from '../services/householdService.ts';
 import { problems } from '../errors.ts';
@@ -29,9 +30,10 @@ import { problems } from '../errors.ts';
 /**
  * `/v1/household` - shared households (`docs/design/10-households.md`).
  *
- * The household is found from the access token and never addressed by an id in the URL, so no
- * route can be pointed at a household the caller is not in. Every handler uses `userIdOf`
- * (who the caller *is*), not `dataOwnerIdOf`: membership is about identity.
+ * The older routes, for an app that predates several households: each acts on the caller's **one**
+ * household, found from the access token (`household_ambiguous` once they are in more than one). The
+ * id-addressed routes are in `households.ts`. Every handler uses `userIdOf` (who the caller *is*), not
+ * `dataOwnerIdOf`: membership is about identity.
  */
 export const householdRouter = Router();
 
@@ -43,12 +45,19 @@ householdRouter.post(
   '/household',
   validateBody(HouseholdCreateRequest),
   async (req: Request, res: Response) => {
-    sendJson(res, 201, HouseholdResponse, await createHousehold(getPrisma(), userIdOf(req)));
+    const body = req.body as HouseholdCreateRequest;
+    sendJson(
+      res,
+      201,
+      HouseholdResponse,
+      await createHousehold(getPrisma(), userIdOf(req), body.name),
+    );
   },
 );
 
 householdRouter.delete('/household', async (req: Request, res: Response) => {
-  await deleteHousehold(getPrisma(), userIdOf(req));
+  const db = getPrisma();
+  await deleteHousehold(db, userIdOf(req), await requireSoleHouseholdId(db, userIdOf(req)));
   res.status(204).end();
 });
 
@@ -56,7 +65,9 @@ householdRouter.post(
   '/household/invite',
   validateBody(HouseholdInviteRequest),
   async (req: Request, res: Response) => {
-    sendJson(res, 201, HouseholdInviteResponse, await createInvite(getPrisma(), userIdOf(req)));
+    const db = getPrisma();
+    const householdId = await requireSoleHouseholdId(db, userIdOf(req));
+    sendJson(res, 201, HouseholdInviteResponse, await createInvite(db, userIdOf(req), householdId));
   },
 );
 
@@ -79,7 +90,8 @@ householdRouter.post(
   '/household/leave',
   validateBody(HouseholdLeaveRequest),
   async (req: Request, res: Response) => {
-    await leaveHousehold(getPrisma(), userIdOf(req));
+    const db = getPrisma();
+    await leaveHousehold(db, userIdOf(req), await requireSoleHouseholdId(db, userIdOf(req)));
     res.status(204).end();
   },
 );
@@ -89,11 +101,13 @@ householdRouter.post(
   validateBody(HouseholdTransferRequest),
   async (req: Request, res: Response) => {
     const body = req.body as HouseholdTransferRequest;
+    const db = getPrisma();
+    const householdId = await requireSoleHouseholdId(db, userIdOf(req));
     sendJson(
       res,
       200,
       HouseholdResponse,
-      await transferHousehold(getPrisma(), userIdOf(req), body.memberId),
+      await transferHousehold(db, userIdOf(req), householdId, body.memberId),
     );
   },
 );
@@ -101,6 +115,12 @@ householdRouter.post(
 householdRouter.delete('/household/members/:memberId', async (req: Request, res: Response) => {
   const parsed = Uuid.safeParse(req.params.memberId);
   if (!parsed.success) throw problems.notFound('No such member.');
-  await removeMember(getPrisma(), userIdOf(req), parsed.data);
+  const db = getPrisma();
+  await removeMember(
+    db,
+    userIdOf(req),
+    await requireSoleHouseholdId(db, userIdOf(req)),
+    parsed.data,
+  );
   res.status(204).end();
 });

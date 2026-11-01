@@ -54,8 +54,10 @@ export const ERROR_CODES = [
   'rate_limited',
   /** 400 — a household invite code was wrong, expired or already used. Does not say which, so a guesser learns nothing. */
   'invalid_invite_code',
-  /** 409 — the person is already in a household (one at a time). */
-  'household_exists',
+  /** 409 — the person is already a member of the household the invite code is for. The code is not used up. */
+  'already_member',
+  /** 409 — the person is in as many households as one person may be (`LIMITS.HOUSEHOLDS_MAX_PER_USER`). */
+  'household_limit',
   /** 409 — the person is in more than one household and this older, single-household route cannot tell which is meant. */
   'household_ambiguous',
   /** 404 — the person is not in a household. */
@@ -146,7 +148,8 @@ export const ERROR_CODE_STATUS: Readonly<Record<ErrorCode, number>> = {
   batch_too_large: 413,
   rate_limited: 429,
   invalid_invite_code: 400,
-  household_exists: 409,
+  already_member: 409,
+  household_limit: 409,
   household_ambiguous: 409,
   not_in_household: 404,
   household_owner_only: 403,

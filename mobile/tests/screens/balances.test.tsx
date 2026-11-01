@@ -38,6 +38,7 @@ const member = (
 function household(members: Household['members']): Household {
   return {
     id: '0192f5a0-0000-7000-8000-00000000d001',
+    name: 'Household',
     role: 'member',
     ownerId: BAO,
     currency: 'USD',
@@ -47,6 +48,7 @@ function household(members: Household['members']): Household {
 
 const asOwner = (data: Household): Household => ({
   ...data,
+  name: 'Household',
   role: 'owner',
   ownerId: ME,
   members: data.members.map((m) => ({ ...m, role: m.userId === ME ? 'owner' : 'member' })),

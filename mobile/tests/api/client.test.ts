@@ -139,6 +139,13 @@ describe('every client method', () => {
     ['leaveHousehold', (client) => client.leaveHousehold()],
     ['transferHousehold', (client) => client.transferHousehold({ memberId: ID })],
     ['removeHouseholdMember', (client) => client.removeHouseholdMember(ID)],
+    ['listHouseholds', (client) => client.listHouseholds()],
+    ['renameHousehold', (client) => client.renameHousehold(ID, { name: 'Flat' })],
+    ['deleteHouseholdById', (client) => client.deleteHouseholdById(ID)],
+    ['createHouseholdInviteById', (client) => client.createHouseholdInviteById(ID)],
+    ['leaveHouseholdById', (client) => client.leaveHouseholdById(ID)],
+    ['transferHouseholdById', (client) => client.transferHouseholdById(ID, { memberId: ID })],
+    ['removeHouseholdMemberById', (client) => client.removeHouseholdMemberById(ID, ID)],
 
     ['listCategories', (client) => client.listCategories()],
     ['createCategory', (client) => client.createCategory({ name: 'Rent' })],
@@ -176,7 +183,7 @@ describe('every client method', () => {
       expect(seen).toHaveLength(1);
       expect(seen[0]).toMatchObject({
         method: route.method,
-        path: resolvePath(route.path, { id: ID, memberId: ID }),
+        path: resolvePath(route.path, { id: ID, memberId: ID, householdId: ID }),
         requiresAuth: route.auth,
       });
     },

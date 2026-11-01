@@ -51,6 +51,11 @@ async function expensesOf(user: TestUser) {
   return response.body.data as Array<{ id: string; categoryId: string; revision: number }>;
 }
 
+/** The default category of the book the caller works in: the household's, once they are in exactly one. */
+async function defaultCategoryOf(user: TestUser): Promise<string> {
+  return (await categoriesOf(user)).find((c) => c.isDefault)!.id;
+}
+
 async function categoriesOf(user: TestUser) {
   const response = await api().get('/v1/categories').set('Authorization', user.auth);
   expect(response.status).toBe(200);
@@ -71,25 +76,31 @@ describe('the household book', () => {
     expect(asOwner.user.id).toBe(owner.user.id);
   });
 
-  it("moves the creator's existing books into it, and leaves their own account empty", async () => {
+  it('starts empty of the creator’s data, with default categories, and leaves their own account as it was', async () => {
     const owner = await createUser();
     const before = await createExpense(owner, { categoryId: owner.defaultCategory.id });
+    const ownCategories = await getPrisma().category.count({ where: { userId: owner.user.id } });
 
     await createHousehold(owner);
 
-    expect((await expensesOf(owner)).map((e) => e.id)).toEqual([before.id]);
-    expect(await getPrisma().expense.count({ where: { userId: owner.user.id } })).toBe(0);
-    expect(await getPrisma().category.count({ where: { userId: owner.user.id } })).toBe(0);
+    expect(await expensesOf(owner)).toEqual([]);
+    expect((await categoriesOf(owner)).filter((c) => c.isDefault)).toHaveLength(1);
+    expect(await getPrisma().expense.count({ where: { userId: owner.user.id } })).toBe(1);
+    expect(await getPrisma().category.count({ where: { userId: owner.user.id } })).toBe(
+      ownCategories,
+    );
+    expect(before.id).toBeTruthy();
   });
 
-  it('keeps revisions climbing across the move, so a device never skips or repeats a row', async () => {
+  it('keeps its own revisions climbing, so a device never skips or repeats a row', async () => {
     const owner = await createUser();
-    const before = await createExpense(owner, { categoryId: owner.defaultCategory.id });
     await createHousehold(owner);
+    const categoryId = await defaultCategoryOf(owner);
 
-    const after = await createExpense(owner, { categoryId: owner.defaultCategory.id });
+    const first = await createExpense(owner, { categoryId });
+    const second = await createExpense(owner, { categoryId });
 
-    expect(after.revision).toBeGreaterThan(before.revision);
+    expect(second.revision).toBeGreaterThan(first.revision);
     const { changes } = await pullAll(owner);
     const revisions = changes.map((change) => change.record.revision);
     expect(new Set(revisions).size).toBe(revisions.length);
@@ -121,7 +132,7 @@ describe('the household book', () => {
 describe('POST /v1/household/transfer', () => {
   it('makes a member the owner and the caller a member, moving no data', async () => {
     const { owner, member } = await householdOfTwo();
-    const expense = await createExpense(owner, { categoryId: owner.defaultCategory.id });
+    const expense = await createExpense(owner, { categoryId: await defaultCategoryOf(owner) });
     const scopeBefore = (await me(owner)).dataOwnerId;
 
     const response = await transfer(owner, member);
@@ -247,8 +258,8 @@ describe('POST /v1/household/transfer', () => {
 describe('DELETE /v1/household gives the books to the owner', () => {
   it('returns the creator their own books, as they were', async () => {
     const { owner, member } = await householdOfTwo();
-    const mine = await createExpense(owner, { categoryId: owner.defaultCategory.id });
-    const theirs = await createExpense(member, { categoryId: owner.defaultCategory.id });
+    const mine = await createExpense(owner, { categoryId: await defaultCategoryOf(owner) });
+    const theirs = await createExpense(member, { categoryId: await defaultCategoryOf(member) });
 
     const response = await api().delete('/v1/household').set('Authorization', owner.auth);
 

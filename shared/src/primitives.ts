@@ -96,6 +96,10 @@ export const LIMITS = {
   INVITE_CODE_LENGTH: 8,
   /** How long an invite code works, in hours. */
   INVITE_CODE_TTL_HOURS: 48,
+  /** Households one person may be in at once (owned or joined). */
+  HOUSEHOLDS_MAX_PER_USER: 10,
+  /** Longest household name, in characters, after trimming. */
+  HOUSEHOLD_NAME_MAX: 40,
   /** Wrong invite codes one account may try per window, whatever the outcome. */
   INVITE_JOIN_MAX_PER_USER: 10,
   /** Largest receipt image, decoded. The app downsizes well below this before uploading. */

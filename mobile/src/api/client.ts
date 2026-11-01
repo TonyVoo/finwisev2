@@ -19,7 +19,10 @@ import type {
   ExpenseUpdateRequest,
   HealthResponse,
   HouseholdInviteResponse,
+  HouseholdListResponse,
+  HouseholdCreateRequest,
   HouseholdJoinRequest,
+  HouseholdRenameRequest,
   HouseholdResponse,
   HouseholdTransferRequest,
   RatesQuery,
@@ -102,8 +105,8 @@ export interface ApiClient {
 
   /** The household the caller is in, or `{ household: null }`. */
   getHousehold(): Promise<HouseholdResponse>;
-  /** Starts a household with the caller as owner. Nothing is copied. */
-  createHousehold(): Promise<HouseholdResponse>;
+  /** Starts an empty household with the caller as owner; `name` defaults to "Household". Nothing is copied. */
+  createHousehold(body?: HouseholdCreateRequest): Promise<HouseholdResponse>;
   /** Owner only. Members return to their own books. 204. */
   deleteHousehold(): Promise<void>;
   /** Owner only. A one-time code, shown once. */
@@ -115,6 +118,24 @@ export interface ApiClient {
   transferHousehold(body: HouseholdTransferRequest): Promise<HouseholdResponse>;
   /** Owner only. 204. */
   removeHouseholdMember(memberId: string): Promise<void>;
+
+  /** Every household the caller is in. The id-addressed methods below name one; the ones above act on the caller's only one. */
+  listHouseholds(): Promise<HouseholdListResponse>;
+  /** Owner only. */
+  renameHousehold(householdId: string, body: HouseholdRenameRequest): Promise<HouseholdResponse>;
+  /** Owner only. 204. */
+  deleteHouseholdById(householdId: string): Promise<void>;
+  /** Owner only. A one-time code, shown once. */
+  createHouseholdInviteById(householdId: string): Promise<HouseholdInviteResponse>;
+  /** A member leaves that household. 204. */
+  leaveHouseholdById(householdId: string): Promise<void>;
+  /** Owner only. */
+  transferHouseholdById(
+    householdId: string,
+    body: HouseholdTransferRequest,
+  ): Promise<HouseholdResponse>;
+  /** Owner only. 204. */
+  removeHouseholdMemberById(householdId: string, memberId: string): Promise<void>;
 
   /** Attaches or replaces the expense's receipt photo (base64 JPEG). */
   putReceipt(expenseId: string, body: ReceiptPutRequest): Promise<ReceiptResponse>;
@@ -216,7 +237,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     deleteExpense: (id) => send(ENDPOINTS.deleteExpense, { pathParams: { id } }),
 
     getHousehold: () => send(ENDPOINTS.getHousehold),
-    createHousehold: () => send(ENDPOINTS.createHousehold, { body: {} }),
+    createHousehold: (body) => send(ENDPOINTS.createHousehold, { body: body ?? {} }),
     deleteHousehold: () => send(ENDPOINTS.deleteHousehold),
     createHouseholdInvite: () => send(ENDPOINTS.createHouseholdInvite, { body: {} }),
     joinHousehold: (body) => send(ENDPOINTS.joinHousehold, { body }),
@@ -224,6 +245,19 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     transferHousehold: (body) => send(ENDPOINTS.transferHousehold, { body }),
     removeHouseholdMember: (memberId) =>
       send(ENDPOINTS.removeHouseholdMember, { pathParams: { memberId } }),
+    listHouseholds: () => send(ENDPOINTS.listHouseholds),
+    renameHousehold: (householdId, body) =>
+      send(ENDPOINTS.renameHousehold, { pathParams: { householdId }, body }),
+    deleteHouseholdById: (householdId) =>
+      send(ENDPOINTS.deleteHouseholdById, { pathParams: { householdId } }),
+    createHouseholdInviteById: (householdId) =>
+      send(ENDPOINTS.createHouseholdInviteById, { pathParams: { householdId }, body: {} }),
+    leaveHouseholdById: (householdId) =>
+      send(ENDPOINTS.leaveHouseholdById, { pathParams: { householdId }, body: {} }),
+    transferHouseholdById: (householdId, body) =>
+      send(ENDPOINTS.transferHouseholdById, { pathParams: { householdId }, body }),
+    removeHouseholdMemberById: (householdId, memberId) =>
+      send(ENDPOINTS.removeHouseholdMemberById, { pathParams: { householdId, memberId } }),
 
     putReceipt: (id, body) => send(ENDPOINTS.putReceipt, { pathParams: { id }, body }),
     getReceipt: (id) => send(ENDPOINTS.getReceipt, { pathParams: { id } }),

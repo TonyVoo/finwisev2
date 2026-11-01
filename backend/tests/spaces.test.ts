@@ -332,20 +332,6 @@ describe('the one-household routes, for a person who is in several', () => {
   });
 });
 
-describe('creating and joining, which still allow one household each until step 2', () => {
-  it('lets two simultaneous creates by one person succeed once, not twice', async () => {
-    const ada = await createUser();
-
-    const results = await Promise.all([
-      api().post('/v1/household').set('Authorization', ada.auth).send({}),
-      api().post('/v1/household').set('Authorization', ada.auth).send({}),
-    ]);
-
-    expect(results.map((r) => r.status).sort()).toEqual([201, 409]);
-    expect(await getPrisma().householdMember.count({ where: { userId: ada.user.id } })).toBe(1);
-  });
-});
-
 describe('deleting an account that owns households', () => {
   it('is refused while any household the person owns still has other people in it', async () => {
     const ada = await createUser();

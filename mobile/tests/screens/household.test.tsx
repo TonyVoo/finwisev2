@@ -35,6 +35,7 @@ function household(role: 'owner' | 'member'): Household {
   };
   return {
     id: HOUSEHOLD_ID,
+    name: 'Household',
     role,
     ownerId: OWNER,
     currency: 'USD',
@@ -76,6 +77,7 @@ function fakeServer(
         const current = state.household!;
         state.household = {
           ...current,
+          name: 'Household',
           role: 'member',
           ownerId: OWNER,
           members: current.members.map((m) => ({

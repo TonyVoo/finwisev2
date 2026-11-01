@@ -41,6 +41,7 @@ const member = (userId: string, email: string, role: 'owner' | 'member') => ({
 });
 const household = (members: Household['members']): Household => ({
   id: '0192f5a0-0000-7000-8000-00000000d001',
+  name: 'Household',
   role: 'member',
   ownerId: BAO,
   currency: 'USD',

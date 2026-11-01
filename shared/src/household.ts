@@ -5,8 +5,10 @@ import { Email, User } from './user.js';
 /**
  * Shared households (`docs/design/10-households.md`).
  *
- * Two or more people keep one set of books. The household is addressed by the access token,
- * never by an id in a URL, so no endpoint can be pointed at a household the caller is not in.
+ * Two or more people keep one set of books. A person may be in several
+ * (`docs/design/13-multiple-households.md`); a household is named by its id in the URL, and a household the
+ * caller is not in answers `404 not_found`, the same as one that does not exist, so ids cannot be probed.
+ * The older `/v1/household` routes act on the caller's one household.
  */
 
 /** Unambiguous characters only: no 0/O, 1/I/L, so a code read aloud or off a screen survives. */
@@ -43,8 +45,18 @@ export const HouseholdMember = z.strictObject({
   joinedAt: Timestamp,
 });
 
+export const HouseholdName = z
+  .string()
+  .trim()
+  .min(1)
+  .max(LIMITS.HOUSEHOLD_NAME_MAX)
+  .describe(
+    `How the household is told apart from the person's others: 1 to ${LIMITS.HOUSEHOLD_NAME_MAX} characters after trimming.`,
+  );
+
 export const Household = z.strictObject({
   id: Uuid,
+  name: HouseholdName,
   role: HouseholdRole.describe("The caller's own role."),
   ownerId: Uuid.describe(
     "The owner's account id. The owner is a role that can change hands (`POST /v1/household/transfer`); it is not the id the shared rows are scoped by - the household has a book of its own for that (`GET /v1/me` `dataOwnerId`).",
@@ -57,6 +69,12 @@ export const HouseholdResponse = z.strictObject({
   household: Household.nullable().describe('`null` when the caller is in no household.'),
 });
 
+export const HouseholdListResponse = z.strictObject({
+  households: z
+    .array(Household)
+    .describe('Every household the caller is in, by when they joined. Empty for a person in none.'),
+});
+
 export const HouseholdInvite = z.strictObject({
   code: InviteCode,
   expiresAt: Timestamp,
@@ -64,8 +82,9 @@ export const HouseholdInvite = z.strictObject({
 
 export const HouseholdInviteResponse = z.strictObject({ data: HouseholdInvite });
 
-/** No fields: the household is the caller's, found from the token. */
-export const HouseholdCreateRequest = z.strictObject({});
+/** `name` is optional: a household made without one is called "Household". */
+export const HouseholdCreateRequest = z.strictObject({ name: HouseholdName.optional() });
+export const HouseholdRenameRequest = z.strictObject({ name: HouseholdName });
 export const HouseholdInviteRequest = z.strictObject({});
 export const HouseholdLeaveRequest = z.strictObject({});
 
@@ -77,6 +96,9 @@ export const HouseholdTransferRequest = z.strictObject({
   ),
 });
 
+export type HouseholdName = z.infer<typeof HouseholdName>;
+export type HouseholdListResponse = z.infer<typeof HouseholdListResponse>;
+export type HouseholdRenameRequest = z.infer<typeof HouseholdRenameRequest>;
 export type HouseholdRole = z.infer<typeof HouseholdRole>;
 export type HouseholdMember = z.infer<typeof HouseholdMember>;
 export type Household = z.infer<typeof Household>;

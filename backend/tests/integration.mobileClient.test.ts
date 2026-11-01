@@ -786,6 +786,13 @@ describe('API-27 — a household, driven by two real clients', () => {
     const owner = await signedIn();
     const member = await signedIn();
 
+    // Nothing in a household yet: `null`, parsed by the strict client schema.
+    expect((await owner.client.getHousehold()).household).toBeNull();
+
+    const created = (await owner.client.createHousehold({ name: 'Flat' })).household;
+    expect(created).toMatchObject({ name: 'Flat', role: 'owner', ownerId: owner.auth.user.id });
+
+    // The household is empty at first, but has categories to file under.
     const category = (await owner.client.listCategories()).data[0]!;
     const expense = (
       await owner.client.createExpense({
@@ -794,12 +801,6 @@ describe('API-27 — a household, driven by two real clients', () => {
         date: '2026-10-09',
       })
     ).data;
-
-    // Nothing in a household yet: `null`, parsed by the strict client schema.
-    expect((await owner.client.getHousehold()).household).toBeNull();
-
-    const created = (await owner.client.createHousehold()).household;
-    expect(created).toMatchObject({ role: 'owner', ownerId: owner.auth.user.id });
 
     const { code } = (await owner.client.createHouseholdInvite()).data;
     const joined = (await member.client.joinHousehold({ code })).household;
