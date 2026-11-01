@@ -898,7 +898,26 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/HouseholdResponse' }
-              example: { household: { id: '0192f5a0-0000-7000-8000-0000000000b1', role: owner, ownerId: '0192f5a0-0000-7000-8000-0000000000a1', currency: USD, members: [{ userId: '0192f5a0-0000-7000-8000-0000000000a1', email: ana@example.com, displayName: null, role: owner, joinedAt: '2026-10-27T09:00:00.000Z' }] } }
+              example:
+                {
+                  household:
+                    {
+                      id: '0192f5a0-0000-7000-8000-0000000000b1',
+                      role: owner,
+                      ownerId: '0192f5a0-0000-7000-8000-0000000000a1',
+                      currency: USD,
+                      members:
+                        [
+                          {
+                            userId: '0192f5a0-0000-7000-8000-0000000000a1',
+                            email: ana@example.com,
+                            displayName: null,
+                            role: owner,
+                            joinedAt: '2026-10-27T09:00:00.000Z',
+                          },
+                        ],
+                    },
+                }
         '401':
           $ref: '#/components/responses/Unauthorized'
         '500':
@@ -934,7 +953,26 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/HouseholdResponse' }
-              example: { household: { id: '0192f5a0-0000-7000-8000-0000000000b1', role: owner, ownerId: '0192f5a0-0000-7000-8000-0000000000a1', currency: USD, members: [{ userId: '0192f5a0-0000-7000-8000-0000000000a1', email: ana@example.com, displayName: null, role: owner, joinedAt: '2026-10-27T09:00:00.000Z' }] } }
+              example:
+                {
+                  household:
+                    {
+                      id: '0192f5a0-0000-7000-8000-0000000000b1',
+                      role: owner,
+                      ownerId: '0192f5a0-0000-7000-8000-0000000000a1',
+                      currency: USD,
+                      members:
+                        [
+                          {
+                            userId: '0192f5a0-0000-7000-8000-0000000000a1',
+                            email: ana@example.com,
+                            displayName: null,
+                            role: owner,
+                            joinedAt: '2026-10-27T09:00:00.000Z',
+                          },
+                        ],
+                    },
+                }
         '400':
           $ref: '#/components/responses/BadRequest'
         '409':
@@ -1103,7 +1141,26 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/HouseholdResponse' }
-              example: { household: { id: '0192f5a0-0000-7000-8000-0000000000b1', role: owner, ownerId: '0192f5a0-0000-7000-8000-0000000000a1', currency: USD, members: [{ userId: '0192f5a0-0000-7000-8000-0000000000a1', email: ana@example.com, displayName: null, role: owner, joinedAt: '2026-10-27T09:00:00.000Z' }] } }
+              example:
+                {
+                  household:
+                    {
+                      id: '0192f5a0-0000-7000-8000-0000000000b1',
+                      role: owner,
+                      ownerId: '0192f5a0-0000-7000-8000-0000000000a1',
+                      currency: USD,
+                      members:
+                        [
+                          {
+                            userId: '0192f5a0-0000-7000-8000-0000000000a1',
+                            email: ana@example.com,
+                            displayName: null,
+                            role: owner,
+                            joinedAt: '2026-10-27T09:00:00.000Z',
+                          },
+                        ],
+                    },
+                }
         '400':
           $ref: '#/components/responses/BadRequest'
         '409':
@@ -1225,7 +1282,33 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/HouseholdResponse' }
-              example: { household: { id: '0192f5a0-0000-7000-8000-0000000000b1', role: member, ownerId: '0192f5a0-0000-7000-8000-0000000000b2', currency: USD, members: [{ userId: '0192f5a0-0000-7000-8000-0000000000b2', email: bao@example.com, displayName: null, role: owner, joinedAt: '2026-10-27T09:00:00.000Z' }, { userId: '0192f5a0-0000-7000-8000-0000000000a1', email: ana@example.com, displayName: null, role: member, joinedAt: '2026-10-27T09:00:00.000Z' }] } }
+              example:
+                {
+                  household:
+                    {
+                      id: '0192f5a0-0000-7000-8000-0000000000b1',
+                      role: member,
+                      ownerId: '0192f5a0-0000-7000-8000-0000000000b2',
+                      currency: USD,
+                      members:
+                        [
+                          {
+                            userId: '0192f5a0-0000-7000-8000-0000000000b2',
+                            email: bao@example.com,
+                            displayName: null,
+                            role: owner,
+                            joinedAt: '2026-10-27T09:00:00.000Z',
+                          },
+                          {
+                            userId: '0192f5a0-0000-7000-8000-0000000000a1',
+                            email: ana@example.com,
+                            displayName: null,
+                            role: member,
+                            joinedAt: '2026-10-27T09:00:00.000Z',
+                          },
+                        ],
+                    },
+                }
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -2159,6 +2242,93 @@ paths:
         '503':
           $ref: '#/components/responses/OcrUnavailable'
 
+  /v1/quick-add:
+    post:
+      operationId: quickAdd
+      tags: [expenses]
+      summary: Read a typed sentence and suggest an expense
+      description: |
+        Reads one sentence the person typed ("coffee 45k yesterday") with the server's language model
+        and answers what it understood: whether it is an expense or income, the amount, the date, a
+        note and a suggested default category. The phone reads what it can by itself first and asks
+        only for a sentence it was unsure about. **Nothing is stored and no expense is involved**, and
+        neither the sentence nor the answer is logged. Every suggestion is nullable: what the sentence
+        does not clearly say is left out rather than guessed, and the app only ever offers the values
+        for the person to accept.
+
+        `today` is the phone's local date, which "yesterday" and a weekday are relative to; one more
+        than a day from the server's own clock is a `validation_error`, as is a sentence that is empty
+        or over 300 characters, all checked before the model is called. The model is sent the
+        sentence, `today` and the account's currency, and nothing else: no email, account id or
+        category names. `currency` is always the account's, and the amount is read in its minor units.
+
+        Each call may spend the server's quota with the model, so an account may make 30 per 15
+        minutes (`429` with `Retry-After` beyond that), and the server keeps its own daily budget. When
+        the model is not configured, or that budget is spent, the answer is `503 quick_add_unavailable`
+        (the app stops asking for the session); a model failure is `502 quick_add_failed` (its message
+        is never passed on). Neither blocks adding an expense, and the phone keeps what it read itself.
+      x-errorCodes:
+        - validation_error
+        - malformed_request
+        - unsupported_media_type
+        - batch_too_large
+        - unauthorized
+        - token_expired
+        - token_invalid
+        - rate_limited
+        - internal_error
+        - quick_add_unavailable
+        - quick_add_failed
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/QuickAddRequest' }
+            example:
+              text: coffee 4.50 yesterday
+              today: '2026-11-02'
+      responses:
+        '200':
+          description: What was understood. Any field except `currency` may be null.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/QuickAddResponse' }
+              example:
+                data:
+                  type: expense
+                  amountMinor: 450
+                  currency: USD
+                  date: '2026-11-01'
+                  note: Coffee
+                  category: eating_out
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '413':
+          description: |
+            The body exceeded the route's size limit. Code: `batch_too_large`.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              example:
+                error:
+                  code: batch_too_large
+                  message: Request body exceeds the limit.
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '502':
+          $ref: '#/components/responses/QuickAddFailed'
+        '503':
+          $ref: '#/components/responses/QuickAddUnavailable'
   /v1/rates:
     get:
       operationId: getRate
@@ -2906,6 +3076,33 @@ components:
             error:
               code: ocr_failed
               message: The receipt could not be read right now.
+    QuickAddUnavailable:
+      description: |
+        Reading typed descriptions with a model is not set up on this server, or its day's budget is
+        spent. Code: `quick_add_unavailable`. The app stops asking for the session and keeps what the
+        phone read itself.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            error:
+              code: quick_add_unavailable
+              message: Reading descriptions is not available on this server.
+    QuickAddFailed:
+      description: |
+        The model could not be reached or failed. Code: `quick_add_failed`. Nothing was stored, and
+        the provider's own message is never passed on. The phone keeps what it read itself.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            error:
+              code: quick_add_failed
+              message: The description could not be read right now.
     InternalError:
       description: |
         Unexpected server fault. Code: `internal_error`. The message never leaks
@@ -3043,6 +3240,8 @@ components:
         | `rates_unavailable` | 502 | The exchange-rate provider could not be reached or gave an unusable answer. Retry later, or enter the rate by hand. |
         | `ocr_unavailable` | 503 | Receipt reading is not set up on this server. The app stops offering it; entering an expense by hand is unaffected. |
         | `ocr_failed` | 502 | The receipt-reading provider could not be reached or failed. Nothing was stored; retry later or type the expense. |
+        | `quick_add_unavailable` | 503 | Reading typed descriptions with a model is not set up on this server, or its day's budget is spent. The app stops asking for the session; the phone keeps what it read itself. |
+        | `quick_add_failed` | 502 | The model could not be reached or failed. Nothing was stored; the phone keeps what it read itself. |
         | `internal_error` | 500 | Unexpected server fault. Never leaks internals; correlate via `X-Request-Id`. |
       enum:
         - validation_error
@@ -3074,6 +3273,8 @@ components:
         - rates_unavailable
         - ocr_unavailable
         - ocr_failed
+        - quick_add_unavailable
+        - quick_add_failed
         - internal_error
 
     ErrorDetails:
@@ -4188,6 +4389,62 @@ components:
       required: [data]
       properties:
         data: { $ref: '#/components/schemas/ReceiptScan' }
+
+    QuickAddRequest:
+      type: object
+      additionalProperties: false
+      required: [text, today]
+      properties:
+        text:
+          type: string
+          minLength: 1
+          maxLength: 300
+          pattern: '\S'
+          description: The sentence the person typed, at most 300 characters.
+        today:
+          type: string
+          format: date
+          description: >-
+            The phone's local date, which "yesterday" and a weekday are relative to. The server
+            rejects one more than a day from its own clock.
+
+    QuickAddSuggestion:
+      type: object
+      additionalProperties: false
+      required: [type, amountMinor, currency, date, note, category]
+      properties:
+        type:
+          type: [string, 'null']
+          enum: [expense, income, null]
+          description: Whether the sentence describes money spent or money received, or null.
+        amountMinor:
+          type: [integer, 'null']
+          minimum: 1
+          description: The amount, in minor units of `currency`, or null when none was clear.
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+          description: The account's currency, which the amount is read in.
+        date:
+          type: [string, 'null']
+          format: date
+          description: The date, never after `today`, or null.
+        note:
+          type: [string, 'null']
+          minLength: 1
+          maxLength: 500
+          description: What it was for, without the amount or the date, or null.
+        category:
+          type: [string, 'null']
+          enum: [groceries, eating_out, transport, health, bills, null]
+          description: A suggested default category, or null.
+
+    QuickAddResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/QuickAddSuggestion' }
 
     ReceiptIndexItem:
       type: object

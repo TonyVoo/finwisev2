@@ -12,6 +12,7 @@ import {
   RatesResponse,
   ReceiptIndexResponse,
   ReceiptResponse,
+  QuickAddResponse,
   ReceiptScanResponse,
   MeResponse,
   RefreshResponse,
@@ -94,6 +95,7 @@ export const ENDPOINTS = {
   deleteReceipt: emptyEndpoint('deleteReceipt'),
   listReceipts: endpoint('listReceipts', ReceiptIndexResponse),
   scanReceipt: endpoint('scanReceipt', ReceiptScanResponse),
+  quickAdd: endpoint('quickAdd', QuickAddResponse),
 
   listCategories: endpoint('listCategories', CategoryListResponse),
   createCategory: endpoint('createCategory', CategoryResponse),

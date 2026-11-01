@@ -49,7 +49,7 @@ two candidates, a date phrase it half-understood) is unsure and, if online, goes
 
 ## Gemini, when unsure
 
-`POST /v1/expenses/quick-add`, behind auth, stores nothing:
+`POST /v1/quick-add`, behind auth, stores nothing:
 
 ```json
 { "text": "paid rent to Mr Lam last friday 3tr5", "today": "2026-11-02" }

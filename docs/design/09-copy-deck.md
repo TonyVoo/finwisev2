@@ -179,6 +179,8 @@ blank banner.
 | `rates_unavailable`         | `Could not get today's exchange rate. Enter it yourself.`                             | Expense form, Rate field                         |
 | `ocr_unavailable`           | `Reading receipts isn't available right now.`                                         | Expense form, Receipt sheet                      |
 | `ocr_failed`                | `Could not read that receipt. Enter the details yourself.`                            | snackbar                                         |
+| `quick_add_unavailable`     | `Reading descriptions isn't available right now.`                                     | Not shown: the phone keeps what it read itself   |
+| `quick_add_failed`          | `Could not read that description online.`                                             | Not shown: the phone keeps what it read itself   |
 | `internal_error`            | `Something went wrong on our end. Try again.`                                         | form banner                                      |
 
 Notes:

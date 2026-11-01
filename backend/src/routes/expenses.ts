@@ -4,6 +4,8 @@ import {
   ExpenseListResponse,
   ExpenseResponse,
   ExpenseUpdateRequest,
+  QuickAddRequest,
+  QuickAddResponse,
   ReceiptIndexResponse,
   ReceiptPutRequest,
   ReceiptResponse,
@@ -24,6 +26,8 @@ import {
 } from '../middleware/validate.ts';
 import { deleteReceipt, getReceipt, listReceipts, putReceipt } from '../services/receiptService.ts';
 import { scanReceipt } from '../services/receiptScanService.ts';
+import { quickAdd } from '../services/quickAddService.ts';
+import { quickAddRateLimit } from '../middleware/quickAddRateLimit.ts';
 import { receiptScanRateLimit } from '../middleware/receiptScanRateLimit.ts';
 import {
   createExpense,
@@ -138,5 +142,19 @@ expensesRouter.post(
     const body = req.body as ReceiptScanRequest;
     const data = await scanReceipt(getPrisma(), userIdOf(req), body.dataBase64);
     sendJson(res, 200, ReceiptScanResponse, { data });
+  },
+);
+
+/**
+ * `POST /quick-add`: read a typed sentence and suggest an expense. Throttled before anything else, and
+ * tied to no expense: the sentence is read and dropped, not stored.
+ */
+expensesRouter.post(
+  '/quick-add',
+  quickAddRateLimit,
+  validateBody(QuickAddRequest),
+  async (req: Request, res: Response) => {
+    const data = await quickAdd(getPrisma(), userIdOf(req), req.body as QuickAddRequest);
+    sendJson(res, 200, QuickAddResponse, { data });
   },
 );

@@ -125,6 +125,7 @@ describe('every client method', () => {
       'scanReceipt',
       (client) => client.scanReceipt({ contentType: 'image/jpeg', dataBase64: '/9j/AAAA' }),
     ],
+    ['quickAdd', (client) => client.quickAdd({ text: 'coffee 4.50', today: '2026-11-02' })],
     ['getHousehold', (client) => client.getHousehold()],
     ['createHousehold', (client) => client.createHousehold()],
     ['deleteHousehold', (client) => client.deleteHousehold()],

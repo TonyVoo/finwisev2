@@ -126,5 +126,14 @@ export const problems = {
     new ApiProblem('ocr_unavailable', 'Reading receipts is not available on this server.'),
   /** The reading provider failed. Says nothing of why: its message may name a key or a quota. */
   ocrFailed: () => new ApiProblem('ocr_failed', 'The receipt could not be read right now.'),
+  /** Reading typed sentences with a model is not configured, or its day's budget is spent. */
+  quickAddUnavailable: () =>
+    new ApiProblem(
+      'quick_add_unavailable',
+      'Reading descriptions is not available on this server.',
+    ),
+  /** The model failed. Says nothing of why: its message may name a key, a quota or the sentence. */
+  quickAddFailed: () =>
+    new ApiProblem('quick_add_failed', 'The description could not be read right now.'),
   internal: (message = 'Something went wrong.') => new ApiProblem('internal_error', message),
 } as const;

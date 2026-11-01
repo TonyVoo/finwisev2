@@ -50,23 +50,26 @@ export interface NormalizedReading {
 
 const EMPTY: ParsedReceipt = { amountMinor: null, date: null, merchant: null, category: null };
 
-function toMinor(total: number | null | undefined, exponent: number): number | null {
+export function toMinor(total: number | null | undefined, exponent: number): number | null {
   if (total === null || total === undefined || !Number.isFinite(total)) return null;
   // `toPrecision` first: 1.005 * 100 is 100.49999999999999, and a receipt means 1.01.
   const minor = Math.round(Number((total * 10 ** exponent).toPrecision(12)));
   return minor >= 1 && minor < LIMITS.AMOUNT_MINOR_MAX ? minor : null;
 }
 
-function cleanMerchant(text: string | null | undefined): string | null {
+/** Control characters out, whitespace collapsed, cut to `max`; null when nothing is left. */
+export function cleanText(text: string | null | undefined, max: number): string | null {
   if (text === null || text === undefined) return null;
   const clean = text
     .replace(/\p{Cc}+/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim()
-    .slice(0, MAX_MERCHANT_LENGTH)
+    .slice(0, max)
     .trim();
   return clean.length > 0 ? clean : null;
 }
+
+const cleanMerchant = (text: string | null | undefined) => cleanText(text, MAX_MERCHANT_LENGTH);
 
 export function normalizeModelReading(
   answer: unknown,

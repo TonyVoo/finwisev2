@@ -70,6 +70,10 @@ export const ERROR_CODES = [
   'ocr_unavailable',
   /** 502 — the receipt-reading provider could not be reached or failed. Nothing was stored; retry later or type the expense. */
   'ocr_failed',
+  /** 503 — reading typed descriptions with a model is not set up on this server, or its day's budget is spent. The phone keeps what it read itself. */
+  'quick_add_unavailable',
+  /** 502 — the model could not be reached or failed. Nothing was stored; the phone keeps what it read itself. */
+  'quick_add_failed',
   /** 500 — unexpected server fault. Never leaks internals; correlate via the logged request id. */
   'internal_error',
 ] as const;
@@ -144,6 +148,8 @@ export const ERROR_CODE_STATUS: Readonly<Record<ErrorCode, number>> = {
   rates_unavailable: 502,
   ocr_unavailable: 503,
   ocr_failed: 502,
+  quick_add_unavailable: 503,
+  quick_add_failed: 502,
   internal_error: 500,
 };
 

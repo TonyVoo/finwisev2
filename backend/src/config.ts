@@ -90,6 +90,11 @@ const EnvSchema = z.object({
   GEMINI_API_KEY: z.string().min(1).optional(),
   GEMINI_MODEL: z.string().min(1).default('gemini-3.5-flash-lite'),
   GEMINI_DAILY_BUDGET: z.coerce.number().int().min(0).default(500),
+  /**
+   * Calls per Pacific day for reading typed sentences (quick add, `docs/design/15-quick-add.md`),
+   * counted apart from the receipt budget so one cannot use up the other's share of the free quota.
+   */
+  GEMINI_QUICK_ADD_DAILY_BUDGET: z.coerce.number().int().min(0).default(200),
 
   /**
    * How many reverse proxies sit in front of this process, or `false` for none.
@@ -169,6 +174,7 @@ function build() {
       geminiApiKey: env.GEMINI_API_KEY,
       geminiModel: env.GEMINI_MODEL,
       geminiDailyBudget: env.GEMINI_DAILY_BUDGET,
+      geminiQuickAddDailyBudget: env.GEMINI_QUICK_ADD_DAILY_BUDGET,
     },
     /** Express's `trust proxy` setting. See `TRUST_PROXY` above for why it matters. */
     trustProxy: env.TRUST_PROXY,

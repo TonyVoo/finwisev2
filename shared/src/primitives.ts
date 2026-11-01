@@ -104,6 +104,10 @@ export const LIMITS = {
   RECEIPT_MAX_BASE64_LENGTH: 2_000_000,
   /** Receipt readings one account may ask for per rate-limit window: each spends the server's OCR budget. */
   RECEIPT_SCAN_MAX_PER_USER: 20,
+  /** Longest sentence quick add will read. */
+  QUICK_ADD_TEXT_MAX: 300,
+  /** Sentences one account may ask the server to read per rate-limit window: each may spend the model's quota. */
+  QUICK_ADD_MAX_PER_USER: 30,
 } as const;
 
 /**

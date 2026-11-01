@@ -6,6 +6,8 @@ import { resetPasswordResetRateLimitForTests } from '../src/middleware/passwordR
 import { resetHouseholdJoinRateLimitForTests } from '../src/middleware/householdJoinRateLimit.ts';
 import { resetReceiptScanRateLimitForTests } from '../src/middleware/receiptScanRateLimit.ts';
 import { resetPasswordConfirmRateLimitForTests } from '../src/middleware/passwordConfirmRateLimit.ts';
+import { resetQuickAddRateLimitForTests } from '../src/middleware/quickAddRateLimit.ts';
+import { setQuickAddReaderForTests } from '../src/services/quickAddReader.ts';
 import { setReceiptReaderForTests } from '../src/services/receiptStrategies.ts';
 import { setTextReaderForTests } from '../src/services/textReader.ts';
 import { truncateAll } from './support/db.ts';
@@ -31,12 +33,14 @@ beforeEach(async () => {
   resetEmailVerificationRateLimitForTests();
   resetHouseholdJoinRateLimitForTests();
   resetReceiptScanRateLimitForTests();
+  resetQuickAddRateLimitForTests();
   /**
    * Receipt readers come from `.env` (the config reads it even under test), so a developer who
    * has set real keys would otherwise have any test that forgot to fake a reader send its fake
    * photo to the real provider. Off by default; a test that wants one installs it.
    */
   setReceiptReaderForTests(null);
+  setQuickAddReaderForTests(null);
   setTextReaderForTests(null);
 });
 

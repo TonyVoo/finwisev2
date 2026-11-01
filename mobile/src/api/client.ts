@@ -27,6 +27,8 @@ import type {
   ReceiptIndexResponse,
   ReceiptPutRequest,
   ReceiptResponse,
+  QuickAddRequest,
+  QuickAddResponse,
   ReceiptScanRequest,
   ReceiptScanResponse,
   LoginRequest,
@@ -121,6 +123,8 @@ export interface ApiClient {
   listReceipts(): Promise<ReceiptIndexResponse>;
   /** Reads a receipt photo and suggests values. Stores nothing; every field may be null. */
   scanReceipt(body: ReceiptScanRequest): Promise<ReceiptScanResponse>;
+  /** Reads a typed sentence and suggests an expense. Stores nothing; every field but `currency` may be null. */
+  quickAdd(body: QuickAddRequest): Promise<QuickAddResponse>;
 
   /** What to multiply a foreign amount by. Called only while entering one; fails soft. */
   getRate(query: RatesQuery): Promise<RatesResponse>;
@@ -222,6 +226,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     deleteReceipt: (id) => send(ENDPOINTS.deleteReceipt, { pathParams: { id } }),
     listReceipts: () => send(ENDPOINTS.listReceipts),
     scanReceipt: (body) => send(ENDPOINTS.scanReceipt, { body }),
+    quickAdd: (body) => send(ENDPOINTS.quickAdd, { body }),
 
     getRate: (query) => send(ENDPOINTS.getRate, { query: toQuery(query) }),
     pullSync: (query) => send(ENDPOINTS.pullSync, { query: toQuery(query) }),
