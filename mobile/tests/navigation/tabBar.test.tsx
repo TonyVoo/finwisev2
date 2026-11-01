@@ -221,16 +221,16 @@ describe('FloatingTabBar with the camera shortcut', () => {
     expect(screen.getAllByRole('tab')).toHaveLength(3);
   });
 
-  it('labels every tab under its icon, so no label stretches a slot and pushes the camera off the middle', async () => {
+  it('looks like the other items: an icon in a slot of the same size, never highlighted', async () => {
     const { element } = withScan(jest.fn());
     await renderWithSafeArea(element);
 
-    for (const label of ['Expenses', 'Summary', 'Settings']) {
-      expect(screen.getByText(label)).toBeTruthy();
-    }
-    const slot = flattenStyle(screen.getByTestId('tab-summary').props.style);
-    expect(slot.flexDirection).toBe('column');
-    expect(slot.flex).toBe(1);
+    const camera = flattenStyle(screen.getByTestId('tab-scan').props.style);
+    const tab = flattenStyle(screen.getByTestId('tab-summary').props.style);
+    expect(camera.height).toBe(tab.height);
+    expect(camera.minWidth).toBe(tab.minWidth);
+    expect(camera.backgroundColor).toBeUndefined();
+    expect(screen.queryByText('Scan receipt')).toBeNull();
   });
 
   it('runs the shortcut when pressed, without changing tab', async () => {

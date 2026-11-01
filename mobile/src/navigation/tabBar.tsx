@@ -82,12 +82,8 @@ export function FloatingTabBar({ state, descriptors, navigation, onScan }: Float
   const styles = useStyles();
   const insets = useSafeAreaInsets();
   const { style } = useTabBarStyle();
-  // With the camera button there are five things to fit, so the bar always spans the width in equal
-  // slots with a label under every icon: a label beside the focused icon would stretch its slot and push
-  // the camera off the middle.
-  const hasScan = onScan !== undefined && state.routes.some((route) => route.name === SCAN_ROUTE);
-  const spans = style !== 'compact' || hasScan;
-  const labelled = style === 'labelled' || hasScan;
+  const spans = style !== 'compact';
+  const labelled = style === 'labelled';
 
   return (
     <View
@@ -109,24 +105,16 @@ export function FloatingTabBar({ state, descriptors, navigation, onScan }: Float
           const title = options.title ?? route.name;
           const tint = focused ? color.primary.default : color.text.tertiary;
 
-          if (route.name === SCAN_ROUTE) {
-            if (onScan === undefined) return null;
-            return (
-              <Pressable
-                key={route.key}
-                testID={`tab-${route.name}`}
-                onPress={onScan}
-                accessibilityRole="button"
-                accessibilityLabel={title}
-                accessibilityHint={COPY.scan.hint}
-                style={({ pressed }) => [styles.scan, pressed ? styles.scanPressed : null]}
-              >
-                {options.tabBarIcon?.({ focused: false, color: color.text.inverse, size: 22 })}
-              </Pressable>
-            );
-          }
+          // The camera is an action, not a place: it looks like the other items but is never selected,
+          // and runs `onScan` instead of navigating. Without a handler it is left out.
+          const isScan = route.name === SCAN_ROUTE;
+          if (isScan && onScan === undefined) return null;
 
           const onPress = () => {
+            if (isScan) {
+              onScan?.();
+              return;
+            }
             const event = navigation.emit({
               type: 'tabPress',
               target: route.key,
@@ -142,9 +130,10 @@ export function FloatingTabBar({ state, descriptors, navigation, onScan }: Float
               key={route.key}
               testID={`tab-${route.name}`}
               onPress={onPress}
-              accessibilityRole="tab"
+              accessibilityRole={isScan ? 'button' : 'tab'}
               accessibilityLabel={title}
-              accessibilityState={{ selected: focused }}
+              accessibilityHint={isScan ? COPY.scan.hint : undefined}
+              accessibilityState={isScan ? undefined : { selected: focused }}
               style={[
                 styles.item,
                 { height: tabBarHeight(style) - space[2] * 2 },
@@ -194,17 +183,6 @@ const useStyles = createStyles((color) =>
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: color.border.hairline,
     },
-    // The camera: a filled circle, so it reads as the one action among the places.
-    scan: {
-      width: 48,
-      height: 48,
-      borderRadius: radius.pill,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: color.primary.default,
-      marginHorizontal: space[1],
-    },
-    scanPressed: { backgroundColor: color.primary.pressed },
     barCompact: { alignSelf: 'center' },
     barWide: { alignSelf: 'stretch' },
     item: {
