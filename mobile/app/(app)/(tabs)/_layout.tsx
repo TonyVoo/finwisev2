@@ -6,8 +6,8 @@ import { COPY } from '@/copy/strings';
 import { useScanShortcut } from '@/receipts/useScanShortcut';
 
 /**
- * The tabs: the expense list, the monthly summary and Settings, with a camera button between them
- * that opens Add expense with a receipt photo (`docs/design/11-receipt-scan.md`). Settings began as a button in
+ * The tabs: the expense list and the monthly summary, then savings goals and Settings, with a camera
+ * button in the middle that opens Add expense with a receipt photo (`docs/design/11-receipt-scan.md`). Settings began as a button in
  * Home's app bar and became a tab once it held more than a few rows
  * (`docs/design/04-expense-list.md` §Behaviour rule 14).
  *
@@ -54,6 +54,13 @@ export default function TabsLayout() {
         options={{
           title: COPY.scan.tab,
           tabBarIcon: ({ color: tint, size }) => <Feather name="camera" size={size} color={tint} />,
+        }}
+      />
+      <Tabs.Screen
+        name="goals"
+        options={{
+          title: COPY.goals.tab,
+          tabBarIcon: ({ color: tint, size }) => <Feather name="target" size={size} color={tint} />,
         }}
       />
       <Tabs.Screen

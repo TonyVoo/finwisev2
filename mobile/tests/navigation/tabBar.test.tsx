@@ -183,12 +183,14 @@ describe('FloatingTabBar with the camera shortcut', () => {
       { key: 'index-1', name: 'index' },
       { key: 'summary-1', name: 'summary' },
       { key: 'scan-1', name: 'scan' },
+      { key: 'goals-1', name: 'goals' },
       { key: 'settings-1', name: 'settings' },
     ];
     const titles: Record<string, string> = {
       index: 'Expenses',
       summary: 'Summary',
       scan: 'Scan receipt',
+      goals: 'Goals',
       settings: 'Settings',
     };
     const descriptors = Object.fromEntries(
@@ -210,15 +212,17 @@ describe('FloatingTabBar with the camera shortcut', () => {
     return { emit, navigate, element: <FloatingTabBar {...bar} onScan={onScan} /> };
   }
 
-  it('puts the camera between Summary and Settings, named for a screen reader', async () => {
+  it('puts the camera in the middle, two tabs each side, named for a screen reader', async () => {
     const { element } = withScan(jest.fn());
     await renderWithSafeArea(element);
 
-    const names = screen.getAllByRole('button').map((node) => node.props.accessibilityLabel);
     expect(screen.getByRole('button', { name: 'Scan receipt' })).toBeTruthy();
-    expect(names.indexOf('Scan receipt')).toBeGreaterThan(-1);
-    // Three real tabs remain; the camera is an action, not a place.
-    expect(screen.getAllByRole('tab')).toHaveLength(3);
+    // Four real tabs; the camera is an action, not a place, and sits between the pairs.
+    const order = screen
+      .getAllByTestId(/^tab-(index|summary|scan|goals|settings)$/)
+      .map((node) => String(node.props.testID).replace('tab-', ''));
+    expect(order).toEqual(['index', 'summary', 'scan', 'goals', 'settings']);
+    expect(screen.getAllByRole('tab')).toHaveLength(4);
   });
 
   it('runs the shortcut when pressed, without changing tab', async () => {

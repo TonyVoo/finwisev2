@@ -330,8 +330,6 @@ export const COPY = {
     categories: 'Categories',
     recurring: 'Recurring expenses',
     recurringHint: 'Rent, subscriptions and other regular payments.',
-    goals: 'Savings goals',
-    goalsHint: 'Save towards something you want.',
     household: 'Households',
     tabBar: 'Tab bar',
     displayName: 'Display name',
@@ -561,6 +559,8 @@ export const COPY = {
   },
   goals: {
     title: 'Savings goals',
+    /** The tab's label. */
+    tab: 'Goals',
     fab: 'Add savings goal',
     /** Notifications for a goal with a deadline: a week before, and the day before. */
     reminder: {

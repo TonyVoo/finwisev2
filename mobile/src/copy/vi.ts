@@ -286,8 +286,6 @@ export const VIETNAMESE_COPY: CopyBundle = {
       categories: 'Danh mục',
       recurring: 'Chi tiêu định kỳ',
       recurringHint: 'Tiền nhà, gói đăng ký và các khoản định kỳ.',
-      goals: 'Mục tiêu tiết kiệm',
-      goalsHint: 'Tiết kiệm cho điều bạn muốn.',
       household: 'Các hộ gia đình',
       tabBar: 'Thanh tab',
       displayName: 'Tên hiển thị',
@@ -503,6 +501,7 @@ export const VIETNAMESE_COPY: CopyBundle = {
     },
     goals: {
       title: 'Mục tiêu tiết kiệm',
+      tab: 'Mục tiêu',
       fab: 'Thêm mục tiêu tiết kiệm',
       reminder: {
         weekTitle: 'Mục tiêu đến hạn sau một tuần',

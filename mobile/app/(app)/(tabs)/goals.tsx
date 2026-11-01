@@ -4,8 +4,7 @@ import { syncGoalReminders } from '@/notifications/goalReminders';
 import { EmptyIcon } from '@/components/EmptyIcon';
 import { useCallback, useState } from 'react';
 import { AccessibilityInfo, FlatList, StyleSheet, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
-import { AppBar, Fab, IconButton, PendingGlyph } from '@/components/Chrome';
+import { AppBar, Fab, PendingGlyph } from '@/components/Chrome';
 import { Dialog } from '@/components/Dialog';
 import { Row, RowSubtitle, RowTitle } from '@/components/Row';
 import { SwipeToDelete } from '@/components/SwipeToDelete';
@@ -22,10 +21,11 @@ import { savedHaptic } from '@/lib/haptics';
 import { goalAmounts, goalProgress, goalStatus } from '@/goals/goalModel';
 import { useSelectedMonth } from '@/month/MonthProvider';
 import { size, space, type } from '@/theme/tokens';
-import { createStyles, useColors } from '@/theme/ThemeProvider';
+import { useTabBarClearance, useTabBarReserve } from '@/navigation/tabBar';
+import { createStyles } from '@/theme/ThemeProvider';
 
 /**
- * Savings goals. Tapping a goal opens the deposit sheet - adding money is the thing you come
+ * Savings goals, a tab of its own (it began as a row in Settings). Tapping a goal opens the deposit sheet - adding money is the thing you come
  * here to do - and editing, or deleting, is one step further in. Progress is manual: the
  * device writes the new total, and sync carries it like any other field.
  */
@@ -35,9 +35,10 @@ export const GOAL_PROGRESS_TEST_ID_PREFIX = 'goal-progress';
 export const GOAL_DELETE_DIALOG_TEST_ID = 'goal-delete-dialog';
 
 export default function GoalsScreen() {
-  const color = useColors();
   const styles = useStyles();
-  const router = useRouter();
+  // The floating tab bar covers the bottom of the screen; the list and the button clear it.
+  const tabBarReserve = useTabBarReserve();
+  const tabBarClearance = useTabBarClearance();
   const showSnackbar = useSnackbar();
   const localWrite = useLocalWrite();
   const { today } = useSelectedMonth();
@@ -95,23 +96,12 @@ export default function GoalsScreen() {
 
   return (
     <View style={styles.screen}>
-      <AppBar
-        title={COPY.goals.title}
-        leading={
-          <IconButton
-            icon="chevron-left"
-            label={COPY.common.back}
-            onPress={() => router.back()}
-            tint={color.text.primary}
-            testID="goals-back"
-          />
-        }
-      />
+      <AppBar title={COPY.goals.title} />
 
       <FlatList
         data={rows}
         keyExtractor={(goal) => goal.id}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={{ paddingBottom: tabBarClearance + size.fab + space[4] }}
         renderItem={({ item, index }) => {
           const progress = goalProgress(item.savedMinor, item.targetMinor);
           const status = goalStatus(item, today);
@@ -164,6 +154,7 @@ export default function GoalsScreen() {
 
       <Fab
         label={COPY.goals.fab}
+        bottomOffset={tabBarReserve}
         onPress={() => {
           setEditing(null);
           setSheetOpen(true);
@@ -214,7 +205,6 @@ export default function GoalsScreen() {
 const useStyles = createStyles((color) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: color.bg.canvas },
-    list: { paddingBottom: size.fab + space[4] + space[4] },
     status: { ...type.callout, color: color.text.secondary, marginTop: space[1] },
     empty: { padding: space[6], gap: space[2], alignItems: 'center' },
     emptyHeadline: { ...type.title1, color: color.text.primary, textAlign: 'center' },
