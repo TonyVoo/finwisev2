@@ -30,8 +30,10 @@ Pure functions in `mobile/src/quickAdd/`, English and Vietnamese, tested against
 - **Amount.** `45k`, `45 K`, `1.5tr`, `1,5 triệu`, `500 nghìn` / `ngàn`, `45.000`, `45000`, `12.50`, `$12`.
   Suffix multipliers (`k` = 1,000; `tr` / `triệu` = 1,000,000; `nghìn` / `ngàn` = 1,000) apply in any currency, and
   the result is converted with the account currency's decimals, exactly as the receipt parser does. A small whole
-  number followed by a word, next to a clearer amount, is a **quantity** ("2 coffees 90k" is 90,000), not the price.
-  **Two plausible amounts the rules cannot tell apart is "unsure"**, never a pick.
+  number next to a clear amount is a **quantity** ("2 coffees 90k" is 90,000). **Anything the rules cannot tell
+  apart is "unsure", never a pick**: two clear amounts ("coffee 4.50 tip 1.00"), two bare numbers ("coffee 3 and
+  bagel 4": two prices, or a quantity and a price?), or a bare `45` in a currency without decimals (45 dong, or
+  45k?).
 - **Date.** `today`, `yesterday`, `hôm nay`, `hôm qua`, `hôm kia`, a weekday ("monday", "thứ hai": the most recent
   one on or before today), `14/10`, `14 Oct`. Day-before-month unless the account currency is USD, as for receipts.
   Never after today, never more than two years back; otherwise no date (the form keeps its own).

@@ -7,7 +7,7 @@
  * than a missing one - they will type a missing value and may not notice a wrong one.
  */
 
-import { LIMITS } from '@expense-tracker/shared';
+import { LIMITS, categoryKeyFor } from '@expense-tracker/shared';
 
 export const RECEIPT_CATEGORY_KEYS = [
   'groceries',
@@ -247,90 +247,8 @@ function parseMerchant(lines: readonly string[]): string | null {
 
 // --- Category ---------------------------------------------------------------------------
 
-const KEYWORDS: Readonly<Record<ReceiptCategoryKey, readonly string[]>> = {
-  groceries: [
-    'supermarket',
-    'hypermarket',
-    'minimart',
-    'grocery',
-    'groceries',
-    'mart',
-    'market',
-    'costco',
-    'walmart',
-    'aldi',
-    'lidl',
-    'tesco',
-  ],
-  eating_out: [
-    'restaurant',
-    'cafe',
-    'coffee',
-    'pizza',
-    'burger',
-    'bistro',
-    'diner',
-    'grill',
-    'kitchen',
-    'bakery',
-    'bar',
-    'pub',
-    'noodle',
-    'pho',
-    'sushi',
-    'bbq',
-  ],
-  transport: [
-    'taxi',
-    'uber',
-    'grab',
-    'lyft',
-    'fuel',
-    'petrol',
-    'gasoline',
-    'gas',
-    'parking',
-    'toll',
-    'subway',
-    'airline',
-  ],
-  health: [
-    'pharmacy',
-    'drugstore',
-    'clinic',
-    'hospital',
-    'dental',
-    'dentist',
-    'medical',
-    'doctor',
-    'optical',
-  ],
-  bills: [
-    'electric',
-    'electricity',
-    'water',
-    'internet',
-    'telecom',
-    'broadband',
-    'utility',
-    'utilities',
-    'insurance',
-  ],
-};
-
 function parseCategory(text: string): ReceiptCategoryKey | null {
-  const folded = fold(text);
-  let best: ReceiptCategoryKey | null = null;
-  let bestCount = 0;
-  // Priority is the declaration order, so a tie goes to the more specific, earlier key.
-  for (const key of RECEIPT_CATEGORY_KEYS) {
-    const count = KEYWORDS[key].filter((word) => new RegExp(`\\b${word}\\b`).test(folded)).length;
-    if (count > bestCount) {
-      best = key;
-      bestCount = count;
-    }
-  }
-  return best;
+  return categoryKeyFor(text);
 }
 
 // --- Entry point ------------------------------------------------------------------------

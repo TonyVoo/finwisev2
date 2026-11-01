@@ -20,6 +20,7 @@ export * from './auth.js';
 export * from './category.js';
 export * from './expense.js';
 export * from './receipt.js';
+export * from './categoryHints.js';
 export * from './goal.js';
 export * from './settlement.js';
 export * from './household.js';
