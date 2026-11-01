@@ -1,15 +1,15 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Feather from '@expo/vector-icons/Feather';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSession } from '@/auth/SessionProvider';
+import { AppMark } from '@/components/AppMark';
 import { Button } from '@/components/Button';
 import { FadeInUp } from '@/components/FadeInUp';
 import { FormBanner } from '@/components/FormBanner';
 import { COPY } from '@/copy/strings';
 import { space, type } from '@/theme/tokens';
-import { createStyles, useColors } from '@/theme/ThemeProvider';
+import { createStyles } from '@/theme/ThemeProvider';
 
 /**
  * Welcome - `docs/design/03-auth.md` §1.1.
@@ -27,7 +27,6 @@ import { createStyles, useColors } from '@/theme/ThemeProvider';
  * only set when a refresh was actually rejected.
  */
 export default function WelcomeScreen() {
-  const color = useColors();
   const styles = useStyles();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -56,10 +55,9 @@ export default function WelcomeScreen() {
       ) : null}
 
       {/*
-        The mark. Feather has no wallet glyph, so `credit-card` stands in - the set is
-        fixed at one family by §5 ("one set, no mixing") and a second icon library for a
-        single decorative mark is the wrong trade. It carries no label because it says
-        nothing the app name does not (§1.1 element 1).
+        The mark: the app's own receipt-with-a-check, the same drawing as the icon and splash. It is
+        the logo rather than a glyph from the icon set, so it is not bound by §5's "one set" rule.
+        It carries no label because it says nothing the app name does not (§1.1 element 1).
       */}
       <FadeInUp style={styles.hero}>
         <View
@@ -68,7 +66,7 @@ export default function WelcomeScreen() {
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         >
-          <Feather name="credit-card" size={48} color={color.primary.default} />
+          <AppMark height={64} />
         </View>
 
         <Text style={styles.name} accessibilityRole="header">

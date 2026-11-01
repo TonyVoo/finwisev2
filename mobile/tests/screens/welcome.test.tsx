@@ -52,6 +52,13 @@ describe('the welcome screen', () => {
       ).toBe(true);
     });
 
+    it("draws the app's own mark, not a generic icon", async () => {
+      expect(screen.getByTestId('app-mark', { includeHiddenElements: true })).toBeTruthy();
+      expect(
+        screen.queryByTestId('welcome-mark-glyph', { includeHiddenElements: true }),
+      ).toBeNull();
+    });
+
     it('names the app and says what it is for', async () => {
       expect(screen.getByText(COPY.app.name)).toBeTruthy();
       expect(screen.getByText(COPY.welcome.tagline)).toBeTruthy();

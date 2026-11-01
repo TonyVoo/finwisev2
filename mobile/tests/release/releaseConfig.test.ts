@@ -67,6 +67,11 @@ describe('app.json', () => {
     expect(app.android.package).toMatch(/^[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)+$/);
   });
 
+  it('has a short on-device name that fits under the icon (the stores keep the full name)', () => {
+    // iOS cuts a label at about 12 letters, so "Expense Tracker" showed as "ExpenseTra...".
+    expect(app.name.length).toBeLessThanOrEqual(12);
+  });
+
   it('has a semantic version, and leaves build numbers to EAS', () => {
     expect(app.version).toMatch(/^\d+\.\d+\.\d+$/);
     expect(app.ios.buildNumber).toBeUndefined();
