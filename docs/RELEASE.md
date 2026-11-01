@@ -49,9 +49,16 @@ Accurate to the code at the time of writing; re-check after any change.
   between members: synced so they work across devices.
 - Receipt photos, when a person attaches one: stored on the server with the expense.
 - Household membership, and who added each shared expense.
+- Sentences typed in Add expense's _Describe it_ line, **only** when the phone's own rules could not read them (a
+  sentence it understood never leaves the phone): the sentence, today's date and the account currency, to the server.
+  Nothing is stored or logged.
 
 **Third parties**
 
+- **Typed descriptions** ("coffee 45k yesterday"): when the phone is unsure and the server has `GEMINI_API_KEY`, the
+  sentence goes through this app's server to **Google Gemini**, with today's date and the account currency, and
+  no account details or category names. The same free-tier note applies: **Google may use requests to improve
+  its products** on the free plan. The Describe it line's own hint says so. With no key, nothing is sent.
 - **Receipt-reading providers**, only when a person taps _Read receipt_; the photo goes through this app's
   server (which stores nothing) to one of:
   - **Google Gemini API** (when `GEMINI_API_KEY` is set; tried first): the photo and a fixed instruction, no
@@ -96,4 +103,5 @@ Delete account) and removes the account's data on the server; the privacy policy
 - Run `npx expo-doctor` in `mobile/` and clear what it reports. At the time of writing it failed two checks
   (a duplicate native dependency, and 8 packages behind the SDK's expected versions); neither was caused by
   release configuration, and upgrading them is its own change to test.
+- Decide whether quick add's online step ships turned on, with receipt reading below: both use the same Gemini key and the same free-tier caveat.
 - Decide whether receipt reading ships turned on: it needs a provider key, sends photos to a third party, and on Gemini's free tier Google may use them to improve its products (a paid plan on the same project removes that).

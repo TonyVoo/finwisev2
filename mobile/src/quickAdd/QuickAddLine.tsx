@@ -22,10 +22,16 @@ export function QuickAddLine({
   value,
   onChangeText,
   onFill,
+  busy,
+  hint,
 }: {
   readonly value: string;
   readonly onChangeText: (next: string) => void;
   readonly onFill: () => void;
+  /** The server is being asked about the sentence: Fill shows progress and ignores presses. */
+  readonly busy: boolean;
+  /** Where the sentence is read: on the phone only, or possibly by an outside service. */
+  readonly hint: string;
 }) {
   const styles = useStyles();
   const color = useColors();
@@ -50,10 +56,11 @@ export function QuickAddLine({
           label={COPY.form.quickAdd.fill}
           onPress={onFill}
           variant="secondary"
+          busy={busy}
           testID={QUICK_ADD_FILL_TEST_ID}
         />
       </View>
-      <Text style={styles.hint}>{COPY.form.quickAdd.hint}</Text>
+      <Text style={styles.hint}>{hint}</Text>
     </View>
   );
 }

@@ -234,7 +234,10 @@ export const COPY = {
       label: 'Describe it',
       placeholder: 'Describe it, e.g. coffee 45k yesterday',
       fill: 'Fill',
-      hint: 'Read on this phone. Nothing is sent anywhere.',
+      /** Under the line while the server may still be asked: says where an unclear sentence can go. */
+      hint: "Read on this phone. If it can't tell, the sentence may be sent through our server to an outside service (Google Gemini), which on a free plan may use it to improve its products.",
+      /** Under the line once the server has said it cannot read sentences: nothing leaves the phone. */
+      hintLocal: 'Read on this phone. Nothing is sent anywhere.',
       suggestionTitle: 'From your description',
       noAmount: 'No amount found',
       nothingFound: "Couldn't read that. Enter the details yourself.",

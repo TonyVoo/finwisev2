@@ -265,10 +265,12 @@ Needs a backend started with `GEMINI_API_KEY` (free key, read first), and/or `OC
 
 ## 10c. Quick add (describe it)
 
-No backend key is needed: this step reads the sentence on the phone.
+The first half needs no backend key (the phone reads the sentence itself). The second half, marked **online**, needs a
+backend started with `GEMINI_API_KEY`.
 
 - [ ] Add expense: a **Describe it** line sits above the amount, with a **Fill** button and a line saying it is read on
-      the phone. Editing an existing expense has no such line.
+      the phone, and that an unclear sentence may be sent through our server to an outside service (Google Gemini) which
+      may use it on a free plan. Editing an existing expense has no such line.
 - [ ] Type `coffee 4.50 yesterday` and tap **Fill** (or the keyboard's Done): a card **From your description** shows
       `$4.50 - Yesterday - Coffee`. **No field has changed yet.** Edit the sentence: the card disappears.
 - [ ] **Use** fills the amount, the date, the note and a category (only one you have, e.g. Eating out). **Dismiss** changes
@@ -280,6 +282,15 @@ No backend key is needed: this step reads the sentence on the phone.
 - [ ] Switch the app to Tiếng Việt and try `cà phê 45k hôm qua` (a dong account): 45,000, yesterday, Cà phê. Also
       `tiền nhà 3tr5` (3,500,000) and `lương 15tr` (income).
 - [ ] Airplane mode: everything above still works.
+- [ ] **Online:** `paid rent to Mr Lam last friday 3tr5` (a dong account): Fill shows progress for a moment, then a card
+      with 3,500,000, the date of last Friday, `Rent to Mr Lam` and Bills. A clear sentence like `coffee 4.50` shows
+      its card instantly, with no progress (nothing was sent).
+- [ ] **Online:** `coffee 3 and bagel 4` (two prices): the model may or may not settle it; either way you get a card and
+      nothing saves by itself.
+- [ ] **Online, backend without a key:** an unclear sentence still gives a card of what the phone read, with no error,
+      and the line's hint changes to **Nothing is sent anywhere** for the rest of the session. Restart the app: the
+      first hint returns.
+- [ ] **Online, backend stopped:** an unclear sentence quietly gives the phone's own card.
 - [ ] Type text with a g, y, p or q in the line: nothing is clipped at the bottom.
 
 ## 11. Both platforms

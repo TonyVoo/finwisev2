@@ -1,6 +1,6 @@
 import type { ReceiptScan } from '@expense-tracker/shared';
 import { ApiRequestError } from '../api/errors';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
   Pressable,
@@ -91,6 +91,10 @@ import { ReceiptSuggestionCard } from '../receipts/ReceiptSuggestionCard';
 import { QUICK_ADD_SUGGESTION_TEST_ID, QuickAddLine } from '../quickAdd/QuickAddLine';
 import { parseQuickAdd, type QuickAddReading } from '../quickAdd/parseQuickAdd';
 import { isEmptyReading, planQuickAdd, quickAddSummary } from '../quickAdd/planQuickAdd';
+import { shouldAskModel } from '../quickAdd/askModel';
+import { mergeQuickAdd } from '../quickAdd/mergeQuickAdd';
+import { isQuickAddUnavailable, markQuickAddUnavailable } from '../quickAdd/quickAddAvailability';
+import { useOptionalSyncStatus } from '../sync/SyncProvider';
 import { isScanUnavailable, markScanUnavailable } from '../receipts/scanAvailability';
 import { isEmptyScan, planSuggestion, suggestionSummary } from '../receipts/receiptSuggestion';
 import { attachReceipt, detachReceipt, hasReceipt } from '../receipts/receiptStore';
@@ -207,6 +211,13 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
   // Quick add: the sentence being typed, and what Fill made of it while the person decides.
   const [describeText, setDescribeText] = useState('');
   const [quickReading, setQuickReading] = useState<QuickAddReading | null>(null);
+  // The server is being asked about the sentence, and whether it has said it cannot read sentences.
+  const [quickAsking, setQuickAsking] = useState(false);
+  const [quickOff, setQuickOff] = useState(isQuickAddUnavailable);
+  // Bumped whenever the sentence changes or a new Fill starts, so an answer that arrives late is dropped.
+  const quickTicket = useRef(0);
+  const syncStatus = useOptionalSyncStatus();
+  const offline = syncStatus !== null && !syncStatus.reachable;
 
   const currencyCode = currency.data ?? null;
   const storedRow = isEdit ? (stored.data ?? null) : null;
@@ -570,26 +581,61 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
     setScan(null);
   }, [scan, draft, currencyCode, entryCode, liveCategories, today]);
 
-  /** Read the sentence on the phone and offer the result; it touches no field until Use. */
-  const onFillQuickAdd = useCallback(() => {
+  /**
+   * Read the sentence on the phone and offer the result; it touches no field until Use.
+   *
+   * The phone reads it first. Only when its rules are unsure, and the device is online, and the server has
+   * not said it cannot, is the server asked, and its answer is merged beside what the phone read. However that
+   * goes - offline, a failure, a refusal - the person still gets a card made of at least what the phone read.
+   */
+  const onFillQuickAdd = useCallback(async () => {
     const text = describeText.trim();
     if (text === '') {
       showSnackbar({ message: COPY.form.quickAdd.empty });
       return;
     }
-    if (currencyCode === null) return;
-    const reading = parseQuickAdd(text, {
-      currency: currencyCode,
-      today,
-      categories: liveCategories.map((row) => ({ id: row.id, name: row.name })),
-    });
+    if (currencyCode === null || quickAsking) return;
+    const own = liveCategories.map((row) => ({ id: row.id, name: row.name }));
+    const rules = parseQuickAdd(text, { currency: currencyCode, today, categories: own });
+    quickTicket.current += 1;
+    const ticket = quickTicket.current;
+    setQuickReading(null);
+
+    let reading = rules;
+    if (shouldAskModel({ reading: rules, unavailable: quickOff, offline })) {
+      setQuickAsking(true);
+      try {
+        const { data } = await api.quickAdd({ text, today });
+        reading = mergeQuickAdd(rules, data, own);
+      } catch (error) {
+        if (error instanceof ApiRequestError && error.code === 'quick_add_unavailable') {
+          markQuickAddUnavailable();
+          setQuickOff(true);
+        }
+        // Any other failure is quiet: the phone keeps what it read itself.
+      } finally {
+        setQuickAsking(false);
+      }
+      // The sentence changed, or Fill was pressed again, while the server was thinking.
+      if (ticket !== quickTicket.current) return;
+    }
+
     if (isEmptyReading(reading)) {
-      setQuickReading(null);
       showSnackbar({ message: COPY.form.quickAdd.nothingFound });
       return;
     }
     setQuickReading(reading);
-  }, [describeText, currencyCode, today, liveCategories, showSnackbar]);
+  }, [
+    describeText,
+    currencyCode,
+    quickAsking,
+    liveCategories,
+    today,
+    quickOff,
+    offline,
+    api,
+    showSnackbar,
+  ]);
 
   /** Put the reading's safe values in the fields, as if typed; saving stays the person's own act. */
   const onUseQuickAdd = useCallback(() => {
@@ -712,10 +758,14 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
               value={describeText}
               onChangeText={(next) => {
                 setDescribeText(next);
-                // The card describes the sentence it was made from; a changed sentence is a new question.
+                // The card describes the sentence it was made from; a changed sentence is a new question,
+                // and an answer still on its way to the old one is no longer wanted.
+                quickTicket.current += 1;
                 setQuickReading(null);
               }}
-              onFill={onFillQuickAdd}
+              onFill={() => void onFillQuickAdd()}
+              busy={quickAsking}
+              hint={quickOff ? COPY.form.quickAdd.hintLocal : COPY.form.quickAdd.hint}
             />
           )}
           <KindToggle

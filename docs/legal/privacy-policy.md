@@ -36,6 +36,15 @@ the result of this step. Depending on how the service is set up, the outside ser
 We send the photo and nothing that names you: no email, account or other records. The suggestions are only
 suggestions; nothing is saved until you press Save.
 
+## How describing an expense works
+
+In Add expense you can type a sentence such as "coffee 45k yesterday" and tap **Fill**. The app first reads it on
+your phone, and a sentence it understands is never sent anywhere. When it cannot tell (for example, two amounts),
+the sentence, today's date and your account currency may be sent through our server to **Google (Gemini API)** to
+help read it, with nothing that names you and no list of your categories. On Google's free plan, Google may use
+what it receives to improve its products (**[FREE / PAID]** is in use here). Our server does not keep the
+sentence or the result. The suggestion is only a suggestion; nothing is saved until you press Save.
+
 ## Other services we use
 
 - **Resend** sends the one-time codes for email verification and password reset (your email address and the code).

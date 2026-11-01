@@ -1,6 +1,7 @@
 import { screen, userEvent, waitFor } from '@testing-library/react-native';
 import type { TransportRequest, TransportResponse } from '@/api/transport';
 import { COPY } from '@/copy/strings';
+import { resetQuickAddAvailabilityForTests } from '@/quickAdd/quickAddAvailability';
 import { writeUser } from '@/db/user';
 import type { SqliteDatabase } from '@/db/sqlite';
 import { AMOUNT_DISPLAY_TEST_ID } from '@/expenses/AmountDisplay';
@@ -21,7 +22,7 @@ import {
 import NewExpenseScreen from '../../app/(app)/expense/new';
 import EditExpenseScreen from '../../app/(app)/expense/[id]';
 import { resetRouter, setSearchParams } from '../support/router';
-import { mountScreen, type MountedScreen } from '../support/mount';
+import { apiError, mountScreen, ok, type MountedScreen } from '../support/mount';
 import {
   categoryId,
   expenseId,
@@ -40,6 +41,8 @@ jest.mock('expo-router');
  */
 
 const NOW = new Date(2026, 9, 14, 9, 0, 0);
+const today = () => '2026-10-14';
+const yesterday = () => '2026-10-13';
 const GROCERIES = categoryId(1);
 const EATING_OUT = categoryId(2);
 
@@ -77,7 +80,10 @@ async function typeAndFill(text: string) {
 const label = (testID: string) =>
   screen.getByTestId(testID, { includeHiddenElements: true }).props.accessibilityLabel as string;
 
-beforeEach(() => resetRouter());
+beforeEach(() => {
+  resetRouter();
+  resetQuickAddAvailabilityForTests();
+});
 
 describe('the Describe it line', () => {
   it('is on Add expense, says what it reads, and starts empty', async () => {
@@ -86,6 +92,7 @@ describe('the Describe it line', () => {
     expect(screen.getByTestId(QUICK_ADD_INPUT_TEST_ID).props.value).toBe('');
     expect(screen.getByPlaceholderText(COPY.form.quickAdd.placeholder)).toBeTruthy();
     expect(screen.getByText(COPY.form.quickAdd.hint)).toBeTruthy();
+    expect(COPY.form.quickAdd.hint).toMatch(/outside service/);
     expect(screen.getByLabelText(COPY.form.quickAdd.fill)).toBeTruthy();
   });
 
@@ -223,6 +230,170 @@ describe('Fill', () => {
     await userEvent.press(screen.getByTestId(QUICK_ADD_FILL_TEST_ID));
 
     await waitFor(() => expect(screen.getByText(COPY.form.quickAdd.empty)).toBeTruthy());
+    expect(screen.queryByTestId(QUICK_ADD_SUGGESTION_TEST_ID)).toBeNull();
+  });
+});
+
+/**
+ * When the phone's own rules are unsure it asks the server (`POST /v1/quick-add`), merges the answer,
+ * and carries on quietly however that goes: the person always gets a card made of at least what the
+ * phone read itself.
+ */
+describe('when the rules are unsure', () => {
+  const UNSURE = 'coffee 4.50 tip 1.00';
+  const FOUND = {
+    type: 'expense',
+    amountMinor: 450,
+    currency: 'USD',
+    date: yesterday(),
+    note: 'coffee',
+    category: 'groceries',
+  };
+
+  function quickAddReturns(response: TransportResponse) {
+    return async (request: TransportRequest): Promise<TransportResponse> => {
+      if (request.method === 'post' && request.path === '/v1/quick-add') return response;
+      throw new Error(`unexpected request ${request.method} ${request.path}`);
+    };
+  }
+
+  async function mountAsking(response: TransportResponse): Promise<MountedScreen> {
+    const mounted = await mountScreen(<NewExpenseScreen />, {
+      clock: () => NOW,
+      seed: seedBasics,
+      transport: quickAddReturns(response),
+    });
+    await waitFor(() => expect(screen.queryByTestId(AMOUNT_DISPLAY_TEST_ID)).not.toBeNull());
+    return mounted;
+  }
+
+  it('sends nothing for a sentence the phone is sure of', async () => {
+    const { requests } = await mountAsking(ok(200, { data: FOUND }));
+
+    await typeAndFill('coffee 4.50 yesterday');
+
+    await waitFor(() => expect(screen.queryByTestId(QUICK_ADD_SUGGESTION_TEST_ID)).not.toBeNull());
+    expect(requests).toEqual([]);
+  });
+
+  it('asks the server, sending the sentence and the date and nothing else', async () => {
+    const { requests } = await mountAsking(ok(200, { data: FOUND }));
+
+    await typeAndFill(UNSURE);
+
+    await waitFor(() => expect(screen.queryByTestId(QUICK_ADD_SUGGESTION_TEST_ID)).not.toBeNull());
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toMatchObject({
+      method: 'post',
+      path: '/v1/quick-add',
+      body: { text: UNSURE, today: '2026-10-14' },
+    });
+    expect(Object.keys((requests[0] as { body: object }).body).sort()).toEqual(['text', 'today']);
+  });
+
+  it('shows the amount the server found, kept beside what the phone read, changing no field', async () => {
+    await mountAsking(ok(200, { data: FOUND }));
+
+    await typeAndFill(UNSURE);
+
+    await waitFor(() => expect(screen.queryByTestId(QUICK_ADD_SUGGESTION_TEST_ID)).not.toBeNull());
+    expect(screen.getByText(/\$4\.50 · .* · Coffee/)).toBeTruthy();
+    expect(label(AMOUNT_DISPLAY_TEST_ID)).not.toContain('4.50');
+  });
+
+  it("fills the form with the merge on Use: the phone's category wins, the model fills the amount and date", async () => {
+    await mountAsking(ok(200, { data: FOUND }));
+    await typeAndFill(UNSURE);
+    await waitFor(() => expect(screen.queryByTestId(QUICK_ADD_SUGGESTION_TEST_ID)).not.toBeNull());
+
+    await userEvent.press(screen.getByTestId(QUICK_ADD_SUGGESTION_USE_TEST_ID));
+
+    expect(label(AMOUNT_DISPLAY_TEST_ID)).toContain('4.50');
+    expect(label(DATE_ROW_TEST_ID)).toContain(dateRowLabel(yesterday(), today()));
+    expect(label(NOTE_ROW_TEST_ID)).toContain('Coffee');
+    // The phone matched "coffee" to Eating out; the model said groceries, and does not overrule it.
+    expect(label(CATEGORY_ROW_TEST_ID)).toContain('Eating out');
+  });
+
+  it('shows what the phone read when the server fails, with no error', async () => {
+    await mountAsking(apiError(502, 'quick_add_failed'));
+
+    await typeAndFill(UNSURE);
+
+    await waitFor(() => expect(screen.queryByTestId(QUICK_ADD_SUGGESTION_TEST_ID)).not.toBeNull());
+    expect(screen.getByText(new RegExp(COPY.form.quickAdd.noAmount))).toBeTruthy();
+    expect(screen.queryByText(COPY.form.quickAdd.nothingFound)).toBeNull();
+  });
+
+  it('shows what the phone read when the network is down', async () => {
+    await mountScreen(<NewExpenseScreen />, {
+      clock: () => NOW,
+      seed: seedBasics,
+      transport: async () => {
+        throw new TypeError('Network request failed');
+      },
+    });
+    await waitFor(() => expect(screen.queryByTestId(AMOUNT_DISPLAY_TEST_ID)).not.toBeNull());
+
+    await typeAndFill(UNSURE);
+
+    await waitFor(() => expect(screen.queryByTestId(QUICK_ADD_SUGGESTION_TEST_ID)).not.toBeNull());
+    expect(screen.getByText(new RegExp(COPY.form.quickAdd.noAmount))).toBeTruthy();
+  });
+
+  it('stops asking for the session once the server says it is not set up, and says so in the hint', async () => {
+    const { requests } = await mountAsking(apiError(503, 'quick_add_unavailable'));
+
+    await typeAndFill(UNSURE);
+    await waitFor(() => expect(screen.queryByTestId(QUICK_ADD_SUGGESTION_TEST_ID)).not.toBeNull());
+    expect(screen.getByText(COPY.form.quickAdd.hintLocal)).toBeTruthy();
+    expect(screen.queryByText(COPY.form.quickAdd.hint)).toBeNull();
+
+    await userEvent.type(screen.getByTestId(QUICK_ADD_INPUT_TEST_ID), ' and more');
+    await userEvent.press(screen.getByTestId(QUICK_ADD_FILL_TEST_ID));
+
+    await waitFor(() => expect(screen.queryByTestId(QUICK_ADD_SUGGESTION_TEST_ID)).not.toBeNull());
+    expect(requests).toHaveLength(1);
+  });
+
+  it('shows Fill as busy while waiting, and ignores a second press', async () => {
+    let release: (response: TransportResponse) => void = () => undefined;
+    const pending = new Promise<TransportResponse>((resolve) => (release = resolve));
+    const { requests } = await mountScreen(<NewExpenseScreen />, {
+      clock: () => NOW,
+      seed: seedBasics,
+      transport: async () => pending,
+    });
+    await waitFor(() => expect(screen.queryByTestId(AMOUNT_DISPLAY_TEST_ID)).not.toBeNull());
+
+    await typeAndFill(UNSURE);
+    await userEvent.press(screen.getByTestId(QUICK_ADD_FILL_TEST_ID));
+
+    expect(screen.getByTestId(QUICK_ADD_FILL_TEST_ID).props.accessibilityState).toMatchObject({
+      busy: true,
+    });
+    expect(requests).toHaveLength(1);
+    release(ok(200, { data: FOUND }));
+    await waitFor(() => expect(screen.queryByTestId(QUICK_ADD_SUGGESTION_TEST_ID)).not.toBeNull());
+  });
+
+  it('drops the answer if the sentence changed while it was on its way', async () => {
+    let release: (response: TransportResponse) => void = () => undefined;
+    const pending = new Promise<TransportResponse>((resolve) => (release = resolve));
+    await mountScreen(<NewExpenseScreen />, {
+      clock: () => NOW,
+      seed: seedBasics,
+      transport: async () => pending,
+    });
+    await waitFor(() => expect(screen.queryByTestId(AMOUNT_DISPLAY_TEST_ID)).not.toBeNull());
+    await typeAndFill(UNSURE);
+
+    await userEvent.type(screen.getByTestId(QUICK_ADD_INPUT_TEST_ID), '0');
+    release(ok(200, { data: FOUND }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId(QUICK_ADD_FILL_TEST_ID).props.accessibilityState.busy).toBe(false),
+    );
     expect(screen.queryByTestId(QUICK_ADD_SUGGESTION_TEST_ID)).toBeNull();
   });
 });
