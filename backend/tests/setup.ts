@@ -8,6 +8,8 @@ import { resetReceiptScanRateLimitForTests } from '../src/middleware/receiptScan
 import { resetPasswordConfirmRateLimitForTests } from '../src/middleware/passwordConfirmRateLimit.ts';
 import { resetQuickAddRateLimitForTests } from '../src/middleware/quickAddRateLimit.ts';
 import { setQuickAddReaderForTests } from '../src/services/quickAddReader.ts';
+import { resetRecapRateLimitForTests } from '../src/middleware/recapRateLimit.ts';
+import { setRecapReaderForTests } from '../src/services/recapReader.ts';
 import { setReceiptReaderForTests } from '../src/services/receiptStrategies.ts';
 import { setTextReaderForTests } from '../src/services/textReader.ts';
 import { truncateAll } from './support/db.ts';
@@ -34,6 +36,7 @@ beforeEach(async () => {
   resetHouseholdJoinRateLimitForTests();
   resetReceiptScanRateLimitForTests();
   resetQuickAddRateLimitForTests();
+  resetRecapRateLimitForTests();
   /**
    * Receipt readers come from `.env` (the config reads it even under test), so a developer who
    * has set real keys would otherwise have any test that forgot to fake a reader send its fake
@@ -41,6 +44,7 @@ beforeEach(async () => {
    */
   setReceiptReaderForTests(null);
   setQuickAddReaderForTests(null);
+  setRecapReaderForTests(null);
   setTextReaderForTests(null);
 });
 

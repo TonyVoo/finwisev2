@@ -108,6 +108,13 @@ export const LIMITS = {
   QUICK_ADD_TEXT_MAX: 300,
   /** Sentences one account may ask the server to read per rate-limit window: each may spend the model's quota. */
   QUICK_ADD_MAX_PER_USER: 30,
+  /** Most insight sentences one recap request may carry, and the longest of them. */
+  RECAP_MAX_FACTS: 12,
+  RECAP_FACT_MAX: 200,
+  /** Longest recap the server will pass on. */
+  RECAP_TEXT_MAX: 500,
+  /** Recaps one account may ask for per rate-limit window: each may spend the model's quota. */
+  RECAP_MAX_PER_USER: 10,
 } as const;
 
 /**

@@ -6,6 +6,8 @@ import {
   ExpenseUpdateRequest,
   QuickAddRequest,
   QuickAddResponse,
+  RecapRequest,
+  RecapResponse,
   ReceiptIndexResponse,
   ReceiptPutRequest,
   ReceiptResponse,
@@ -28,6 +30,8 @@ import { deleteReceipt, getReceipt, listReceipts, putReceipt } from '../services
 import { scanReceipt } from '../services/receiptScanService.ts';
 import { quickAdd } from '../services/quickAddService.ts';
 import { quickAddRateLimit } from '../middleware/quickAddRateLimit.ts';
+import { recapRateLimit } from '../middleware/recapRateLimit.ts';
+import { writeRecap } from '../services/recapService.ts';
 import { receiptScanRateLimit } from '../middleware/receiptScanRateLimit.ts';
 import {
   createExpense,
@@ -156,5 +160,20 @@ expensesRouter.post(
   async (req: Request, res: Response) => {
     const data = await quickAdd(getPrisma(), userIdOf(req), req.body as QuickAddRequest);
     sendJson(res, 200, QuickAddResponse, { data });
+  },
+);
+
+/**
+ * `POST /recap`: reword a month's insight sentences into a short recap. Throttled before anything else.
+ * It lives with the other model-backed routes, though it is about the Summary: the model sees only the
+ * facts it is handed, never an expense, and nothing is stored.
+ */
+expensesRouter.post(
+  '/recap',
+  recapRateLimit,
+  validateBody(RecapRequest),
+  async (req: Request, res: Response) => {
+    const data = await writeRecap(userIdOf(req), req.body as RecapRequest);
+    sendJson(res, 200, RecapResponse, { data });
   },
 );

@@ -135,5 +135,10 @@ export const problems = {
   /** The model failed. Says nothing of why: its message may name a key, a quota or the sentence. */
   quickAddFailed: () =>
     new ApiProblem('quick_add_failed', 'The description could not be read right now.'),
+  /** Writing a recap with a model is not configured, or its day's budget is spent. */
+  recapUnavailable: () =>
+    new ApiProblem('recap_unavailable', 'Writing a recap is not available on this server.'),
+  /** The model failed or wrote something unusable. Says nothing of why: it may name a key, a quota or a fact. */
+  recapFailed: () => new ApiProblem('recap_failed', 'The recap could not be written right now.'),
   internal: (message = 'Something went wrong.') => new ApiProblem('internal_error', message),
 } as const;

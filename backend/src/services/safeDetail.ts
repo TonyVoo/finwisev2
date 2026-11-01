@@ -5,7 +5,7 @@
  * message could be anything and stays out of the log.
  */
 const OWN_MESSAGE =
-  /^(receipt model |quick add model |text provider |image too large|the model did not)/;
+  /^(receipt model |quick add model |recap model |text provider |image too large|the model did not)/;
 
 export function safeDetail(error: unknown): { detail?: string } {
   const message = error instanceof Error ? error.message : '';

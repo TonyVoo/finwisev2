@@ -21,6 +21,7 @@ export * from './category.js';
 export * from './expense.js';
 export * from './receipt.js';
 export * from './quickAdd.js';
+export * from './recap.js';
 export * from './categoryHints.js';
 export * from './goal.js';
 export * from './settlement.js';

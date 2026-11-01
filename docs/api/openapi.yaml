@@ -2329,6 +2329,91 @@ paths:
           $ref: '#/components/responses/QuickAddFailed'
         '503':
           $ref: '#/components/responses/QuickAddUnavailable'
+
+  /v1/recap:
+    post:
+      operationId: recap
+      tags: [expenses]
+      summary: Reword a month's insight sentences into a short recap
+      description: |
+        Takes the sentences the app's Insights card already shows for a month ("Groceries is your
+        biggest category, at 24% of the month.") and has the server's language model reword them as two
+        or three friendly sentences, in the app's language. **The model never sees an expense**: only
+        these facts, the month and the language. Any category names and amounts in the sentences are
+        sent as written, which is why the app says so beside the button that asks for it. **Nothing is
+        stored**, and neither the facts nor the recap is logged.
+
+        The answer is never taken on trust. The server requires every number in the recap to appear
+        in the facts (or to be the month or year of the request), so a model cannot invent a figure,
+        and refuses a recap that is empty, over 500 characters, or contains a link or markdown: any of
+        those is `502 recap_failed`. At most 12 facts of 200 characters; a request outside that is a
+        `validation_error`, checked before the model is called.
+
+        Each call may spend the server's quota with the model, so an account may make 10 per 15 minutes
+        (`429` with `Retry-After` beyond that), and the server keeps its own daily budget. When the model
+        is not configured, or that budget is spent, the answer is `503 recap_unavailable` (the app stops
+        offering the recap for the session); a model failure is `502 recap_failed` (its message is
+        never passed on). Neither affects the Insights card, which is computed on the phone.
+      x-errorCodes:
+        - validation_error
+        - malformed_request
+        - unsupported_media_type
+        - batch_too_large
+        - unauthorized
+        - token_expired
+        - token_invalid
+        - rate_limited
+        - internal_error
+        - recap_unavailable
+        - recap_failed
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecapRequest' }
+            example:
+              month: '2026-10'
+              language: en
+              facts:
+                - You have spent 12% more than in September.
+                - Groceries is your biggest category, at 24% of the month.
+      responses:
+        '200':
+          description: The recap.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecapResponse' }
+              example:
+                data:
+                  text: October was a little heavier than September, with groceries leading at 24%.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '413':
+          description: |
+            The body exceeded the route's size limit. Code: `batch_too_large`.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              example:
+                error:
+                  code: batch_too_large
+                  message: Request body exceeds the limit.
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '502':
+          $ref: '#/components/responses/RecapFailed'
+        '503':
+          $ref: '#/components/responses/RecapUnavailable'
   /v1/rates:
     get:
       operationId: getRate
@@ -3103,6 +3188,34 @@ components:
             error:
               code: quick_add_failed
               message: The description could not be read right now.
+    RecapUnavailable:
+      description: |
+        Writing a recap with a model is not set up on this server, or its day's budget is spent.
+        Code: `recap_unavailable`. The app stops offering the recap for the session; the Insights card
+        is unaffected.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            error:
+              code: recap_unavailable
+              message: Writing a recap is not available on this server.
+    RecapFailed:
+      description: |
+        The model could not be reached, failed, or wrote something the server would not pass on (a
+        number that was not in the facts, a link, markdown, or the wrong length). Code: `recap_failed`.
+        Nothing was stored, and the provider's own message is never passed on.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            error:
+              code: recap_failed
+              message: The recap could not be written right now.
     InternalError:
       description: |
         Unexpected server fault. Code: `internal_error`. The message never leaks
@@ -3242,6 +3355,8 @@ components:
         | `ocr_failed` | 502 | The receipt-reading provider could not be reached or failed. Nothing was stored; retry later or type the expense. |
         | `quick_add_unavailable` | 503 | Reading typed descriptions with a model is not set up on this server, or its day's budget is spent. The app stops asking for the session; the phone keeps what it read itself. |
         | `quick_add_failed` | 502 | The model could not be reached or failed. Nothing was stored; the phone keeps what it read itself. |
+        | `recap_unavailable` | 503 | Writing a recap with a model is not set up on this server, or its day's budget is spent. The app stops offering the recap for the session; the Insights card is unaffected. |
+        | `recap_failed` | 502 | The model could not be reached, failed, or wrote something the server would not pass on. Nothing was stored. |
         | `internal_error` | 500 | Unexpected server fault. Never leaks internals; correlate via `X-Request-Id`. |
       enum:
         - validation_error
@@ -3275,6 +3390,8 @@ components:
         - ocr_failed
         - quick_add_unavailable
         - quick_add_failed
+        - recap_unavailable
+        - recap_failed
         - internal_error
 
     ErrorDetails:
@@ -4445,6 +4562,50 @@ components:
       required: [data]
       properties:
         data: { $ref: '#/components/schemas/QuickAddSuggestion' }
+
+    RecapRequest:
+      type: object
+      additionalProperties: false
+      required: [month, language, facts]
+      properties:
+        month:
+          type: string
+          pattern: '^\d{4}-(0[1-9]|1[0-2])$'
+          description: The month the facts are about, as YYYY-MM.
+        language:
+          type: string
+          enum: [en, vi]
+          description: The app's language, which the recap is written in.
+        facts:
+          type: array
+          minItems: 1
+          maxItems: 12
+          description: >-
+            The insight sentences the Insights card shows, at most 12 of at most 200 characters. Any
+            category names and amounts in them are sent as written.
+          items:
+            type: string
+            minLength: 1
+            maxLength: 200
+            pattern: '\S'
+
+    RecapText:
+      type: object
+      additionalProperties: false
+      required: [text]
+      properties:
+        text:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: Two or three short sentences using only numbers from the facts.
+
+    RecapResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/RecapText' }
 
     ReceiptIndexItem:
       type: object

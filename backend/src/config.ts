@@ -95,6 +95,11 @@ const EnvSchema = z.object({
    * counted apart from the receipt budget so one cannot use up the other's share of the free quota.
    */
   GEMINI_QUICK_ADD_DAILY_BUDGET: z.coerce.number().int().min(0).default(200),
+  /**
+   * Calls per Pacific day for writing a month's recap (`docs/design/16-monthly-insights.md`), counted apart
+   * from the other two Gemini features so none of them can use up another's share of the free quota.
+   */
+  GEMINI_RECAP_DAILY_BUDGET: z.coerce.number().int().min(0).default(100),
 
   /**
    * How many reverse proxies sit in front of this process, or `false` for none.
@@ -175,6 +180,7 @@ function build() {
       geminiModel: env.GEMINI_MODEL,
       geminiDailyBudget: env.GEMINI_DAILY_BUDGET,
       geminiQuickAddDailyBudget: env.GEMINI_QUICK_ADD_DAILY_BUDGET,
+      geminiRecapDailyBudget: env.GEMINI_RECAP_DAILY_BUDGET,
     },
     /** Express's `trust proxy` setting. See `TRUST_PROXY` above for why it matters. */
     trustProxy: env.TRUST_PROXY,

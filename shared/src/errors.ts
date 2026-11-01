@@ -74,6 +74,10 @@ export const ERROR_CODES = [
   'quick_add_unavailable',
   /** 502 — the model could not be reached or failed. Nothing was stored; the phone keeps what it read itself. */
   'quick_add_failed',
+  /** 503 — writing a recap with a model is not set up on this server, or its day's budget is spent. The Insights card is unaffected. */
+  'recap_unavailable',
+  /** 502 — the model could not be reached, failed, or wrote something the server would not pass on. Nothing was stored. */
+  'recap_failed',
   /** 500 — unexpected server fault. Never leaks internals; correlate via the logged request id. */
   'internal_error',
 ] as const;
@@ -150,6 +154,8 @@ export const ERROR_CODE_STATUS: Readonly<Record<ErrorCode, number>> = {
   ocr_failed: 502,
   quick_add_unavailable: 503,
   quick_add_failed: 502,
+  recap_unavailable: 503,
+  recap_failed: 502,
   internal_error: 500,
 };
 

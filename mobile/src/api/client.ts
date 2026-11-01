@@ -29,6 +29,8 @@ import type {
   ReceiptResponse,
   QuickAddRequest,
   QuickAddResponse,
+  RecapRequest,
+  RecapResponse,
   ReceiptScanRequest,
   ReceiptScanResponse,
   LoginRequest,
@@ -125,6 +127,8 @@ export interface ApiClient {
   scanReceipt(body: ReceiptScanRequest): Promise<ReceiptScanResponse>;
   /** Reads a typed sentence and suggests an expense. Stores nothing; every field but `currency` may be null. */
   quickAdd(body: QuickAddRequest): Promise<QuickAddResponse>;
+  /** Rewords a month's insight sentences into a short recap. Stores nothing; the numbers are checked server-side. */
+  recap(body: RecapRequest): Promise<RecapResponse>;
 
   /** What to multiply a foreign amount by. Called only while entering one; fails soft. */
   getRate(query: RatesQuery): Promise<RatesResponse>;
@@ -227,6 +231,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     listReceipts: () => send(ENDPOINTS.listReceipts),
     scanReceipt: (body) => send(ENDPOINTS.scanReceipt, { body }),
     quickAdd: (body) => send(ENDPOINTS.quickAdd, { body }),
+    recap: (body) => send(ENDPOINTS.recap, { body }),
 
     getRate: (query) => send(ENDPOINTS.getRate, { query: toQuery(query) }),
     pullSync: (query) => send(ENDPOINTS.pullSync, { query: toQuery(query) }),
