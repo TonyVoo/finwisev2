@@ -81,7 +81,10 @@ recap._), as the app's buttons must state one.
 ### The model's job, and the numbers check
 
 The instruction: write two or three short sentences in the given language, **using only the facts**, copying every
-number exactly as written; add no number, no count, no advice, no judgement of the person, no markdown or emoji.
+number exactly as written; add no number, no count, no advice, no judgement of the person, no markdown or emoji. A
+first version made the model repeat the facts almost word for word, so the instruction also asks it to pick the two or
+three that matter most and say them in its own words; checked against the real model, that reads as a recap and
+still passes the numbers check.
 
 Then the server **checks the answer, never trusting it**: it pulls every number out of the text and requires each
 one (ignoring separators, so `1,284.50` and `128450` agree) to appear in the facts, and requires the text to be

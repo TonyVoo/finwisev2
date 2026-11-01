@@ -45,6 +45,17 @@ help read it, with nothing that names you and no list of your categories. On Goo
 what it receives to improve its products (**[FREE / PAID]** is in use here). Our server does not keep the
 sentence or the result. The suggestion is only a suggestion; nothing is saved until you press Save.
 
+## How the monthly recap works
+
+On the Summary screen, under the Insights card, you can tap **Write my recap**. The app then sends the sentences the
+card is showing (for example "Groceries is your biggest category, at 24% of the month"), the month, and your
+language, through our server to **Google (Gemini API)**, which rewords them as a few sentences. Those sentences
+contain your category names and amounts, as written; they do not include individual expenses, notes, dates,
+receipts, or anything that names you. On Google's free plan, Google may use what it receives to improve its
+products (**[FREE / PAID]** is in use here). Our server does not keep the sentences or the recap, and checks that
+the recap contains no figure that was not in them. Nothing is sent unless you tap the button, and the recap is
+kept only while the app is open.
+
 ## Other services we use
 
 - **Resend** sends the one-time codes for email verification and password reset (your email address and the code).

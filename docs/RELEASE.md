@@ -52,9 +52,17 @@ Accurate to the code at the time of writing; re-check after any change.
 - Sentences typed in Add expense's _Describe it_ line, **only** when the phone's own rules could not read them (a
   sentence it understood never leaves the phone): the sentence, today's date and the account currency, to the server.
   Nothing is stored or logged.
+- The sentences of the Summary **Insights** card (for example "Groceries is your biggest category, at 24% of the
+  month"), the month and the app's language, **only** when a person taps _Write my recap_. Any category names and
+  amounts in those sentences go as written; no expense, note, date, receipt, email or account id does. Nothing is
+  stored or logged.
 
 **Third parties**
 
+- **Monthly recap** (Summary, _Write my recap_): the card's own sentences go through this app's server to **Google
+  Gemini**, which rewords them as a few sentences; the server refuses any number the sentences did not contain. The
+  same free-tier note applies: **Google may use requests to improve its products** on the free plan, and the
+  button's own hint says so. With no key, the button disappears and nothing is sent.
 - **Typed descriptions** ("coffee 45k yesterday"): when the phone is unsure and the server has `GEMINI_API_KEY`, the
   sentence goes through this app's server to **Google Gemini**, with today's date and the account currency, and
   no account details or category names. The same free-tier note applies: **Google may use requests to improve
@@ -103,5 +111,5 @@ Delete account) and removes the account's data on the server; the privacy policy
 - Run `npx expo-doctor` in `mobile/` and clear what it reports. At the time of writing it failed two checks
   (a duplicate native dependency, and 8 packages behind the SDK's expected versions); neither was caused by
   release configuration, and upgrading them is its own change to test.
-- Decide whether quick add's online step ships turned on, with receipt reading below: both use the same Gemini key and the same free-tier caveat.
+- Decide whether the three Gemini features ship turned on (receipt reading, quick add's online step, and the monthly recap): they share one key and one free-tier caveat, and the recap sends spending figures and category names, which is the most sensitive of the three. Each can be left off by leaving the key unset, and each has its own daily budget (`GEMINI_DAILY_BUDGET`, `GEMINI_QUICK_ADD_DAILY_BUDGET`, `GEMINI_RECAP_DAILY_BUDGET`).
 - Decide whether receipt reading ships turned on: it needs a provider key, sends photos to a third party, and on Gemini's free tier Google may use them to improve its products (a paid plan on the same project removes that).

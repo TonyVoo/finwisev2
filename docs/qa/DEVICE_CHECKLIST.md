@@ -51,6 +51,19 @@ marked **(dev build)**.
       the budget is used and how many days are left in the month (with "1 day left" and "today is the last day"
       worded properly). Go past the budget: it says how far over. Only one budget line shows: the one that has used
       the largest share. In Tiếng Việt the same lines read naturally. Switch to a past month: no budget line.
+- [ ] **Recap (needs a backend started with `GEMINI_API_KEY`).** Under the Insights list there is **Write my recap**,
+      and a hint saying the sentences, with category names and amounts, go to an outside service (Google Gemini) that
+      may use them on a free plan. Nothing is sent until you tap. The hint wraps fully at the largest text size.
+- [ ] Tap it: the button shows progress, then two or three sentences appear with **Written by AI from the figures
+      above.** Every number in the recap is one of the lines above it; it adds no figure of its own and gives no advice.
+- [ ] **Write again** gives another. Switch to the previous month and back: the first recap is still there, with no
+      wait. A past month can have its own recap. Close the app and reopen it: the recaps are gone (kept for the
+      session only).
+- [ ] In Tiếng Việt the recap is written in Vietnamese.
+- [ ] Airplane mode: the button is greyed out and says **Connect to the internet to write a recap.**
+- [ ] Backend stopped: tapping gives **Couldn't write a recap right now.** and the card is unchanged. Backend without a
+      key: tapping makes the button disappear for the rest of the session (the Insights card itself is unaffected);
+      restarting the app brings it back.
 
 ## 4. Budgets and notifications
 
