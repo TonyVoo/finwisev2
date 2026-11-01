@@ -225,6 +225,18 @@ describe('FloatingTabBar with the camera shortcut', () => {
     expect(screen.getAllByRole('tab')).toHaveLength(4);
   });
 
+  it('labels every tab under its icon, so no label stretches a slot and pushes the camera off the middle', async () => {
+    const { element } = withScan(jest.fn());
+    await renderWithSafeArea(element);
+
+    for (const label of ['Expenses', 'Summary', 'Goals', 'Settings']) {
+      expect(screen.getByText(label)).toBeTruthy();
+    }
+    const slot = flattenStyle(screen.getByTestId('tab-summary').props.style);
+    expect(slot.flexDirection).toBe('column');
+    expect(slot.flex).toBe(1);
+  });
+
   it('runs the shortcut when pressed, without changing tab', async () => {
     const onScan = jest.fn();
     const { navigate, emit, element } = withScan(onScan);

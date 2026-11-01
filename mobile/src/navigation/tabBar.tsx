@@ -82,8 +82,12 @@ export function FloatingTabBar({ state, descriptors, navigation, onScan }: Float
   const styles = useStyles();
   const insets = useSafeAreaInsets();
   const { style } = useTabBarStyle();
-  const spans = style !== 'compact';
-  const labelled = style === 'labelled';
+  // With the camera button there are five things to fit, so the bar always spans the width in equal
+  // slots with a label under every icon: a label beside the focused icon would stretch its slot and push
+  // the camera off the middle.
+  const hasScan = onScan !== undefined && state.routes.some((route) => route.name === SCAN_ROUTE);
+  const spans = style !== 'compact' || hasScan;
+  const labelled = style === 'labelled' || hasScan;
 
   return (
     <View
@@ -192,8 +196,8 @@ const useStyles = createStyles((color) =>
     },
     // The camera: a filled circle, so it reads as the one action among the places.
     scan: {
-      width: 52,
-      height: 52,
+      width: 48,
+      height: 48,
       borderRadius: radius.pill,
       alignItems: 'center',
       justifyContent: 'center',
@@ -215,7 +219,8 @@ const useStyles = createStyles((color) =>
     // Equal slots across the wide bar.
     itemSlot: { flex: 1, paddingHorizontal: space[2] },
     // A label under the icon, which is what lets every tab carry one.
-    itemStacked: { flexDirection: 'column', gap: 2 },
+    // Tight sides: a slot is only about a fifth of the bar, and "Expenses" has to fit in it.
+    itemStacked: { flexDirection: 'column', gap: 2, paddingHorizontal: 2, minWidth: 0 },
     label: {
       ...type.callout,
       fontWeight: '600',
