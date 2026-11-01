@@ -38,6 +38,21 @@ export interface TokenSource {
   ensureFreshAccessToken(staleAccessToken: string | null): Promise<string | null>;
 }
 
+/** Where the active space comes from: whichever space the local store holds. */
+export interface SpaceSource {
+  /** The space to name in `X-Space-Id`, or null when none has been chosen yet. */
+  getSpaceId(): Promise<string | null>;
+}
+
+/**
+ * Whether a route works in a book. The ones about the person - their account, and their households, which
+ * are managed by id whichever space is open - leave the header off, so a space that has since gone cannot
+ * block the very calls that would recover from it.
+ */
+function worksInABook(path: string): boolean {
+  return !(path.startsWith('/v1/me') || path.startsWith('/v1/household'));
+}
+
 /**
  * The 401 interceptor: attach the access token, and refresh once if it has expired.
  *
@@ -65,7 +80,11 @@ export interface TokenSource {
  *    every await that follows, including the refresh, because a refresh that finds a
  *    different stored token hands *that* token back as if it were a rotation.
  */
-export function createAuthorizedTransport(transport: Transport, session: TokenSource): Transport {
+export function createAuthorizedTransport(
+  transport: Transport,
+  session: TokenSource,
+  spaces?: SpaceSource,
+): Transport {
   return async function send(request) {
     // Signup, login, refresh and health take no token. Sending one would be harmless but
     // pointless, and a 401 from them is about the credentials in the body - refreshing
@@ -76,7 +95,14 @@ export function createAuthorizedTransport(transport: Transport, session: TokenSo
 
     const epoch = session.getEpoch();
     const accessToken = await session.getAccessToken();
-    const response = await transport({ ...request, accessToken });
+    // Read once, so a retry after a refresh names the same space as the request it replays.
+    const spaceId =
+      request.spaceId !== undefined
+        ? request.spaceId
+        : spaces !== undefined && worksInABook(request.path)
+          ? await spaces.getSpaceId()
+          : undefined;
+    const response = await transport({ ...request, accessToken, spaceId });
     if (response.status !== 401) {
       return response;
     }
@@ -89,6 +115,6 @@ export function createAuthorizedTransport(transport: Transport, session: TokenSo
       return response;
     }
 
-    return transport({ ...request, accessToken: refreshed });
+    return transport({ ...request, accessToken: refreshed, spaceId });
   };
 }

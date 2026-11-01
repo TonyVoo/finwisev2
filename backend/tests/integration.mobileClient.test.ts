@@ -4,7 +4,11 @@ import { v7 as uuidv7 } from 'uuid';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createAuthorizedTransport, type TokenSource } from '../../mobile/src/api/authorize.ts';
 import { type ApiClient, createApiClient } from '../../mobile/src/api/client.ts';
-import { ApiRequestError, NetworkUnavailableError } from '../../mobile/src/api/errors.ts';
+import {
+  ApiRequestError,
+  NetworkUnavailableError,
+  isSpaceGone,
+} from '../../mobile/src/api/errors.ts';
 import { createTransport, type Transport } from '../../mobile/src/api/transport.ts';
 import { createSessionController } from '../../mobile/src/auth/session.ts';
 import { createMemoryTokenStore } from '../../mobile/src/auth/sessionRecord.ts';
@@ -856,5 +860,53 @@ describe('API-27 — a household, driven by two real clients', () => {
     expect((await member.client.getHousehold()).household?.role).toBe('owner');
     await expect(owner.client.leaveHousehold()).resolves.toBeUndefined();
     expect((await owner.client.getMe()).dataOwnerId).toBe(owner.auth.user.id);
+  });
+});
+
+describe('API-28 — several households, with the real client naming the space', () => {
+  it('works in the space it names, falls back when that one is gone, and leaves management unaffected', async () => {
+    const transport = recordingTransport();
+    const anonymous = createApiClient({ transport });
+    const auth = await anonymous.signup({ email: uniqueEmail('spaces'), password: TEST_PASSWORD });
+    let active: string | null = null;
+    const client = createApiClient({
+      transport: createAuthorizedTransport(
+        transport,
+        fixedToken(() => auth.accessToken),
+        { getSpaceId: async () => active },
+      ),
+    });
+
+    const flat = (await client.createHousehold({ name: 'Flat' })).household!;
+    const home = (await client.createHousehold({ name: 'Home' })).household!;
+    const spaces = (await client.getMe({ spaceId: null })).spaces!;
+    const bookOf = (householdId: string) =>
+      spaces.find((s) => s.kind === 'household' && s.householdId === householdId)!.id;
+
+    // A category added in one space is not in the other.
+    active = bookOf(flat.id);
+    await client.createCategory({ name: 'Only in the flat' });
+    active = bookOf(home.id);
+    expect((await client.listCategories()).data.map((c) => c.name)).not.toContain(
+      'Only in the flat',
+    );
+    active = auth.user.id;
+    expect((await client.listCategories()).data.map((c) => c.name)).not.toContain(
+      'Only in the flat',
+    );
+    active = bookOf(flat.id);
+    expect((await client.listCategories()).data.map((c) => c.name)).toContain('Only in the flat');
+
+    // Management ignores the active space, so a stale one cannot block it.
+    active = '0192f5a0-0000-7000-8000-00000000dead';
+    expect((await client.listHouseholds()).households.map((h) => h.name)).toEqual(['Flat', 'Home']);
+    const stale = await client.listCategories().catch((error: unknown) => error);
+    expect(isSpaceGone(stale)).toBe(true);
+
+    // Leaving the space it names: the next call says it is gone, which is what the device falls back on.
+    active = bookOf(home.id);
+    await client.deleteHouseholdById(home.id);
+    const gone = await client.listCategories().catch((error: unknown) => error);
+    expect(isSpaceGone(gone)).toBe(true);
   });
 });

@@ -37,6 +37,26 @@ describe('buildQueryString', () => {
   });
 });
 
+describe('createTransport and X-Space-Id', () => {
+  const sentHeaders = async (
+    request: Partial<Parameters<ReturnType<typeof createTransport>>[0]>,
+  ) => {
+    const fetchImpl = jest.fn(fetchMock(() => jsonResponse({ ok: true })));
+    const transport = createTransport({ baseUrl: BASE_URL, fetchImpl });
+    await transport({ method: 'get', path: '/v1/expenses', requiresAuth: true, ...request });
+    return fetchImpl.mock.calls[0]![1]!.headers as Record<string, string>;
+  };
+
+  it('names the space when the request carries one', async () => {
+    expect((await sentHeaders({ spaceId: 'space-1' }))['X-Space-Id']).toBe('space-1');
+  });
+
+  it('sends nothing for no space, so the server picks its default', async () => {
+    expect(await sentHeaders({ spaceId: null })).not.toHaveProperty('X-Space-Id');
+    expect(await sentHeaders({})).not.toHaveProperty('X-Space-Id');
+  });
+});
+
 describe('createTransport', () => {
   it('builds the URL from the base, the path and the query', async () => {
     const fetchImpl = jest.fn(fetchMock(() => jsonResponse({ ok: true })));

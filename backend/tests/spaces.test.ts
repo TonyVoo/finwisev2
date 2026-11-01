@@ -156,6 +156,8 @@ describe('which book a request works in', () => {
         const response = await categories(ada, value);
         expect(response.status).toBe(404);
         expect(response.body.error.code).toBe('not_found');
+        // Names the header, never the value, so a device can tell this from any other 404.
+        expect(response.body.error.details).toEqual({ header: 'X-Space-Id' });
         bodies.add(JSON.stringify({ ...response.body.error, requestId: undefined }));
       }
       expect(bodies.size).toBe(1);

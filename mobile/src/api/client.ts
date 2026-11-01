@@ -79,7 +79,8 @@ export interface ApiClient {
   forgotPassword(body: ForgotPasswordRequest): Promise<void>;
   /** Sets a new password from the emailed code and ends every session. 204, no body. */
   resetPassword(body: ResetPasswordRequest): Promise<void>;
-  getMe(): Promise<MeResponse>;
+  /** `spaceId` asks as that space (`null`: as the server's default) instead of the active one. */
+  getMe(options?: { readonly spaceId?: string | null }): Promise<MeResponse>;
   /** Replaces the password and ends every other session; returns this device's new pair. */
   changePassword(body: ChangePasswordRequest): Promise<TokenPair>;
   /** Sets or clears the display name (no password: it is not a credential). */
@@ -170,6 +171,7 @@ interface SendInit {
   readonly pathParams?: Readonly<Record<string, string>>;
   readonly query?: Readonly<Record<string, QueryValue>> | undefined;
   readonly body?: unknown;
+  readonly spaceId?: string | null | undefined;
 }
 
 export function createApiClient(options: ApiClientOptions): ApiClient {
@@ -185,6 +187,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       query: init.query,
       body: init.body,
       requiresAuth: endpoint.route.auth,
+      spaceId: init.spaceId,
       signal,
     });
 
@@ -218,7 +221,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     logout: (body) => send(ENDPOINTS.logout, { body }),
     forgotPassword: (body) => send(ENDPOINTS.forgotPassword, { body }),
     resetPassword: (body) => send(ENDPOINTS.resetPassword, { body }),
-    getMe: () => send(ENDPOINTS.getMe),
+    getMe: (options) => send(ENDPOINTS.getMe, { spaceId: options?.spaceId }),
     changePassword: (body) => send(ENDPOINTS.changePassword, { body }),
     updateProfile: (body) => send(ENDPOINTS.updateProfile, { body }),
     changeEmail: (body) => send(ENDPOINTS.changeEmail, { body }),

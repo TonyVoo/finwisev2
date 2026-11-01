@@ -1,4 +1,5 @@
 import type { MeResponse } from '@expense-tracker/shared';
+import { isSpaceGone } from '../api/errors';
 import type { ApiClient } from '../api/client';
 import { META_KEYS, WIPED_META_KEYS, deleteMeta, readMeta, writeMeta } from '../db/meta';
 import type { SqliteDatabase, SqliteExecutor } from '../db/sqlite';
@@ -39,26 +40,55 @@ const SCOPED_TABLES = [
   'categories',
 ] as const;
 
+export interface ReconcileOptions {
+  /**
+   * The space to move to, chosen by the person (`docs/design/13-multiple-households.md`). Without one the
+   * device stays in the space it holds, falling back to the personal space if that one is gone.
+   */
+  readonly target?: string;
+}
+
 export async function reconcileDataScope(
   database: SqliteDatabase,
   api: Pick<ApiClient, 'getMe'>,
+  options: ReconcileOptions = {},
 ): Promise<ScopeResult> {
+  // Absent means the store has only ever held the account's own books.
+  const identity = (await readMeta(database, META_KEYS.owner)) ?? undefined;
+  const stored = await readMeta(database, META_KEYS.dataScope);
+  // What to ask as: the person's choice, else where the device already is. A device that has never been
+  // told asks as nobody, and takes the server's default (the household it is in alone, an older app's view).
+  const requested = options.target ?? stored ?? undefined;
+
   let me;
   try {
-    me = await api.getMe();
-  } catch {
-    // Offline or refused. Nothing is changed on a guess; the next pass asks again.
-    return 'skipped';
+    me = await api.getMe(requested === undefined ? undefined : { spaceId: requested });
+  } catch (error) {
+    // Where the device is has gone (left, removed, deleted): back to the personal space. A space the
+    // person just chose that is not there is not a reason to move them anywhere.
+    if (
+      options.target !== undefined ||
+      stored === null ||
+      !isSpaceGone(error) ||
+      identity === undefined
+    ) {
+      // Offline or refused. Nothing is changed on a guess; the next pass asks again.
+      return 'skipped';
+    }
+    try {
+      me = await api.getMe({ spaceId: identity });
+    } catch {
+      return 'skipped';
+    }
   }
 
   const target = me.dataOwnerId ?? me.user.id;
   await storeMembers(database, me.household);
-  // Absent means the store has only ever held the account's own books.
-  const identity = (await readMeta(database, META_KEYS.owner)) ?? me.user.id;
-  const current = (await readMeta(database, META_KEYS.dataScope)) ?? identity;
+  await storeSpaces(database, me.spaces);
+  const current = stored ?? identity ?? me.user.id;
 
   if (current === target) {
-    if ((await readMeta(database, META_KEYS.dataScope)) === null) {
+    if (stored === null) {
       await writeMeta(database, META_KEYS.dataScope, target);
     }
     return 'unchanged';
@@ -71,11 +101,21 @@ export async function reconcileDataScope(
     await deleteMeta(txn, WIPED_META_KEYS);
     // Wiped with the rest, so it is written back from the same answer.
     await storeMembers(txn, me.household);
-    // The household's currency while in one, the account's own again on leaving.
+    await storeSpaces(txn, me.spaces);
+    // The space's currency while in a household, the account's own again on leaving.
     await writeUser(txn, me.user);
     await writeMeta(txn, META_KEYS.dataScope, target);
   });
   return 'switched';
+}
+
+/** The list for the switcher: kept on every call, since a join or a leave changes it without changing the books held. */
+async function storeSpaces(executor: SqliteExecutor, spaces: MeResponse['spaces']): Promise<void> {
+  if (spaces === undefined) {
+    await deleteMeta(executor, [META_KEYS.spaces]);
+    return;
+  }
+  await writeMeta(executor, META_KEYS.spaces, JSON.stringify(spaces));
 }
 
 /**

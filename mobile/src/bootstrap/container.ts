@@ -11,6 +11,7 @@ import { createSqliteLocalStore } from '../db/localStore';
 import { generateDueRecurring } from '../recurring/generate';
 import { syncBillReminders } from '../notifications/billReminders';
 import { reconcileDataScope } from '../household/dataScope';
+import { createActiveSpaceSource } from '../household/spaces';
 import { syncGoalReminders } from '../notifications/goalReminders';
 import { META_KEYS, readMeta } from '../db/meta';
 import { type LanguagePreference, parseLanguagePreference } from '../i18n/language';
@@ -116,7 +117,10 @@ export async function createAppContainer(options: AppContainerOptions = {}): Pro
     revokeRefreshToken: (refreshToken) => publicApi.logout({ refreshToken }),
   });
 
-  const api = createApiClient({ transport: createAuthorizedTransport(transport, session) });
+  const api = createApiClient({
+    // Every request that works in a book names the one this device holds (`docs/design/13-multiple-households.md`).
+    transport: createAuthorizedTransport(transport, session, createActiveSpaceSource(database)),
+  });
 
   await session.initialize();
 

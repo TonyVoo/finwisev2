@@ -22,7 +22,8 @@ info:
     - **Base path** is `/v1`. A breaking change ships as `/v2`; this version is additive-only.
     - **Space.** A person may be in several households, and each request names the book it works in with an
       optional `X-Space-Id` header (an id from `GET /v1/me` `spaces`). It is checked every time: a value that is not one
-      of the caller's own spaces is `404 not_found`, the same answer as for an id that does not exist. Absent, a person
+      of the caller's own spaces is `404 not_found`, the same answer as for an id that does not exist, with
+      `details: { header: "X-Space-Id" }` so a device can tell it from any other 404 and fall back to its personal space. Absent, a person
       in exactly one household works in it (so an older app is unaffected) and anyone else in their personal space.
     - **Auth** is `Authorization: Bearer <accessToken>` on every operation except
       `/v1/health` and the `/v1/auth/*` endpoints.

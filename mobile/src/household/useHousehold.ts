@@ -78,12 +78,28 @@ export function useHouseholdActions(): HouseholdActions {
   const queryClient = useQueryClient();
   const { engine } = useSync();
 
-  /** After a change of scope: line the device up with the server, then read the new books. */
-  const moveDeviceToServerScope = useCallback(async () => {
-    const result = await reconcileDataScope(database, api);
-    await queryClient.invalidateQueries({ queryKey: queryKeys.local() });
-    if (result === 'switched') void engine.sync('manual');
-  }, [api, database, engine, queryClient]);
+  /**
+   * After a change of scope: line the device up with the server, then read the new books. Given the
+   * household just made or joined, the device moves into it; otherwise it stays where it is, or - if that
+   * space is gone (left, deleted) - falls back to the personal space.
+   */
+  const moveDeviceToServerScope = useCallback(
+    async (into?: string) => {
+      let target: string | undefined;
+      if (into !== undefined) {
+        const me = await api.getMe({ spaceId: null }).catch(() => null);
+        target = me?.spaces?.find((s) => s.kind === 'household' && s.householdId === into)?.id;
+      }
+      const result = await reconcileDataScope(
+        database,
+        api,
+        target === undefined ? {} : { target },
+      );
+      await queryClient.invalidateQueries({ queryKey: queryKeys.local() });
+      if (result === 'switched') void engine.sync('manual');
+    },
+    [api, database, engine, queryClient],
+  );
 
   const refreshHousehold = useCallback(
     () => queryClient.invalidateQueries({ queryKey: queryKeys.household() }),
@@ -95,15 +111,15 @@ export function useHouseholdActions(): HouseholdActions {
     if ((await countPendingRecords(database)) > 0) throw new PendingChangesError();
   }, [database]);
 
-  // Creating moves the person's own books into the household's, so whose books this device
+  // Creating makes a household of its own and the device moves into it, so whose books this device
   // holds changes, exactly as when joining: nothing unsent, then line the device up.
   const create = useMutation({
     mutationFn: async () => {
       await requireNothingPending();
       return await api.createHousehold();
     },
-    onSuccess: async () => {
-      await moveDeviceToServerScope();
+    onSuccess: async (created) => {
+      await moveDeviceToServerScope(created.household?.id);
       await refreshHousehold();
     },
   });
@@ -112,8 +128,8 @@ export function useHouseholdActions(): HouseholdActions {
       await requireNothingPending();
       return await api.joinHousehold({ code });
     },
-    onSuccess: async () => {
-      await moveDeviceToServerScope();
+    onSuccess: async (joined) => {
+      await moveDeviceToServerScope(joined.household?.id);
       await refreshHousehold();
     },
   });

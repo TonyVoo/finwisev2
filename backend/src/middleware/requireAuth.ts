@@ -1,7 +1,7 @@
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import { verifyAccessToken } from '../auth/accessToken.ts';
 import { getPrisma } from '../db/client.ts';
-import { problems } from '../errors.ts';
+import { ApiProblem, problems } from '../errors.ts';
 
 /**
  * Gate for every authenticated route.
@@ -45,7 +45,9 @@ function resolveSpace(
   if (header === undefined) return householdScopes.length === 1 ? householdScopes[0]! : userId;
   const requested = header.trim().toLowerCase();
   if (requested === userId || householdScopes.includes(requested)) return requested;
-  throw problems.notFound('No such space.');
+  // `details` lets a device tell this from any other 404 and fall back to its personal space; it never
+  // repeats the value asked for.
+  throw new ApiProblem('not_found', 'No such space.', { header: 'X-Space-Id' });
 }
 
 export const requireAuth: RequestHandler = (

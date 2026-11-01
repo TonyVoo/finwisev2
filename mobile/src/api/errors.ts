@@ -101,3 +101,16 @@ export function isApiErrorCode(
 ): error is ApiRequestError {
   return error instanceof ApiRequestError && codes.includes(error.code as ErrorCode);
 }
+
+/**
+ * Whether the server refused because the space named in `X-Space-Id` is not one this account can work in
+ * (it was left, removed from, or deleted). Told apart from every other 404 by the header it names, so the
+ * device falls back to its personal space only for this.
+ */
+export function isSpaceGone(error: unknown): boolean {
+  return (
+    error instanceof ApiRequestError &&
+    error.status === 404 &&
+    error.details?.['header'] === 'X-Space-Id'
+  );
+}

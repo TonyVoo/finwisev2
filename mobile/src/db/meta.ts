@@ -79,6 +79,11 @@ export const META_KEYS = {
    */
   householdMembers: 'householdMembers',
   /**
+   * JSON `Space[]`: every book the account can work in, as `GET /v1/me` last said, for the switcher to show
+   * offline. Wiped with the store: it names the account's households.
+   */
+  spaces: 'spaces',
+  /**
    * `compact`, `wide` or `labelled`: how the floating tab bar looks, chosen in Settings. A property
    * of this device, like the theme, so deliberately absent from {@link WIPED_META_KEYS}.
    */
@@ -99,6 +104,7 @@ export const WIPED_META_KEYS: readonly MetaKey[] = [
   META_KEYS.categoryRenameAnswered,
   META_KEYS.dataScope,
   META_KEYS.householdMembers,
+  META_KEYS.spaces,
 ];
 
 export async function readMeta(executor: SqliteExecutor, key: MetaKey): Promise<string | null> {

@@ -24,6 +24,12 @@ export interface TransportRequest {
   readonly requiresAuth: boolean;
   /** Attached as `Authorization: Bearer`. Set by `authorize.ts`, not by callers. */
   readonly accessToken?: string | null | undefined;
+  /**
+   * Sent as `X-Space-Id`: the book this request works in (`docs/design/13-multiple-households.md`).
+   * `undefined` lets `authorize.ts` fill in the active space; `null` sends none, so the server picks its
+   * default. Callers set it only to ask about a space other than the active one.
+   */
+  readonly spaceId?: string | null | undefined;
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -75,6 +81,9 @@ export function createTransport(options: TransportOptions): Transport {
     }
     if (request.accessToken) {
       headers['Authorization'] = `Bearer ${request.accessToken}`;
+    }
+    if (request.spaceId) {
+      headers['X-Space-Id'] = request.spaceId;
     }
 
     const timeout = new AbortController();

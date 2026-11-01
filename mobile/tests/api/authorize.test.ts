@@ -29,6 +29,8 @@ interface Harness {
   /** How many times the refresh endpoint was called. */
   readonly refreshCalls: () => number;
   readonly sessionStatus: () => string;
+  /** Same session, with an active space. */
+  readonly inSpace: (spaceId: string | null) => Transport;
 }
 
 interface HarnessOptions {
@@ -87,6 +89,8 @@ async function harness(options: HarnessOptions): Promise<Harness> {
     seen,
     refreshCalls: () => refreshCalls,
     sessionStatus: () => session.getSnapshot().status,
+    inSpace: (spaceId) =>
+      createAuthorizedTransport(transport, session, { getSpaceId: async () => spaceId }),
   };
 }
 
@@ -294,5 +298,79 @@ describe('createAuthorizedTransport', () => {
       expect((await h.authorized(GET_ME)).status).toBe(401);
       expect(h.seen).toHaveLength(1);
     });
+  });
+});
+
+describe('createAuthorizedTransport and the active space', () => {
+  const ok = () => ({ status: 200, body: {}, requestId: null });
+  const EXPENSES: TransportRequest = { method: 'get', path: '/v1/expenses', requiresAuth: true };
+
+  it('names the active space on the routes that work in a book', async () => {
+    const h = await harness({ respond: ok });
+
+    for (const path of ['/v1/expenses', '/v1/categories', '/v1/sync', '/v1/receipts/abc']) {
+      await h.inSpace('space-1')({ ...EXPENSES, path });
+    }
+
+    expect(h.seen.map((request) => request.spaceId)).toEqual(Array(4).fill('space-1'));
+  });
+
+  it('leaves it off the routes that are about the person, so a stale space cannot block them', async () => {
+    const h = await harness({ respond: ok });
+
+    for (const path of [
+      '/v1/me',
+      '/v1/me/password',
+      '/v1/household',
+      '/v1/households',
+      '/v1/households/abc/leave',
+      '/v1/household/join',
+    ]) {
+      await h.inSpace('space-1')({ ...EXPENSES, path });
+    }
+
+    expect(
+      h.seen.every((request) => request.spaceId === undefined || request.spaceId === null),
+    ).toBe(true);
+  });
+
+  it('lets one call choose its own space, or none, over the active one', async () => {
+    const h = await harness({ respond: ok });
+    const transport = h.inSpace('space-1');
+
+    await transport({ ...EXPENSES, path: '/v1/me', spaceId: 'space-2' });
+    await transport({ ...EXPENSES, spaceId: null });
+
+    expect(h.seen.map((request) => request.spaceId)).toEqual(['space-2', null]);
+  });
+
+  it('sends none when no space is active, and when nothing supplies one', async () => {
+    const h = await harness({ respond: ok });
+
+    await h.inSpace(null)(EXPENSES);
+    await h.authorized(EXPENSES);
+
+    expect(h.seen.map((request) => request.spaceId ?? null)).toEqual([null, null]);
+  });
+
+  it('keeps the space on the retry after a refresh', async () => {
+    const h = await harness({
+      respond: (_request, attempt) =>
+        attempt === 1
+          ? { status: 401, body: unauthorizedBody(), requestId: null }
+          : { status: 200, body: {}, requestId: null },
+    });
+
+    await h.inSpace('space-1')(EXPENSES);
+
+    expect(h.seen.map((request) => request.spaceId)).toEqual(['space-1', 'space-1']);
+  });
+
+  it('does not ask for a space on a route that needs no token', async () => {
+    const h = await harness({ respond: ok });
+
+    await h.inSpace('space-1')({ method: 'get', path: '/v1/health', requiresAuth: false });
+
+    expect(h.seen[0]!.spaceId).toBeUndefined();
   });
 });
