@@ -263,6 +263,25 @@ Needs a backend started with `GEMINI_API_KEY` (free key, read first), and/or `OC
 - [ ] Backend without a key: tapping **Read receipt** says "Reading receipts isn't available right now." and
       the button is gone for the rest of the session (it returns after a restart).
 
+## 10c. Quick add (describe it)
+
+No backend key is needed: this step reads the sentence on the phone.
+
+- [ ] Add expense: a **Describe it** line sits above the amount, with a **Fill** button and a line saying it is read on
+      the phone. Editing an existing expense has no such line.
+- [ ] Type `coffee 4.50 yesterday` and tap **Fill** (or the keyboard's Done): a card **From your description** shows
+      `$4.50 - Yesterday - Coffee`. **No field has changed yet.** Edit the sentence: the card disappears.
+- [ ] **Use** fills the amount, the date, the note and a category (only one you have, e.g. Eating out). **Dismiss** changes
+      nothing and keeps your sentence. Nothing is saved until **Save**.
+- [ ] `salary 3000`: the card says Income, and **Use** switches the form to Income. Type an amount on the keypad first,
+      then use a salary sentence: the type does not change under you.
+- [ ] `coffee 4.50 tip 1.00` and `coffee 3 and bagel 4`: the card says **No amount found** rather than picking one,
+      and Use still fills the rest.
+- [ ] Switch the app to Tiếng Việt and try `cà phê 45k hôm qua` (a dong account): 45,000, yesterday, Cà phê. Also
+      `tiền nhà 3tr5` (3,500,000) and `lương 15tr` (income).
+- [ ] Airplane mode: everything above still works.
+- [ ] Type text with a g, y, p or q in the line: nothing is clipped at the bottom.
+
 ## 11. Both platforms
 
 Do sections 1, 2, 4, 7, 9 and 10 on **iOS and Android** if you have both. Things that differ most:

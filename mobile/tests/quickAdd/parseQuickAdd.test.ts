@@ -101,6 +101,8 @@ describe('when the sentence does not clearly say', () => {
     ['hello', { amountMinor: null, confident: false, note: 'Hello', type: 'expense' }],
     ['', { amountMinor: null, date: null, note: null, categoryId: null, confident: false }],
     ['    ', { amountMinor: null, note: null, confident: false }],
+    ['!!!', { amountMinor: null, note: null, categoryId: null, confident: false }],
+    ['??? - ,', { note: null }],
     ['house 99999999999999', { amountMinor: null, confident: false }],
   ]);
   check(VND, [

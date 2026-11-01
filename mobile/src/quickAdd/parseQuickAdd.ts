@@ -397,7 +397,8 @@ function tidyNote(rest: string): string | null {
     if (trimmed === note) break;
     note = trimmed;
   }
-  if (note === '') return null;
+  // Nothing but punctuation or symbols is not a note.
+  if (!/[\p{L}\p{N}]/u.test(note)) return null;
   return (note.charAt(0).toLocaleUpperCase() + note.slice(1)).slice(0, NOTE_MAX);
 }
 

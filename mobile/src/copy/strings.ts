@@ -229,6 +229,17 @@ export const COPY = {
         unavailable: "Reading receipts isn't available right now.",
       },
     },
+    /** Describe an expense in a sentence; read on the phone, and only ever a suggestion. */
+    quickAdd: {
+      label: 'Describe it',
+      placeholder: 'Describe it, e.g. coffee 45k yesterday',
+      fill: 'Fill',
+      hint: 'Read on this phone. Nothing is sent anywhere.',
+      suggestionTitle: 'From your description',
+      noAmount: 'No amount found',
+      nothingFound: "Couldn't read that. Enter the details yourself.",
+      empty: 'Type what you spent first, for example coffee 45k.',
+    },
     save: 'Save',
     delete: 'Delete expense',
     deleteIncome: 'Delete income',

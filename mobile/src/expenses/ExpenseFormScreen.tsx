@@ -88,6 +88,9 @@ import { savedHaptic } from '../lib/haptics';
 import { PaidBySheet } from './PaidBySheet';
 import { ReceiptSheet } from '../receipts/ReceiptSheet';
 import { ReceiptSuggestionCard } from '../receipts/ReceiptSuggestionCard';
+import { QUICK_ADD_SUGGESTION_TEST_ID, QuickAddLine } from '../quickAdd/QuickAddLine';
+import { parseQuickAdd, type QuickAddReading } from '../quickAdd/parseQuickAdd';
+import { isEmptyReading, planQuickAdd, quickAddSummary } from '../quickAdd/planQuickAdd';
 import { isScanUnavailable, markScanUnavailable } from '../receipts/scanAvailability';
 import { isEmptyScan, planSuggestion, suggestionSummary } from '../receipts/receiptSuggestion';
 import { attachReceipt, detachReceipt, hasReceipt } from '../receipts/receiptStore';
@@ -201,6 +204,9 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
   const [scan, setScan] = useState<ReceiptScan | null>(null);
   const [scanning, setScanning] = useState(false);
   const [scanOff, setScanOff] = useState(isScanUnavailable);
+  // Quick add: the sentence being typed, and what Fill made of it while the person decides.
+  const [describeText, setDescribeText] = useState('');
+  const [quickReading, setQuickReading] = useState<QuickAddReading | null>(null);
 
   const currencyCode = currency.data ?? null;
   const storedRow = isEdit ? (stored.data ?? null) : null;
@@ -564,6 +570,54 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
     setScan(null);
   }, [scan, draft, currencyCode, entryCode, liveCategories, today]);
 
+  /** Read the sentence on the phone and offer the result; it touches no field until Use. */
+  const onFillQuickAdd = useCallback(() => {
+    const text = describeText.trim();
+    if (text === '') {
+      showSnackbar({ message: COPY.form.quickAdd.empty });
+      return;
+    }
+    if (currencyCode === null) return;
+    const reading = parseQuickAdd(text, {
+      currency: currencyCode,
+      today,
+      categories: liveCategories.map((row) => ({ id: row.id, name: row.name })),
+    });
+    if (isEmptyReading(reading)) {
+      setQuickReading(null);
+      showSnackbar({ message: COPY.form.quickAdd.nothingFound });
+      return;
+    }
+    setQuickReading(reading);
+  }, [describeText, currencyCode, today, liveCategories, showSnackbar]);
+
+  /** Put the reading's safe values in the fields, as if typed; saving stays the person's own act. */
+  const onUseQuickAdd = useCallback(() => {
+    if (quickReading === null || draft === null) return;
+    const patch = planQuickAdd(quickReading, {
+      currentNote: draft.note,
+      decimalsMatch:
+        currencyCode !== null && currencyDecimals(entryCode) === currencyDecimals(currencyCode),
+      today,
+      // Income instead of expense is only offered while nothing has been typed yet.
+      canSetType: amount.amountMinor === 0,
+    });
+    if (patch.amountMinor !== undefined) setAmount(amountInputFrom(patch.amountMinor));
+    setDraft((current) =>
+      current === null
+        ? current
+        : {
+            ...current,
+            ...(patch.type === undefined ? {} : { kind: patch.type }),
+            ...(patch.date === undefined ? {} : { date: patch.date }),
+            ...(patch.note === undefined ? {} : { note: normaliseNote(patch.note) }),
+            ...(patch.categoryId === undefined ? {} : { categoryId: patch.categoryId }),
+          },
+    );
+    setQuickReading(null);
+    setDescribeText('');
+  }, [quickReading, draft, currencyCode, entryCode, today, amount.amountMinor]);
+
   const onDeleteExpense = useCallback(async () => {
     if (expenseId === undefined) return;
 
@@ -653,6 +707,17 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
         <FormSkeleton />
       ) : (
         <>
+          {isEdit ? null : (
+            <QuickAddLine
+              value={describeText}
+              onChangeText={(next) => {
+                setDescribeText(next);
+                // The card describes the sentence it was made from; a changed sentence is a new question.
+                setQuickReading(null);
+              }}
+              onFill={onFillQuickAdd}
+            />
+          )}
           <KindToggle
             value={live.kind}
             onChange={(kind) =>
@@ -672,6 +737,23 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
               Delete is always reachable - the keypad never covers content
               (§Accessibility rule 4). */}
           <ScrollView contentContainerStyle={styles.rows}>
+            {quickReading === null ? null : (
+              <ReceiptSuggestionCard
+                title={COPY.form.quickAdd.suggestionTitle}
+                testIDPrefix={QUICK_ADD_SUGGESTION_TEST_ID}
+                summary={[
+                  quickReading.type === 'income' ? COPY.form.kind.income : null,
+                  quickReading.amountMinor === null ? COPY.form.quickAdd.noAmount : null,
+                  quickAddSummary(quickReading, currencyCode ?? '', (date) =>
+                    dayLabel(date, today),
+                  ) || null,
+                ]
+                  .filter((part): part is string => part !== null)
+                  .join(' · ')}
+                onUse={onUseQuickAdd}
+                onDismiss={() => setQuickReading(null)}
+              />
+            )}
             {scan === null ? null : (
               <ReceiptSuggestionCard
                 summary={suggestionSummary(scan, (date) => dayLabel(date, today))}

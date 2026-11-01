@@ -18,37 +18,39 @@ export function ReceiptSuggestionCard({
   summary,
   onUse,
   onDismiss,
+  title = COPY.form.receipt.scan.suggestionTitle,
+  testIDPrefix = RECEIPT_SUGGESTION_TEST_ID,
 }: {
   readonly summary: string;
   readonly onUse: () => void;
   readonly onDismiss: () => void;
+  /** What the suggestion came from. A receipt reading by default; quick add passes its own. */
+  readonly title?: string;
+  /** `<prefix>`, `<prefix>-use` and `<prefix>-dismiss` are the card and its two buttons. */
+  readonly testIDPrefix?: string;
 }) {
   const styles = useStyles();
   const color = useColors();
   return (
     <View
-      testID={RECEIPT_SUGGESTION_TEST_ID}
+      testID={testIDPrefix}
       style={styles.card}
       accessible
-      accessibilityLabel={`${COPY.form.receipt.scan.suggestionTitle}, ${summary}`}
+      accessibilityLabel={`${title}, ${summary}`}
       accessibilityLiveRegion="polite"
     >
       <View style={styles.heading}>
         <Feather name="file-text" size={16} color={color.text.secondary} />
-        <Text style={styles.title}>{COPY.form.receipt.scan.suggestionTitle}</Text>
+        <Text style={styles.title}>{title}</Text>
       </View>
       <Text style={styles.summary}>{summary}</Text>
       <View style={styles.actions}>
-        <Button
-          label={COPY.form.receipt.scan.use}
-          onPress={onUse}
-          testID={RECEIPT_SUGGESTION_USE_TEST_ID}
-        />
+        <Button label={COPY.form.receipt.scan.use} onPress={onUse} testID={`${testIDPrefix}-use`} />
         <Button
           label={COPY.form.receipt.scan.dismiss}
           onPress={onDismiss}
           variant="ghost"
-          testID={RECEIPT_SUGGESTION_DISMISS_TEST_ID}
+          testID={`${testIDPrefix}-dismiss`}
         />
       </View>
     </View>
