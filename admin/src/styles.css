@@ -181,3 +181,31 @@ tr:last-child td {
   flex: 1;
   min-width: 0;
 }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+.dialog {
+  width: min(440px, 100%);
+  display: grid;
+  gap: 12px;
+}
+.dialog h2 {
+  margin: 0;
+  word-break: break-all;
+}
+.dialog p {
+  margin: 0;
+}

@@ -3,7 +3,7 @@
 A page for the person who runs the server: how the service is doing, and who has an account. Decided with the
 product owner:
 
-- **It lives inside the backend, at `/admin`.** One static page served by the same process; no extra hosting.
+- **It lives inside the backend, at `/admin`.** A React page served by the same process; no extra hosting.
 - **Only listed accounts may open it.** The `ADMIN_EMAILS` setting (comma-separated) names them. They sign in with
   their ordinary account; anyone else gets a plain `404`, as if the page did not exist.
 - **Overview and user management.** Counts and health, and a list of accounts with disable, enable and delete.
@@ -21,8 +21,8 @@ Under `/admin/api`, outside `/v1`: it is an operator console, not part of the co
 against, so it is not in `docs/api/openapi.yaml` and the app never calls it. It uses the same access token as the
 app (`Authorization: Bearer`), and every route first checks the allow-list.
 
-| Route                                | What it does                                                          |
-| ------------------------------------ | --------------------------------------------------------------------- |
+| Route                                | What it does                                                           |
+| ------------------------------------ | ---------------------------------------------------------------------- |
 | `GET /admin/api/me`                  | `{ email }`: lets the page tell "signed in" from "allowed in"          |
 | `GET /admin/api/overview`            | The counts below                                                       |
 | `GET /admin/api/users`               | Accounts, newest first. `search` (part of an email), `limit`, `cursor` |
@@ -59,11 +59,19 @@ users.
 
 ## The page
 
-`GET /admin` serves a small page (`backend/src/admin/web/`): sign in with email and password, then the overview
-and the account list. It has no data in it, so serving it needs no sign-in; every figure comes from the API after
-sign-in. The token lives in the tab's memory, so closing the tab signs out. The page writes server text with
-`textContent` only, and is served with a content-security policy that allows no inline script, no framing and no
-outside requests.
+A small **React** app (`admin/`: Vite, React 19 and TypeScript, with its own tests), built into
+`backend/admin-dist` and served by the backend at `/admin`. The Dockerfile builds it in a first stage, so the
+deployed image carries only the built files. It signs in with email and password, then shows the overview and the
+account list; deleting asks you to type the account's email in a dialog.
+
+It has no data in it, so serving it needs no sign-in; every figure comes from the API after sign-in. The token
+lives in the page's memory only, so closing the tab signs out. React escapes everything it renders and the page
+never sets HTML from server text, and it is served with a content-security policy that allows no inline script, no
+framing and no outside requests. Only the index and the built files under `/admin/assets` are served; a
+file name with anything but letters, digits, dot, dash and underscore is a `404`.
+
+Build it with `pnpm --filter @expense-tracker/admin build`; develop it with `pnpm --filter @expense-tracker/admin dev`
+(proxying to a backend on port 3000). Until it is built, `/admin` answers `503` with that command.
 
 ## Consequences, stated plainly
 

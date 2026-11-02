@@ -1,7 +1,7 @@
 import { Uuid } from '@expense-tracker/shared';
-import { Router, type Request, type RequestHandler, type Response } from 'express';
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { Router, type Request, type Response } from 'express';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getPrisma } from '../db/client.ts';
 import { problems } from '../errors.ts';
@@ -22,11 +22,17 @@ import {
 /**
  * The admin page and its API (`docs/design/17-admin.md`).
  *
- * The page is three static files with no data in them, so it is served without signing in; everything it shows
- * comes from `/admin/api`, which needs a valid token and an address in `ADMIN_EMAILS`.
+ * The page is a built React app (`admin/`) with no data in it, so it is served without signing in; everything it
+ * shows comes from `/admin/api`, which needs a valid token and an address in `ADMIN_EMAILS`.
  */
 
-const WEB_DIR = join(dirname(fileURLToPath(import.meta.url)), 'web');
+/**
+ * Where the built page is (`pnpm --filter @expense-tracker/admin build` writes it here). `ADMIN_WEB_DIR` is a
+ * test seam; nothing else sets it.
+ */
+const webDir = (): string =>
+  process.env.ADMIN_WEB_DIR ??
+  join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'admin-dist');
 
 /** No inline script, no framing, nothing fetched from outside: the page only talks to this server. */
 const CONTENT_SECURITY_POLICY = [
@@ -40,28 +46,59 @@ const CONTENT_SECURITY_POLICY = [
   "frame-ancestors 'none'",
 ].join('; ');
 
-function serveFile(file: string, contentType: string): RequestHandler {
-  let cached: string | undefined;
-  return (_req: Request, res: Response) => {
-    cached ??= readFileSync(join(WEB_DIR, file), 'utf8');
+const CONTENT_TYPES: Readonly<Record<string, string>> = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.ico': 'image/x-icon',
+};
+
+/** A built file's name: letters, digits, dot, dash and underscore, so no path can climb out of the folder. */
+const ASSET_NAME = /^[A-Za-z0-9._-]+$/;
+
+function sendBuilt(res: Response, relative: string[]): void {
+  const extension = extname(relative[relative.length - 1] ?? '');
+  const type = CONTENT_TYPES[extension];
+  const file = join(webDir(), ...relative);
+  if (type === undefined || !existsSync(file)) {
+    // Not built (or not a file we serve): the admin page is simply absent.
+    res.status(relative[0] === 'index.html' ? 503 : 404);
     res
-      .set({
-        'Content-Type': contentType,
-        'Content-Security-Policy': CONTENT_SECURITY_POLICY,
-        'Cache-Control': 'no-store',
-        'X-Content-Type-Options': 'nosniff',
-        'X-Frame-Options': 'DENY',
-        'Referrer-Policy': 'no-referrer',
-      })
-      .send(cached);
-  };
+      .type('text/plain')
+      .send(
+        relative[0] === 'index.html'
+          ? 'The admin page is not built. Run: pnpm --filter @expense-tracker/admin build'
+          : 'Not found.',
+      );
+    return;
+  }
+  res
+    .set({
+      'Content-Type': type,
+      'Content-Security-Policy': CONTENT_SECURITY_POLICY,
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'DENY',
+      'Referrer-Policy': 'no-referrer',
+    })
+    .send(readFileSync(file));
 }
 
-/** The page: public, and exactly these three paths. */
+/** The page: public, since it holds no data. The index and the built files under `/admin/assets`, nothing else. */
 export const adminPageRouter = Router();
-adminPageRouter.get(['/admin', '/admin/'], serveFile('index.html', 'text/html; charset=utf-8'));
-adminPageRouter.get('/admin/admin.js', serveFile('admin.js', 'text/javascript; charset=utf-8'));
-adminPageRouter.get('/admin/admin.css', serveFile('admin.css', 'text/css; charset=utf-8'));
+adminPageRouter.get(['/admin', '/admin/'], (_req: Request, res: Response) => {
+  sendBuilt(res, ['index.html']);
+});
+adminPageRouter.get('/admin/assets/:name', (req: Request, res: Response) => {
+  const name = String(req.params.name);
+  if (!ASSET_NAME.test(name) || name.startsWith('.')) {
+    res.status(404).type('text/plain').send('Not found.');
+    return;
+  }
+  sendBuilt(res, ['assets', name]);
+});
 
 /** The API: mounted behind `requireAuth` and `requireAdmin` (`app.ts`). */
 export const adminApiRouter = Router();

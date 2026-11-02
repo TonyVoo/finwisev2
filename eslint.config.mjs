@@ -11,6 +11,8 @@ export default tseslint.config(
       '**/*.d.ts',
       // Generated Prisma client: a build artifact, and not ours to style.
       'backend/src/db/generated/**',
+      // The built admin page: output of `pnpm --filter @expense-tracker/admin build`.
+      'backend/admin-dist/**',
     ],
   },
   ...tseslint.configs.recommended,

@@ -5,3 +5,6 @@ pnpm-lock.yaml
 
 # Generated code: not ours to format.
 backend/src/db/generated/
+
+# The built admin page.
+backend/admin-dist/

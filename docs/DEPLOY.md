@@ -30,16 +30,17 @@ image; everything comes from the environment at run time.
 
 Set these on the service (not in a file in the image). `backend/.env.example` documents each.
 
-| Variable                                                                                                              | Required    | Notes                                                                                                                                                                         |
-| --------------------------------------------------------------------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`                                                                                                        | yes         | Postgres connection string. Use the provider's TLS option if it offers one.                                                                                                   |
-| `JWT_SECRET`                                                                                                          | yes         | 32+ random characters: `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`. Production refuses an obvious placeholder (see below).               |
-| `TRUST_PROXY`                                                                                                         | yes, decide | Number of proxies in front of the process. **Read the next section.**                                                                                                         |
-| `PORT`                                                                                                                | no          | Default 3000. Most platforms set it for you.                                                                                                                                  |
-| `RESEND_API_KEY`, `MAIL_FROM`                                                                                         | yes in prod | Without both, password-reset and verification emails are not sent in production. `MAIL_FROM` must be on a domain verified with Resend.                                        |
-| `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_DAILY_BUDGET`, `GEMINI_QUICK_ADD_DAILY_BUDGET`, `GEMINI_RECAP_DAILY_BUDGET` | optional    | Receipt reading with a vision model (`docs/design/14-ai-receipt-reading.md`). Free-tier requests may be used by Google to improve its products; say so in the privacy policy. |
-| `OCR_SPACE_API_KEY` / `GOOGLE_VISION_API_KEY`                                                                         | optional    | Receipt reading by OCR; also the fallback when Gemini fails or its budget is spent.                                                                                           |
-| `ACCESS_TOKEN_TTL_SECONDS`, `REFRESH_TOKEN_TTL_DAYS`                                                                  | no          | Defaults match the API contract.                                                                                                                                              |
+| Variable                                                                                                              | Required                                                         | Notes                                                                                                                                                                         |
+| --------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                                                                                                        | yes                                                              | Postgres connection string. Use the provider's TLS option if it offers one.                                                                                                   |
+| `JWT_SECRET`                                                                                                          | yes                                                              | 32+ random characters: `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`. Production refuses an obvious placeholder (see below).               |
+| `TRUST_PROXY`                                                                                                         | yes, decide                                                      | Number of proxies in front of the process. **Read the next section.**                                                                                                         |
+| `PORT`                                                                                                                | no                                                               | Default 3000. Most platforms set it for you.                                                                                                                                  |
+| `RESEND_API_KEY`, `MAIL_FROM`                                                                                         | yes in prod                                                      | Without both, password-reset and verification emails are not sent in production. `MAIL_FROM` must be on a domain verified with Resend.                                        |
+| `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_DAILY_BUDGET`, `GEMINI_QUICK_ADD_DAILY_BUDGET`, `GEMINI_RECAP_DAILY_BUDGET` | optional                                                         | Receipt reading with a vision model (`docs/design/14-ai-receipt-reading.md`). Free-tier requests may be used by Google to improve its products; say so in the privacy policy. |
+| `ADMIN_EMAILS`                                                                                                        | optional: your own account's email, to open `/admin` (see below) |
+| `OCR_SPACE_API_KEY` / `GOOGLE_VISION_API_KEY`                                                                         | optional                                                         | Receipt reading by OCR; also the fallback when Gemini fails or its budget is spent.                                                                                           |
+| `ACCESS_TOKEN_TTL_SECONDS`, `REFRESH_TOKEN_TTL_DAYS`                                                                  | no                                                               | Defaults match the API contract.                                                                                                                                              |
 
 `NODE_ENV=production` is set by the image. In production the server rejects a `JWT_SECRET` that looks like a
 placeholder (`change-me`, `dev-only`, too few distinct characters), because copying `.env.example` is the easiest
@@ -156,6 +157,19 @@ minute for the first start). That `https://` address is what the app is built wi
 
 **4. The scheduled prune.** Free Render has no cron. For one person the table grows slowly, so run it by hand now and
 then from your Mac with the Neon string: `DATABASE_URL="..." pnpm --filter @expense-tracker/backend prune:tombstones`.
+
+## The admin page
+
+`https://YOUR-SERVICE/admin` shows how the service is doing (accounts, sign-ups, households, database size, Gemini use)
+and lets you disable, enable or delete an account. It never shows anyone's expenses (`docs/design/17-admin.md`).
+
+1. Sign up in the app with the email you want to use as the admin.
+2. Set `ADMIN_EMAILS` on the service to that email (several: comma-separated), and redeploy.
+3. Open `/admin` and sign in with that account. Anyone else gets a 404 on every admin route.
+
+The page is built into the image (the Dockerfile's first stage runs `pnpm --filter @expense-tracker/admin build`). Use a
+strong password for the admin account: it protects every user's account list. An admin cannot disable or delete itself
+or another admin; remove an email from `ADMIN_EMAILS` first.
 
 ## Before real users
 

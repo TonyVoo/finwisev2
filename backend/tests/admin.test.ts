@@ -1,3 +1,6 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { v7 as uuidv7 } from 'uuid';
 import { resetConfigForTests } from '../src/config.ts';
@@ -388,38 +391,72 @@ describe('deleting an account', () => {
 });
 
 describe('the page', () => {
-  it('is served without signing in, since it holds no data, and locked down', async () => {
-    const response = await api().get('/admin');
+  let dir: string;
 
-    expect(response.status).toBe(200);
-    expect(response.headers['content-type']).toMatch(/text\/html/);
-    expect(response.text).toContain('<script src="/admin/admin.js"');
-    const csp = response.headers['content-security-policy'] ?? '';
-    expect(csp).toContain("default-src 'none'");
-    expect(csp).toContain("script-src 'self'");
-    expect(csp).not.toContain('unsafe-inline');
-    expect(csp).toContain("frame-ancestors 'none'");
-    expect(response.headers['cache-control']).toBe('no-store');
-    expect(response.headers['x-content-type-options']).toBe('nosniff');
+  beforeEach(() => {
+    // A stand-in for the React build (`admin/`), so these cases do not depend on having run it.
+    dir = mkdtempSync(join(tmpdir(), 'admin-web-'));
+    mkdirSync(join(dir, 'assets'));
+    writeFileSync(
+      join(dir, 'index.html'),
+      '<!doctype html><title>x</title><script type="module" src="/admin/assets/index-abc.js"></script>',
+    );
+    writeFileSync(join(dir, 'assets', 'index-abc.js'), 'console.log(1)');
+    writeFileSync(join(dir, 'assets', 'index-abc.css'), 'body{}');
+    writeFileSync(join(dir, 'secret.txt'), 'not for the web');
+    process.env.ADMIN_WEB_DIR = dir;
+  });
+  afterEach(() => {
+    delete process.env.ADMIN_WEB_DIR;
+    rmSync(dir, { recursive: true, force: true });
   });
 
-  it('serves its script and styles', async () => {
-    const script = await api().get('/admin/admin.js');
-    const styles = await api().get('/admin/admin.css');
+  it('is served without signing in, since it holds no data, and locked down', async () => {
+    for (const path of ['/admin', '/admin/']) {
+      const response = await api().get(path);
+
+      expect(response.status).toBe(200);
+      expect(response.headers['content-type']).toMatch(/text\/html/);
+      expect(response.text).toContain('/admin/assets/index-abc.js');
+      const csp = response.headers['content-security-policy'] ?? '';
+      expect(csp).toContain("default-src 'none'");
+      expect(csp).toContain("script-src 'self'");
+      expect(csp).not.toContain('unsafe-inline');
+      expect(csp).toContain("frame-ancestors 'none'");
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.headers['x-content-type-options']).toBe('nosniff');
+      expect(response.headers['x-frame-options']).toBe('DENY');
+    }
+  });
+
+  it('serves the built scripts and styles with the right types', async () => {
+    const script = await api().get('/admin/assets/index-abc.js');
+    const styles = await api().get('/admin/assets/index-abc.css');
 
     expect([script.status, styles.status]).toEqual([200, 200]);
     expect(script.headers['content-type']).toMatch(/javascript/);
     expect(styles.headers['content-type']).toMatch(/css/);
   });
 
-  it('writes server text with textContent only, never as HTML', async () => {
-    const script = (await api().get('/admin/admin.js')).text;
-
-    expect(script).not.toMatch(/innerHTML|outerHTML|insertAdjacentHTML|document\.write|eval\(/);
+  it('serves nothing else: no climbing out of the folder, no other files, no dotfiles', async () => {
+    for (const path of [
+      '/admin/assets/..%2Fsecret.txt',
+      '/admin/assets/%2e%2e%2fsecret.txt',
+      '/admin/assets/missing.js',
+      '/admin/assets/.hidden',
+      '/admin/secret.txt',
+      '/admin/other.js',
+    ]) {
+      expect([path, (await api().get(path)).status]).toEqual([path, 404]);
+    }
   });
 
-  it('serves nothing else under /admin', async () => {
-    expect((await api().get('/admin/..%2Fpackage.json')).status).toBe(404);
-    expect((await api().get('/admin/other.js')).status).toBe(404);
+  it('says plainly when it has not been built, instead of failing oddly', async () => {
+    process.env.ADMIN_WEB_DIR = join(dir, 'nope');
+
+    const response = await api().get('/admin');
+
+    expect(response.status).toBe(503);
+    expect(response.text).toContain('pnpm --filter @expense-tracker/admin build');
   });
 });
