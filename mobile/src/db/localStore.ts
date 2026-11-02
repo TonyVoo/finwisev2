@@ -101,6 +101,7 @@ const DATA_TABLES = [
   'goals',
   'settlements',
   'categories',
+  'captured_payments',
   'user',
 ] as const;
 

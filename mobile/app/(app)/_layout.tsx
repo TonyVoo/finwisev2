@@ -1,7 +1,15 @@
 import { StyleSheet, View } from 'react-native';
 import { Redirect, Stack } from 'expo-router';
 import { useSession } from '@/auth/SessionProvider';
+import { useReadCapturedNotifications } from '@/capture/hooks';
+import { paymentNotificationsSupported } from '@/capture/native';
 import { ResyncOverlay } from '@/sync/ResyncOverlay';
+
+/** Brings in what MoMo and ZaloPay notified while the app was closed (Android; nothing elsewhere). */
+function PaymentCapture() {
+  useReadCapturedNotifications();
+  return null;
+}
 
 /**
  * The auth gate.
@@ -36,6 +44,7 @@ export default function AppLayout() {
           has to cover the tab bar too, and because the screens below it cannot read a
           database that is being rebuilt. */}
       <ResyncOverlay />
+      {paymentNotificationsSupported() ? <PaymentCapture /> : null}
     </View>
   );
 }

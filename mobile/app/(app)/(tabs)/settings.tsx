@@ -10,6 +10,8 @@ import { useSnackbar } from '@/components/Snackbar';
 import { IconBadge } from '@/components/IconBadge';
 import { Row, RowSubtitle, RowTitle } from '@/components/Row';
 import { planDefaultRenames } from '@/categories/renameDefaults';
+import { paymentNotificationsSupported } from '@/capture/native';
+import { useSuggestionCount } from '@/capture/hooks';
 import { COPY, SNACK_COPY } from '@/copy/strings';
 import { useDatabase } from '@/db/DatabaseProvider';
 import { markCategoryRenameAnswered } from '@/db/onboarding';
@@ -57,6 +59,7 @@ export default function SettingsScreen() {
   const tabBarClearance = useTabBarClearance();
   const session = useSessionController();
   const currency = useUserCurrency();
+  const suggestionCount = useSuggestionCount();
   const email = useUserEmail();
   const emailVerified = useEmailVerified();
   const pending = usePendingRecordCount();
@@ -222,6 +225,24 @@ export default function SettingsScreen() {
           <RowTitle>{COPY.settings.goals}</RowTitle>
           <RowSubtitle lines={2}>{COPY.settings.goalsHint}</RowSubtitle>
         </Row>
+
+        {paymentNotificationsSupported() ? (
+          <Row
+            testID="settings-payment-detection"
+            leading={<IconBadge name="bell" />}
+            onPress={() => router.push('/(app)/settings/payment-detection')}
+            chevron
+            accessibilityLabel={`${COPY.paymentDetection.title}. ${COPY.paymentDetection.hint}`}
+            trailing={
+              (suggestionCount.data ?? 0) > 0 ? (
+                <Text style={styles.value}>{suggestionCount.data}</Text>
+              ) : null
+            }
+          >
+            <RowTitle>{COPY.paymentDetection.title}</RowTitle>
+            <RowSubtitle lines={2}>{COPY.paymentDetection.hint}</RowSubtitle>
+          </Row>
+        ) : null}
 
         <Row
           testID="settings-household"

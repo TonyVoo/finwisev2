@@ -613,6 +613,30 @@ export const VIETNAMESE_COPY: CopyBundle = {
       failed: 'Không xuất được các khoản chi của bạn. Hãy thử lại.',
     },
 
+    paymentDetection: {
+      title: 'Tự nhận diện thanh toán',
+      hint: 'Gợi ý khoản chi từ thông báo MoMo và ZaloPay.',
+      intro:
+        'Khi MoMo hoặc ZaloPay hiện một khoản thanh toán, ứng dụng có thể gợi ý một khoản chi tương ứng. Chỉ đọc hai ứng dụng này, chỉ trên điện thoại này, và không thêm gì cho đến khi bạn bấm Thêm.',
+      statusOn: 'Bật',
+      statusOff: 'Tắt',
+      turnOn: 'Bật trong cài đặt Android',
+      turnOnHint: 'Tìm Expenses trong danh sách và cho phép truy cập thông báo.',
+      suggestions: 'Thanh toán đã phát hiện',
+      none: 'Chưa phát hiện khoản nào. Các khoản sẽ hiện ở đây sau khi MoMo hoặc ZaloPay báo thanh toán.',
+      payment: 'Thanh toán',
+      received: 'Tiền nhận được',
+      add: 'Thêm',
+      dismiss: 'Bỏ qua',
+      duplicate: 'Có vẻ bạn đã thêm khoản này rồi.',
+      log: 'Thông báo gần đây',
+      logHint:
+        'Những gì điện thoại này đã đọc từ MoMo và ZaloPay. Nếu bị sót một khoản, đây là chỗ xem lý do.',
+      logEmpty: 'Chưa đọc được gì.',
+      ignored: 'Không phải thanh toán',
+      unsupported: 'Tính năng này chỉ có trên Android.',
+    },
+
     currencyChange: {
       title: 'Đổi đơn vị tiền tệ',
       intro:

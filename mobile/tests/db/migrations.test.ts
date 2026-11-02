@@ -36,6 +36,7 @@ describe('migrate', () => {
     // `sync_rejections` arrived in v4 and is what keeps a row the server refused visible
     // after its outbox entry is retired (`src/sync/rejections.ts`).
     expect(tables.map((table) => table.name)).toEqual([
+      'captured_payments',
       'categories',
       'expenses',
       'goals',

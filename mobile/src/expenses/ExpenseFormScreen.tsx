@@ -96,6 +96,8 @@ import { shouldAskModel } from '../quickAdd/askModel';
 import { mergeQuickAdd } from '../quickAdd/mergeQuickAdd';
 import { isQuickAddUnavailable, markQuickAddUnavailable } from '../quickAdd/quickAddAvailability';
 import { useOptionalSyncStatus } from '../sync/SyncProvider';
+import { clearCapture, peekCapture } from '../capture/pendingCapture';
+import { markAdded } from '../capture/store';
 import { clearStashedPhoto, peekStashedPhoto } from '../receipts/pendingPhoto';
 import { isScanUnavailable, markScanUnavailable } from '../receipts/scanAvailability';
 import { isEmptyScan, planSuggestion, suggestionSummary } from '../receipts/receiptSuggestion';
@@ -210,8 +212,12 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
     const waiting = isEdit ? null : peekStashedPhoto();
     return waiting === null ? { kind: 'unchanged' } : { kind: 'set', dataBase64: waiting };
   });
+  // A payment detected from a MoMo or ZaloPay notification, chosen on the Payment detection screen, fills the
+  // form the same way: read once here, cleared below, marked as added when the entry is saved.
+  const [capture] = useState(() => (isEdit ? null : peekCapture()));
   useEffect(() => {
     clearStashedPhoto();
+    clearCapture();
   }, []);
   // Paying in another currency. `null` is the account's own, which is almost always the case.
   const [entryCurrency, setEntryCurrency] = useState<string | null>(null);
@@ -303,18 +309,24 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
       setInitial(seeded);
       return;
     }
+    const sameCurrency = capture === null || capture.currency === currencyCode;
     const seeded: ExpenseDraft = {
       categoryId: preselected,
-      kind: 'expense',
-      amountMinor: 0,
+      kind: capture?.kind ?? 'expense',
+      amountMinor: capture !== null && sameCurrency ? capture.amountMinor : 0,
       currency: currencyCode,
       originalAmountMinor: null,
       originalCurrency: null,
-      date: today,
-      note: null,
+      date: capture?.date ?? today,
+      note: capture?.note ?? null,
     };
     setDraft(seeded);
     setInitial(seeded);
+    if (capture !== null) {
+      // Paid in dong by someone whose account is in another currency: entered as a foreign amount.
+      setAmount(amountInputFrom(capture.amountMinor));
+      if (!sameCurrency) setEntryCurrency(capture.currency);
+    }
   }, [
     draft,
     currencyCode,
@@ -328,6 +340,7 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
     fallback.isPending,
     fallback.data,
     today,
+    capture,
   ]);
 
   // Which currency the keypad is typing in, and whether that needs converting.
@@ -495,6 +508,7 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
         paidBy: live.paidBy ?? null,
       });
       await applyReceiptChange(db, queued.recordId, receiptChange);
+      if (capture !== null) await markAdded(db, capture.id, queued.recordId);
     });
     savedHaptic();
     router.back();
@@ -520,6 +534,7 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
     storedRow,
     expenseId,
     receiptChange,
+    capture,
     localWrite,
     router,
     showSnackbar,

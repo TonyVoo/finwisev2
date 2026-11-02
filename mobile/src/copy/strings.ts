@@ -681,6 +681,30 @@ export const COPY = {
   },
 
   /** Change password and delete account, both reached from Settings and both online-only. */
+  paymentDetection: {
+    title: 'Payment detection',
+    hint: 'Suggest entries from MoMo and ZaloPay notifications.',
+    intro:
+      'When MoMo or ZaloPay shows a payment, this app can suggest an entry for it. It reads only those two apps, only on this phone, and adds nothing until you tap Add.',
+    statusOn: 'On',
+    statusOff: 'Off',
+    turnOn: 'Turn on in Android settings',
+    turnOnHint: 'Find Expenses in the list and allow notification access.',
+    suggestions: 'Detected payments',
+    none: 'No payments detected yet. They appear here after MoMo or ZaloPay shows one.',
+    payment: 'Payment',
+    received: 'Money received',
+    add: 'Add',
+    dismiss: 'Dismiss',
+    duplicate: 'Looks like one you already added.',
+    log: 'Recent notifications',
+    logHint:
+      'What this phone has read from MoMo and ZaloPay. If a payment was missed, it shows why.',
+    logEmpty: 'Nothing read yet.',
+    ignored: 'Not a payment',
+    unsupported: 'Payment detection is only available on Android.',
+  },
+
   currencyChange: {
     title: 'Change currency',
     intro:

@@ -416,6 +416,30 @@ ALTER TABLE expenses ADD COLUMN paidBy TEXT;
 `;
 
 /**
+ * Payments read from MoMo and ZaloPay notifications (`docs/design/20-payment-detection.md`): local only,
+ * never synced. `id` is the notification's own identity, so reading one twice is one row. A row with no
+ * `direction` is a notification that was not a payment, kept (briefly) so the log shows what the phone is
+ * being sent. `status` is `new` until the person adds it as an entry or dismisses it.
+ */
+const CAPTURED_PAYMENTS = `
+CREATE TABLE captured_payments (
+  id          TEXT    NOT NULL PRIMARY KEY,
+  source      TEXT    NOT NULL,
+  postTime    INTEGER NOT NULL,
+  title       TEXT    NOT NULL,
+  body        TEXT    NOT NULL,
+  direction   TEXT    CHECK (direction IN ('spend', 'income')),
+  amountMinor INTEGER CHECK (amountMinor >= 1),
+  currency    TEXT,
+  counterparty TEXT,
+  status      TEXT    NOT NULL CHECK (status IN ('new', 'added', 'dismissed', 'ignored')),
+  expenseId   TEXT
+);
+
+CREATE INDEX idx_captured_status ON captured_payments (status, postTime);
+`;
+
+/**
  * Settlements: recorded payments between two household members, a fifth synced entity
  * (`docs/design/12-settle-up.md`). The table, and the two CHECKs that name the entities, rebuilt
  * the same way migrations 6 and 10 did (create, copy, drop, rename, recreate the indexes), carrying
@@ -495,6 +519,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 14, name: 'private-expenses', up: PRIVATE_EXPENSES },
   { version: 15, name: 'paid-by', up: PAID_BY },
   { version: 16, name: 'settlements', up: SETTLEMENTS },
+  { version: 17, name: 'captured-payments', up: CAPTURED_PAYMENTS },
 ];
 
 /** Highest version `MIGRATIONS` can bring a database to. */
