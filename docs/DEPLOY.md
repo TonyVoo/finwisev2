@@ -126,16 +126,16 @@ people's data. Limits change, so check both pricing pages before you rely on the
 
 **2. The server (Render).** New -> Web Service -> connect the GitHub repository (push your commits first) and set:
 
-| Setting              | Value                                                                                                |
-| -------------------- | ---------------------------------------------------------------------------------------------------- |
-| Language / Runtime   | Docker                                                                                               |
-| Dockerfile path      | `backend/Dockerfile`                                                                                 |
-| Docker build context | the repository root (leave the default `.`)                                                          |
-| Instance type        | Free                                                                                                 |
-| Health check path    | `/v1/health`                                                                                         |
-| Docker command       | `sh -c "pnpm migrate:deploy && node --import tsx src/server.ts"` (applies migrations on every start) |
+| Setting              | Value                                                      |
+| -------------------- | ---------------------------------------------------------- |
+| Language / Runtime   | Docker                                                     |
+| Dockerfile path      | `backend/Dockerfile`                                       |
+| Docker build context | the repository root (leave the default `.`)                |
+| Instance type        | Free                                                       |
+| Health check path    | `/v1/health`                                               |
+| Docker command       | `sh start.sh` (applies migrations, then starts the server) |
 
-Free web services have no pre-deploy command, so the start command above applies pending migrations itself. That is
+Free web services have no pre-deploy command, so `backend/start.sh` applies pending migrations itself before it starts the server. Type the command exactly as `sh start.sh`: a quoted `sh -c "..."` string is not split the way a shell would, and fails with "not found". That is
 safe with one instance: applied migrations are skipped and Prisma takes a lock.
 
 Environment variables:

@@ -141,3 +141,22 @@ describe('production configuration', () => {
     expect(getConfig().jwt.secret).toContain('dev-only');
   });
 });
+
+describe('start.sh, for hosts with no pre-deploy command', () => {
+  const script = read('backend/start.sh');
+
+  it('stops if a migration fails, instead of starting the server on an old schema', () => {
+    expect(script).toMatch(/^set -e$/m);
+    expect(script.indexOf('pnpm migrate:deploy')).toBeGreaterThan(-1);
+    expect(script.indexOf('pnpm migrate:deploy')).toBeLessThan(script.indexOf('src/server.ts'));
+  });
+
+  it("hands the process to node, so the host's stop signal reaches the graceful shutdown", () => {
+    expect(script).toMatch(/^exec node --import tsx src\/server\.ts$/m);
+  });
+
+  it('is taken into the image with the rest of the backend, and documented by the command to type', () => {
+    expect(read('backend/Dockerfile')).toMatch(/COPY backend\/ backend\//);
+    expect(read('docs/DEPLOY.md')).toContain('`sh start.sh`');
+  });
+});
