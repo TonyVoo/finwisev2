@@ -230,6 +230,11 @@ export const COPY = {
       title: 'Receipt',
       take: 'Take photo',
       choose: 'Choose from library',
+      /** The card's second tile, short enough to sit beside "Take photo". */
+      chooseTile: 'Choose photo',
+      retake: 'Retake photo',
+      /** Under "Receipt" on the card while there is no photo. */
+      pitch: 'Snap it and the amount, date and shop can be read for you.',
       remove: 'Remove photo',
       loading: 'Loading photo…',
       unavailable: 'Connect to the internet to view this photo.',

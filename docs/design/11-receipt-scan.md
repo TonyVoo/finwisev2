@@ -98,3 +98,17 @@ To score a reader, write `<name>.expected.json` beside a photo, with any of `amo
 (`YYYY-MM-DD`), `merchant` and `category`; `null` means "none on this receipt" and a field left out is not scored.
 The run ends with correct / wrong / missed counts per field per reader. A merchant matches ignoring case, accents and
 punctuation, or when one name contains the other.
+
+## The Receipt card (replaces the Receipt row)
+
+The expense form shows a **Receipt card** instead of a plain row, so the camera is one tap away:
+
+- **No photo:** two big tiles, **Take photo** and **Choose photo**, each opening the camera or the library at
+  once (no sheet in between), under the line "Snap it and the amount, date and shop can be read for you."
+- **A photo:** a thumbnail, **Read receipt** as the one prominent action with the sentence about where the photo
+  goes right under it, and **Retake photo**. While a reading is in flight a teal line sweeps down the thumbnail
+  (still under Reduce Motion), and the button says it is working.
+- **The header** (thumbnail, "Receipt", "Photo attached") always opens the receipt sheet for the full-size photo,
+  to replace or remove it. The sheet no longer carries Read receipt; the card does.
+
+Nothing about what is sent, or when, changes: the photo leaves the phone only when Read receipt is tapped.

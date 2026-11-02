@@ -208,6 +208,9 @@ export const VIETNAMESE_COPY: CopyBundle = {
       receipt: {
         title: 'Hóa đơn',
         take: 'Chụp ảnh',
+        chooseTile: 'Chọn ảnh',
+        retake: 'Chụp lại',
+        pitch: 'Chụp hóa đơn để đọc giúp số tiền, ngày và cửa hàng.',
         choose: 'Chọn từ thư viện',
         remove: 'Xóa ảnh',
         loading: 'Đang tải ảnh…',

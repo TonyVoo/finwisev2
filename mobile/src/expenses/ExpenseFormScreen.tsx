@@ -86,6 +86,7 @@ import { hasEdits, saveState } from './formModel';
 import { getReceiptPicker, type PickOutcome } from '../receipts/receiptPicker';
 import { savedHaptic } from '../lib/haptics';
 import { PaidBySheet } from './PaidBySheet';
+import { ReceiptCard } from '../receipts/ReceiptCard';
 import { ReceiptSheet } from '../receipts/ReceiptSheet';
 import { ReceiptSuggestionCard } from '../receipts/ReceiptSuggestionCard';
 import { QUICK_ADD_SUGGESTION_TEST_ID, QuickAddLine } from '../quickAdd/QuickAddLine';
@@ -160,7 +161,7 @@ type ReceiptChange =
   | { readonly kind: 'set'; readonly dataBase64: string }
   | { readonly kind: 'removed' };
 
-export const RECEIPT_ROW_TEST_ID = 'expense-receipt-row';
+export { RECEIPT_ROW_TEST_ID } from '../receipts/ReceiptCard';
 export const CURRENCY_ROW_TEST_ID = 'expense-currency-row';
 export const RATE_FIELD_TEST_ID = 'expense-rate-field';
 export const CONVERTED_TEST_ID = 'expense-converted';
@@ -978,23 +979,24 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
               </Text>
             </Row>
 
-            <Row
-              testID={RECEIPT_ROW_TEST_ID}
-              onPress={() => setOverlay('receipt')}
-              chevron
-              lastInGroup
-              leading={<Feather name="camera" size={20} color={color.text.tertiary} />}
-              trailing={
-                <Text style={styles.valueText}>
-                  {receiptPresent ? COPY.form.field.receiptAttached : COPY.form.field.receiptAdd}
-                </Text>
+            <ReceiptCard
+              present={receiptPresent}
+              dataBase64={receiptData}
+              canScan={!scanOff}
+              scanning={scanning}
+              onOpen={() => setOverlay('receipt')}
+              onTake={() =>
+                void getReceiptPicker()
+                  .takePhoto()
+                  .then((outcome) => onPicked(outcome, 'camera'))
               }
-              accessibilityLabel={`${COPY.form.field.receipt}, ${
-                receiptPresent ? COPY.form.field.receiptAttached : COPY.form.field.receiptAdd
-              }`}
-            >
-              <RowTitle>{COPY.form.field.receipt}</RowTitle>
-            </Row>
+              onChoose={() =>
+                void getReceiptPicker()
+                  .chooseFromLibrary()
+                  .then((outcome) => onPicked(outcome, 'library'))
+              }
+              onScan={() => void onScan()}
+            />
 
             {isEdit ? (
               <View style={styles.deleteSlot}>
@@ -1128,9 +1130,6 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
           setScan(null);
           setOverlay('none');
         }}
-        canScan={!scanOff}
-        scanning={scanning}
-        onScan={() => void onScan()}
       />
 
       <CategoryFormSheet

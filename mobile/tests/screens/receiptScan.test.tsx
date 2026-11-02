@@ -75,14 +75,13 @@ async function mountWithPhoto(response: TransportResponse): Promise<MountedScree
     transport: scanReturns(response),
   });
   await waitFor(() => expect(screen.queryByTestId(AMOUNT_DISPLAY_TEST_ID)).not.toBeNull());
-  // Attach a photo, then reopen the sheet: the sheet closes itself once a photo is chosen.
+  // Attach a photo from the sheet; it closes itself once a photo is chosen, leaving the Receipt card (with
+  // Read receipt on it) in view.
   await userEvent.press(screen.getByTestId(RECEIPT_ROW_TEST_ID));
   await userEvent.press(screen.getByTestId(RECEIPT_TAKE_TEST_ID));
-  await userEvent.press(screen.getByTestId(RECEIPT_ROW_TEST_ID));
   return mounted;
 }
 
-// The sheet stays open after a failed reading, which hides the form behind it from queries.
 const label = (testID: string) =>
   screen.getByTestId(testID, { includeHiddenElements: true }).props.accessibilityLabel as string;
 
