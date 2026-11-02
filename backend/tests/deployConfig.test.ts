@@ -147,8 +147,13 @@ describe('start.sh, for hosts with no pre-deploy command', () => {
 
   it('stops if a migration fails, instead of starting the server on an old schema', () => {
     expect(script).toMatch(/^set -e$/m);
-    expect(script.indexOf('pnpm migrate:deploy')).toBeGreaterThan(-1);
-    expect(script.indexOf('pnpm migrate:deploy')).toBeLessThan(script.indexOf('src/server.ts'));
+    const migrate = script.indexOf('prisma migrate deploy');
+    expect(migrate).toBeGreaterThan(-1);
+    expect(migrate).toBeLessThan(script.indexOf('exec node'));
+  });
+
+  it('does not need pnpm at run time: the image runs as a user it was not prepared for', () => {
+    expect(script).not.toMatch(/^pnpm /m);
   });
 
   it("hands the process to node, so the host's stop signal reaches the graceful shutdown", () => {
