@@ -8,6 +8,8 @@ export interface PendingCapture {
   readonly amountMinor: number;
   readonly currency: string;
   readonly note: string | null;
+  /** The category this name was filed under before, when it was (`categoryGuess.ts`). */
+  readonly categoryId?: string | null;
   /** `YYYY-MM-DD`: the day the notification arrived. */
   readonly date: string;
 }

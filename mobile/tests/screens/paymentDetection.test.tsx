@@ -5,7 +5,12 @@ import { clearCapture, peekCapture, stashCapture } from '@/capture/pendingCaptur
 import { writeUser } from '@/db/user';
 import type { SqliteDatabase } from '@/db/sqlite';
 import { AMOUNT_DISPLAY_TEST_ID } from '@/expenses/AmountDisplay';
-import { DATE_ROW_TEST_ID, NOTE_ROW_TEST_ID, SAVE_TEST_ID } from '@/expenses/ExpenseFormScreen';
+import {
+  CATEGORY_ROW_TEST_ID,
+  DATE_ROW_TEST_ID,
+  NOTE_ROW_TEST_ID,
+  SAVE_TEST_ID,
+} from '@/expenses/ExpenseFormScreen';
 import NewExpenseScreen from '../../app/(app)/expense/new';
 import PaymentDetectionScreen, {
   DETECTION_STATUS_TEST_ID,
@@ -14,7 +19,14 @@ import PaymentDetectionScreen, {
 } from '../../app/(app)/settings/payment-detection';
 import { resetRouter, routerRecord } from '../support/router';
 import { mountScreen } from '../support/mount';
-import { categoryId, outboxEntries, seedCategory, seedFallbackCategory } from '../support/seed';
+import {
+  categoryId,
+  expenseId,
+  outboxEntries,
+  seedCategory,
+  seedExpense,
+  seedFallbackCategory,
+} from '../support/seed';
 
 jest.mock('expo-router');
 
@@ -120,6 +132,30 @@ describe('the Payment detection screen', () => {
     });
   });
 
+  it('files it under the category that name was filed under before', async () => {
+    await mountScreen(<PaymentDetectionScreen />, {
+      clock: () => NOW,
+      seed: async (db) => {
+        await seed(db);
+        await seedExpense(db, {
+          id: expenseId(1),
+          categoryId: categoryId(1),
+          amountMinor: 50000,
+          currency: 'VND',
+          date: '2026-10-01',
+          note: 'circle k',
+        });
+      },
+    });
+    await waitFor(() =>
+      expect(screen.queryByTestId(`${SUGGESTION_ROW_TEST_ID_PREFIX}-add-0`)).not.toBeNull(),
+    );
+
+    await userEvent.press(screen.getByTestId(`${SUGGESTION_ROW_TEST_ID_PREFIX}-add-0`));
+
+    await waitFor(() => expect(peekCapture()?.categoryId).toBe(categoryId(1)));
+  });
+
   it('drops a payment on Dismiss, adding nothing', async () => {
     const { database } = await mountScreen(<PaymentDetectionScreen />, { clock: () => NOW, seed });
     await waitFor(() =>
@@ -148,10 +184,15 @@ describe('Add expense opened from a detected payment', () => {
           currency: 'VND',
           note: 'Circle K',
           date: '2026-10-14',
+          categoryId: categoryId(1),
         });
       },
     });
     await waitFor(() => expect(screen.queryByTestId(AMOUNT_DISPLAY_TEST_ID)).not.toBeNull());
+    expect(
+      screen.getByTestId(CATEGORY_ROW_TEST_ID, { includeHiddenElements: true }).props
+        .accessibilityLabel,
+    ).toContain('Food');
 
     const label = (id: string) =>
       screen.getByTestId(id, { includeHiddenElements: true }).props.accessibilityLabel as string;

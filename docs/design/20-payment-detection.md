@@ -24,7 +24,7 @@ product owner: MoMo and ZaloPay first; **suggest, the person confirms** (nothing
 
 ## Add
 
-Add opens the ordinary Add expense form with the amount, the day the notification arrived and the name as the note.
+Add opens the ordinary Add expense form with the amount, the day the notification arrived, the name as the note and the guessed category.
 In an account whose currency is not dong it is entered as a foreign amount in VND. Saving marks the payment `added`.
 A suggestion whose amount, day and kind already match an entry says _Looks like one you already added._ and is left
 for the person to decide.
@@ -36,4 +36,6 @@ for the person to decide.
   `Not a payment` with its exact text.
 - A suggestion appears when the app is next opened; there is no notification of our own. Android may stop a listener
   on aggressive battery savers; turning Notification access off and on again restarts it.
-- No category guess yet: the form opens with the last-used category.
+- The category is a guess from the person's own entries: the one the same name (case and spaces ignored) was filed
+  under most often, ties to the most recent (`src/capture/categoryGuess.ts`). A name never seen opens with the
+  last-used category. Correcting a category on an entry is what teaches it; there is nothing to maintain.

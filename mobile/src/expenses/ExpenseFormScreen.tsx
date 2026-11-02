@@ -310,8 +310,13 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
       return;
     }
     const sameCurrency = capture === null || capture.currency === currencyCode;
+    // The category this name was filed under before, if that category still exists.
+    const guessed =
+      capture?.categoryId != null && categories.data?.some((c) => c.id === capture.categoryId)
+        ? capture.categoryId
+        : null;
     const seeded: ExpenseDraft = {
-      categoryId: preselected,
+      categoryId: guessed ?? preselected,
       kind: capture?.kind ?? 'expense',
       amountMinor: capture !== null && sameCurrency ? capture.amountMinor : 0,
       currency: currencyCode,

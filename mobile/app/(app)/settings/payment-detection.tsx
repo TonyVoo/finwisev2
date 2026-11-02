@@ -11,6 +11,7 @@ import {
   paymentNotificationsSupported,
 } from '@/capture/native';
 import { useCapturedLog, useReadCapturedNotifications, useSuggestions } from '@/capture/hooks';
+import { guessCategory } from '@/capture/categoryGuess';
 import { stashCapture } from '@/capture/pendingCapture';
 import { dismiss, localDay, type Suggestion } from '@/capture/store';
 import { COPY } from '@/copy/strings';
@@ -53,11 +54,13 @@ export default function PaymentDetectionScreen() {
   }, []);
 
   const add = useCallback(
-    (item: Suggestion) => {
+    async (item: Suggestion) => {
       if (item.amountMinor === null || item.currency === null || item.direction === null) return;
+      const kind = item.direction === 'income' ? 'income' : 'expense';
       stashCapture({
+        categoryId: await guessCategory(database, item.counterparty, kind),
         id: item.id,
-        kind: item.direction === 'income' ? 'income' : 'expense',
+        kind,
         amountMinor: item.amountMinor,
         currency: item.currency,
         note: item.counterparty,
@@ -65,7 +68,7 @@ export default function PaymentDetectionScreen() {
       });
       router.push('/(app)/expense/new');
     },
-    [router],
+    [router, database],
   );
 
   const dismissOne = useCallback(
@@ -149,7 +152,7 @@ export default function PaymentDetectionScreen() {
               <View style={styles.actions}>
                 <Button
                   label={COPY.paymentDetection.add}
-                  onPress={() => add(item)}
+                  onPress={() => void add(item)}
                   testID={`${SUGGESTION_ROW_TEST_ID_PREFIX}-add-${index}`}
                 />
                 <Button
