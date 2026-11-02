@@ -4,6 +4,7 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler.ts';
 import { jsonBodyErrors, parseJsonBody, requireJsonContentType } from './middleware/jsonBody.ts';
 import { requestId } from './middleware/requestId.ts';
 import { requireAuth } from './middleware/requireAuth.ts';
+import { adminApiRouter, adminPageRouter } from './admin/routes.ts';
 import { authRouter } from './routes/auth.ts';
 import { categoriesRouter } from './routes/categories.ts';
 import { docsRouter } from './routes/docs.ts';
@@ -86,6 +87,11 @@ export function createApp(): Express {
   authed.use(ratesRouter);
   authed.use(syncRouter);
   app.use('/v1', authed);
+
+  // The admin page (public, no data in it) and its API (signed in, and listed in `ADMIN_EMAILS`):
+  // an operator console outside the versioned contract (`docs/design/17-admin.md`).
+  app.use(adminPageRouter);
+  app.use('/admin/api', requireAuth, adminApiRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

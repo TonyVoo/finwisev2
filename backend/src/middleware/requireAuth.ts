@@ -77,12 +77,17 @@ export const requireAuth: RequestHandler = (
         where: { id: userId },
         select: {
           id: true,
+          disabledAt: true,
           // The books the person may work in, found in the same lookup (`docs/design/13-multiple-households.md`).
           householdMemberships: { select: { household: { select: { scopeId: true } } } },
         },
       });
       if (account === null) {
         throw problems.tokenInvalid('Access token does not belong to an existing account.');
+      }
+      // An operator disabled the account: its tokens stop working at once, not when they expire.
+      if (account.disabledAt !== null) {
+        throw problems.tokenInvalid('Access token does not belong to an active account.');
       }
       req.userId = userId;
       req.dataOwnerId = resolveSpace(

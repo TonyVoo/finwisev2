@@ -177,7 +177,8 @@ export async function login(db: Db, input: LoginInput): Promise<AuthResponse> {
   const user = await db.user.findUnique({ where: { email } });
 
   const ok = await verifyPassword(input.password, user?.passwordHash);
-  if (!ok || !user) {
+  // A disabled account answers exactly like a wrong password (`docs/design/17-admin.md`).
+  if (!ok || !user || user.disabledAt !== null) {
     logger.info('login rejected', { email });
     throw problems.invalidCredentials();
   }
@@ -218,6 +219,15 @@ export async function refresh(db: Db, presentedToken: string): Promise<TokenPair
 
   if (existing.expiresAt.getTime() <= Date.now()) {
     throw problems.tokenExpired('Refresh token has expired.');
+  }
+
+  // An account disabled since this token was issued cannot rotate it (disabling revokes them too).
+  const owner = await db.user.findUnique({
+    where: { id: existing.userId },
+    select: { disabledAt: true },
+  });
+  if (owner === null || owner.disabledAt !== null) {
+    throw problems.tokenInvalid('Refresh token is not valid.');
   }
 
   return db.$transaction(async (tx) => {
@@ -371,7 +381,14 @@ export async function updateProfile(db: Db, userId: string, displayName: string 
  */
 export async function deleteAccount(db: Db, userId: string, password: string): Promise<void> {
   await confirmPassword(db, userId, password);
+  await removeAccount(db, userId);
+}
 
+/**
+ * The removal itself, without the password: what an account deleting itself does once it has proved who it
+ * is, and what an operator does from the admin page (`docs/design/17-admin.md`).
+ */
+export async function removeAccount(db: Db, userId: string): Promise<void> {
   // An owner cannot leave others without one: hand the household over, or delete it, first.
   if (await ownsHouseholdWithOthers(db, userId)) {
     throw new ApiProblem(

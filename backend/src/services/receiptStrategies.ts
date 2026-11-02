@@ -45,6 +45,8 @@ export interface DailyBudget {
   tryTake(now: Date): boolean;
   /** Spend what is left of today, for when the provider says it is out. */
   exhaust(now: Date): void;
+  /** How much of today's allowance is spent, for the admin page. */
+  usage(now: Date): { readonly used: number; readonly limit: number };
 }
 
 /** Kept in memory, per process: with several instances each holds its own share, which is fine. */
@@ -68,6 +70,10 @@ export function createDailyBudget(limit: number): DailyBudget {
     exhaust(now) {
       roll(now);
       used = Math.max(used, limit);
+    },
+    usage(now) {
+      roll(now);
+      return { used: Math.min(used, limit), limit };
     },
   };
 }
@@ -117,6 +123,12 @@ export function setReceiptReaderForTests(
 ): void {
   receiptReader = reader;
   modelBudget = dailyBudget === undefined ? undefined : createDailyBudget(dailyBudget);
+}
+
+/** The receipt model's daily allowance, built on first use like the reader. */
+export function getReceiptBudget(): DailyBudget {
+  modelBudget ??= createDailyBudget(getConfig().vision.geminiDailyBudget);
+  return modelBudget;
 }
 
 /** In the order they are tried: the model first, OCR + parser behind it. Empty means reading is off. */

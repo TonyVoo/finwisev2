@@ -102,6 +102,20 @@ const EnvSchema = z.object({
   GEMINI_RECAP_DAILY_BUDGET: z.coerce.number().int().min(0).default(100),
 
   /**
+   * Accounts that may open the admin page (`docs/design/17-admin.md`): comma-separated emails, compared
+   * trimmed and lowercased. Unset or empty, nobody can, and the admin routes answer 404 to everyone.
+   */
+  ADMIN_EMAILS: z
+    .string()
+    .optional()
+    .transform((value) =>
+      (value ?? '')
+        .split(',')
+        .map((email) => email.trim().toLowerCase())
+        .filter((email) => email !== ''),
+    ),
+
+  /**
    * How many reverse proxies sit in front of this process, or `false` for none.
    *
    * This is a rate-limiting setting, not a cosmetic one. `req.ip` is the socket's remote
@@ -170,6 +184,8 @@ function build() {
       accessTokenTtlSeconds: env.ACCESS_TOKEN_TTL_SECONDS,
     },
     refreshTokenTtlDays: env.REFRESH_TOKEN_TTL_DAYS,
+    /** Who may open the admin page. See `ADMIN_EMAILS` above. */
+    adminEmails: env.ADMIN_EMAILS,
     mail: { resendApiKey: env.RESEND_API_KEY, from: env.MAIL_FROM },
     ocr: {
       ocrSpaceApiKey: env.OCR_SPACE_API_KEY,

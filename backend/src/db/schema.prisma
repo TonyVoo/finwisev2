@@ -53,6 +53,10 @@ model User {
   /// changes: it vouches for an address, not for the account.
   emailVerifiedAt DateTime? @map("email_verified_at") @db.Timestamptz(3)
 
+  /// Set by an operator (`docs/design/17-admin.md`): while set the account cannot sign in, refresh or use an
+  /// access token. Its data is untouched; clearing it restores everything.
+  disabledAt DateTime? @map("disabled_at") @db.Timestamptz(3)
+
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
   revisionCounter RevisionCounter?
