@@ -198,12 +198,12 @@ Create an account and a session. The one screen that genuinely requires connecti
    an empty category list and the next sync fills it
    ([`01-flows.md`](./01-flows.md) §2). **No success toast** — arriving at Home is the
    confirmation.
-8. **Currency.** The select opens a `Sheet` listing `USD`, `EUR`, `GBP`, `JPY`, `CAD`, `AUD`,
-   `CHF`, `INR`, `BRL`, `MXN` as `{code} - {name}` rows with a trailing `check` on the current
+8. **Currency.** The select opens a `Sheet` listing thirty currencies (`USD`, `EUR`, `GBP`, `JPY`, `VND`, `CNY`,
+   `KRW`, `THB`, `SGD`, ... `lib/currencies.ts` is the list) as `{code} - {name}` rows with a trailing `check` on the current
    one. It is sent as `SignupRequest.currency`, which the contract accepts and defaults to
    `USD` when omitted. The MVP offers a fixed list, not an ISO 4217 search.
-9. **`JPY` has no minor unit.** The chosen currency determines `decimals` (2 for all of the
-   above except `JPY`, which is 0), and that value drives the amount keypad in
+9. **`JPY` has no minor unit.** The chosen currency determines `decimals` (2 for most,
+   0 for `JPY`, `VND` and `KRW`), and that value drives the amount keypad in
    [`06-expense-form.md`](./06-expense-form.md) §Behaviour rule 3. Picking `JPY` at signup must
    produce a keypad with no decimal places, not a 2-decimal keypad on a 0-decimal currency.
 10. **Password is never cleared** on any error. Clearing it on a failed attempt is a punishment

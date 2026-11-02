@@ -1,14 +1,14 @@
 import { COPY } from '../copy/strings';
 
 /**
- * The currencies signup offers.
+ * The currencies the app offers (signup, and Settings -> Currency).
  *
- * `docs/design/03-auth.md` §1.2 rule 8 fixes both the list and the fact that it is a
- * list: "The MVP offers a fixed list, not an ISO 4217 search." Ten codes, in the order
- * the sheet lays them out, rendered as `{code} - {name}`.
+ * `docs/design/03-auth.md` §1.2 rule 8 fixes the fact that it is a list: "The MVP offers a fixed list, not an
+ * ISO 4217 search." It began at ten codes and now covers thirty, including the Vietnamese dong (the app is used in
+ * Vietnam) and the other currencies of the region, in the order the sheet lays them out, rendered as
+ * `{code} - {name}`.
  *
- * It is a closed set for a reason beyond the picker. The currency is captured once at
- * signup and cannot be changed, and it decides how every amount in the app is formatted -
+ * It is a closed set for a reason beyond the picker. The currency decides how every amount in the app is formatted -
  * including whether the keypad has a decimal key, because `JPY` has no minor unit
  * (`06-expense-form.md` §Behaviour rule 3). A free-text or searchable field would let a
  * user pick a currency the app has never rendered, permanently.
@@ -36,10 +36,30 @@ export const CURRENCY_OPTIONS: readonly CurrencyOption[] = [
   { code: 'EUR', name: 'Euro' },
   { code: 'GBP', name: 'British Pound' },
   { code: 'JPY', name: 'Japanese Yen' },
-  { code: 'CAD', name: 'Canadian Dollar' },
-  { code: 'AUD', name: 'Australian Dollar' },
-  { code: 'CHF', name: 'Swiss Franc' },
+  { code: 'VND', name: 'Vietnamese Dong' },
+  { code: 'CNY', name: 'Chinese Yuan' },
+  { code: 'KRW', name: 'South Korean Won' },
+  { code: 'THB', name: 'Thai Baht' },
+  { code: 'SGD', name: 'Singapore Dollar' },
+  { code: 'MYR', name: 'Malaysian Ringgit' },
+  { code: 'IDR', name: 'Indonesian Rupiah' },
+  { code: 'PHP', name: 'Philippine Peso' },
+  { code: 'HKD', name: 'Hong Kong Dollar' },
+  { code: 'TWD', name: 'New Taiwan Dollar' },
   { code: 'INR', name: 'Indian Rupee' },
+  { code: 'AUD', name: 'Australian Dollar' },
+  { code: 'NZD', name: 'New Zealand Dollar' },
+  { code: 'CAD', name: 'Canadian Dollar' },
+  { code: 'CHF', name: 'Swiss Franc' },
+  { code: 'SEK', name: 'Swedish Krona' },
+  { code: 'NOK', name: 'Norwegian Krone' },
+  { code: 'DKK', name: 'Danish Krone' },
+  { code: 'PLN', name: 'Polish Zloty' },
+  { code: 'CZK', name: 'Czech Koruna' },
+  { code: 'TRY', name: 'Turkish Lira' },
+  { code: 'ZAR', name: 'South African Rand' },
+  { code: 'AED', name: 'UAE Dirham' },
+  { code: 'SAR', name: 'Saudi Riyal' },
   { code: 'BRL', name: 'Brazilian Real' },
   { code: 'MXN', name: 'Mexican Peso' },
 ];
