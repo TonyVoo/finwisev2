@@ -147,7 +147,7 @@ be scrolled clear of the FAB.
     button that used to push it, was removed once Settings outgrew three rows. Its sub-screens are
     pushed on top of the tabs. Originally it held exactly three rows — the
     account email as read-only text, the currency as read-only text with the helper
-    `Set when you created your account.`, and `Categories` — plus a `destructive` `Log out`
+    `Tap to change. Amounts are converted.`, and `Categories` — plus a `destructive` `Log out`
     button. Log out revokes the refresh token via `POST /v1/auth/logout` on a best-effort basis,
     clears secure store, **wipes the local database**, and replaces the stack with
     `/(auth)/welcome`. It is gated by a `Dialog`: title `Log out?`, body

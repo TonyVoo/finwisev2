@@ -38,7 +38,7 @@ export const COPY = {
       password: 'Password',
       passwordHint: 'At least 8 characters',
       currency: 'Currency',
-      currencyHint: 'You cannot change this later.',
+      currencyHint: 'You can change this later.',
     },
     submit: 'Create account',
     /** §1.2 rule 4: offered beside the "already registered" error. */
@@ -348,7 +348,7 @@ export const COPY = {
     title: 'Settings',
     email: 'Email',
     currency: 'Currency',
-    currencyHint: 'Set when you created your account.',
+    currencyHint: 'Tap to change. Amounts are converted.',
     categories: 'Categories',
     recurring: 'Recurring expenses',
     recurringHint: 'Rent, subscriptions and other regular payments.',
@@ -681,6 +681,33 @@ export const COPY = {
   },
 
   /** Change password and delete account, both reached from Settings and both online-only. */
+  currencyChange: {
+    title: 'Change currency',
+    intro:
+      'Every amount you have recorded is converted at the rate you enter, so your history and totals stay consistent. Households keep their own currency.',
+    from: 'Current currency',
+    to: 'New currency',
+    pick: 'Choose a currency',
+    rate: 'Exchange rate',
+    rateHint: 'How much one unit of your current currency is worth in the new one.',
+    rateFilled: "Filled in with today's market rate. Change it if you prefer another.",
+    rateManual: 'No market rate found for this pair. Enter the rate you want to use.',
+    rateInvalid: 'Enter a rate greater than zero.',
+    example: 'For example',
+    password: 'Password',
+    submit: 'Convert everything',
+    dialogTitle: 'Change your currency?',
+    dialogBody:
+      'All your expenses, goals, recurring payments and budgets will be converted. This cannot be undone.',
+    confirm: 'Change currency',
+    success: 'Currency changed.',
+    offline: 'You need to be online to change your currency.',
+    syncFirst: 'Wait for your changes to finish syncing, then try again.',
+    personalOnly: 'Switch to your own space to change your currency.',
+    tooLarge: 'With that rate some amounts would be too large. Nothing was changed.',
+    same: 'Choose a different currency.',
+  },
+
   account: {
     changePassword: {
       title: 'Change password',

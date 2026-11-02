@@ -5,6 +5,7 @@ import type {
   CategoryListResponse,
   CategoryResponse,
   CategoryUpdateRequest,
+  ChangeCurrencyRequest,
   ChangeEmailRequest,
   ForgotPasswordRequest,
   ResetPasswordRequest,
@@ -87,6 +88,7 @@ export interface ApiClient {
   updateProfile(body: UpdateProfileRequest): Promise<MeResponse>;
   /** Replaces the sign-in email (password re-entered); returns the updated user. */
   changeEmail(body: ChangeEmailRequest): Promise<MeResponse>;
+  changeCurrency(body: ChangeCurrencyRequest): Promise<MeResponse>;
   /** Emails a 6-digit code to the account's address. 204; a no-op once verified. */
   requestEmailVerification(body: RequestEmailVerificationRequest): Promise<void>;
   /** Confirms the code; returns the updated user. */
@@ -225,6 +227,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     changePassword: (body) => send(ENDPOINTS.changePassword, { body }),
     updateProfile: (body) => send(ENDPOINTS.updateProfile, { body }),
     changeEmail: (body) => send(ENDPOINTS.changeEmail, { body }),
+    changeCurrency: (body) => send(ENDPOINTS.changeCurrency, { body }),
     requestEmailVerification: (body) => send(ENDPOINTS.requestEmailVerification, { body }),
     confirmEmailVerification: (body) => send(ENDPOINTS.confirmEmailVerification, { body }),
     deleteAccount: (body) => send(ENDPOINTS.deleteAccount, { body }),

@@ -176,10 +176,12 @@ export default function SettingsScreen() {
           </Row>
         ) : null}
 
-        {/* Read-only, with the reason stated: the currency is fixed at signup
-          (`03-auth.md` §Behaviour rule 9), so this says so rather than looking tappable. */}
+        {/* Changing it converts every amount at a rate the person enters (`19-change-currency.md`). */}
         <Row
+          testID="settings-currency"
           leading={<IconBadge name="dollar-sign" />}
+          onPress={() => router.push('/(app)/settings/currency')}
+          chevron
           accessibilityLabel={`${COPY.settings.currency}, ${currency.data ?? ''}. ${
             COPY.settings.currencyHint
           }`}

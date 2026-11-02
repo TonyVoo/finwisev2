@@ -79,6 +79,7 @@ export const ENDPOINTS = {
   changePassword: endpoint('changePassword', TokenPair),
   updateProfile: endpoint('updateProfile', MeResponse),
   changeEmail: endpoint('changeEmail', MeResponse),
+  changeCurrency: endpoint('changeCurrency', MeResponse),
   requestEmailVerification: emptyEndpoint('requestEmailVerification'),
   confirmEmailVerification: endpoint('confirmEmailVerification', MeResponse),
   deleteAccount: emptyEndpoint('deleteAccount'),

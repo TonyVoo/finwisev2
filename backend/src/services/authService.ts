@@ -272,7 +272,7 @@ export async function logout(db: Db, presentedToken: string): Promise<void> {
  * A missing user row is `token_invalid` for the reason `GET /v1/me` gives: the token
  * verified but its account is gone, and the client's right move is to log in again.
  */
-async function confirmPassword(db: Db, userId: string, presented: string) {
+export async function confirmPassword(db: Db, userId: string, presented: string) {
   const user = await db.user.findUnique({ where: { id: userId } });
   if (!user) throw problems.tokenInvalid('Access token does not belong to an existing account.');
 

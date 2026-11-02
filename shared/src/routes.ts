@@ -104,6 +104,13 @@ export const API_ROUTES = [
     auth: true,
     successStatus: 200,
   },
+  {
+    method: 'post',
+    path: '/v1/me/currency',
+    operationId: 'changeCurrency',
+    auth: true,
+    successStatus: 200,
+  },
 
   {
     method: 'get',

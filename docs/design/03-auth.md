@@ -124,7 +124,7 @@ Create an account and a session. The one screen that genuinely requires connecti
 |  +--------------------------+  |
 |  | USD - US Dollar       (v)|  |   Select row, opens sheet
 |  +--------------------------+  |
-|  You cannot change this later. |   type.footnote, text.tertiary
+|  You can change this later.    |   type.footnote, text.tertiary
 |                                |   space.6
 |  +--------------------------+  |
 |  |      Create account      |  |   Button primary, full width
@@ -148,7 +148,7 @@ Create an account and a session. The one screen that genuinely requires connecti
 | 9   | Password helper    | `type.footnote` / `text.tertiary`                                        | `At least 8 characters`                      | none                | read as the field's hint                                                                                                                 |
 | 10  | Currency label     | `type.subhead` / `text.secondary`                                        | `Currency`                                   | none                | bound to 11                                                                                                                              |
 | 11  | Currency select    | 48-tall row, `radius.md`, 1px `border.input`, trailing `chevron-down` 20 | `{code} - {name}`, default `USD - US Dollar` | full row, 48        | `role="button"`, label `Currency, USD US Dollar. Double tap to change.`                                                                  |
-| 12  | Currency helper    | `type.footnote` / `text.tertiary`                                        | `You cannot change this later.`              | none                | read as 11's hint                                                                                                                        |
+| 12  | Currency helper    | `type.footnote` / `text.tertiary`                                        | `You can change this later.`                 | none                | read as 11's hint                                                                                                                        |
 | 13  | Submit             | `Button` `primary`, full width                                           | `Create account`                             | full button, 48     | `role="button"`; Busy label `Create account, in progress`                                                                                |
 | 14  | Form error banner  | see States                                                               | —                                            | —                   | announced                                                                                                                                |
 
@@ -270,7 +270,7 @@ Identical to §1.2 elements 1, 3-8 and 13-14, with these differences:
 | 7   | Password field | `TextField`, `secureTextEntry` | —              | `autoComplete="current-password"`, `textContentType="password"` |
 | 13  | Submit         | `Button` `primary`, full width | `Log in`       | Busy label `Log in, in progress`                                |
 
-There is **no** Currency field (it is fixed at signup). Below the form is a **Forgot password?**
+There is **no** Currency field (it is changed later from Settings, `19-change-currency.md`). Below the form is a **Forgot password?**
 link (§4).
 
 ### States

@@ -665,6 +665,70 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /v1/me/currency:
+    post:
+      operationId: changeCurrency
+      tags: [auth]
+      summary: Change the account currency, converting every amount at a rate
+      description: |
+        Switches the account to another currency and rewrites everything in the account's
+        **own books** to match, in one transaction: expenses, goals, recurring rules and
+        category budgets are multiplied by `rate` and rounded half up to whole minor units of
+        the new currency (a currency with no decimals, such as `VND`, takes whole units).
+        The caller must re-enter the password: a wrong one is `403 forbidden`, rate limited
+        per account and shared with `POST /v1/me/password`.
+
+        An expense that was paid in a foreign currency keeps that original amount. One whose
+        original currency is the new currency gets exactly that original amount back and
+        stops being foreign. One with no original (it was in the old currency) records the
+        old amount as its original.
+
+        A household's books are not touched: they have a currency of their own.
+
+        If any converted amount would exceed the contract's maximum, nothing changes and the
+        answer is `400 validation_error`. Every changed row gets a new revision, so devices
+        pick the change up on their next sync; a device should clear its local copy and sync
+        again rather than merge.
+      x-errorCodes:
+        - validation_error
+        - malformed_request
+        - unsupported_media_type
+        - unauthorized
+        - token_expired
+        - token_invalid
+        - forbidden
+        - rate_limited
+        - internal_error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChangeCurrencyRequest' }
+            example:
+              currency: VND
+              rate: '25400'
+              password: correct-horse-battery
+      responses:
+        '200':
+          description: Currency changed. The updated user.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MeResponse' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /v1/me/email-verification:
     post:
       operationId: requestEmailVerification
@@ -4166,6 +4230,31 @@ components:
           description: >-
             The account password, re-entered: an email is what a password reset would be sent
             to, so a stolen access token alone must not be able to change it.
+
+    ChangeCurrencyRequest:
+      type: object
+      additionalProperties: false
+      required: [currency, rate, password]
+      properties:
+        currency:
+          allOf:
+            - $ref: '#/components/schemas/CurrencyCode'
+          description: The new account currency. Must differ from the current one.
+        rate:
+          type: string
+          pattern: '^(?:[1-9][0-9]{0,8}|0)(?:\.[0-9]{1,8})?$'
+          description: >-
+            How many units of the new currency one unit of the current currency is worth, as a
+            decimal string such as "25400". Greater than zero. Every amount of the account's
+            own books is multiplied by it and rounded to whole minor units of the new currency.
+          example: '25400'
+        password:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: >-
+            The account password, re-entered: this rewrites every amount the account holds, so
+            a stolen access token alone must not be able to do it.
 
     DeleteAccountRequest:
       type: object

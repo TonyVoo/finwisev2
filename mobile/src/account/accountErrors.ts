@@ -81,3 +81,25 @@ export function presentVerifyError(
   }
   return { codeError: null, banner: COPY.error.generic };
 }
+
+/**
+ * The same distinction for changing the currency: a wrong password sits on the field, the network
+ * and a rate that makes an amount too large are named, the rest is generic.
+ */
+export function presentCurrencyChangeError(error: unknown): AccountErrorPresentation {
+  if (error instanceof NetworkUnavailableError) {
+    return { passwordError: null, banner: COPY.currencyChange.offline };
+  }
+  if (error instanceof ApiRequestError) {
+    if (error.code === 'forbidden') {
+      return { passwordError: COPY.account.wrongPassword, banner: null };
+    }
+    if (error.code === 'rate_limited') {
+      return { passwordError: null, banner: COPY.account.tooManyAttempts };
+    }
+    if (error.code === 'validation_error') {
+      return { passwordError: null, banner: COPY.currencyChange.tooLarge };
+    }
+  }
+  return { passwordError: null, banner: COPY.error.generic };
+}

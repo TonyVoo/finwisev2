@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { SEED_LANGUAGES } from './category.js';
 import { CurrencyCode, LIMITS, Timestamp } from './primitives.js';
+import { RateString } from './rates.js';
 import { Email, Password, User } from './user.js';
 
 /**
@@ -15,7 +16,7 @@ export const SignupRequest = z.strictObject({
   email: Email,
   password: Password,
   currency: CurrencyCode.optional().describe(
-    'Currency for this account, captured once at signup. Defaults to "USD" when omitted. Not changeable in the MVP.',
+    'Currency for this account, captured once at signup. Defaults to "USD" when omitted. Changeable later with `POST /v1/me/currency`.',
   ),
   language: z
     .enum(SEED_LANGUAGES)
@@ -120,6 +121,16 @@ export const ChangeEmailRequest = z.strictObject({
   ),
 });
 
+export const ChangeCurrencyRequest = z.strictObject({
+  currency: CurrencyCode.describe('The new account currency. Must differ from the current one.'),
+  rate: RateString.describe(
+    "How many units of the new currency one unit of the current currency is worth, as a decimal string. Every amount of the account's own books is multiplied by it and rounded to whole minor units of the new currency.",
+  ),
+  password: PresentedPassword.describe(
+    'The account password, re-entered: this rewrites every amount the account holds, so a stolen access token alone must not be able to do it.',
+  ),
+});
+
 export const DeleteAccountRequest = z.strictObject({
   password: PresentedPassword.describe(
     'The account password, re-entered. Deleting an account cannot be undone, so a stolen access token alone is not enough.',
@@ -154,6 +165,7 @@ export const RefreshResponse = TokenPair;
 
 export type ChangePasswordRequest = z.infer<typeof ChangePasswordRequest>;
 export type ChangeEmailRequest = z.infer<typeof ChangeEmailRequest>;
+export type ChangeCurrencyRequest = z.infer<typeof ChangeCurrencyRequest>;
 export type UpdateProfileRequest = z.infer<typeof UpdateProfileRequest>;
 export type RequestEmailVerificationRequest = z.infer<typeof RequestEmailVerificationRequest>;
 export type VerifyEmailRequest = z.infer<typeof VerifyEmailRequest>;

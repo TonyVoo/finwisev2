@@ -189,9 +189,9 @@ describe('the sign up screen', () => {
       );
     });
 
-    it('says the choice is permanent, where the choice is made', async () => {
-      // §1.2 element 12, under the select rather than discovered later in Settings.
-      expect(screen.getByText('You cannot change this later.')).toBeTruthy();
+    it('says the choice can be changed later, where the choice is made', async () => {
+      // §1.2 element 12, under the select.
+      expect(screen.getByText('You can change this later.')).toBeTruthy();
     });
 
     it('sends the currency the user picked', async () => {

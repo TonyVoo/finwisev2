@@ -1,4 +1,5 @@
 import {
+  ChangeCurrencyRequest,
   ChangeEmailRequest,
   ChangePasswordRequest,
   DeleteAccountRequest,
@@ -25,6 +26,7 @@ import {
   deleteAccount,
   updateProfile,
 } from '../services/authService.ts';
+import { changeCurrency } from '../services/currencyService.ts';
 import {
   confirmEmailVerification,
   sendEmailVerification,
@@ -122,6 +124,18 @@ meRouter.patch(
     const userId = userIdOf(req);
     const body = req.body as ChangeEmailRequest;
     const user = await confirmed(userId, () => changeEmail(getPrisma(), userId, body));
+    sendJson(res, 200, MeResponse, { user });
+  },
+);
+
+meRouter.post(
+  '/me/currency',
+  validateBody(ChangeCurrencyRequest),
+  passwordConfirmRateLimit,
+  async (req: Request, res: Response) => {
+    const userId = userIdOf(req);
+    const body = req.body as ChangeCurrencyRequest;
+    const user = await confirmed(userId, () => changeCurrency(getPrisma(), userId, body));
     sendJson(res, 200, MeResponse, { user });
   },
 );

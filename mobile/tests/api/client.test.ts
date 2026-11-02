@@ -107,6 +107,10 @@ describe('every client method', () => {
     ],
     ['updateProfile', (client) => client.updateProfile({ displayName: 'Ana' })],
     ['changeEmail', (client) => client.changeEmail({ email: 'b@example.com', password: 'a' })],
+    [
+      'changeCurrency',
+      (client) => client.changeCurrency({ currency: 'VND', rate: '25400', password: 'a' }),
+    ],
     ['requestEmailVerification', (client) => client.requestEmailVerification({})],
     ['confirmEmailVerification', (client) => client.confirmEmailVerification({ code: '123456' })],
     ['deleteAccount', (client) => client.deleteAccount({ password: 'a' })],

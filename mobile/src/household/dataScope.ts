@@ -40,6 +40,32 @@ const SCOPED_TABLES = [
   'categories',
 ] as const;
 
+/** Empties the books and everything that describes where they were synced to; `user` and the owner stay. */
+async function clearBooks(executor: SqliteExecutor): Promise<void> {
+  for (const table of SCOPED_TABLES) {
+    await executor.runAsync(`DELETE FROM ${table}`, []);
+  }
+  await deleteMeta(executor, WIPED_META_KEYS);
+}
+
+/**
+ * After the server converted every amount to another currency: drop the old-currency copy so the next sync
+ * pulls the converted books from scratch, and keep the account as the server now describes it. Refused
+ * earlier when changes are waiting, so nothing unsent is lost. The data scope is written back, since
+ * the wipe takes it and the books are still the same ones.
+ */
+export async function resetBooksAfterCurrencyChange(
+  database: SqliteDatabase,
+  user: MeResponse['user'],
+): Promise<void> {
+  const scope = await readMeta(database, META_KEYS.dataScope);
+  await database.withExclusiveTransactionAsync(async (txn) => {
+    await clearBooks(txn);
+    await writeUser(txn, user);
+    if (scope !== null) await writeMeta(txn, META_KEYS.dataScope, scope);
+  });
+}
+
 export interface ReconcileOptions {
   /**
    * The space to move to, chosen by the person (`docs/design/13-multiple-households.md`). Without one the
@@ -95,10 +121,7 @@ export async function reconcileDataScope(
   }
 
   await database.withExclusiveTransactionAsync(async (txn) => {
-    for (const table of SCOPED_TABLES) {
-      await txn.runAsync(`DELETE FROM ${table}`, []);
-    }
-    await deleteMeta(txn, WIPED_META_KEYS);
+    await clearBooks(txn);
     // Wiped with the rest, so it is written back from the same answer.
     await storeMembers(txn, me.household);
     await storeSpaces(txn, me.spaces);
