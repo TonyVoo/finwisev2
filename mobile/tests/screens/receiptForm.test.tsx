@@ -83,6 +83,13 @@ async function ready(): Promise<void> {
   await waitFor(() => expect(screen.queryByTestId(AMOUNT_DISPLAY_TEST_ID)).not.toBeNull());
 }
 
+/** The keypad opens when the amount is tapped (`docs/design/06-expense-form.md` rule 1); this does that if it is not already open. */
+async function openKeypad(): Promise<void> {
+  if (screen.queryByTestId('keypad') === null) {
+    await userEvent.press(screen.getByTestId('amount-display'));
+  }
+}
+
 async function mountAdd(): Promise<MountedScreen> {
   const mounted = await mountScreen(<NewExpenseScreen />, { clock: () => NOW, seed: seedBasics });
   await ready();
@@ -114,6 +121,7 @@ describe('a photo taken from the camera shortcut', () => {
     const { database } = await mountAdd();
 
     expect(rowLabel()).toBe(`${COPY.form.field.receipt}, ${COPY.form.field.receiptAttached}`);
+    await openKeypad();
     await userEvent.press(screen.getByTestId('keypad-5'));
     await userEvent.press(screen.getByTestId(SAVE_TEST_ID));
 
@@ -150,6 +158,7 @@ describe('the Receipt row', () => {
     const calls = pickerReturning({ status: 'picked', dataBase64: IMG });
     const { database } = await mountAdd();
 
+    await openKeypad();
     await userEvent.press(screen.getByTestId('keypad-5'));
     await userEvent.press(screen.getByTestId(RECEIPT_ROW_TEST_ID));
     await userEvent.press(screen.getByTestId(RECEIPT_TAKE_TEST_ID));

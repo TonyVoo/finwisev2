@@ -46,8 +46,12 @@ button, and prefill — listed in §Behaviour rule 1.
 +----------------------------------------+
 ```
 
-The keypad is **pinned to the bottom and always visible** — it is not a system keyboard and it
-never dismisses. The rows between the amount and the keypad scroll if they do not fit.
+The keypad is **closed when the form opens**, so the fields are what you see first, and **opens when the
+amount is tapped** (the amount is a button, with the line "Tap the amount to enter it." under it until
+something is entered). It is pinned to the bottom while it is open, with a **Done** key above the digits
+that closes it and keeps the amount, and it also closes when any other field's sheet is opened. It is not
+a system keyboard. The rows between the amount and the keypad scroll if they do not fit. (Settle-up, which
+is only an amount, keeps its keypad open.)
 
 ---
 

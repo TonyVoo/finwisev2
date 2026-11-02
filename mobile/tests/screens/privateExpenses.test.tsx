@@ -56,7 +56,15 @@ async function seed(database: SqliteDatabase, inHousehold: boolean): Promise<voi
 }
 
 async function typeAmount(keys: string): Promise<void> {
+  await openKeypad();
   for (const key of keys) await userEvent.press(screen.getByTestId(`keypad-${key}`));
+}
+
+/** The keypad opens when the amount is tapped (`docs/design/06-expense-form.md` rule 1); this does that if it is not already open. */
+async function openKeypad(): Promise<void> {
+  if (screen.queryByTestId('keypad') === null) {
+    await userEvent.press(screen.getByTestId('amount-display'));
+  }
 }
 
 beforeEach(() => resetRouter());
@@ -64,7 +72,7 @@ beforeEach(() => resetRouter());
 describe('the add form', () => {
   it('has no private switch for an account that is not in a household', async () => {
     await mountScreen(<NewExpenseScreen />, { clock: () => NOW, seed: (db) => seed(db, false) });
-    await waitFor(() => expect(screen.queryByTestId('keypad-1')).not.toBeNull());
+    await waitFor(() => expect(screen.queryByTestId('amount-display')).not.toBeNull());
 
     expect(screen.queryByTestId('form-private')).toBeNull();
   });

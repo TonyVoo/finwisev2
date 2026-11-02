@@ -11,11 +11,17 @@ import {
   CLOSE_TEST_ID,
   DATE_ROW_TEST_ID,
   DELETE_TEST_ID,
+  CURRENCY_ROW_TEST_ID,
   NOTE_ROW_TEST_ID,
   NOT_FOUND_TEST_ID,
   SAVE_TEST_ID,
 } from '@/expenses/ExpenseFormScreen';
-import { KEYPAD_BACKSPACE_TEST_ID, KEYPAD_DECIMAL_TEST_ID } from '@/expenses/Keypad';
+import {
+  KEYPAD_BACKSPACE_TEST_ID,
+  KEYPAD_DECIMAL_TEST_ID,
+  KEYPAD_DONE_TEST_ID,
+  KEYPAD_TEST_ID,
+} from '@/expenses/Keypad';
 import { DATE_CHOOSE_TEST_ID, DATE_YESTERDAY_TEST_ID } from '@/expenses/DateSheet';
 import { NOTE_INPUT_TEST_ID } from '@/expenses/NoteSheet';
 import NewExpenseScreen from '../../app/(app)/expense/new';
@@ -97,12 +103,90 @@ function message(): string {
   return screen.getByTestId(AMOUNT_MESSAGE_TEST_ID).props.children as string;
 }
 
+/** The keypad opens when the amount is tapped (`docs/design/06-expense-form.md` rule 1); this does that if it is not already open. */
+async function openKeypad(): Promise<void> {
+  if (screen.queryByTestId('keypad') === null) {
+    await userEvent.press(screen.getByTestId('amount-display'));
+  }
+}
+
 /** Press keypad digits in order, as a thumb would. */
 async function typeAmount(keys: string): Promise<void> {
+  await openKeypad();
   for (const key of keys) {
     await userEvent.press(screen.getByTestId(`keypad-${key}`));
   }
 }
+
+describe('the number keypad', () => {
+  it('is not showing when Add expense opens, so the fields are what you see first', async () => {
+    await mountAdd();
+
+    expect(screen.queryByTestId(KEYPAD_TEST_ID)).toBeNull();
+    expect(screen.getByTestId(CURRENCY_ROW_TEST_ID)).toBeTruthy();
+  });
+
+  it('tells you to tap the amount, since nothing else says the keypad is there', async () => {
+    await mountAdd();
+
+    expect(message()).toBe(COPY.form.keypad.tapHint);
+  });
+
+  it('opens when the amount is tapped, and then guides the amount as before', async () => {
+    await mountAdd();
+
+    await userEvent.press(screen.getByTestId(AMOUNT_DISPLAY_TEST_ID));
+
+    expect(screen.getByTestId(KEYPAD_TEST_ID)).toBeTruthy();
+    expect(message()).toBe(VALIDATION_COPY.amount.zero);
+  });
+
+  it('names the amount as a button that opens the keypad, for a screen reader', async () => {
+    await mountAdd();
+
+    const tap = screen.getByTestId('amount-tap');
+
+    expect(tap.props.accessibilityRole).toBe('button');
+    expect(tap.props.accessibilityHint).toBe(COPY.form.keypad.openHint);
+  });
+
+  it('closes with Done, keeping the amount', async () => {
+    await mountAdd();
+    await typeAmount('1250');
+
+    await userEvent.press(screen.getByTestId(KEYPAD_DONE_TEST_ID));
+
+    expect(screen.queryByTestId(KEYPAD_TEST_ID)).toBeNull();
+    expect(displayed()).toBe('$12.50');
+  });
+
+  it('closes when another field is opened, so a sheet never fights the keypad for the screen', async () => {
+    await mountAdd();
+    await openKeypad();
+
+    await userEvent.press(screen.getByTestId(CURRENCY_ROW_TEST_ID));
+
+    expect(screen.queryByTestId(KEYPAD_TEST_ID)).toBeNull();
+  });
+
+  it('stays closed when editing, until the amount is tapped', async () => {
+    const seedEditable = async (database: SqliteDatabase): Promise<void> => {
+      await seedBasics(database);
+      await seedExpense(database, {
+        id: expenseId(1),
+        categoryId: GROCERIES,
+        amountMinor: 1250,
+        date: '2026-10-13',
+      });
+    };
+    await mountEdit(expenseId(1), seedEditable);
+    await waitFor(() => expect(screen.queryByTestId(AMOUNT_DISPLAY_TEST_ID)).not.toBeNull());
+
+    expect(screen.queryByTestId(KEYPAD_TEST_ID)).toBeNull();
+    await userEvent.press(screen.getByTestId(AMOUNT_DISPLAY_TEST_ID));
+    expect(screen.getByTestId(KEYPAD_TEST_ID)).toBeTruthy();
+  });
+});
 
 beforeEach(() => {
   resetRouter();
@@ -127,6 +211,9 @@ describe('the expense form', () => {
       expect(screen.getByTestId(SAVE_TEST_ID).props.accessibilityState).toEqual({
         disabled: true,
       });
+      // With the keypad closed the line says how to enter the amount; once it is open it says why Save waits.
+      expect(message()).toBe(COPY.form.keypad.tapHint);
+      await openKeypad();
       expect(message()).toBe(VALIDATION_COPY.amount.zero);
     });
 
@@ -249,6 +336,7 @@ describe('the expense form', () => {
     it('cannot take two decimal points', async () => {
       // Rule 3: not by validating a second one, but by there being nothing for it to do.
       await mountAdd();
+      await openKeypad();
 
       await userEvent.press(screen.getByTestId(KEYPAD_DECIMAL_TEST_ID));
       await userEvent.press(screen.getByTestId(KEYPAD_DECIMAL_TEST_ID));
@@ -437,6 +525,7 @@ describe('the expense form', () => {
       });
       expect(message()).toBe(VALIDATION_COPY.nochange);
 
+      await openKeypad();
       await userEvent.press(screen.getByTestId(KEYPAD_BACKSPACE_TEST_ID));
 
       expect(screen.getByTestId(SAVE_TEST_ID).props.accessibilityState).toEqual({

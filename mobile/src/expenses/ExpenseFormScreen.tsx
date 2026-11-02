@@ -196,6 +196,12 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
   const [draft, setDraft] = useState<ExpenseDraft | null>(null);
   const [initial, setInitial] = useState<ExpenseDraft | null>(null);
   const [overlay, setOverlay] = useState<Overlay>('none');
+  // The number keypad is closed until the amount is tapped (`docs/design/06-expense-form.md` rule 1), so the
+  // fields are what you see first; Done closes it, and so does opening any sheet.
+  const [keypadOpen, setKeypadOpen] = useState(false);
+  useEffect(() => {
+    if (overlay !== 'none') setKeypadOpen(false);
+  }, [overlay]);
   const [rejections, setRejections] = useState(0);
   // A photo from the camera shortcut is already attached when Add expense opens. It is read here, in the
   // initial state, and cleared in the effect below, so it is used once and an edit never keeps it.
@@ -789,7 +795,10 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
             // Add mode's untouched zero reads as a placeholder rather than a value.
             muted={!isEdit && amount.amountMinor === 0}
             error={save.error}
-            hint={save.hint}
+            // With the keypad closed and nothing entered, the useful thing to say is how to enter it.
+            hint={!keypadOpen && amount.amountMinor === 0 ? COPY.form.keypad.tapHint : save.hint}
+            onPress={() => setKeypadOpen(true)}
+            focused={keypadOpen}
           />
 
           {/* Scrolls between the amount and the keypad, with padding deep enough that
@@ -1001,13 +1010,16 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
             ) : null}
           </ScrollView>
 
-          <Keypad
-            onDigit={onDigit}
-            onDecimal={() => setAmount((current) => pressDecimal(current).input)}
-            onBackspace={() => setAmount((current) => pressBackspace(current).input)}
-            decimals={decimals}
-            rejectionCount={rejections}
-          />
+          {keypadOpen ? (
+            <Keypad
+              onDone={() => setKeypadOpen(false)}
+              onDigit={onDigit}
+              onDecimal={() => setAmount((current) => pressDecimal(current).input)}
+              onBackspace={() => setAmount((current) => pressBackspace(current).input)}
+              decimals={decimals}
+              rejectionCount={rejections}
+            />
+          ) : null}
         </>
       )}
 

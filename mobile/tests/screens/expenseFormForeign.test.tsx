@@ -63,7 +63,15 @@ async function pickCurrency(code: string): Promise<void> {
   await userEvent.press(screen.getByTestId(`${CURRENCY_OPTION_TEST_ID_PREFIX}-${code}`));
 }
 
+/** The keypad opens when the amount is tapped (`docs/design/06-expense-form.md` rule 1); this does that if it is not already open. */
+async function openKeypad(): Promise<void> {
+  if (screen.queryByTestId('keypad') === null) {
+    await userEvent.press(screen.getByTestId('amount-display'));
+  }
+}
+
 async function typeAmount(keys: string): Promise<void> {
+  await openKeypad();
   for (const key of keys) await userEvent.press(screen.getByTestId(`keypad-${key}`));
 }
 

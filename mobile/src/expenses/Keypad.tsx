@@ -6,15 +6,15 @@ import { useEffect, useRef } from 'react';
 import Feather from '@expo/vector-icons/Feather';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COPY } from '../copy/strings';
-import { motion, radius, size, space, type } from '../theme/tokens';
+import { HIT_SLOP_44, motion, radius, size, space, type } from '../theme/tokens';
 import { createStyles, useColors } from '../theme/ThemeProvider';
 
 /**
  * The amount keypad: `docs/design/06-expense-form.md` elements 10-13.
  *
- * **Pinned to the bottom and always visible.** It is not a system keyboard and it never
- * dismisses, which is what makes "add an amount and a category, save" three taps and a few
- * digits - no field has to be focused first.
+ * **Pinned to the bottom while the amount is being entered.** It is not a system keyboard. The expense form
+ * opens it when the amount is tapped and closes it with Done (or when another field is opened), so the
+ * fields are what you see first; the settle-up screen, which is only an amount, keeps it open.
  *
  * The decimal key is **hidden entirely for a zero-decimal currency** rather than disabled,
  * and the `0` key expands to fill its cell so the grid stays 4x3 with no hole (rule 3).
@@ -29,6 +29,7 @@ import { createStyles, useColors } from '../theme/ThemeProvider';
 export const KEYPAD_TEST_ID = 'keypad';
 export const KEYPAD_DECIMAL_TEST_ID = 'keypad-decimal';
 export const KEYPAD_BACKSPACE_TEST_ID = 'keypad-backspace';
+export const KEYPAD_DONE_TEST_ID = 'keypad-done';
 
 export interface KeypadProps {
   readonly onDigit: (digit: number) => void;
@@ -43,6 +44,8 @@ export interface KeypadProps {
    */
   readonly rejectionCount?: number;
   readonly shakeEnabled?: boolean;
+  /** Closes the keypad, keeping the amount. The keypad is only open while the amount is being entered. */
+  readonly onDone?: () => void;
 }
 
 export function Keypad({
@@ -52,6 +55,7 @@ export function Keypad({
   decimals,
   rejectionCount = 0,
   shakeEnabled = true,
+  onDone,
 }: KeypadProps) {
   const styles = useStyles();
   const insets = useSafeAreaInsets();
@@ -90,6 +94,20 @@ export function Keypad({
         { paddingBottom: insets.bottom + space[2], transform: [{ translateX }] },
       ]}
     >
+      {onDone === undefined ? null : (
+        <View style={styles.doneRow}>
+          <Pressable
+            testID={KEYPAD_DONE_TEST_ID}
+            onPress={onDone}
+            accessibilityRole="button"
+            accessibilityLabel={COPY.form.keypad.done}
+            hitSlop={HIT_SLOP_44}
+            style={styles.done}
+          >
+            <Text style={styles.doneText}>{COPY.form.keypad.done}</Text>
+          </Pressable>
+        </View>
+      )}
       <View style={styles.row}>
         <DigitKey digit={1} onPress={onDigit} />
         <DigitKey digit={2} onPress={onDigit} />
@@ -238,6 +256,20 @@ const useStyles = createStyles((color) =>
     row: {
       flexDirection: 'row',
       gap: space[2],
+    },
+    doneRow: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      paddingHorizontal: space[2],
+    },
+    done: {
+      minHeight: size.tapTargetMin,
+      justifyContent: 'center',
+      paddingHorizontal: space[2],
+    },
+    doneText: {
+      ...type.bodyStrong,
+      color: color.primary.default,
     },
     key: {
       flex: 1,

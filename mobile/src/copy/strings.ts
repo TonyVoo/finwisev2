@@ -270,7 +270,16 @@ export const COPY = {
     close: 'Close without saving',
     /** The date sheet's three quick options (`06-expense-form.md` rule 7). */
     date: { today: 'Today', yesterday: 'Yesterday', choose: 'Choose a date…' },
-    keypad: { decimal: 'Decimal point', backspace: 'Delete last digit' },
+    keypad: {
+      decimal: 'Decimal point',
+      backspace: 'Delete last digit',
+      /** Under the amount while the keypad is closed and nothing is entered. */
+      tapHint: 'Tap the amount to enter it.',
+      /** The amount as a button: what double tap does. */
+      openHint: 'Opens the number keypad.',
+      /** Closes the keypad, keeping the amount. */
+      done: 'Done',
+    },
     /**
      * The note sheet's dismiss button (`06-expense-form.md` rule 10).
      *

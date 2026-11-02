@@ -244,7 +244,13 @@ export const VIETNAMESE_COPY: CopyBundle = {
       deleteIncome: 'Xóa khoản thu',
       close: 'Đóng mà không lưu',
       date: { today: 'Hôm nay', yesterday: 'Hôm qua', choose: 'Chọn ngày…' },
-      keypad: { decimal: 'Dấu thập phân', backspace: 'Xóa chữ số cuối' },
+      keypad: {
+        tapHint: 'Chạm vào số tiền để nhập.',
+        openHint: 'Mở bàn phím số.',
+        done: 'Xong',
+        decimal: 'Dấu thập phân',
+        backspace: 'Xóa chữ số cuối',
+      },
       noteDone: 'Xong',
       notFound: {
         headline: 'Không tìm thấy khoản chi',

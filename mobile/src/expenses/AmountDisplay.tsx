@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useReduceMotion } from '../lib/useReduceMotion';
 import { formatMoney } from '../lib/money';
-import { space, type } from '../theme/tokens';
+import { HIT_SLOP_44, space, type } from '../theme/tokens';
 import { createStyles } from '../theme/ThemeProvider';
 import { COPY } from '../copy/strings';
 
@@ -40,9 +40,21 @@ export interface AmountDisplayProps {
   readonly error?: string;
   /** Why Save is unavailable (rule 6). Guidance, so it is never `danger.default`. */
   readonly hint?: string;
+  /** Opens the keypad. Without it the amount is plain text (settle-up, where the keypad is always open). */
+  readonly onPress?: () => void;
+  /** The keypad is open: a teal line under the amount says it is the field being typed in. */
+  readonly focused?: boolean;
 }
 
-export function AmountDisplay({ amountMinor, currency, muted, error, hint }: AmountDisplayProps) {
+export function AmountDisplay({
+  amountMinor,
+  currency,
+  muted,
+  error,
+  hint,
+  onPress,
+  focused = false,
+}: AmountDisplayProps) {
   const styles = useStyles();
   const { fontScale } = useWindowDimensions();
   const formatted = formatMoney(amountMinor, currency);
@@ -60,28 +72,46 @@ export function AmountDisplay({ amountMinor, currency, muted, error, hint }: Amo
     Animated.spring(pop, { toValue: 1, useNativeDriver: true, speed: 40, bounciness: 10 }).start();
   }, [amountMinor, reduceMotion, pop]);
 
+  const amountText = (
+    <Animated.Text
+      testID={AMOUNT_DISPLAY_TEST_ID}
+      style={[
+        { transform: [{ scale: pop }] },
+        fontScale > HERO_MAX_FONT_SCALE ? styles.amountLarge : styles.amountHero,
+        muted ? styles.amountMuted : null,
+      ]}
+      accessibilityRole="header"
+      // Announces the running total after every key press - `$1.25`, not `five`. A
+      // keypad that announced only the digit pressed would leave a non-sighted user
+      // unable to tell what the value is, which is the one thing that matters here
+      // (§Accessibility rule 2).
+      accessibilityLabel={COPY.a11y.amount.replace('{amount}', formatted)}
+      accessibilityLiveRegion="polite"
+      // Never truncated: a clipped amount is worse than a taller line.
+      numberOfLines={1}
+      adjustsFontSizeToFit
+    >
+      {formatted}
+    </Animated.Text>
+  );
+
   return (
     <View style={styles.block}>
-      <Animated.Text
-        testID={AMOUNT_DISPLAY_TEST_ID}
-        style={[
-          { transform: [{ scale: pop }] },
-          fontScale > HERO_MAX_FONT_SCALE ? styles.amountLarge : styles.amountHero,
-          muted ? styles.amountMuted : null,
-        ]}
-        accessibilityRole="header"
-        // Announces the running total after every key press - `$1.25`, not `five`. A
-        // keypad that announced only the digit pressed would leave a non-sighted user
-        // unable to tell what the value is, which is the one thing that matters here
-        // (§Accessibility rule 2).
-        accessibilityLabel={COPY.a11y.amount.replace('{amount}', formatted)}
-        accessibilityLiveRegion="polite"
-        // Never truncated: a clipped amount is worse than a taller line.
-        numberOfLines={1}
-        adjustsFontSizeToFit
-      >
-        {formatted}
-      </Animated.Text>
+      {onPress === undefined ? (
+        amountText
+      ) : (
+        <Pressable
+          testID="amount-tap"
+          onPress={onPress}
+          accessibilityRole="button"
+          accessibilityHint={COPY.form.keypad.openHint}
+          // The amount is the control that opens the keypad, so it is at least a thumb's width and height.
+          hitSlop={HIT_SLOP_44}
+          style={[styles.tap, focused ? styles.tapFocused : null]}
+        >
+          {amountText}
+        </Pressable>
+      )}
 
       {/* Always rendered, even with nothing to say, so the line is reserved and the keypad
           below never moves. ` ` rather than `''`: an empty string collapses to zero
@@ -103,6 +133,16 @@ const useStyles = createStyles((color) =>
       alignItems: 'center',
       paddingVertical: space[6],
       backgroundColor: color.bg.surface,
+    },
+    tap: {
+      alignItems: 'center',
+      paddingHorizontal: space[4],
+      paddingBottom: space[1],
+      borderBottomWidth: 2,
+      borderBottomColor: 'transparent',
+    },
+    tapFocused: {
+      borderBottomColor: color.primary.default,
     },
     amountHero: {
       ...type.amountHero,

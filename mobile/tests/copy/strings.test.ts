@@ -123,7 +123,6 @@ describe('copy strings are transcribed from the design docs', () => {
     // Listed in `COPY` declaration order, which is the order `flatten` walks.
     expect(missingFromDeck).toEqual([
       'signup.loginInstead',
-      'form.noteDone',
       'form.notFound.headline',
       'form.notFound.body',
       'form.notFound.action',
