@@ -14,6 +14,7 @@ import {
 import Feather from '@expo/vector-icons/Feather';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COPY } from '../copy/strings';
+import { useKeyboardOverlap } from './useKeyboardOverlap';
 import { HIT_SLOP_44, elevation, radius, size, space, type } from '../theme/tokens';
 import { createStyles, useColors } from '../theme/ThemeProvider';
 
@@ -68,6 +69,8 @@ export function Sheet({ visible, title, onClose, children, testID }: SheetProps)
     };
   }, []);
 
+  const keyboard = useKeyboardOverlap();
+
   const panResponder = PanResponder.create({
     onMoveShouldSetPanResponder: (_event, gesture) => gesture.dy > 4,
     onPanResponderMove: (_event, gesture) => {
@@ -89,57 +92,74 @@ export function Sheet({ visible, title, onClose, children, testID }: SheetProps)
       // Android's back button. §6 makes it a dismiss, and for a Dialog it resolves as
       // Cancel - never as the destructive action.
       onRequestClose={onClose}
+      // The Modal's window covers the whole screen on Android, so the sheet and the keyboard are measured
+      // in the same coordinates (`useKeyboardOverlap`).
+      statusBarTranslucent
+      navigationBarTranslucent
       accessibilityViewIsModal
     >
       {/* iOS does not resize a Modal for the keyboard; without this the form's lower fields
-          and its Save button sit under it. Android resizes the window itself. */}
+          and its Save button sit under it. Android is no better since it went edge-to-edge (the window
+          is not resized either), so there the inner view lifts the sheet by however much the keyboard
+          covers it (`useKeyboardOverlap`). */}
       <KeyboardAvoidingView
         style={styles.root}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        {/* The scrim. A sibling of the sheet rather than its parent, so a tap on the
-            sheet itself cannot bubble up to it and close what the user just touched. */}
-        <Pressable
-          style={styles.scrim}
-          onPress={onClose}
-          // Decorative to a screen reader: it has no name worth reading, and the `x`
-          // below is the dismiss a screen reader user navigates to.
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-          testID={testID === undefined ? undefined : `${testID}-scrim`}
-        />
-
+        {/* `collapsable={false}` keeps this view real on Android, where it is measured. */}
         <View
-          testID={testID}
-          style={[
-            styles.sheet,
-            { paddingBottom: space[4] + insets.bottom, transform: [{ translateY: dragOffset }] },
-          ]}
+          ref={keyboard.ref}
+          collapsable={false}
+          style={[styles.root, { paddingBottom: keyboard.overlap }]}
         >
-          <View style={styles.grabberArea} {...panResponder.panHandlers}>
-            <View style={styles.grabber} />
-          </View>
+          {/* The scrim. A sibling of the sheet rather than its parent, so a tap on the
+            sheet itself cannot bubble up to it and close what the user just touched. */}
+          <Pressable
+            style={styles.scrim}
+            onPress={onClose}
+            // Decorative to a screen reader: it has no name worth reading, and the `x`
+            // below is the dismiss a screen reader user navigates to.
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            testID={testID === undefined ? undefined : `${testID}-scrim`}
+          />
 
-          <View style={styles.header}>
-            <Text style={styles.title} accessibilityRole="header">
-              {title}
-            </Text>
-            <Pressable
-              onPress={onClose}
-              accessibilityRole="button"
-              accessibilityLabel={COPY.common.close}
-              hitSlop={HIT_SLOP_44}
-              testID={testID === undefined ? undefined : `${testID}-close`}
-            >
-              <Feather name="x" size={24} color={color.text.primary} />
-            </Pressable>
-          </View>
+          <View
+            testID={testID}
+            style={[
+              styles.sheet,
+              {
+                // The navigation bar's inset is under the keyboard once it is up, so only the gutter remains.
+                paddingBottom: space[4] + (keyboard.overlap > 0 ? 0 : insets.bottom),
+                transform: [{ translateY: dragOffset }],
+              },
+            ]}
+          >
+            <View style={styles.grabberArea} {...panResponder.panHandlers}>
+              <View style={styles.grabber} />
+            </View>
 
-          {/* Scrolls rather than clipping: ten currency rows at a large font scale are
+            <View style={styles.header}>
+              <Text style={styles.title} accessibilityRole="header">
+                {title}
+              </Text>
+              <Pressable
+                onPress={onClose}
+                accessibilityRole="button"
+                accessibilityLabel={COPY.common.close}
+                hitSlop={HIT_SLOP_44}
+                testID={testID === undefined ? undefined : `${testID}-close`}
+              >
+                <Feather name="x" size={24} color={color.text.primary} />
+              </Pressable>
+            </View>
+
+            {/* Scrolls rather than clipping: ten currency rows at a large font scale are
               taller than a short phone (§2, no fixed-height containers). */}
-          {/* `handled`: with a field focused, the first tap on a button inside the sheet would
+            {/* `handled`: with a field focused, the first tap on a button inside the sheet would
               otherwise only dismiss the keyboard, and the form's Save needed two presses. */}
-          <ScrollView keyboardShouldPersistTaps="handled">{children}</ScrollView>
+            <ScrollView keyboardShouldPersistTaps="handled">{children}</ScrollView>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </Modal>

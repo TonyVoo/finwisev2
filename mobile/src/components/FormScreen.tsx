@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COPY } from '../copy/strings';
 import { HIT_SLOP_44, size, space, type } from '../theme/tokens';
 import { createStyles, useColors } from '../theme/ThemeProvider';
+import { useKeyboardOverlap } from './useKeyboardOverlap';
 
 /**
  * The shell both auth forms sit in: a back-only app bar, a large title, and a scroll
@@ -42,6 +43,7 @@ export function FormScreen({ title, onBack, banner, children, testID }: FormScre
   const color = useColors();
   const styles = useStyles();
   const insets = useSafeAreaInsets();
+  const keyboard = useKeyboardOverlap();
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]} testID={testID}>
@@ -59,23 +61,29 @@ export function FormScreen({ title, onBack, banner, children, testID }: FormScre
         </Pressable>
       </View>
 
+      {/* iOS: padding. Android went edge-to-edge, so the window is not resized for the keyboard (and `height`
+          here would not help); the inner view is lifted by however much the keyboard covers it
+          (`useKeyboardOverlap`). `collapsable={false}` keeps it real, since it is measured. */}
       <KeyboardAvoidingView
         style={styles.flex}
-        // `padding` on iOS and `height` on Android is the pairing that actually works:
-        // Android resizes the window itself when `adjustResize` is set, so `padding`
-        // there double-counts the keyboard and leaves a gap.
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView
-          contentContainerStyle={[styles.content, { paddingBottom: space[6] + insets.bottom }]}
-          keyboardShouldPersistTaps="handled"
+        <View
+          ref={keyboard.ref}
+          collapsable={false}
+          style={[styles.flex, { paddingBottom: keyboard.overlap }]}
         >
-          <Text style={styles.title} accessibilityRole="header">
-            {title}
-          </Text>
-          {banner}
-          {children}
-        </ScrollView>
+          <ScrollView
+            contentContainerStyle={[styles.content, { paddingBottom: space[6] + insets.bottom }]}
+            keyboardShouldPersistTaps="handled"
+          >
+            <Text style={styles.title} accessibilityRole="header">
+              {title}
+            </Text>
+            {banner}
+            {children}
+          </ScrollView>
+        </View>
       </KeyboardAvoidingView>
     </View>
   );
