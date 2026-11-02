@@ -314,6 +314,8 @@ export const VIETNAMESE_COPY: CopyBundle = {
       appearance: 'Giao diện',
       export: 'Xuất khoản chi',
       exportHint: 'Lưu mọi thứ bạn đã ghi thành tệp CSV.',
+      import: 'Nhập từ CSV',
+      importHint: 'Thêm khoản từ bảng tính hoặc ứng dụng khác.',
       verifyEmail: 'Xác minh email',
       unverified: 'Chưa xác minh',
       changePassword: 'Đổi mật khẩu',
@@ -604,6 +606,24 @@ export const VIETNAMESE_COPY: CopyBundle = {
         headline: 'Chưa có chi tiêu định kỳ',
         body: 'Thêm một khoản và ứng dụng sẽ tự tạo khoản chi cho bạn mỗi tuần hoặc mỗi tháng, kể cả khi không có mạng.',
       },
+    },
+
+    csvImport: {
+      dialogTitle: 'Nhập khoản chi',
+      dialogBody: 'Thêm {count} khoản từ tệp này? Bạn có thể xóa chúng sau đó.',
+      confirm: 'Nhập',
+      skipped: '{skipped} dòng bị bỏ qua: {reasons}.',
+      uncategorized: '{count} dòng không có danh mục khớp và sẽ vào Chưa phân loại.',
+      reasonDate: 'ngày không đọc được',
+      reasonAmount: 'số tiền không đọc được',
+      reasonCurrency: 'tiền tệ khác',
+      reasonDuplicate: 'đã có sẵn',
+      nothing: 'Tệp này không có gì mới để nhập.',
+      empty: 'Tệp này không có khoản nào.',
+      columns: 'Tệp cần có cột Ngày (Date) và cột Số tiền (Amount).',
+      tooMany: 'Tệp có quá nhiều dòng. Hãy chia thành các tệp tối đa 2.000 dòng.',
+      done: 'Đã nhập {count} khoản.',
+      failed: 'Không đọc được tệp đó.',
     },
 
     export: {

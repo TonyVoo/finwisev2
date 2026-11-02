@@ -363,6 +363,8 @@ export const COPY = {
     appearance: 'Appearance',
     export: 'Export expenses',
     exportHint: 'Save everything you have recorded as a CSV file.',
+    import: 'Import from CSV',
+    importHint: 'Add entries from a spreadsheet or another app.',
     verifyEmail: 'Verify email',
     unverified: 'Unverified',
     changePassword: 'Change password',
@@ -673,6 +675,24 @@ export const COPY = {
   },
 
   /** The CSV export's outcomes, shown as snackbars. Success needs none: the share sheet is it. */
+  csvImport: {
+    dialogTitle: 'Import entries',
+    dialogBody: 'Add {count} entries from this file? You can delete them afterwards.',
+    confirm: 'Import',
+    skipped: '{skipped} rows are left out: {reasons}.',
+    uncategorized: '{count} had no matching category and go under Uncategorized.',
+    reasonDate: 'unreadable date',
+    reasonAmount: 'unreadable amount',
+    reasonCurrency: 'another currency',
+    reasonDuplicate: 'already here',
+    nothing: 'Nothing new to import from this file.',
+    empty: 'That file has no entries.',
+    columns: 'The file needs a Date column and an Amount column.',
+    tooMany: 'That file has too many rows. Split it into files of 2,000 rows or fewer.',
+    done: 'Imported {count} entries.',
+    failed: 'Could not read that file.',
+  },
+
   export: {
     busy: 'Preparing your file',
     empty: 'There are no expenses to export yet.',
@@ -680,7 +700,6 @@ export const COPY = {
     failed: 'Could not export your expenses. Try again.',
   },
 
-  /** Change password and delete account, both reached from Settings and both online-only. */
   paymentDetection: {
     title: 'Payment detection',
     hint: 'Suggest entries from MoMo and ZaloPay notifications.',
@@ -732,6 +751,7 @@ export const COPY = {
     same: 'Choose a different currency.',
   },
 
+  /** Change password and delete account, both reached from Settings and both online-only. */
   account: {
     changePassword: {
       title: 'Change password',

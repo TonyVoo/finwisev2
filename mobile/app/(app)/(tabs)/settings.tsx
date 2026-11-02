@@ -18,6 +18,8 @@ import { markCategoryRenameAnswered } from '@/db/onboarding';
 import { renameCategories } from '@/db/mutations';
 import { useLocalWrite } from '@/db/localWrite';
 import { exportExpenses, nativeExportDependencies } from '@/export/exportExpenses';
+import { applyImport, nativePickText, prepareImport } from '@/import/importExpenses';
+import type { ImportPlan } from '@/import/planImport';
 import {
   useCategoryRenameAnswered,
   useEmailVerified,
@@ -77,6 +79,7 @@ export default function SettingsScreen() {
   };
   const [confirmingLogout, setConfirmingLogout] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [importPlan, setImportPlan] = useState<ImportPlan | null>(null);
   const [choosingTheme, setChoosingTheme] = useState(false);
   const [choosingTabBar, setChoosingTabBar] = useState(false);
   const displayName = useUserDisplayName();
@@ -109,6 +112,55 @@ export default function SettingsScreen() {
   }
 
   const hasUnsynced = (pending.data ?? 0) > 0;
+
+  /** Pick a CSV, say what it would add, and add it only on the person's yes (`docs/design/21-import.md`). */
+  async function onImport(): Promise<void> {
+    try {
+      const plan = await prepareImport({
+        database,
+        pickText: nativePickText,
+        homeCurrency: currency.data ?? 'USD',
+      });
+      if (plan === null) return;
+      if (plan.problem !== undefined) {
+        showSnackbar({ message: COPY.csvImport[plan.problem] });
+      } else if (plan.entries.length === 0) {
+        showSnackbar({ message: COPY.csvImport.nothing });
+      } else {
+        setImportPlan(plan);
+      }
+    } catch {
+      showSnackbar({ message: COPY.csvImport.failed });
+    }
+  }
+
+  async function confirmImport(): Promise<void> {
+    const plan = importPlan;
+    setImportPlan(null);
+    if (plan === null) return;
+    try {
+      const count = await localWrite((db) => applyImport(db, plan.entries));
+      showSnackbar({ message: COPY.csvImport.done.replace('{count}', String(count)) });
+    } catch {
+      showSnackbar({ message: COPY.csvImport.failed });
+    }
+  }
+
+  const importBody =
+    importPlan === null
+      ? undefined
+      : [
+          COPY.csvImport.dialogBody.replace('{count}', String(importPlan.entries.length)),
+          skippedSentence(importPlan),
+          importPlan.unmatchedCategories > 0
+            ? COPY.csvImport.uncategorized.replace(
+                '{count}',
+                String(importPlan.unmatchedCategories),
+              )
+            : '',
+        ]
+          .filter((part) => part !== '')
+          .join(' ');
 
   /**
    * Export is a local read, a file write and the OS share sheet - no network - so it has
@@ -319,6 +371,15 @@ export default function SettingsScreen() {
             <RowSubtitle lines={2}>{COPY.lock.settingsHint}</RowSubtitle>
           </Row>
           <Row
+            testID="settings-import"
+            leading={<IconBadge name="upload" />}
+            onPress={() => void onImport()}
+            accessibilityLabel={`${COPY.settings.import}. ${COPY.settings.importHint}`}
+          >
+            <RowTitle>{COPY.settings.import}</RowTitle>
+            <RowSubtitle lines={2}>{COPY.settings.importHint}</RowSubtitle>
+          </Row>
+          <Row
             testID="settings-export"
             leading={<IconBadge name="download" />}
             onPress={() => void onExport()}
@@ -370,6 +431,15 @@ export default function SettingsScreen() {
       <TabBarStyleSheet visible={choosingTabBar} onClose={() => setChoosingTabBar(false)} />
       <LanguageSheet visible={choosingLanguage} onClose={() => setChoosingLanguage(false)} />
 
+      <Dialog
+        visible={importPlan !== null}
+        testID="import-dialog"
+        title={COPY.csvImport.dialogTitle}
+        {...(importBody === undefined ? {} : { body: importBody })}
+        confirmVariant="primary"
+        destructive={{ label: COPY.csvImport.confirm, onPress: () => void confirmImport() }}
+        onCancel={() => setImportPlan(null)}
+      />
       <Dialog
         visible={offeringRename}
         testID="category-rename"
@@ -424,3 +494,21 @@ const useStyles = createStyles((color) =>
     },
   }),
 );
+
+/** "3 rows are left out: unreadable date, already here." - or nothing when nothing was left out. */
+function skippedSentence(plan: ImportPlan): string {
+  const names = {
+    date: COPY.csvImport.reasonDate,
+    amount: COPY.csvImport.reasonAmount,
+    currency: COPY.csvImport.reasonCurrency,
+    duplicate: COPY.csvImport.reasonDuplicate,
+  } as const;
+  const parts = (Object.keys(names) as (keyof typeof names)[])
+    .filter((reason) => (plan.skipped[reason] ?? 0) > 0)
+    .map((reason) => `${plan.skipped[reason]} ${names[reason]}`);
+  if (parts.length === 0) return '';
+  const total = Object.values(plan.skipped).reduce((sum, n) => sum + (n ?? 0), 0);
+  return COPY.csvImport.skipped
+    .replace('{skipped}', String(total))
+    .replace('{reasons}', parts.join(', '));
+}
