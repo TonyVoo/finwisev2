@@ -138,6 +138,36 @@ describe('GET /admin/api/overview', () => {
     expect(overview.users.activeLast30Days).toBe(1);
   });
 
+  it('gives a 14-day trend of sign-ups and active accounts, oldest first, ending today', async () => {
+    const boss = await admin();
+    const ana = await createUser();
+    const old = await createUser();
+    await getPrisma().user.update({
+      where: { id: old.user.id },
+      data: { createdAt: new Date(Date.now() - 3 * 86_400_000) },
+    });
+    await getPrisma().refreshToken.updateMany({
+      where: { userId: old.user.id },
+      data: { createdAt: new Date(Date.now() - 3 * 86_400_000) },
+    });
+    await makeHousehold({ owner: ana });
+
+    const { trend } = AdminOverview.parse((await get('/overview', boss)).body);
+
+    expect(trend.days).toHaveLength(14);
+    expect(trend.signups).toHaveLength(14);
+    expect(trend.active).toHaveLength(14);
+    const today = new Date().toISOString().slice(0, 10);
+    expect(trend.days[13]).toBe(today);
+    expect([...trend.days].sort()).toEqual(trend.days);
+    // Today: the admin and Ana signed up (the household's hidden book is not an account).
+    expect(trend.signups[13]).toBe(2);
+    expect(trend.signups[10]).toBe(1);
+    expect(trend.signups.reduce((a, b) => a + b, 0)).toBe(3);
+    expect(trend.active[13]).toBe(2);
+    expect(trend.active[10]).toBe(1);
+  });
+
   it('does not count deleted rows', async () => {
     const boss = await admin();
     const ana = await createUser();

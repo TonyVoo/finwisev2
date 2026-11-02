@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { SessionEnded, type AdminUser, type Client, type Overview as OverviewData } from './api.ts';
 import { ConfirmDelete } from './ConfirmDelete.tsx';
+import { Mark } from './Mark.tsx';
 import { Overview } from './Overview.tsx';
 import { Users } from './Users.tsx';
 
@@ -81,14 +82,18 @@ export function Dashboard({
 
   return (
     <>
-      <div className="bar">
-        <div>
-          <h1>Expenses admin</h1>
-          <div className="muted">{adminEmail}</div>
-        </div>
-        <div className="actions">
+      <header className="topbar">
+        <div className="topbar-inner">
+          <div className="brand">
+            <Mark />
+            Expenses
+            <span className="tag">Admin</span>
+          </div>
+          <div className="spacer" />
+          <span className="who">{adminEmail}</span>
           <button
             type="button"
+            className="small"
             onClick={() => {
               void loadOverview();
               void loadUsers(search, null);
@@ -96,33 +101,42 @@ export function Dashboard({
           >
             Refresh
           </button>
-          <button type="button" onClick={() => onSignOut('')}>
+          <button type="button" className="small" onClick={() => onSignOut('')}>
             Sign out
           </button>
         </div>
-      </div>
+      </header>
 
-      {error === '' ? null : (
-        <p className="error" role="alert">
-          {error}
-        </p>
-      )}
+      <main>
+        <h1 className="page-title">Overview</h1>
 
-      <h2>Overview</h2>
-      {overview === null ? <p className="muted">Loading…</p> : <Overview data={overview} />}
+        {error === '' ? null : (
+          <p className="error" role="alert" style={{ marginTop: 12 }}>
+            {error}
+          </p>
+        )}
 
-      <h2>Accounts</h2>
-      <Users
-        users={users}
-        hasMore={cursor !== null}
-        onSearch={(text) => {
-          setSearch(text);
-          void loadUsers(text, null);
-        }}
-        onMore={() => void loadUsers(search, cursor)}
-        onToggle={(user) => void toggle(user)}
-        onDelete={setDeleting}
-      />
+        <div className="section" style={{ marginTop: 16 }}>
+          {overview === null ? <p className="muted">Loading…</p> : <Overview data={overview} />}
+        </div>
+
+        <div className="section">
+          <div className="section-head">
+            <h2 className="section-title">Accounts</h2>
+          </div>
+          <Users
+            users={users}
+            hasMore={cursor !== null}
+            onSearch={(text) => {
+              setSearch(text);
+              void loadUsers(text, null);
+            }}
+            onMore={() => void loadUsers(search, cursor)}
+            onToggle={(user) => void toggle(user)}
+            onDelete={setDeleting}
+          />
+        </div>
+      </main>
 
       {deleting === null ? null : (
         <ConfirmDelete

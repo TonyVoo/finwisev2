@@ -20,6 +20,33 @@ const isAccount = { email: { not: { endsWith: BOOK_EMAIL_SUFFIX } } } as const;
 
 const DAY_MS = 86_400_000;
 
+const TREND_DAYS = 14;
+
+/** The last {@link TREND_DAYS} UTC days, oldest first, with a count for each (zero where there was none). */
+async function trend(db: Db, now: Date): Promise<AdminOverview['trend']> {
+  const days = Array.from({ length: TREND_DAYS }, (_, index) =>
+    new Date(now.getTime() - (TREND_DAYS - 1 - index) * DAY_MS).toISOString().slice(0, 10),
+  );
+  const start = new Date(`${days[0]}T00:00:00.000Z`);
+  const [signups, active] = await Promise.all([
+    db.$queryRaw<Array<{ day: string; n: number }>>`
+      SELECT to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS day, count(*)::int AS n
+        FROM users
+       WHERE created_at >= ${start} AND email NOT LIKE ${`%${BOOK_EMAIL_SUFFIX}`}
+       GROUP BY 1`,
+    db.$queryRaw<Array<{ day: string; n: number }>>`
+      SELECT to_char(r.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS day, count(DISTINCT r.user_id)::int AS n
+        FROM refresh_tokens r JOIN users u ON u.id = r.user_id
+       WHERE r.created_at >= ${start} AND u.email NOT LIKE ${`%${BOOK_EMAIL_SUFFIX}`}
+       GROUP BY 1`,
+  ]);
+  const by = (rows: Array<{ day: string; n: number }>) => {
+    const counts = new Map(rows.map((row) => [row.day, row.n]));
+    return days.map((day) => counts.get(day) ?? 0);
+  };
+  return { days, signups: by(signups), active: by(active) };
+}
+
 export async function overview(db: Db, now: Date = new Date()): Promise<AdminOverview> {
   const since = (days: number) => new Date(now.getTime() - days * DAY_MS);
   const activeSince = async (days: number) =>
@@ -46,6 +73,7 @@ export async function overview(db: Db, now: Date = new Date()): Promise<AdminOve
     recurringRules,
     receipts,
     size,
+    series,
   ] = await Promise.all([
     db.user.count({ where: isAccount }),
     db.user.count({ where: { ...isAccount, emailVerifiedAt: { not: null } } }),
@@ -62,6 +90,7 @@ export async function overview(db: Db, now: Date = new Date()): Promise<AdminOve
     db.recurringRule.count({ where: { deletedAt: null } }),
     db.expenseReceipt.count(),
     db.$queryRaw<Array<{ size: bigint }>>`SELECT pg_database_size(current_database()) AS size`,
+    trend(db, now),
   ]);
 
   const config = getConfig();
@@ -82,6 +111,7 @@ export async function overview(db: Db, now: Date = new Date()): Promise<AdminOve
       activeLast30Days: active30,
     },
     households: { total: households, memberships },
+    trend: series,
     data: { expenses, categories, goals, recurringRules, receipts },
     gemini: {
       configured: config.vision.geminiApiKey !== undefined,

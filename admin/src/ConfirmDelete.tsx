@@ -39,7 +39,7 @@ export function ConfirmDelete({
           <button type="button" onClick={onCancel}>
             Cancel
           </button>
-          <button type="submit" className="danger" disabled={!matches || busy}>
+          <button type="submit" className="danger solid" disabled={!matches || busy}>
             Delete account
           </button>
         </div>

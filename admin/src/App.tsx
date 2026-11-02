@@ -30,13 +30,9 @@ export function App({ client: injected }: { client?: Client } = {}) {
     setSession(null);
   }, []);
 
-  return (
-    <main>
-      {session === null ? (
-        <SignIn client={client} note={note} onSignedIn={signedIn} />
-      ) : (
-        <Dashboard client={client} adminEmail={session.adminEmail} onSignOut={signOut} />
-      )}
-    </main>
+  return session === null ? (
+    <SignIn client={client} note={note} onSignedIn={signedIn} />
+  ) : (
+    <Dashboard client={client} adminEmail={session.adminEmail} onSignOut={signOut} />
   );
 }

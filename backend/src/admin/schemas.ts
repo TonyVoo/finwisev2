@@ -28,6 +28,12 @@ export const AdminOverview = z.strictObject({
     total: z.number().int().min(0),
     memberships: z.number().int().min(0),
   }),
+  /** The last 14 UTC days, oldest first: new accounts per day, and accounts that refreshed a session. */
+  trend: z.strictObject({
+    days: z.array(z.string()).length(14),
+    signups: z.array(z.number().int().min(0)).length(14),
+    active: z.array(z.number().int().min(0)).length(14),
+  }),
   data: z.strictObject({
     expenses: z.number().int().min(0),
     categories: z.number().int().min(0),

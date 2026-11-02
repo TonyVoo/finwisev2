@@ -22,6 +22,11 @@ const OVERVIEW: Overview = {
     activeLast30Days: 3,
   },
   households: { total: 1, memberships: 2 },
+  trend: {
+    days: Array.from({ length: 14 }, (_, n) => `2026-10-${String(20 + n).padStart(2, '0')}`),
+    signups: [0, 0, 1, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1, 0],
+    active: [0, 0, 1, 0, 1, 1, 0, 2, 1, 1, 0, 2, 2, 2],
+  },
   data: { expenses: 120, categories: 18, goals: 2, recurringRules: 1, receipts: 4 },
   gemini: {
     configured: true,
@@ -154,10 +159,11 @@ describe('signing in', () => {
     await signIn();
 
     expect(await screen.findByText('120')).toBeInTheDocument();
-    expect(screen.getByText('Gemini')).toBeInTheDocument();
+    expect(screen.getByText('Gemini today')).toBeInTheDocument();
     expect(screen.getByText('3 of 500 today')).toBeInTheDocument();
     expect(screen.getByText('5.0 MB')).toBeInTheDocument();
-    expect(await screen.findByText('ana@example.com (Ana)')).toBeInTheDocument();
+    expect(await screen.findByText('ana@example.com')).toBeInTheDocument();
+    expect(screen.getByText('Ana')).toBeInTheDocument();
     const adminCalls = fake.calls.filter((call) => call.path.startsWith('/admin/api'));
     expect(adminCalls.length).toBeGreaterThan(2);
     expect(adminCalls.every((call) => call.auth === 'Bearer tok-1')).toBe(true);
@@ -220,10 +226,10 @@ describe('signing in', () => {
 describe('the accounts', () => {
   it('marks admins and disabled accounts, and offers no actions on an admin', async () => {
     await signIn();
-    const adminRow = (await screen.findByText('admin@example.com', { selector: 'td' })).closest(
+    const adminRow = (await screen.findByText('admin@example.com', { selector: '.name' })).closest(
       'tr',
     )!;
-    const bao = screen.getByText('bao@example.com', { selector: 'td' }).closest('tr')!;
+    const bao = screen.getByText('bao@example.com', { selector: '.name' }).closest('tr')!;
 
     expect(within(adminRow).getByText('admin')).toBeInTheDocument();
     expect(within(adminRow).queryByRole('button')).not.toBeInTheDocument();
@@ -260,7 +266,7 @@ describe('the accounts', () => {
     await signIn();
 
     expect(
-      await screen.findByText('<img src=x onerror=alert(1)>@example.com', { selector: 'td' }),
+      await screen.findByText('<img src=x onerror=alert(1)>@example.com', { selector: '.name' }),
     ).toBeInTheDocument();
     expect(document.querySelector('img')).toBeNull();
   });
@@ -273,18 +279,18 @@ describe('the accounts', () => {
     await ui.click(screen.getByRole('button', { name: 'Search' }));
 
     await waitFor(() => expect(screen.queryByText(/ana@example.com/)).not.toBeInTheDocument());
-    expect(screen.getByText('bao@example.com', { selector: 'td' })).toBeInTheDocument();
+    expect(screen.getByText('bao@example.com', { selector: '.name' })).toBeInTheDocument();
   });
 
   it('loads the next page on request, and stops offering it at the end', async () => {
     fake.pageSize = 2;
     const ui = await signIn();
     await screen.findByText(/ana@example.com/);
-    expect(screen.queryByText('bao@example.com', { selector: 'td' })).not.toBeInTheDocument();
+    expect(screen.queryByText('bao@example.com', { selector: '.name' })).not.toBeInTheDocument();
 
     await ui.click(screen.getByRole('button', { name: 'Load more' }));
 
-    expect(await screen.findByText('bao@example.com', { selector: 'td' })).toBeInTheDocument();
+    expect(await screen.findByText('bao@example.com', { selector: '.name' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument();
   });
 });

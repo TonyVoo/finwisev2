@@ -21,6 +21,8 @@ export interface Overview {
     activeLast30Days: number;
   };
   households: { total: number; memberships: number };
+  /** The last 14 UTC days, oldest first. */
+  trend: { days: string[]; signups: number[]; active: number[] };
   data: {
     expenses: number;
     categories: number;
