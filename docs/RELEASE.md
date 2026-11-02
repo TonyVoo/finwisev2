@@ -121,8 +121,8 @@ Delete account) and removes the account's data on the server; the privacy policy
 - Confirm Gemini's current free-tier limits and model name in AI Studio, and run the live check (section 10b of the
   device checklist) once with the real key.
 - Run the device checklist on iOS and Android release builds.
-- Run `npx expo-doctor` in `mobile/` and clear what it reports. At the time of writing it failed two checks
-  (a duplicate native dependency, and 8 packages behind the SDK's expected versions); neither was caused by
-  release configuration, and upgrading them is its own change to test.
+- Run `npx expo-doctor` in `mobile/` again before a build; it passes 21/21 as of the SDK 57.0.31 patch update (a duplicate
+  `expo-constants` and eight packages behind, cleared with `npx expo install --fix`, plus `@expo/metro-runtime` pinned directly
+  because `expo-router` needs 57.0.17).
 - Decide whether the three Gemini features ship turned on (receipt reading, quick add's online step, and the monthly recap): they share one key and one free-tier caveat, and the recap sends spending figures and category names, which is the most sensitive of the three. Each can be left off by leaving the key unset, and each has its own daily budget (`GEMINI_DAILY_BUDGET`, `GEMINI_QUICK_ADD_DAILY_BUDGET`, `GEMINI_RECAP_DAILY_BUDGET`).
 - Decide whether receipt reading ships turned on: it needs a provider key, sends photos to a third party, and on Gemini's free tier Google may use them to improve its products (a paid plan on the same project removes that).
