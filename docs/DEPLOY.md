@@ -115,6 +115,48 @@ made-up email each time, so the per-email limit is not the one you hit):
 
 The limits are 50 failed logins per address and 10 per email, per 15 minutes.
 
+## Free hosting for one person (Render + Neon)
+
+For a build only you use, a free setup is enough. It sleeps when idle and has no real backups, so it is not for other
+people's data. Limits change, so check both pricing pages before you rely on them.
+
+**1. The database (Neon).** Create a free project, then copy its **direct** connection string (the host _without_
+`-pooler` in it; the migrations and the per-person lock the server takes both want a direct connection). It ends in
+`?sslmode=require`. Neon scales the database to zero after a few idle minutes, so the first request after a pause is slow.
+
+**2. The server (Render).** New -> Web Service -> connect the GitHub repository (push your commits first) and set:
+
+| Setting              | Value                                                                                                |
+| -------------------- | ---------------------------------------------------------------------------------------------------- |
+| Language / Runtime   | Docker                                                                                               |
+| Dockerfile path      | `backend/Dockerfile`                                                                                 |
+| Docker build context | the repository root (leave the default `.`)                                                          |
+| Instance type        | Free                                                                                                 |
+| Health check path    | `/v1/health`                                                                                         |
+| Docker command       | `sh -c "pnpm migrate:deploy && node --import tsx src/server.ts"` (applies migrations on every start) |
+
+Free web services have no pre-deploy command, so the start command above applies pending migrations itself. That is
+safe with one instance: applied migrations are skipped and Prisma takes a lock.
+
+Environment variables:
+
+| Variable         | Value                                                                                 |
+| ---------------- | ------------------------------------------------------------------------------------- |
+| `DATABASE_URL`   | the Neon direct connection string                                                     |
+| `JWT_SECRET`     | `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`      |
+| `TRUST_PROXY`    | `1`                                                                                   |
+| `GEMINI_API_KEY` | optional: your key, to turn on receipt reading, quick add's online step and the recap |
+
+Leave `RESEND_API_KEY` and `MAIL_FROM` unset: you have no domain to send from, so password-reset and verification
+emails are not sent. Sign-up and sign-in do not need email; keep your password somewhere safe, because a reset code
+cannot reach you.
+
+**3. Check it.** Open `https://YOUR-SERVICE.onrender.com/v1/health`; it should answer `{"status":"ok", ...}` (allow a
+minute for the first start). That `https://` address is what the app is built with (`EXPO_PUBLIC_API_BASE_URL`).
+
+**4. The scheduled prune.** Free Render has no cron. For one person the table grows slowly, so run it by hand now and
+then from your Mac with the Neon string: `DATABASE_URL="..." pnpm --filter @expense-tracker/backend prune:tombstones`.
+
 ## Before real users
 
 - **HTTPS only**, and `EXPO_PUBLIC_API_BASE_URL` for the preview and production builds set to that `https://`
