@@ -3,22 +3,6 @@
 #   docker build -f backend/Dockerfile -t expense-tracker-api .
 #
 # Configuration comes from the environment at run time (docs/DEPLOY.md); nothing secret is in the image.
-# --- The admin page (docs/design/17-admin.md): built here, so the final image carries only the files. ----------
-FROM node:22-slim AS admin-build
-RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
-WORKDIR /app
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
-COPY admin/package.json admin/
-COPY shared/package.json shared/
-COPY backend/package.json backend/
-COPY mobile/package.json mobile/
-RUN pnpm install --frozen-lockfile --filter @expense-tracker/admin...
-COPY tsconfig.base.json ./
-COPY admin/ admin/
-# Writes /app/backend/admin-dist (the build's outDir).
-RUN pnpm --filter @expense-tracker/admin build
-
-# --- The API ----------------------------------------------------------------------------------------------------
 FROM node:22-slim
 
 RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
@@ -27,6 +11,7 @@ WORKDIR /app
 
 # Dependencies first, from the manifests alone, so a source change does not reinstall them.
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+# Only the manifest, so the lockfile still matches the workspace; the admin page itself arrives built, in backend/admin-dist.
 COPY admin/package.json admin/
 COPY shared/package.json shared/
 COPY backend/package.json backend/
@@ -36,8 +21,6 @@ RUN pnpm install --frozen-lockfile --filter @expense-tracker/backend...
 COPY tsconfig.base.json ./
 COPY shared/ shared/
 COPY backend/ backend/
-# The built admin page, served at /admin.
-COPY --from=admin-build /app/backend/admin-dist backend/admin-dist
 
 # `prisma generate` loads prisma.config.ts, which wants a DATABASE_URL to exist; the value is never used
 # to connect and does not survive into the final environment.

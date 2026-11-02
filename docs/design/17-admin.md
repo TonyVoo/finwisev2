@@ -60,8 +60,9 @@ users.
 ## The page
 
 A small **React** app (`admin/`: Vite, React 19 and TypeScript, with its own tests), built into
-`backend/admin-dist` and served by the backend at `/admin`. The Dockerfile builds it in a first stage, so the
-deployed image carries only the built files. It signs in with email and password, then shows the overview and the
+`backend/admin-dist` and served by the backend at `/admin`. The build is **committed**, so the image needs no build step
+(a free host's builder ran out of memory compiling it); a test in `admin/` rebuilds the source and fails if the committed
+build is out of date. It signs in with email and password, then shows the overview and the
 account list; deleting asks you to type the account's email in a dialog.
 
 It has no data in it, so serving it needs no sign-in; every figure comes from the API after sign-in. The token
@@ -70,8 +71,8 @@ never sets HTML from server text, and it is served with a content-security polic
 framing and no outside requests. Only the index and the built files under `/admin/assets` are served; a
 file name with anything but letters, digits, dot, dash and underscore is a `404`.
 
-Build it with `pnpm --filter @expense-tracker/admin build`; develop it with `pnpm --filter @expense-tracker/admin dev`
-(proxying to a backend on port 3000). Until it is built, `/admin` answers `503` with that command.
+After changing anything in `admin/`, build it with `pnpm --filter @expense-tracker/admin build` and commit the result; develop it with `pnpm --filter @expense-tracker/admin dev`
+(proxying to a backend on port 3000). Until it is built (a fresh clone has it, since it is committed), `/admin` answers `503` with that command.
 
 ## Consequences, stated plainly
 

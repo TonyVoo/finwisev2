@@ -9,8 +9,6 @@ coverage/
 # `pnpm test` both run `prisma generate` first, so a fresh clone regenerates it.
 backend/src/db/generated/
 
-# The built admin page: `pnpm --filter @expense-tracker/admin build`, and the Dockerfile's first stage.
-backend/admin-dist/
 
 .env
 .env.*

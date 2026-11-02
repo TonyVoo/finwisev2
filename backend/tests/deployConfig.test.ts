@@ -169,3 +169,19 @@ describe('start.sh, for hosts with no pre-deploy command', () => {
     expect(read('docs/DEPLOY.md')).toContain('`sh start.sh`');
   });
 });
+
+describe('the admin page in the image', () => {
+  it('ships built: committed under backend/, taken in by COPY backend/, and not excluded from the context', () => {
+    expect(existsSync(join(repo, 'backend', 'admin-dist', 'index.html'))).toBe(true);
+    expect(read('backend/Dockerfile')).toMatch(/COPY backend\/ backend\//);
+    const ignored = read('.dockerignore')
+      .split('\n')
+      .map((line) => line.trim());
+    expect(ignored).not.toContain('backend/admin-dist');
+    expect(ignored).not.toContain('**/admin-dist');
+  });
+
+  it("has no build step in the Dockerfile: a free host's builder ran out of memory compiling it", () => {
+    expect(read('backend/Dockerfile')).not.toMatch(/vite|@expense-tracker\/admin build/);
+  });
+});

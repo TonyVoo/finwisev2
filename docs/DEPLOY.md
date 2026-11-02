@@ -167,7 +167,8 @@ and lets you disable, enable or delete an account. It never shows anyone's expen
 2. Set `ADMIN_EMAILS` on the service to that email (several: comma-separated), and redeploy.
 3. Open `/admin` and sign in with that account. Anyone else gets a 404 on every admin route.
 
-The page is built into the image (the Dockerfile's first stage runs `pnpm --filter @expense-tracker/admin build`). Use a
+The page is a built React app committed under `backend/admin-dist`, so the image needs no build step. After changing
+`admin/`, run `pnpm --filter @expense-tracker/admin build` and commit the result; a test fails if you forget. Use a
 strong password for the admin account: it protects every user's account list. An admin cannot disable or delete itself
 or another admin; remove an email from `ADMIN_EMAILS` first.
 
