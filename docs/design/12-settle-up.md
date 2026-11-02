@@ -43,27 +43,27 @@ net(m) =  paid(m)            -- sum of A over expenses m paid
 `net > 0` means the household owes `m`; `net < 0` means `m` owes it; the nets of all current members
 sum to zero, always. **Who pays whom** is the usual greedy match (largest debtor to largest
 creditor, repeat), which gives at most `members - 1` transfers and, for two people, the one obvious
-line. It is a *suggestion*: nobody is obliged to follow it.
+line. It is a _suggestion_: nobody is obliged to follow it.
 
 ## Recorded payments (`settlements`)
 
 A new synced record, in the household's book like everything else:
 
-| Field | Meaning |
-| --- | --- |
-| `id`, `revision`, `createdAt`, `updatedAt`, `deletedAt` | as every synced row (soft delete, last write wins) |
-| `fromUserId` | who paid |
-| `toUserId` | who was paid; never equal to `fromUserId` |
-| `amountMinor` | positive, in the household currency |
-| `date` | the day it happened (calendar date, like an expense) |
-| `note` | optional, 200 characters |
-| `createdBy` | who recorded it |
+| Field                                                   | Meaning                                              |
+| ------------------------------------------------------- | ---------------------------------------------------- |
+| `id`, `revision`, `createdAt`, `updatedAt`, `deletedAt` | as every synced row (soft delete, last write wins)   |
+| `fromUserId`                                            | who paid                                             |
+| `toUserId`                                              | who was paid; never equal to `fromUserId`            |
+| `amountMinor`                                           | positive, in the household currency                  |
+| `date`                                                  | the day it happened (calendar date, like an expense) |
+| `note`                                                  | optional, 200 characters                             |
+| `createdBy`                                             | who recorded it                                      |
 
 - **Either side may record it** (the person who paid, or the person who got paid, confirming), and
   either may edit or delete it. It is the only way to undo one: deleting it puts the balance back.
 - **Both people must be current members** when it is written; otherwise `validation_error`. A
-  member leaving later does not remove the history: the ids stay, and the name shows as *Former
-  member*.
+  member leaving later does not remove the history: the ids stay, and the name shows as _Former
+  member_.
 - Not available outside a household (nothing to split).
 - Syncs like goals and expenses: pushed, pulled, tombstoned, in the same revision stream. It is
   **not** hidden from anyone: both people and every member see every payment.
@@ -78,7 +78,7 @@ nothing on a private expense, and the form hides the row there.
 ## Mobile
 
 - **Household screen** gets a **Balances** section at the top once there are two or more members:
-  one line each (*Bao owes you US$42.00*, *You owe Ana US$12.00*, or *All settled up*), then a
+  one line each (_Bao owes you US$42.00_, _You owe Ana US$12.00_, or _All settled up_), then a
   **Settle up** button and a **History** row.
 - **Settle up** opens a screen, built from the same parts as the expense form (direction toggle,
   amount and keypad, date and note): **I paid / They paid me**, the person, an amount, a date and a
@@ -89,8 +89,8 @@ nothing on a private expense, and the form hides the row there.
   nothing owed it opens empty and **Record** waits for an amount, because someone owed money may
   still want to record "Bao paid me". Record writes a local change that syncs like any edit, with
   an **Undo** that deletes it.
-- **History** lists payments newest first, worded for the person looking (*You paid Bao*, *Bao paid
-  you*, *Cam paid Bao*). Only the two people a payment names can delete it (with an Undo), which is also
+- **History** lists payments newest first, worded for the person looking (_You paid Bao_, _Bao paid
+  you_, _Cam paid Bao_). Only the two people a payment names can delete it (with an Undo), which is also
   all the server allows, so everyone else's rows are read-only. It reads this phone's own rows, so it
   works offline.
 - **Where the data comes from.** Members come with the day each joined (`joinedAt`, already on
@@ -98,16 +98,16 @@ nothing on a private expense, and the form hides the row there.
   came before. The Balances section reads the members the Household screen is showing; History reads
   the stored list.
 - **Expense form** gets a **Paid by** row (household only, hidden on a private expense), defaulting to
-  *You*, opening a list of members.
+  _You_, opening a list of members.
 - **Home** shows one line under the month total in a household, from the phone's own rows so it works
-  offline: what you owe or are owed (*You owe Bao US$20,00*), with *+N more* when several lines are about
+  offline: what you owe or are owed (_You owe Bao US$20,00_), with _+N more_ when several lines are about
   you, tapping through to the Household screen. It speaks only about you and is absent when settled up.
 - Summary, Search and budgets are unchanged: they still show what the household spent, not who
   fronted it.
 
 ## Consequences, stated plainly
 
-- **Someone leaving changes everyone's balance.** Balances are computed among *current* members, so
+- **Someone leaving changes everyone's balance.** Balances are computed among _current_ members, so
   when a member goes, their shares drop out and the others' recompute. The leave and remove dialogs
   say so when balances are not settled; settling up first is the way to leave on good terms. It is a
   warning, not a block.

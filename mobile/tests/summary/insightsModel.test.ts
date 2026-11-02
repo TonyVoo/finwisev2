@@ -5,6 +5,7 @@ import {
   buildInsights,
   daysLeftInMonth,
   insightText,
+  monthProgress,
   wholePercent,
 } from '../../src/summary/insightsModel';
 
@@ -234,5 +235,270 @@ describe('daysLeftInMonth', () => {
     ['2026-12-31', 0],
   ])('%s has %i days left', (today, left) => {
     expect(daysLeftInMonth(today)).toBe(left);
+  });
+});
+
+describe('monthProgress', () => {
+  it('is the day of the month and how many days it has', () => {
+    expect(monthProgress('2026-11-12')).toEqual({ day: 12, daysInMonth: 30 });
+    expect(monthProgress('2026-02-28')).toEqual({ day: 28, daysInMonth: 28 });
+    expect(monthProgress('2028-02-29')).toEqual({ day: 29, daysInMonth: 29 });
+    expect(monthProgress('2026-10-01')).toEqual({ day: 1, daysInMonth: 31 });
+  });
+});
+
+const NOV = (day: number) => ({ day, daysInMonth: 30 });
+const kinds = (insights: ReturnType<typeof buildInsights>) => insights.map((i) => i.kind);
+
+describe('the forecast', () => {
+  const forecastOf = (
+    spent: number,
+    day: number,
+    previous: readonly CategorySpend[] = [],
+    daysLeft: number | null = 30 - day,
+  ) =>
+    buildInsights([row('a', 'Food', spent)], previous, undefined, daysLeft, {
+      progress: NOV(day),
+      history: [],
+    }).find((i) => i.kind === 'forecast');
+
+  it('scales the spend so far to the whole month', () => {
+    expect(forecastOf(3000, 10)).toEqual({ kind: 'forecast', projectedMinor: 9000, versus: null });
+    expect(forecastOf(1000, 15)).toEqual({ kind: 'forecast', projectedMinor: 2000, versus: null });
+  });
+
+  it('rounds half up, in whole minor units', () => {
+    // 1001 * 30 / 20 = 1501.5
+    expect(forecastOf(1001, 20)).toMatchObject({ projectedMinor: 1502 });
+    // 1000 * 30 / 7 = 4285.71...
+    expect(forecastOf(1000, 7)).toMatchObject({ projectedMinor: 4286 });
+  });
+
+  it('waits until the 5th, and goes quiet on the last day', () => {
+    expect(forecastOf(1000, 4)).toBeUndefined();
+    expect(forecastOf(1000, 5)).toBeDefined();
+    expect(forecastOf(1000, 29)).toBeDefined();
+    expect(forecastOf(1000, 30)).toBeUndefined();
+  });
+
+  it('is only for the current month, and needs some spending', () => {
+    expect(
+      buildInsights([row('a', 'Food', 1000)], [], undefined, null, {
+        progress: null,
+        history: [],
+      }).map((i) => i.kind),
+    ).not.toContain('forecast');
+    expect(buildInsights([], [], undefined, 20, { progress: NOV(10), history: [] })).toEqual([]);
+  });
+
+  it('is not offered when no month context is given (the older call shape)', () => {
+    expect(kinds(buildInsights([row('a', 'Food', 1000)], []))).not.toContain('forecast');
+  });
+
+  it('compares with last month: more, less, or about the same', () => {
+    // Projected 9000 against 8000, 10000, and 9100.
+    expect(forecastOf(3000, 10, [row('a', 'Food', 8000)])).toMatchObject({
+      versus: { direction: 'more', amountMinor: 1000 },
+    });
+    expect(forecastOf(3000, 10, [row('a', 'Food', 10000)])).toMatchObject({
+      versus: { direction: 'less', amountMinor: 1000 },
+    });
+    expect(forecastOf(3000, 10, [row('a', 'Food', 9100)])).toMatchObject({
+      versus: { direction: 'same', amountMinor: 100 },
+    });
+  });
+
+  it('treats under 3% of last month as about the same, and 3% or more as a difference', () => {
+    // Projected 9000. Against 9270 the gap is 270, which is 2.9%: the same. Against 9300 it is 300: 3.2%.
+    expect(forecastOf(3000, 10, [row('a', 'Food', 9270)])).toMatchObject({
+      versus: { direction: 'same', amountMinor: 270 },
+    });
+    expect(forecastOf(3000, 10, [row('a', 'Food', 9300)])).toMatchObject({
+      versus: { direction: 'less', amountMinor: 300 },
+    });
+    // The same boundary on the other side: 8730 is 3.1% below 9000.
+    expect(forecastOf(3000, 10, [row('a', 'Food', 8730)])).toMatchObject({
+      versus: { direction: 'more', amountMinor: 270 },
+    });
+  });
+
+  it('comes after the other lines, so the card keeps its order', () => {
+    const insights = buildInsights(
+      [row('a', 'Food', 3000)],
+      [row('a', 'Food', 8000)],
+      undefined,
+      20,
+      { progress: NOV(10), history: [] },
+    );
+    expect(kinds(insights).at(-1)).toBe('forecast');
+  });
+});
+
+describe('the unusual-spend line', () => {
+  const month = (...rows: CategorySpend[]) => rows;
+  /** This month's rows against earlier months; the current month is November, day 20. */
+  const unusualOf = (
+    current: readonly CategorySpend[],
+    history: readonly (readonly CategorySpend[])[],
+    progress: { day: number; daysInMonth: number } | null = NOV(20),
+  ) =>
+    buildInsights(
+      current,
+      history[0] ?? [],
+      undefined,
+      progress === null ? null : 30 - progress.day,
+      {
+        progress,
+        history,
+      },
+    ).find((i) => i.kind === 'unusual');
+
+  it('names a category that has already passed a whole typical month by half again', () => {
+    const found = unusualOf(month(row('g', 'Groceries', 48000), row('x', 'Fun', 10000)), [
+      month(row('g', 'Groceries', 30000)),
+      month(row('g', 'Groceries', 30000)),
+    ]);
+
+    expect(found).toEqual({
+      kind: 'unusual',
+      name: 'Groceries',
+      spentMinor: 48000,
+      usualMinor: 30000,
+    });
+  });
+
+  it('needs 1.5x exactly: 450 against a typical 300 counts, 449 does not', () => {
+    const history = [month(row('g', 'Groceries', 300)), month(row('g', 'Groceries', 300))];
+
+    expect(
+      unusualOf(month(row('g', 'Groceries', 450), row('x', 'Fun', 600)), history),
+    ).toBeDefined();
+    expect(
+      unusualOf(month(row('g', 'Groceries', 449), row('x', 'Fun', 600)), history),
+    ).toBeUndefined();
+  });
+
+  it('is not fooled by a steady lump, which is 1.0x of a typical month all month', () => {
+    const rent = month(row('r', 'Rent', 700000), row('f', 'Food', 20000));
+    const history = [month(row('r', 'Rent', 700000)), month(row('r', 'Rent', 700000))];
+
+    expect(unusualOf(rent, history, NOV(5))).toBeUndefined();
+  });
+
+  it('needs at least two earlier months with spending', () => {
+    const current = month(row('g', 'Groceries', 90000));
+
+    expect(unusualOf(current, [])).toBeUndefined();
+    expect(unusualOf(current, [month(row('g', 'Groceries', 30000))])).toBeUndefined();
+    expect(unusualOf(current, [month(row('g', 'Groceries', 30000)), []])).toBeUndefined();
+    expect(
+      unusualOf(current, [
+        month(row('g', 'Groceries', 30000)),
+        month(row('g', 'Groceries', 30000)),
+      ]),
+    ).toBeDefined();
+  });
+
+  it('averages over the months that had spending, counting an absent category as zero', () => {
+    const current = month(row('g', 'Groceries', 45000), row('x', 'Fun', 5000));
+    // Groceries: 30000, nothing, nothing -> typical 10000 over three months with other spending.
+    const history = [
+      month(row('g', 'Groceries', 30000), row('x', 'Fun', 100)),
+      month(row('x', 'Fun', 100)),
+      month(row('x', 'Fun', 100)),
+    ];
+
+    expect(unusualOf(current, history)).toMatchObject({ name: 'Groceries', usualMinor: 10000 });
+  });
+
+  it('ignores earlier months with no spending when averaging', () => {
+    const current = month(row('g', 'Groceries', 45000));
+    const history = [month(row('g', 'Groceries', 30000)), month(row('g', 'Groceries', 30000)), []];
+
+    expect(unusualOf(current, history)).toMatchObject({ usualMinor: 30000 });
+  });
+
+  it('skips a small category whose excess is under a tenth of the month so far', () => {
+    const current = month(row('b', 'Big', 100000), row('s', 'Small', 2000));
+    const history = [
+      month(row('s', 'Small', 500), row('b', 'Big', 100000)),
+      month(row('s', 'Small', 500), row('b', 'Big', 100000)),
+    ];
+
+    // Small is 4x typical but its 1500 excess is 1.5% of 102000.
+    expect(unusualOf(current, history)).toBeUndefined();
+  });
+
+  it('skips a category with no history: new is not unusual', () => {
+    const current = month(row('n', 'New', 90000), row('g', 'Groceries', 10000));
+    const history = [month(row('g', 'Groceries', 10000)), month(row('g', 'Groceries', 10000))];
+
+    expect(unusualOf(current, history)).toBeUndefined();
+  });
+
+  it('picks the largest excess when several qualify', () => {
+    const current = month(row('a', 'A', 60000), row('b', 'B', 90000));
+    const history = [
+      month(row('a', 'A', 20000), row('b', 'B', 40000)),
+      month(row('a', 'A', 20000), row('b', 'B', 40000)),
+    ];
+
+    // A: +40000, B: +50000.
+    expect(unusualOf(current, history)).toMatchObject({ name: 'B' });
+  });
+
+  it('is for the current month only', () => {
+    const history = [month(row('g', 'Groceries', 30000)), month(row('g', 'Groceries', 30000))];
+
+    expect(unusualOf(month(row('g', 'Groceries', 90000)), history, null)).toBeUndefined();
+  });
+
+  it('keeps categories apart by id, or by name when there is none', () => {
+    const noId = (name: string, totalMinor: number) =>
+      ({ ...row('x', name, totalMinor), categoryId: null }) as CategorySpend;
+    const history = [month(noId('Misc', 30000)), month(noId('Misc', 30000))];
+
+    expect(unusualOf(month(noId('Misc', 60000)), history)).toMatchObject({ name: 'Misc' });
+  });
+});
+
+describe('insightText for the new lines', () => {
+  const copy = COPY.summary.insights;
+  const text = (insight: Parameters<typeof insightText>[0]) =>
+    insightText(insight, copy, 'September', 'USD');
+
+  it('words the forecast alone, and against last month', () => {
+    expect(text({ kind: 'forecast', projectedMinor: 124000, versus: null })).toBe(
+      `At this pace you will spend about ${formatMoney(124000, 'USD')} this month.`,
+    );
+    expect(
+      text({
+        kind: 'forecast',
+        projectedMinor: 124000,
+        versus: { direction: 'more', amountMinor: 14000 },
+      }),
+    ).toBe(
+      `At this pace you will spend about ${formatMoney(124000, 'USD')} this month, ${formatMoney(14000, 'USD')} more than September.`,
+    );
+    expect(
+      text({
+        kind: 'forecast',
+        projectedMinor: 124000,
+        versus: { direction: 'less', amountMinor: 14000 },
+      }),
+    ).toContain(`${formatMoney(14000, 'USD')} less than September.`);
+    expect(
+      text({
+        kind: 'forecast',
+        projectedMinor: 124000,
+        versus: { direction: 'same', amountMinor: 100 },
+      }),
+    ).toContain('about the same as September.');
+  });
+
+  it('words the unusual line with the category and both amounts', () => {
+    expect(text({ kind: 'unusual', name: 'Groceries', spentMinor: 48000, usualMinor: 30000 })).toBe(
+      `Groceries is already ${formatMoney(48000, 'USD')}, more than a typical month (about ${formatMoney(30000, 'USD')}).`,
+    );
   });
 });

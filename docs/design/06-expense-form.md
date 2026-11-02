@@ -320,7 +320,6 @@ entry without its row is a push of nothing.
 8. **Reduce Motion**: the over-maximum shake (rule 5) is suppressed; the snackbar alone carries
    the message.
 
-
 ## Receipt photo (added after the MVP)
 
 A **Receipt** row closes the group under Note: `Add a photo`, or `Photo attached` once one is held.
@@ -331,7 +330,7 @@ attached, `Remove photo`.
   photo-only change in edit mode, and closing with an unsaved photo asks `Discard changes?`.
 - Photos are shrunk on the device to a JPEG (longest edge 1600px, stepping down until under 1.5 MB)
   and stored locally first. Sync uploads them after the expense itself (`PUT
-  /v1/expenses/{id}/receipt`); an upload for an expense the server has not seen yet waits for it.
+/v1/expenses/{id}/receipt`); an upload for an expense the server has not seen yet waits for it.
 - A photo taken on another device appears as attached and is downloaded the first time it is opened.
   Offline, the sheet says so instead of showing an empty box.
 - Deleting an expense deletes its photo on the server. Removing a photo is idempotent and survives

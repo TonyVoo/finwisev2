@@ -605,3 +605,51 @@ describe('the budget line in the insights', () => {
     expect(screen.queryByText(/budget/)).toBeNull();
   });
 });
+
+describe('the forecast and the unusual-spend line', () => {
+  /** The 14th of October. Groceries have cost $1,000 already; a typical month for them was $300. */
+  async function seedPace(database: SqliteDatabase): Promise<void> {
+    await seedUser(database);
+    await seedFallbackCategory(database);
+    await seedCategory(database, { id: GROCERIES, name: 'Groceries', color: categoryColor.green });
+    const groceries = (n: number, amountMinor: number, date: string) =>
+      seedExpense(database, { id: expenseId(n), categoryId: GROCERIES, amountMinor, date });
+    await groceries(1, 100000, '2026-10-03');
+    await groceries(2, 30000, '2026-09-10');
+    await groceries(3, 30000, '2026-08-10');
+    await groceries(4, 30000, '2026-07-10');
+  }
+
+  it('projects the month from the pace so far, against last month', async () => {
+    await mountSummary(seedPace);
+
+    await waitFor(() => expect(screen.queryByTestId(INSIGHTS_TEST_ID)).not.toBeNull());
+    // $1,000 in 14 of 31 days is about $2,214 for the month, against $300 in September.
+    expect(
+      screen.getByText(
+        'At this pace you will spend about $2,214.29 this month, $1,914.29 more than September.',
+      ),
+    ).toBeTruthy();
+  });
+
+  it('names a category that has already passed a typical month', async () => {
+    await mountSummary(seedPace);
+
+    await waitFor(() => expect(screen.queryByTestId(INSIGHTS_TEST_ID)).not.toBeNull());
+    expect(
+      screen.getByText(
+        'Groceries is already $1,000.00, more than a typical month (about $300.00).',
+      ),
+    ).toBeTruthy();
+  });
+
+  it('says neither for a month that is over', async () => {
+    await mountSummary(seedPace);
+
+    await pressOn(MONTH_PREVIOUS_TEST_ID);
+    await waitFor(() => expect(totalLabel()).toBe('Total, $300.00, 1 expense'));
+
+    expect(screen.queryByText(/At this pace/)).toBeNull();
+    expect(screen.queryByText(/typical month/)).toBeNull();
+  });
+});

@@ -309,7 +309,6 @@ link (§4).
   screen-reader user lands somewhere useful rather than at the top of the screen.
 - `returnKeyType`: Email `next`, Password `go`.
 
-
 ## 4. Forgot password (added after the MVP)
 
 Two screens, reached from the link under the Log in form. The mechanism is an emailed 6-digit code,
@@ -325,7 +324,6 @@ A wrong, expired or used code is a field error on the Code field (`That code is 
 expired.`) and never says which. Five wrong guesses kill a code. On success every session of the
 account has ended, the app returns to Log in with the email filled in, and a snackbar says
 `Password changed. Log in with your new password.` Both screens need a connection and say so.
-
 
 ## 5. Email verification (added after the MVP)
 

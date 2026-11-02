@@ -37,7 +37,40 @@ export type Insight =
       readonly daysLeft: number;
     }
   /** A budget strictly past its limit, and by how much. */
-  | { readonly kind: 'budgetOver'; readonly name: string; readonly overMinor: number };
+  | { readonly kind: 'budgetOver'; readonly name: string; readonly overMinor: number }
+  /** The month's spend so far scaled to the whole month, and how that compares with last month's total. */
+  | {
+      readonly kind: 'forecast';
+      readonly projectedMinor: number;
+      readonly versus: {
+        readonly direction: 'more' | 'less' | 'same';
+        readonly amountMinor: number;
+      } | null;
+    }
+  /** A category that has already cost more than a whole typical month, by half again. */
+  | {
+      readonly kind: 'unusual';
+      readonly name: string;
+      readonly spentMinor: number;
+      readonly usualMinor: number;
+    };
+
+/** Where the current month is: the day of the month, and how many days it has. */
+export interface MonthProgress {
+  readonly day: number;
+  readonly daysInMonth: number;
+}
+
+/**
+ * What the forecast and the unusual-spend line need beyond this and last month's rows
+ * (`docs/design/18-forecast-and-unusual-spend.md`). Without `progress` (a past month, or the older call
+ * shape) neither is produced.
+ */
+export interface InsightContext {
+  readonly progress: MonthProgress | null;
+  /** Earlier months' category rows, any order; the previous month and up to two before it. */
+  readonly history: readonly (readonly CategorySpend[])[];
+}
 
 /** The month's income and the previous month's, in minor units. */
 export interface IncomeFigures {
@@ -64,6 +97,95 @@ export function daysLeftInMonth(today: string): number {
   const month = Number(today.slice(5, 7));
   const day = Number(today.slice(8, 10));
   return new Date(Date.UTC(year, month, 0)).getUTCDate() - day;
+}
+
+/** The day of the month for `today` (`YYYY-MM-DD`), and how many days that month has. */
+export function monthProgress(today: string): MonthProgress {
+  const year = Number(today.slice(0, 4));
+  const month = Number(today.slice(5, 7));
+  return {
+    day: Number(today.slice(8, 10)),
+    daysInMonth: new Date(Date.UTC(year, month, 0)).getUTCDate(),
+  };
+}
+
+/** `numerator / denominator` rounded half up, in integers. */
+function roundedDiv(numerator: number, denominator: number): number {
+  return Math.floor((numerator * 2 + denominator) / (denominator * 2));
+}
+
+/** A day or two of spending says nothing about the month. */
+const FORECAST_FROM_DAY = 5;
+/** Within this share of last month's total, the forecast reads "about the same" (3%, as `x * 100 < total * 3`). */
+const SAME_BELOW_PERCENT = 3;
+
+function forecastInsight(
+  currentTotal: number,
+  previousTotal: number,
+  progress: MonthProgress | null,
+): Insight | null {
+  if (
+    progress === null ||
+    progress.day < FORECAST_FROM_DAY ||
+    progress.day >= progress.daysInMonth
+  ) {
+    return null;
+  }
+  const projectedMinor = roundedDiv(currentTotal * progress.daysInMonth, progress.day);
+  if (previousTotal <= 0) return { kind: 'forecast', projectedMinor, versus: null };
+  const delta = projectedMinor - previousTotal;
+  const amountMinor = Math.abs(delta);
+  const direction =
+    amountMinor * 100 < previousTotal * SAME_BELOW_PERCENT ? 'same' : delta > 0 ? 'more' : 'less';
+  return { kind: 'forecast', projectedMinor, versus: { direction, amountMinor } };
+}
+
+/** Already past this many halves of a typical month: 3 / 2 = 1.5 times. */
+const UNUSUAL_NUMERATOR = 3;
+const UNUSUAL_DENOMINATOR = 2;
+/** At least two earlier months with spending, or there is no pattern. */
+const MIN_HISTORY_MONTHS = 2;
+
+/**
+ * The category that has already passed a whole typical month by half again (and by at least a tenth of this
+ * month's spend, so a tiny category doubling is not news). "Typical" is the average full-month total over the
+ * earlier months that had spending, an absent category counting as zero there. Compared with a *whole* typical
+ * month rather than a scaled share of one, so a steady lump payment (rent) never reads as unusual.
+ */
+function unusualInsight(
+  current: readonly CategorySpend[],
+  currentTotal: number,
+  progress: MonthProgress | null,
+  history: readonly (readonly CategorySpend[])[],
+): Insight | null {
+  if (progress === null) return null;
+  const months = history.filter((rows) => total(rows) > 0);
+  if (months.length < MIN_HISTORY_MONTHS) return null;
+
+  const sums = new Map<string, number>();
+  for (const rows of months) {
+    for (const row of rows) sums.set(key(row), (sums.get(key(row)) ?? 0) + row.totalMinor);
+  }
+
+  let best: { name: string; spent: number; usual: number; excess: number } | null = null;
+  for (const row of current) {
+    const sum = sums.get(key(row));
+    if (sum === undefined || sum <= 0 || row.totalMinor <= 0) continue;
+    const usual = roundedDiv(sum, months.length);
+    if (row.totalMinor * UNUSUAL_DENOMINATOR < usual * UNUSUAL_NUMERATOR) continue;
+    const excess = row.totalMinor - usual;
+    if (excess * 10 < currentTotal) continue;
+    if (
+      best === null ||
+      excess > best.excess ||
+      (excess === best.excess && row.totalMinor > best.spent)
+    ) {
+      best = { name: row.name ?? UNCATEGORIZED_NAME, spent: row.totalMinor, usual, excess };
+    }
+  }
+  return best === null
+    ? null
+    : { kind: 'unusual', name: best.name, spentMinor: best.spent, usualMinor: best.usual };
 }
 
 /**
@@ -100,6 +222,7 @@ export function buildInsights(
   income: IncomeFigures = { current: 0, previous: 0 },
   /** Days left in the month, for the current month; null for a past one. */
   daysLeft: number | null = null,
+  context: InsightContext = { progress: null, history: [] },
 ): readonly Insight[] {
   const currentTotal = total(current);
   if (currentTotal <= 0) return [];
@@ -161,6 +284,12 @@ export function buildInsights(
   const budget = budgetInsight(current, daysLeft);
   if (budget !== null) insights.push(budget);
 
+  const forecast = forecastInsight(currentTotal, previousTotal, context.progress);
+  if (forecast !== null) insights.push(forecast);
+
+  const unusual = unusualInsight(current, currentTotal, context.progress, context.history);
+  if (unusual !== null) insights.push(unusual);
+
   return insights;
 }
 
@@ -182,6 +311,11 @@ export function insightText(
     readonly budgetPaceOne: string;
     readonly budgetPaceLast: string;
     readonly budgetOver: string;
+    readonly forecast: string;
+    readonly forecastMore: string;
+    readonly forecastLess: string;
+    readonly forecastSame: string;
+    readonly unusual: string;
   },
   previousLabel: string,
   currency: string,
@@ -224,6 +358,24 @@ export function insightText(
         .replace('{name}', insight.name)
         .replace('{days}', String(insight.daysLeft));
     }
+    case 'forecast': {
+      const amount = formatMoney(insight.projectedMinor, currency);
+      if (insight.versus === null) return copy.forecast.replace('{amount}', amount);
+      const template = {
+        more: copy.forecastMore,
+        less: copy.forecastLess,
+        same: copy.forecastSame,
+      }[insight.versus.direction];
+      return template
+        .replace('{amount}', amount)
+        .replace('{diff}', formatMoney(insight.versus.amountMinor, currency))
+        .replace('{month}', previousLabel);
+    }
+    case 'unusual':
+      return copy.unusual
+        .replace('{name}', insight.name)
+        .replace('{amount}', formatMoney(insight.spentMinor, currency))
+        .replace('{usual}', formatMoney(insight.usualMinor, currency));
     case 'budgetOver':
       return copy.budgetOver
         .replace('{name}', insight.name)

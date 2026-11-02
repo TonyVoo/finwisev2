@@ -174,7 +174,6 @@ month`. Hint: `Double tap to see these expenses.`
 8. The filter chip from rule 8 is `role="button"` with the label
    `Filtered by {name}. Double tap to clear.`
 
-
 ## Trend card (added after the MVP)
 
 Below the legend (and below the empty state), a card titled `Last 6 months`: one bar per calendar

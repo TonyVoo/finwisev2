@@ -151,6 +151,14 @@ export const VIETNAMESE_COPY: CopyBundle = {
         budgetPaceOne: 'Bạn đã dùng {percent}% ngân sách {name}, còn 1 ngày nữa là hết tháng.',
         budgetPaceLast: 'Bạn đã dùng {percent}% ngân sách {name}, và hôm nay là ngày cuối tháng.',
         budgetOver: 'Bạn đã vượt ngân sách {name} {amount}.',
+        forecast: 'Với tốc độ này, bạn sẽ chi khoảng {amount} trong tháng này.',
+        forecastMore:
+          'Với tốc độ này, bạn sẽ chi khoảng {amount} trong tháng này, nhiều hơn {month} {diff}.',
+        forecastLess:
+          'Với tốc độ này, bạn sẽ chi khoảng {amount} trong tháng này, ít hơn {month} {diff}.',
+        forecastSame: 'Với tốc độ này, bạn sẽ chi khoảng {amount} trong tháng này, xấp xỉ {month}.',
+        unusual:
+          '{name} đã lên tới {amount}, vượt mức thường thấy trong một tháng (khoảng {usual}).',
       },
       recap: {
         button: 'Viết tóm tắt cho tôi',

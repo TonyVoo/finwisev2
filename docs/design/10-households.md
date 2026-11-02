@@ -13,7 +13,7 @@ Two or more people keep one set of books. Decided with the product owner:
 
 Every synced row is already scoped by one id (`user_id`). A household gets **a book of its own**:
 a hidden account-like record (`households.scope_id`) that no one can sign in to, and every shared
-row is scoped by *its* id.
+row is scoped by _its_ id.
 
 - A request has two ids. The **identity** is who you are (from the access token) and never
   changes. The **data scope** is whose rows you read and write: your own id, or - while you are a
@@ -49,7 +49,7 @@ row is scoped by *its* id.
 
 ## Data model
 
-- `households`: `id`, `owner_id` (unique, FK users - the owner *role*), `scope_id` (unique, FK
+- `households`: `id`, `owner_id` (unique, FK users - the owner _role_), `scope_id` (unique, FK
   users - the book; an account-like row with no sign-in), `created_at`.
 - `household_members`: `household_id`, `user_id` (unique - one household per person),
   `role` (`owner` | `member`), `joined_at`. The owner is a member row too.
@@ -61,16 +61,16 @@ row is scoped by *its* id.
 
 All authenticated. The household is addressed by the token, never by an id in the URL.
 
-| Operation | Route | Who |
-| --- | --- | --- |
-| `getHousehold` | `GET /v1/household` | anyone (`household: null` if none) |
-| `createHousehold` | `POST /v1/household` | a person in no household |
-| `deleteHousehold` | `DELETE /v1/household` | owner |
-| `createHouseholdInvite` | `POST /v1/household/invite` | owner |
-| `joinHousehold` | `POST /v1/household/join` `{ code }` | a person in no household |
-| `leaveHousehold` | `POST /v1/household/leave` | member (not owner) |
-| `removeHouseholdMember` | `DELETE /v1/household/members/{memberId}` | owner |
-| `transferHousehold` | `POST /v1/household/transfer` `{ memberId }` | owner |
+| Operation               | Route                                        | Who                                |
+| ----------------------- | -------------------------------------------- | ---------------------------------- |
+| `getHousehold`          | `GET /v1/household`                          | anyone (`household: null` if none) |
+| `createHousehold`       | `POST /v1/household`                         | a person in no household           |
+| `deleteHousehold`       | `DELETE /v1/household`                       | owner                              |
+| `createHouseholdInvite` | `POST /v1/household/invite`                  | owner                              |
+| `joinHousehold`         | `POST /v1/household/join` `{ code }`         | a person in no household           |
+| `leaveHousehold`        | `POST /v1/household/leave`                   | member (not owner)                 |
+| `removeHouseholdMember` | `DELETE /v1/household/members/{memberId}`    | owner                              |
+| `transferHousehold`     | `POST /v1/household/transfer` `{ memberId }` | owner                              |
 
 `GET /v1/me` also returns `dataOwnerId`, so a device knows which scope its local store holds.
 
@@ -83,7 +83,7 @@ guesser learns nothing), `household_has_members` (account deletion blocked).
 
 ## Mobile
 
-Settings gets a **Household** row. With no household: *Create a household* and *Join with a code*.
+Settings gets a **Household** row. With no household: _Create a household_ and _Join with a code_.
 In one: the members and roles; the owner can generate an invite code (shown once, shareable) and
 remove members or delete the household; a member can leave. Joining, leaving, removal and deletion
 all end in the same place: the local store is cleared and resynced under the new scope.

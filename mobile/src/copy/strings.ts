@@ -166,6 +166,14 @@ export const COPY = {
       budgetPaceOne: "You have used {percent}% of {name}'s budget with 1 day left.",
       budgetPaceLast: "You have used {percent}% of {name}'s budget, and today is the last day.",
       budgetOver: "You are over {name}'s budget by {amount}.",
+      forecast: 'At this pace you will spend about {amount} this month.',
+      forecastMore:
+        'At this pace you will spend about {amount} this month, {diff} more than {month}.',
+      forecastLess:
+        'At this pace you will spend about {amount} this month, {diff} less than {month}.',
+      forecastSame:
+        'At this pace you will spend about {amount} this month, about the same as {month}.',
+      unusual: '{name} is already {amount}, more than a typical month (about {usual}).',
     },
     /** The recap under the Insights card: the card's own sentences, reworded by a model on request. */
     recap: {

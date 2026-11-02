@@ -19,7 +19,12 @@ import { useSelectedMonth } from '@/month/MonthProvider';
 import { CategoryDonut } from '@/summary/CategoryDonut';
 import { SpendLegend } from '@/summary/SpendLegend';
 import { InsightsCard } from '@/summary/InsightsCard';
-import { buildInsights, daysLeftInMonth, insightText } from '@/summary/insightsModel';
+import {
+  buildInsights,
+  daysLeftInMonth,
+  insightText,
+  monthProgress,
+} from '@/summary/insightsModel';
 import { RecapSection } from '@/summary/RecapSection';
 import { monthName, stepMonth } from '@/lib/calendar';
 import { SpendTrend } from '@/summary/SpendTrend';
@@ -92,6 +97,9 @@ export default function SummaryScreen() {
   const previousMonth = stepMonth(month, -1);
   const previousSpend = useMonthCategorySpend(previousMonth);
   const previousIncome = useMonthIncome(previousMonth);
+  // The two months before that, so a "typical month" has a few to average (`18-forecast-and-unusual-spend.md`).
+  const olderSpend = useMonthCategorySpend(stepMonth(month, -2));
+  const oldestSpend = useMonthCategorySpend(stepMonth(month, -3));
 
   // The frame or two before the first read returns, abandoned after 300ms whatever happens
   // - after that the honest answer is `empty`, not `loading` (`useFirstPaintSkeleton`).
@@ -111,12 +119,21 @@ export default function SummaryScreen() {
 
   // Worked out once: the card shows these sentences, and the recap is asked to reword exactly them.
   const insights =
-    !pending && currencyCode !== null && previousSpend.data !== undefined
+    !pending &&
+    currencyCode !== null &&
+    previousSpend.data !== undefined &&
+    olderSpend.data !== undefined &&
+    oldestSpend.data !== undefined
       ? buildInsights(
           spend.data ?? [],
           previousSpend.data,
           { current: income.data ?? 0, previous: previousIncome.data ?? 0 },
           isCurrent ? daysLeftInMonth(today) : null,
+          {
+            // The forecast and the unusual line are for the month still going on.
+            progress: isCurrent ? monthProgress(today) : null,
+            history: [previousSpend.data, olderSpend.data, oldestSpend.data],
+          },
         )
       : [];
   const insightSentences = insights.map((insight) =>
