@@ -56,7 +56,13 @@ export function SpaceChip() {
 
 const useStyles = createStyles((color) =>
   StyleSheet.create({
-    wrap: { paddingHorizontal: space[4], paddingBottom: space[2], flexDirection: 'row' },
+    // The header's own surface, so the chip does not sit on a strip of canvas between two white bands.
+    wrap: {
+      paddingHorizontal: space[4],
+      paddingBottom: space[2],
+      flexDirection: 'row',
+      backgroundColor: color.bg.surface,
+    },
     chip: {
       flexDirection: 'row',
       alignItems: 'center',
