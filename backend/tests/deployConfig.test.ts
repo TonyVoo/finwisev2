@@ -152,6 +152,10 @@ describe('start.sh, for hosts with no pre-deploy command', () => {
     expect(migrate).toBeLessThan(script.indexOf('exec node'));
   });
 
+  it('finds prisma where the workspace installs it, one level above the backend', () => {
+    expect(script).toContain('../node_modules/.bin/prisma migrate deploy');
+  });
+
   it('does not need pnpm at run time: the image runs as a user it was not prepared for', () => {
     expect(script).not.toMatch(/^pnpm /m);
   });
