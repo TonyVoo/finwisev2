@@ -32,6 +32,8 @@ import { useKeyboardOverlap } from './useKeyboardOverlap';
 
 export interface FormScreenProps {
   readonly title: string;
+  /** One line under the title, for the auth forms. */
+  readonly subtitle?: string;
   readonly onBack: () => void;
   /** The form-level banner, rendered directly after the title (§1.2 focus order). */
   readonly banner?: ReactNode;
@@ -39,7 +41,7 @@ export interface FormScreenProps {
   readonly testID?: string;
 }
 
-export function FormScreen({ title, onBack, banner, children, testID }: FormScreenProps) {
+export function FormScreen({ title, subtitle, onBack, banner, children, testID }: FormScreenProps) {
   const color = useColors();
   const styles = useStyles();
   const insets = useSafeAreaInsets();
@@ -80,6 +82,7 @@ export function FormScreen({ title, onBack, banner, children, testID }: FormScre
             <Text style={styles.title} accessibilityRole="header">
               {title}
             </Text>
+            {subtitle === undefined ? null : <Text style={styles.subtitle}>{subtitle}</Text>}
             {banner}
             {children}
           </ScrollView>
@@ -117,6 +120,12 @@ const useStyles = createStyles((color) =>
       // `space.6` below the title, per both screens' Layout block. `space.4` of it comes
       // from the stack gap, so only the remainder is added here.
       marginBottom: space[6] - space[4],
+    },
+    subtitle: {
+      ...type.body,
+      color: color.text.secondary,
+      // Pulled up under the title, which already has the gap's worth below it.
+      marginTop: -space[3],
     },
   }),
 );

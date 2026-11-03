@@ -27,11 +27,17 @@ export const COPY = {
 
   welcome: {
     tagline: 'Know where your money goes, online or not.',
+    features: {
+      offline: 'Works offline, and syncs when you are back',
+      receipts: 'Snap a receipt and the amount fills in',
+      share: 'Keep shared books with family or friends',
+    },
     cta: { signup: 'Create account', login: 'I already have an account' },
   },
 
   signup: {
     title: 'Create your account',
+    subtitle: 'Takes under a minute. Your data stays on your phone and syncs when you are online.',
     field: {
       email: 'Email',
       emailPlaceholder: 'you@example.com',
@@ -45,7 +51,12 @@ export const COPY = {
     loginInstead: 'Log in instead',
   },
 
-  login: { title: 'Welcome back', submit: 'Log in', forgot: 'Forgot password?' },
+  login: {
+    title: 'Welcome back',
+    subtitle: 'Log in to pick up where you left off.',
+    submit: 'Log in',
+    forgot: 'Forgot password?',
+  },
 
   /** Forgot password (`docs/design/03-auth.md` §4): ask for a code, then use it. */
   forgotPassword: {
@@ -705,6 +716,11 @@ export const COPY = {
     empty: 'There are no expenses to export yet.',
     unavailable: 'Sharing files is not available on this device.',
     failed: 'Could not export your expenses. Try again.',
+  },
+
+  auth: {
+    haveAccount: 'Already have an account? Log in',
+    newHere: 'New here? Create an account',
   },
 
   homeWidget: {

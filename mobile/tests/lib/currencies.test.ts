@@ -3,6 +3,7 @@ import { VIETNAMESE_COPY } from '@/copy/vi';
 import {
   CURRENCY_OPTIONS,
   DEFAULT_CURRENCY_CODE,
+  currencyForLocale,
   currencyLabel,
   currencyName,
 } from '@/lib/currencies';
@@ -78,5 +79,32 @@ describe('the minor unit of the currencies offered', () => {
 
   it('is two for the dollar, the euro and the baht', () => {
     for (const code of ['USD', 'EUR', 'THB', 'SGD']) expect(currencyDecimals(code)).toBe(2);
+  });
+});
+
+describe('the currency preselected at signup', () => {
+  it.each([
+    ['vi-VN', 'VND'],
+    ['en-US', 'USD'],
+    ['de-DE', 'EUR'],
+    ['fr_FR', 'EUR'],
+    ['en-GB', 'GBP'],
+    ['ja-JP', 'JPY'],
+    ['pt-BR', 'BRL'],
+    ['en-AU', 'AUD'],
+  ])('is chosen from the region of %s', (locale, expected) => {
+    expect(currencyForLocale(locale)).toBe(expected);
+  });
+
+  it('falls back to the default for a region not on the list, or none at all', () => {
+    expect(currencyForLocale('en-ZZ')).toBe(DEFAULT_CURRENCY_CODE);
+    expect(currencyForLocale('en')).toBe(DEFAULT_CURRENCY_CODE);
+    expect(currencyForLocale(undefined)).toBe(DEFAULT_CURRENCY_CODE);
+  });
+
+  it('only ever picks a currency the app offers', () => {
+    for (const locale of ['vi-VN', 'de-DE', 'en-GB', 'ja-JP', 'pt-BR', 'en-ZA', 'ar-AE', 'es-MX']) {
+      expect(codes).toContain(currencyForLocale(locale));
+    }
   });
 });

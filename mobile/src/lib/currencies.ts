@@ -75,6 +75,80 @@ export const CURRENCY_OPTIONS: readonly CurrencyOption[] = [
  */
 export const DEFAULT_CURRENCY_CODE = 'USD';
 
+const EURO_REGIONS = [
+  'AT',
+  'BE',
+  'CY',
+  'DE',
+  'EE',
+  'ES',
+  'FI',
+  'FR',
+  'GR',
+  'HR',
+  'IE',
+  'IT',
+  'LT',
+  'LU',
+  'LV',
+  'MT',
+  'NL',
+  'PT',
+  'SI',
+  'SK',
+];
+const REGION_CURRENCY: Readonly<Record<string, string>> = {
+  US: 'USD',
+  GB: 'GBP',
+  JP: 'JPY',
+  VN: 'VND',
+  CN: 'CNY',
+  KR: 'KRW',
+  TH: 'THB',
+  SG: 'SGD',
+  MY: 'MYR',
+  ID: 'IDR',
+  PH: 'PHP',
+  HK: 'HKD',
+  TW: 'TWD',
+  IN: 'INR',
+  AU: 'AUD',
+  NZ: 'NZD',
+  CA: 'CAD',
+  CH: 'CHF',
+  SE: 'SEK',
+  NO: 'NOK',
+  DK: 'DKK',
+  PL: 'PLN',
+  CZ: 'CZK',
+  TR: 'TRY',
+  ZA: 'ZAR',
+  AE: 'AED',
+  SA: 'SAR',
+  BR: 'BRL',
+  MX: 'MXN',
+  ...Object.fromEntries(EURO_REGIONS.map((region) => [region, 'EUR'])),
+};
+
+/**
+ * The currency to preselect at signup: the one used where the phone says it is (`vi-VN` -> dong, `de-DE` -> euro),
+ * or the default when the region is unknown or not on the list. A person in Vietnam should not have to find the
+ * dong in a list of thirty; the form still lets them change it.
+ */
+export function currencyForLocale(locale: string | undefined): string {
+  const region = /[-_]([A-Za-z]{2})(?:$|[-_])/.exec(locale ?? '')?.[1]?.toUpperCase();
+  return (region === undefined ? undefined : REGION_CURRENCY[region]) ?? DEFAULT_CURRENCY_CODE;
+}
+
+/** {@link currencyForLocale} for this device. */
+export function deviceCurrency(): string {
+  try {
+    return currencyForLocale(Intl.DateTimeFormat().resolvedOptions().locale);
+  } catch {
+    return DEFAULT_CURRENCY_CODE;
+  }
+}
+
 /**
  * A currency's name in the current language, or the English one in `CURRENCY_OPTIONS` if the
  * bundle has none. Read at call time, so it follows a language switch.

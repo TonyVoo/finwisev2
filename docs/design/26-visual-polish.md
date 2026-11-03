@@ -24,3 +24,15 @@ Summary legend, the Insights card and the Year in review row.
 
 The sign-in and sign-up screens, search, goals/categories/recurring sheets, the household detail screens, Payment detection,
 Currency and Year in review.
+
+## Second pass: sign-in, sign-up, sheets
+
+- **Welcome:** the empty space between the name and the two buttons now says what the app does, in three lines with
+  icons (offline, receipt scan, shared books).
+- **Sign-up / sign-in:** a one-line subtitle under each title; a link to the other screen at the bottom (_Already have
+  an account? Log in_ / _New here? Create an account_), which **replaces** the screen so Back does not bounce between
+  them; and sign-up **preselects the currency of the region the phone is set to** (`vi-VN` -> dong, `de-DE` -> euro; any
+  region not on the list falls back to USD) - a person in Vietnam no longer has to find the dong in a list of thirty.
+- **Sheets and dialogs** (category, date, note, confirmations) were looked at on a device and left as they are: rounded
+  sheet with a handle, clear title and close, one action. The _Roll over_ hint in Settings was cut off at two lines and
+  now has three.

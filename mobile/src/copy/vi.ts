@@ -33,11 +33,17 @@ export const VIETNAMESE_COPY: CopyBundle = {
 
     welcome: {
       tagline: 'Biết tiền của bạn đi đâu, dù có mạng hay không.',
+      features: {
+        offline: 'Dùng được khi không có mạng, tự đồng bộ khi có lại',
+        receipts: 'Chụp hóa đơn, số tiền tự điền',
+        share: 'Chung sổ với gia đình hoặc bạn bè',
+      },
       cta: { signup: 'Tạo tài khoản', login: 'Tôi đã có tài khoản' },
     },
 
     signup: {
       title: 'Tạo tài khoản của bạn',
+      subtitle: 'Chưa đến một phút. Dữ liệu nằm trên điện thoại của bạn và đồng bộ khi có mạng.',
       field: {
         email: 'Email',
         emailPlaceholder: 'ban@example.com',
@@ -50,7 +56,12 @@ export const VIETNAMESE_COPY: CopyBundle = {
       loginInstead: 'Đăng nhập',
     },
 
-    login: { title: 'Chào mừng trở lại', submit: 'Đăng nhập', forgot: 'Quên mật khẩu?' },
+    login: {
+      title: 'Chào mừng trở lại',
+      subtitle: 'Đăng nhập để tiếp tục từ chỗ bạn dừng lại.',
+      submit: 'Đăng nhập',
+      forgot: 'Quên mật khẩu?',
+    },
 
     forgotPassword: {
       title: 'Đặt lại mật khẩu',
@@ -638,6 +649,11 @@ export const VIETNAMESE_COPY: CopyBundle = {
       empty: 'Chưa có khoản chi nào để xuất.',
       unavailable: 'Thiết bị này không hỗ trợ chia sẻ tệp.',
       failed: 'Không xuất được các khoản chi của bạn. Hãy thử lại.',
+    },
+
+    auth: {
+      haveAccount: 'Đã có tài khoản? Đăng nhập',
+      newHere: 'Mới dùng? Tạo tài khoản',
     },
 
     homeWidget: {

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import Feather from '@expo/vector-icons/Feather';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSession } from '@/auth/SessionProvider';
 import { AppMark } from '@/components/AppMark';
@@ -9,7 +10,7 @@ import { FadeInUp } from '@/components/FadeInUp';
 import { FormBanner } from '@/components/FormBanner';
 import { COPY } from '@/copy/strings';
 import { space, type } from '@/theme/tokens';
-import { createStyles } from '@/theme/ThemeProvider';
+import { createStyles, useColors } from '@/theme/ThemeProvider';
 
 /**
  * Welcome - `docs/design/03-auth.md` §1.1.
@@ -28,6 +29,7 @@ import { createStyles } from '@/theme/ThemeProvider';
  */
 export default function WelcomeScreen() {
   const styles = useStyles();
+  const color = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { expired } = useSession();
@@ -77,6 +79,24 @@ export default function WelcomeScreen() {
         <Text style={styles.tagline} numberOfLines={2}>
           {COPY.welcome.tagline}
         </Text>
+      </FadeInUp>
+
+      {/* What the app is, in three lines, in the space that used to be empty. */}
+      <FadeInUp style={styles.features}>
+        {(
+          [
+            ['wifi-off', COPY.welcome.features.offline],
+            ['camera', COPY.welcome.features.receipts],
+            ['users', COPY.welcome.features.share],
+          ] as const
+        ).map(([icon, text]) => (
+          <View key={icon} style={styles.feature}>
+            <View style={styles.featureIcon}>
+              <Feather name={icon} size={18} color={color.primary.default} />
+            </View>
+            <Text style={styles.featureText}>{text}</Text>
+          </View>
+        ))}
       </FadeInUp>
 
       <View style={styles.spacer} />
@@ -133,6 +153,22 @@ const useStyles = createStyles((color) =>
       textAlign: 'center',
       marginTop: space[3],
     },
+    features: {
+      alignSelf: 'stretch',
+      gap: space[3],
+      marginTop: space[10],
+      paddingHorizontal: space[2],
+    },
+    feature: { flexDirection: 'row', alignItems: 'center', gap: space[3] },
+    featureIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: color.primary.subtle,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    featureText: { ...type.body, color: color.text.secondary, flex: 1 },
     spacer: {
       flex: 1,
       // A floor, so the two CTAs do not ride up into the tagline on a short screen at a

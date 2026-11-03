@@ -54,6 +54,7 @@ export default function LoginScreen() {
   return (
     <FormScreen
       title={COPY.login.title}
+      subtitle={COPY.login.subtitle}
       onBack={() => router.back()}
       testID="login"
       banner={
@@ -110,6 +111,13 @@ export default function LoginScreen() {
         onPress={() => router.push('/(auth)/forgot-password')}
         fullWidth
         testID="login-forgot"
+      />
+      <Button
+        label={COPY.auth.newHere}
+        variant="ghost"
+        onPress={() => router.replace('/(auth)/signup')}
+        fullWidth
+        testID="login-to-signup"
       />
     </FormScreen>
   );

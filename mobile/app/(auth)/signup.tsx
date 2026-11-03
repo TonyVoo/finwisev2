@@ -20,6 +20,7 @@ import {
   CURRENCY_OPTIONS,
   DEFAULT_CURRENCY_CODE,
   currencyAccessibilityLabel,
+  deviceCurrency,
   currencyLabel,
   currencyName,
 } from '@/lib/currencies';
@@ -54,7 +55,7 @@ export default function SignupScreen() {
   const styles = useStyles();
   const router = useRouter();
   const api = useApiClient();
-  const [currency, setCurrency] = useState(DEFAULT_CURRENCY_CODE);
+  const [currency, setCurrency] = useState(deviceCurrency);
   const [pickerOpen, setPickerOpen] = useState(false);
   const { language } = useLanguage();
 
@@ -79,6 +80,7 @@ export default function SignupScreen() {
   return (
     <FormScreen
       title={COPY.signup.title}
+      subtitle={COPY.signup.subtitle}
       onBack={() => router.back()}
       testID="signup"
       banner={
@@ -170,6 +172,13 @@ export default function SignupScreen() {
         busy={form.busy}
         fullWidth
         testID="signup-submit"
+      />
+      <Button
+        label={COPY.auth.haveAccount}
+        variant="ghost"
+        onPress={() => router.replace('/(auth)/login')}
+        fullWidth
+        testID="signup-to-login"
       />
 
       <Sheet

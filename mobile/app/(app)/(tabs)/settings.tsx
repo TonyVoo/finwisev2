@@ -396,7 +396,7 @@ export default function SettingsScreen() {
             }
           >
             <RowTitle>{COPY.rollover.title}</RowTitle>
-            <RowSubtitle lines={2}>{COPY.rollover.hint}</RowSubtitle>
+            <RowSubtitle lines={3}>{COPY.rollover.hint}</RowSubtitle>
           </Row>
           <Row
             testID="settings-app-lock"
