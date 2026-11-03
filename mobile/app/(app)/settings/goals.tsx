@@ -217,7 +217,7 @@ export default function GoalsScreen() {
 const useStyles = createStyles((color) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: color.bg.canvas },
-    list: { paddingBottom: size.fab + space[4] + space[4] },
+    list: { paddingTop: space[3], paddingBottom: size.fab + space[4] + space[4] },
     status: { ...type.callout, color: color.text.secondary, marginTop: space[1] },
     empty: { padding: space[6], gap: space[2], alignItems: 'center' },
     emptyHeadline: { ...type.title1, color: color.text.primary, textAlign: 'center' },

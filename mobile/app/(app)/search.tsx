@@ -3,6 +3,7 @@ import { SectionList, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CardRow } from '@/components/Card';
 import { AppBar, IconButton } from '@/components/Chrome';
 import { EmptyIcon } from '@/components/EmptyIcon';
 import { useSnackbar } from '@/components/Snackbar';
@@ -213,14 +214,16 @@ export default function SearchScreen() {
           </Text>
         )}
         renderItem={({ item, index, section }) => (
-          <ExpenseRow
-            item={item}
-            today={today}
-            lastInGroup={index === section.data.length - 1}
-            addedBy={addedBy(item.createdBy)}
-            {...selection.rowProps(item, () => router.push(`/(app)/expense/${item.id}`))}
-            onDelete={() => void onDelete(item.id)}
-          />
+          <CardRow index={index} count={section.data.length}>
+            <ExpenseRow
+              item={item}
+              today={today}
+              lastInGroup={index === section.data.length - 1}
+              addedBy={addedBy(item.createdBy)}
+              {...selection.rowProps(item, () => router.push(`/(app)/expense/${item.id}`))}
+              onDelete={() => void onDelete(item.id)}
+            />
+          </CardRow>
         )}
         ListEmptyComponent={
           searching ? (
@@ -230,7 +233,7 @@ export default function SearchScreen() {
           ) : (
             <View testID="search-prompt" style={styles.prompt}>
               <EmptyIcon name="search" />
-              <Text style={styles.promptText}>{COPY.home.search.placeholder}</Text>
+              <Text style={styles.promptText}>{COPY.home.search.prompt}</Text>
             </View>
           )
         }
@@ -249,11 +252,11 @@ const useStyles = createStyles((color) =>
       paddingVertical: space[2],
     },
     sectionHeader: {
-      ...type.caption,
-      color: color.text.tertiary,
-      paddingHorizontal: space[4],
-      paddingTop: space[3],
-      paddingBottom: space[1],
+      ...type.subhead,
+      color: color.text.secondary,
+      paddingHorizontal: space[5],
+      paddingTop: space[4],
+      paddingBottom: space[2],
     },
     prompt: { alignItems: 'center', gap: space[2], padding: space[8] },
     promptText: { ...type.body, color: color.text.secondary, textAlign: 'center' },

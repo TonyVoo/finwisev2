@@ -11,13 +11,16 @@ import { createStyles } from '../theme/ThemeProvider';
 export function Card({
   children,
   testID,
+  inset = true,
 }: {
   readonly children: ReactNode;
   readonly testID?: string;
+  /** Side margins of the screen gutter. Off where the screen already pads its content (forms). */
+  readonly inset?: boolean;
 }) {
   const styles = useStyles();
   return (
-    <View style={styles.card} testID={testID}>
+    <View style={[styles.card, inset ? null : styles.flush]} testID={testID}>
       <View style={styles.inner}>{children}</View>
     </View>
   );
@@ -88,6 +91,7 @@ const useStyles = createStyles((color) =>
       borderBottomRightRadius: radius.lg,
       borderBottomWidth: StyleSheet.hairlineWidth,
     },
+    flush: { marginHorizontal: 0 },
     // The last row's separator sits on the card's edge and is clipped away.
     inner: { marginBottom: -StyleSheet.hairlineWidth },
     title: {

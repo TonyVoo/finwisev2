@@ -130,6 +130,7 @@ export const VIETNAMESE_COPY: CopyBundle = {
         open: 'Tìm khoản chi',
         close: 'Đóng tìm kiếm',
         placeholder: 'Tìm theo ghi chú và danh mục',
+        prompt: 'Gõ một từ, chọn danh mục, hoặc mở Bộ lọc để lọc theo số tiền và thời gian.',
         clear: 'Xóa tìm kiếm',
         allCategories: 'Tất cả danh mục',
         private: 'Riêng tư',
@@ -741,7 +742,7 @@ export const VIETNAMESE_COPY: CopyBundle = {
       logEmpty: 'Chưa đọc được gì.',
       ignored: 'Không phải thanh toán',
       unsupported: 'Tính năng này chỉ có trên Android.',
-      alerts: 'Báo cho tôi khi phát hiện thanh toán',
+      alerts: 'Báo cho tôi khi có thanh toán',
       alertsHint:
         'Một thông báo để bạn thêm khoản chi mà không cần mở ứng dụng trước. Có thể báo nhầm; ứng dụng sẽ đọc kỹ hơn.',
       alertTitle: 'Có thể có một khoản thanh toán',

@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { AppBar, IconButton } from '@/components/Chrome';
 import { Button } from '@/components/Button';
+import { Card } from '@/components/Card';
 import { Row, RowSubtitle, RowTitle } from '@/components/Row';
 import {
   openPaymentNotificationSettings,
@@ -20,7 +21,7 @@ import { COPY } from '@/copy/strings';
 import { useDatabase } from '@/db/DatabaseProvider';
 import { useUserCurrency } from '@/db/hooks';
 import { formatMoney } from '@/lib/money';
-import { space, type } from '@/theme/tokens';
+import { radius, space, type } from '@/theme/tokens';
 import { createStyles, useColors } from '@/theme/ThemeProvider';
 
 /**
@@ -112,12 +113,15 @@ export default function PaymentDetectionScreen() {
         </Text>
 
         {supported ? (
-          <View style={styles.block}>
-            <Text style={styles.status} testID={DETECTION_STATUS_TEST_ID}>
-              {enabled ? COPY.paymentDetection.statusOn : COPY.paymentDetection.statusOff}
-            </Text>
+          <>
+            <View style={styles.statusCard}>
+              <View style={[styles.dot, enabled ? styles.dotOn : null]} />
+              <Text style={styles.status} testID={DETECTION_STATUS_TEST_ID}>
+                {enabled ? COPY.paymentDetection.statusOn : COPY.paymentDetection.statusOff}
+              </Text>
+            </View>
             {enabled ? null : (
-              <>
+              <View style={styles.turnOn}>
                 <Button
                   label={COPY.paymentDetection.turnOn}
                   onPress={openPaymentNotificationSettings}
@@ -125,33 +129,32 @@ export default function PaymentDetectionScreen() {
                   testID={DETECTION_TURN_ON_TEST_ID}
                 />
                 <Text style={styles.note}>{COPY.paymentDetection.turnOnHint}</Text>
-              </>
+              </View>
             )}
-          </View>
+            <Card inset={false}>
+              <Row
+                testID={DETECTION_ALERTS_TEST_ID}
+                lastInGroup
+                onPress={() => toggleAlerts(!alerts)}
+                accessibilityLabel={`${COPY.paymentDetection.alerts}. ${COPY.paymentDetection.alertsHint}`}
+                accessibilityState={{ selected: alerts }}
+                trailing={
+                  <Switch
+                    value={alerts}
+                    onValueChange={toggleAlerts}
+                    accessibilityElementsHidden
+                    importantForAccessibility="no-hide-descendants"
+                  />
+                }
+              >
+                <RowTitle>{COPY.paymentDetection.alerts}</RowTitle>
+                <RowSubtitle lines={5}>{COPY.paymentDetection.alertsHint}</RowSubtitle>
+              </Row>
+            </Card>
+          </>
         ) : null}
 
-        {supported ? (
-          <Row
-            testID={DETECTION_ALERTS_TEST_ID}
-            lastInGroup
-            onPress={() => toggleAlerts(!alerts)}
-            accessibilityLabel={`${COPY.paymentDetection.alerts}. ${COPY.paymentDetection.alertsHint}`}
-            accessibilityState={{ selected: alerts }}
-            trailing={
-              <Switch
-                value={alerts}
-                onValueChange={toggleAlerts}
-                accessibilityElementsHidden
-                importantForAccessibility="no-hide-descendants"
-              />
-            }
-          >
-            <RowTitle>{COPY.paymentDetection.alerts}</RowTitle>
-            <RowSubtitle lines={3}>{COPY.paymentDetection.alertsHint}</RowSubtitle>
-          </Row>
-        ) : null}
-
-        <Text style={styles.heading} onPress={() => void read()}>
+        <Text style={styles.heading} onPress={() => void read()} accessibilityRole="header">
           {COPY.paymentDetection.suggestions}
         </Text>
         {suggestions.length === 0 ? (
@@ -160,7 +163,7 @@ export default function PaymentDetectionScreen() {
           </Text>
         ) : (
           suggestions.map((item, index) => (
-            <View key={item.id}>
+            <View key={item.id} style={styles.suggestion}>
               <Row
                 testID={`${SUGGESTION_ROW_TEST_ID_PREFIX}-${index}`}
                 lastInGroup
@@ -201,17 +204,19 @@ export default function PaymentDetectionScreen() {
         {log.length === 0 ? (
           <Text style={styles.note}>{COPY.paymentDetection.logEmpty}</Text>
         ) : (
-          log.map((row) => (
-            <View key={row.id} style={styles.logRow} testID="detection-log-row">
-              <Text style={styles.logMeta}>
-                {row.source} · {new Date(row.postTime).toLocaleString()}
-                {row.status === 'ignored' ? ` · ${COPY.paymentDetection.ignored}` : ''}
-              </Text>
-              <Text style={styles.logText}>
-                {[row.title, row.body].filter(Boolean).join(' - ')}
-              </Text>
-            </View>
-          ))
+          <View style={styles.logCard}>
+            {log.map((row) => (
+              <View key={row.id} style={styles.logRow} testID="detection-log-row">
+                <Text style={styles.logMeta}>
+                  {row.source} · {new Date(row.postTime).toLocaleString()}
+                  {row.status === 'ignored' ? ` · ${COPY.paymentDetection.ignored}` : ''}
+                </Text>
+                <Text style={styles.logText}>
+                  {[row.title, row.body].filter(Boolean).join(' - ')}
+                </Text>
+              </View>
+            ))}
+          </View>
         )}
       </ScrollView>
     </View>
@@ -223,12 +228,39 @@ const useStyles = createStyles((color) =>
     screen: { flex: 1, backgroundColor: color.bg.canvas },
     content: { padding: space[4], gap: space[3] },
     body: { ...type.body, color: color.text.secondary },
-    block: { gap: space[2] },
+    statusCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space[3],
+      padding: space[4],
+      borderRadius: radius.lg,
+      backgroundColor: color.bg.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: color.border.hairline,
+    },
+    dot: { width: 12, height: 12, borderRadius: 6, backgroundColor: color.border.input },
+    dotOn: { backgroundColor: color.success.default },
+    turnOn: { gap: space[2] },
+    suggestion: {
+      borderRadius: radius.lg,
+      overflow: 'hidden',
+      backgroundColor: color.bg.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: color.border.hairline,
+    },
+    logCard: {
+      borderRadius: radius.lg,
+      padding: space[3],
+      gap: space[2],
+      backgroundColor: color.bg.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: color.border.hairline,
+    },
     status: { ...type.headline, color: color.text.primary },
     heading: { ...type.headline, color: color.text.primary, marginTop: space[3] },
     note: { ...type.footnote, color: color.text.secondary },
     amount: { ...type.body, color: color.text.primary },
-    actions: { flexDirection: 'row', gap: space[2], paddingVertical: space[2] },
+    actions: { flexDirection: 'row', gap: space[2], padding: space[3], paddingTop: 0 },
     logRow: { gap: 2, paddingVertical: space[1] },
     logMeta: { ...type.footnote, color: color.text.tertiary },
     logText: { ...type.footnote, color: color.text.secondary },

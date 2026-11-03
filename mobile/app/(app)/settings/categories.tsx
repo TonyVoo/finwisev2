@@ -331,6 +331,7 @@ const useStyles = createStyles((color) =>
       backgroundColor: color.bg.canvas,
     },
     list: {
+      paddingTop: space[3],
       paddingBottom: size.fab + space[4] + space[4],
     },
     trailing: {

@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import { SectionTitle } from '@/components/Card';
 import { AppBar, IconButton } from '@/components/Chrome';
 import { Button } from '@/components/Button';
 import { useSnackbar } from '@/components/Snackbar';
@@ -11,7 +12,7 @@ import { useUserCurrency } from '@/db/hooks';
 import { monthKeyOf, monthName } from '@/lib/calendar';
 import { formatMoney } from '@/lib/money';
 import { useSelectedMonth } from '@/month/MonthProvider';
-import { space, type, radius } from '@/theme/tokens';
+import { elevation, radius, space, type } from '@/theme/tokens';
 import { createStyles, useColors } from '@/theme/ThemeProvider';
 import { useYearReport } from '@/year/useYearReport';
 import { yearReportHtml } from '@/year/yearReportHtml';
@@ -111,81 +112,106 @@ export default function YearReportScreen() {
           )
         ) : (
           <>
-            <View style={styles.facts}>
-              <Fact label={copy.spent} value={money(report.totalMinor)} />
-              <Fact label={copy.income} value={money(report.incomeMinor)} />
-              <Fact label={copy.saved} value={money(report.savedMinor)} />
-              <Fact label={copy.average} value={money(report.averageMinor)} />
+            <View style={styles.hero}>
+              <View style={styles.facts}>
+                <Fact label={copy.spent} value={money(report.totalMinor)} />
+                <Fact label={copy.average} value={money(report.averageMinor)} />
+                {/* Income is optional: with none recorded, "left over" would only repeat the spending, negated. */}
+                {report.incomeMinor > 0 ? (
+                  <>
+                    <Fact label={copy.income} value={money(report.incomeMinor)} />
+                    <Fact label={copy.saved} value={money(report.savedMinor)} />
+                  </>
+                ) : null}
+              </View>
+
+              {report.previousTotalMinor > 0 ? (
+                <Text style={styles.note}>
+                  {`${report.deltaMinor >= 0 ? '+' : '-'}${money(Math.abs(report.deltaMinor))} ${copy.vsLast.replace('{year}', String(year - 1))}`}
+                </Text>
+              ) : null}
+              {report.biggestRise === null ? null : (
+                <Text style={styles.note}>
+                  {sentence(copy.rise, report.biggestRise.name, report.biggestRise.deltaMinor)}
+                </Text>
+              )}
+              {report.biggestFall === null ? null : (
+                <Text style={styles.note}>
+                  {sentence(copy.fall, report.biggestFall.name, report.biggestFall.deltaMinor)}
+                </Text>
+              )}
+              {peak === null || peak === undefined ? null : (
+                <Text style={styles.note}>
+                  {`${copy.peak}: ${monthName(peak.month)} · ${money(peak.totalMinor)}`}
+                </Text>
+              )}
+              {report.lowest === null ? null : (
+                <Text style={styles.note}>
+                  {`${copy.lowest}: ${monthName(report.lowest.month)} · ${money(report.lowest.totalMinor)}`}
+                </Text>
+              )}
             </View>
 
-            {report.previousTotalMinor > 0 ? (
-              <Text style={styles.note}>
-                {`${report.deltaMinor >= 0 ? '+' : '-'}${money(Math.abs(report.deltaMinor))} ${copy.vsLast.replace('{year}', String(year - 1))}`}
-              </Text>
-            ) : null}
-            {report.biggestRise === null ? null : (
-              <Text style={styles.note}>
-                {sentence(copy.rise, report.biggestRise.name, report.biggestRise.deltaMinor)}
-              </Text>
-            )}
-            {report.biggestFall === null ? null : (
-              <Text style={styles.note}>
-                {sentence(copy.fall, report.biggestFall.name, report.biggestFall.deltaMinor)}
-              </Text>
-            )}
-            {peak === null || peak === undefined ? null : (
-              <Text style={styles.note}>
-                {`${copy.peak}: ${monthName(peak.month)} · ${money(peak.totalMinor)}`}
-              </Text>
-            )}
-            {report.lowest === null ? null : (
-              <Text style={styles.note}>
-                {`${copy.lowest}: ${monthName(report.lowest.month)} · ${money(report.lowest.totalMinor)}`}
-              </Text>
-            )}
-
-            <Text style={styles.heading}>{copy.months}</Text>
-            {report.months.map((m) => (
-              <View
-                key={m.month}
-                style={styles.monthRow}
-                testID={`${YEAR_MONTH_TEST_ID_PREFIX}-${m.month}`}
-                accessible
-                accessibilityLabel={`${monthName(m.month)}, ${money(m.totalMinor)}`}
-              >
-                <Text style={styles.monthName}>{monthName(m.month).slice(0, 3)}</Text>
-                <View style={styles.track}>
-                  <View
-                    style={[
-                      styles.fill,
-                      { width: `${Math.round((m.totalMinor / biggest) * 100)}%` },
-                    ]}
-                  />
+            <SectionTitle>{copy.months}</SectionTitle>
+            <View style={styles.panel}>
+              {report.months.map((m) => (
+                <View
+                  key={m.month}
+                  style={styles.monthRow}
+                  testID={`${YEAR_MONTH_TEST_ID_PREFIX}-${m.month}`}
+                  accessible
+                  accessibilityLabel={`${monthName(m.month)}, ${money(m.totalMinor)}`}
+                >
+                  <Text style={styles.monthName}>{monthName(m.month).slice(0, 3)}</Text>
+                  <View style={styles.track}>
+                    <View
+                      style={[
+                        styles.fill,
+                        { width: `${Math.round((m.totalMinor / biggest) * 100)}%` },
+                      ]}
+                    />
+                  </View>
+                  <Text style={[styles.monthAmount, m.totalMinor === 0 ? styles.zero : null]}>
+                    {money(m.totalMinor)}
+                  </Text>
                 </View>
-                <Text style={styles.monthAmount}>{money(m.totalMinor)}</Text>
-              </View>
-            ))}
+              ))}
+            </View>
 
-            <Text style={styles.heading}>{copy.categories}</Text>
-            {report.categories.map((c) => (
-              <View key={c.id ?? c.name} style={styles.monthRow}>
-                <View style={[styles.dot, { backgroundColor: c.color }]} />
-                <Text style={styles.catName} numberOfLines={1}>
-                  {c.name}
-                </Text>
-                <Text style={styles.monthAmount}>
-                  {money(c.totalMinor)} · {Math.round(c.share * 100)}%
-                </Text>
-              </View>
-            ))}
+            <SectionTitle>{copy.categories}</SectionTitle>
+            <View style={styles.panel}>
+              {report.categories.map((c) => (
+                <View key={c.id ?? c.name} style={styles.catBlock}>
+                  <View style={styles.monthRow}>
+                    <View style={[styles.dot, { backgroundColor: c.color }]} />
+                    <Text style={styles.catName} numberOfLines={1}>
+                      {c.name}
+                    </Text>
+                    <Text style={styles.monthAmount}>
+                      {money(c.totalMinor)} · {Math.round(c.share * 100)}%
+                    </Text>
+                  </View>
+                  <View style={styles.track}>
+                    <View
+                      style={[
+                        styles.fill,
+                        { width: `${Math.round(c.share * 100)}%`, backgroundColor: c.color },
+                      ]}
+                    />
+                  </View>
+                </View>
+              ))}
+            </View>
 
-            <Button
-              label={copy.share}
-              onPress={() => void share()}
-              busy={sharing}
-              fullWidth
-              testID={YEAR_SHARE_TEST_ID}
-            />
+            <View style={styles.shareWrap}>
+              <Button
+                label={copy.share}
+                onPress={() => void share()}
+                busy={sharing}
+                fullWidth
+                testID={YEAR_SHARE_TEST_ID}
+              />
+            </View>
           </>
         )}
       </ScrollView>
@@ -213,18 +239,40 @@ const useStyles = createStyles((color) =>
       gap: space[3],
     },
     year: { ...type.title1, color: color.text.primary },
-    content: { padding: space[4], gap: space[2] },
+    content: { paddingBottom: space[8] },
     empty: { ...type.body, color: color.text.secondary, textAlign: 'center', padding: space[6] },
+    hero: {
+      marginHorizontal: space[4],
+      marginTop: space[2],
+      padding: space[4],
+      gap: space[2],
+      borderRadius: radius.lg + 4,
+      backgroundColor: color.bg.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: color.border.hairline,
+      ...elevation[1],
+    },
     facts: { flexDirection: 'row', flexWrap: 'wrap', gap: space[3] },
     fact: { minWidth: '45%', flexGrow: 1 },
     factLabel: { ...type.footnote, color: color.text.secondary },
     factValue: { ...type.title1, color: color.text.primary },
+    panel: {
+      marginHorizontal: space[4],
+      paddingVertical: space[2],
+      paddingHorizontal: space[4],
+      borderRadius: radius.lg,
+      backgroundColor: color.bg.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: color.border.hairline,
+    },
+    catBlock: { gap: space[1], paddingVertical: space[2] },
+    shareWrap: { padding: space[4], paddingTop: space[6] },
+    zero: { color: color.text.tertiary },
     note: { ...type.callout, color: color.text.secondary },
-    heading: { ...type.headline, color: color.text.primary, marginTop: space[3] },
     monthRow: { flexDirection: 'row', alignItems: 'center', gap: space[2], minHeight: 28 },
     monthName: { ...type.footnote, color: color.text.secondary, width: 36 },
     track: { flex: 1, height: 8, borderRadius: radius.pill, backgroundColor: color.bg.sunken },
-    fill: { height: 8, borderRadius: radius.pill, backgroundColor: color.text.primary },
+    fill: { height: 8, borderRadius: radius.pill, backgroundColor: color.primary.default },
     monthAmount: { ...type.footnote, color: color.text.primary, minWidth: 84, textAlign: 'right' },
     dot: { width: 10, height: 10, borderRadius: 5 },
     catName: { ...type.body, color: color.text.primary, flex: 1 },

@@ -6,6 +6,7 @@ import { LIMITS } from '@expense-tracker/shared';
 import { presentCurrencyChangeError } from '@/account/accountErrors';
 import { useApiClient } from '@/bootstrap/AppProviders';
 import { Button } from '@/components/Button';
+import { Card } from '@/components/Card';
 import { Dialog } from '@/components/Dialog';
 import { FormBanner } from '@/components/FormBanner';
 import { FormScreen } from '@/components/FormScreen';
@@ -157,18 +158,26 @@ export default function ChangeCurrencyScreen() {
     >
       <Text style={styles.hint}>{COPY.currencyChange.intro}</Text>
 
-      <Row
-        testID={CURRENCY_PICK_TEST_ID}
-        onPress={() => setPicking(true)}
-        chevron
-        lastInGroup
-        accessibilityLabel={`${COPY.currencyChange.to}, ${
-          chosen === null ? COPY.currencyChange.pick : currencyLabel(chosen)
-        }`}
-        trailing={<Text style={styles.value}>{chosen ?? COPY.currencyChange.pick}</Text>}
-      >
-        <RowTitle>{COPY.currencyChange.to}</RowTitle>
-      </Row>
+      <Card inset={false}>
+        <Row
+          accessibilityLabel={`${COPY.currencyChange.from}, ${current ?? ''}`}
+          trailing={<Text style={styles.value}>{current ?? ''}</Text>}
+        >
+          <RowTitle>{COPY.currencyChange.from}</RowTitle>
+        </Row>
+        <Row
+          testID={CURRENCY_PICK_TEST_ID}
+          onPress={() => setPicking(true)}
+          chevron
+          lastInGroup
+          accessibilityLabel={`${COPY.currencyChange.to}, ${
+            chosen === null ? COPY.currencyChange.pick : currencyLabel(chosen)
+          }`}
+          trailing={<Text style={styles.value}>{chosen ?? COPY.currencyChange.pick}</Text>}
+        >
+          <RowTitle>{COPY.currencyChange.to}</RowTitle>
+        </Row>
+      </Card>
       {errors.currency === undefined ? null : <Text style={styles.error}>{errors.currency}</Text>}
 
       {chosen === null || current === null ? null : (

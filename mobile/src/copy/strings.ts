@@ -136,6 +136,7 @@ export const COPY = {
       open: 'Search expenses',
       close: 'Close search',
       placeholder: 'Search notes and categories',
+      prompt: 'Type a word, pick a category, or open Filters for amounts and dates.',
       clear: 'Clear search',
       allCategories: 'All categories',
       /** Filter chip: only the expenses you kept private (households only). */
@@ -808,7 +809,7 @@ export const COPY = {
     logEmpty: 'Nothing read yet.',
     ignored: 'Not a payment',
     unsupported: 'Payment detection is only available on Android.',
-    alerts: 'Notify me when a payment is spotted',
+    alerts: 'Alert me to new payments',
     alertsHint:
       'A notification, so you can add it without opening the app first. It can be wrong; the app does the careful reading.',
     alertTitle: 'Possible payment detected',
