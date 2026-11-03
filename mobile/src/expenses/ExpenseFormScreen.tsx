@@ -82,6 +82,8 @@ import { useExchangeRate } from './useExchangeRate';
 import { DateSheet } from './DateSheet';
 import { Keypad } from './Keypad';
 import { NoteSheet } from './NoteSheet';
+import { SplitSheet } from './SplitSheet';
+import type { SplitPart } from './splitModel';
 import { RateSheet } from './RateSheet';
 import { hasEdits, saveState } from './formModel';
 import { getReceiptPicker, type PickOutcome } from '../receipts/receiptPicker';
@@ -141,6 +143,7 @@ export const DELETE_TEST_ID = 'expense-delete';
 export const CATEGORY_ROW_TEST_ID = 'expense-category-row';
 export const DATE_ROW_TEST_ID = 'expense-date-row';
 export const NOTE_ROW_TEST_ID = 'expense-note-row';
+export const SPLIT_ROW_TEST_ID = 'expense-split-row';
 export const NOT_FOUND_TEST_ID = 'expense-not-found';
 
 /** Which sheet or dialog is up. One at a time; a sheet over a sheet has no spec. */
@@ -154,6 +157,7 @@ type Overlay =
   | 'currency'
   | 'rate'
   | 'paidBy'
+  | 'split'
   | 'discard';
 
 /**
@@ -203,6 +207,8 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
   const [overlay, setOverlay] = useState<Overlay>('none');
   // Once the person has chosen a category themselves, a note never moves it.
   const [categoryChosen, setCategoryChosen] = useState(false);
+  // One amount divided between categories: saved as one entry per part (`29-split-expense.md`).
+  const [split, setSplit] = useState<readonly SplitPart[] | null>(null);
   // The number keypad is closed until the amount is tapped (`docs/design/06-expense-form.md` rule 1), so the
   // fields are what you see first; Done closes it, and so does opening any sheet.
   const [keypadOpen, setKeypadOpen] = useState(false);
@@ -437,6 +443,16 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
         : hasReceipt(storedReceipt);
   const receiptDirty = receiptChange.kind !== 'unchanged';
 
+  // A split describes one total; change the total and the parts no longer add up, so the split goes.
+  useEffect(() => {
+    if (
+      split !== null &&
+      split.reduce((sum, part) => sum + part.amountMinor, 0) !== amount.amountMinor
+    ) {
+      setSplit(null);
+    }
+  }, [split, amount.amountMinor]);
+
   const save = useMemo(
     () =>
       live === null
@@ -505,22 +521,37 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
       return;
     }
 
+    // One entry as typed, or one per part of a split (same day, note and kind; the receipt goes with the first).
+    const wanted =
+      split === null
+        ? [{ categoryId: live.categoryId, amountMinor: live.amountMinor }]
+        : split.map((part) => ({ categoryId: part.categoryId, amountMinor: part.amountMinor }));
     await localWrite(async (db) => {
-      const queued = await createExpense(db, {
-        categoryId: live.categoryId,
-        kind: live.kind,
-        amountMinor: live.amountMinor,
-        currency: live.currency,
-        originalAmountMinor: live.originalAmountMinor,
-        originalCurrency: live.originalCurrency,
-        date: live.date,
-        note: live.note,
-        private: live.private ?? false,
-        paidBy: live.paidBy ?? null,
-      });
-      await applyReceiptChange(db, queued.recordId, receiptChange);
-      if (capture !== null) await markAdded(db, capture.id, queued.recordId);
+      let first = true;
+      for (const part of wanted) {
+        const queued = await createExpense(db, {
+          categoryId: part.categoryId,
+          kind: live.kind,
+          amountMinor: part.amountMinor,
+          currency: live.currency,
+          originalAmountMinor: live.originalAmountMinor,
+          originalCurrency: live.originalCurrency,
+          date: live.date,
+          note: live.note,
+          private: live.private ?? false,
+          paidBy: live.paidBy ?? null,
+        });
+        if (first) {
+          await applyReceiptChange(db, queued.recordId, receiptChange);
+          if (capture !== null) await markAdded(db, capture.id, queued.recordId);
+          first = false;
+        }
+      }
     });
+    const savedMessage =
+      split === null
+        ? SNACK_COPY.expense.saved
+        : COPY.split.saved.replace('{count}', String(split.length));
     savedHaptic();
     router.back();
 
@@ -528,8 +559,8 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
     // because the row will not be in the list the user returns to.
     const savedMonth = monthKeyOf(live.date);
     if (savedMonth === selectedMonth) {
-      showSnackbar({ message: SNACK_COPY.expense.saved });
-      AccessibilityInfo.announceForAccessibility(SNACK_COPY.expense.saved);
+      showSnackbar({ message: savedMessage });
+      AccessibilityInfo.announceForAccessibility(savedMessage);
       return;
     }
 
@@ -546,6 +577,7 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
     expenseId,
     receiptChange,
     capture,
+    split,
     localWrite,
     router,
     showSnackbar,
@@ -926,6 +958,25 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
                 <RowTitle>{COPY.form.field.category}</RowTitle>
               </Row>
 
+              {!isEdit && !foreign && live.amountMinor > 0 && liveCategories.length >= 2 ? (
+                <Row
+                  testID={SPLIT_ROW_TEST_ID}
+                  onPress={() => setOverlay('split')}
+                  chevron
+                  leading={<Feather name="scissors" size={20} color={color.text.tertiary} />}
+                  trailing={
+                    split === null ? null : (
+                      <Text style={styles.valueText}>
+                        {COPY.split.rowValue.replace('{count}', String(split.length))}
+                      </Text>
+                    )
+                  }
+                  accessibilityLabel={`${COPY.split.row}. ${COPY.split.rowHint}`}
+                >
+                  <RowTitle>{COPY.split.row}</RowTitle>
+                </Row>
+              ) : null}
+
               {inHousehold && live.private !== true ? (
                 <Row
                   testID="form-paid-by"
@@ -1124,6 +1175,19 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
           setDraft((current) => (current === null ? current : { ...current, date }));
           setOverlay('none');
         }}
+      />
+
+      <SplitSheet
+        visible={overlay === 'split'}
+        onClose={() => setOverlay('none')}
+        totalMinor={live?.amountMinor ?? 0}
+        currency={currencyCode ?? ''}
+        decimals={homeDecimals}
+        categories={liveCategories.map((c) => ({ id: c.id, name: c.name }))}
+        current={split}
+        firstCategoryId={live?.categoryId ?? null}
+        onApply={setSplit}
+        onClear={() => setSplit(null)}
       />
 
       <NoteSheet
