@@ -31,7 +31,7 @@ import {
 
 jest.mock('expo-router');
 
-const native = {
+const mockNative = {
   supported: true,
   enabled: false,
   opened: 0,
@@ -39,14 +39,14 @@ const native = {
   setAlerts: jest.fn(),
 };
 jest.mock('@/capture/native', () => ({
-  paymentNotificationsSupported: () => native.supported,
-  paymentNotificationsEnabled: () => native.enabled,
+  paymentNotificationsSupported: () => mockNative.supported,
+  paymentNotificationsEnabled: () => mockNative.enabled,
   openPaymentNotificationSettings: () => {
-    native.opened += 1;
+    mockNative.opened += 1;
   },
   drainPaymentNotifications: () => [],
-  paymentAlertsEnabled: () => native.alerts,
-  setPaymentAlerts: (...args: unknown[]) => native.setAlerts(...args),
+  paymentAlertsEnabled: () => mockNative.alerts,
+  setPaymentAlerts: (...args: unknown[]) => mockNative.setAlerts(...args),
 }));
 
 const MOMO = 'com.mservice.momotransfer';
@@ -75,11 +75,11 @@ async function seed(database: SqliteDatabase): Promise<void> {
 beforeEach(() => {
   resetRouter();
   clearCapture();
-  native.supported = true;
-  native.enabled = false;
-  native.opened = 0;
-  native.alerts = false;
-  native.setAlerts.mockClear();
+  mockNative.supported = true;
+  mockNative.enabled = false;
+  mockNative.opened = 0;
+  mockNative.alerts = false;
+  mockNative.setAlerts.mockClear();
 });
 
 describe('the Payment detection screen', () => {
@@ -90,11 +90,11 @@ describe('the Payment detection screen', () => {
       COPY.paymentDetection.statusOff,
     );
     await userEvent.press(screen.getByTestId(DETECTION_TURN_ON_TEST_ID));
-    expect(native.opened).toBe(1);
+    expect(mockNative.opened).toBe(1);
   });
 
   it('shows no switch once it is on', async () => {
-    native.enabled = true;
+    mockNative.enabled = true;
     await mountScreen(<PaymentDetectionScreen />, { clock: () => NOW, seed });
 
     expect(screen.getByTestId(DETECTION_STATUS_TEST_ID).props.children).toBe(
@@ -104,7 +104,7 @@ describe('the Payment detection screen', () => {
   });
 
   it('says it is Android only where the service does not exist', async () => {
-    native.supported = false;
+    mockNative.supported = false;
     await mountScreen(<PaymentDetectionScreen />, { clock: () => NOW, seed });
 
     expect(screen.getByText(COPY.paymentDetection.unsupported)).toBeTruthy();
@@ -183,13 +183,13 @@ describe('the heads-up', () => {
 
     await userEvent.press(screen.getByTestId(DETECTION_ALERTS_TEST_ID));
 
-    expect(native.setAlerts).toHaveBeenCalledWith(
+    expect(mockNative.setAlerts).toHaveBeenCalledWith(
       true,
       COPY.paymentDetection.alertTitle,
       COPY.paymentDetection.alertBody,
     );
     await userEvent.press(screen.getByTestId(DETECTION_ALERTS_TEST_ID));
-    expect(native.setAlerts).toHaveBeenLastCalledWith(
+    expect(mockNative.setAlerts).toHaveBeenLastCalledWith(
       false,
       expect.any(String),
       expect.any(String),
@@ -197,7 +197,7 @@ describe('the heads-up', () => {
   });
 
   it('shows no switch where there is no service', async () => {
-    native.supported = false;
+    mockNative.supported = false;
     await mountScreen(<PaymentDetectionScreen />, { clock: () => NOW, seed });
     expect(screen.queryByTestId(DETECTION_ALERTS_TEST_ID)).toBeNull();
   });
