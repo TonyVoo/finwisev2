@@ -3,7 +3,16 @@ import { Redirect, Stack } from 'expo-router';
 import { useSession } from '@/auth/SessionProvider';
 import { useReadCapturedNotifications } from '@/capture/hooks';
 import { paymentNotificationsSupported } from '@/capture/native';
+import { useSelectedMonth } from '@/month/MonthProvider';
+import { homeWidgetSupported } from '@/widget/native';
+import { useWidgetSync } from '@/widget/useWidgetSync';
 import { ResyncOverlay } from '@/sync/ResyncOverlay';
+
+/** Keeps the home-screen widget's number current (Android; nothing elsewhere). */
+function HomeWidgetSync() {
+  useWidgetSync(useSelectedMonth().today);
+  return null;
+}
 
 /** Brings in what MoMo and ZaloPay notified while the app was closed (Android; nothing elsewhere). */
 function PaymentCapture() {
@@ -45,6 +54,7 @@ export default function AppLayout() {
           database that is being rebuilt. */}
       <ResyncOverlay />
       {paymentNotificationsSupported() ? <PaymentCapture /> : null}
+      {homeWidgetSupported() ? <HomeWidgetSync /> : null}
     </View>
   );
 }

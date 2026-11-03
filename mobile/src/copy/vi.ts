@@ -633,6 +633,15 @@ export const VIETNAMESE_COPY: CopyBundle = {
       failed: 'Không xuất được các khoản chi của bạn. Hãy thử lại.',
     },
 
+    homeWidget: {
+      title: 'Thêm tiện ích ra màn hình chính',
+      hint: 'Tổng chi hôm nay và nút mở thêm khoản chi.',
+      today: 'Hôm nay',
+      add: 'Thêm',
+      unavailable:
+        'Màn hình chính của bạn không thêm được từ đây. Hãy nhấn giữ màn hình chính, chọn Tiện ích và tìm Expenses.',
+    },
+
     yearReport: {
       title: 'Tổng kết năm',
       hint: 'Theo từng tháng, tiền đi đâu, và so với năm trước.',

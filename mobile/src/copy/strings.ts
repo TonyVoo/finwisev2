@@ -700,6 +700,15 @@ export const COPY = {
     failed: 'Could not export your expenses. Try again.',
   },
 
+  homeWidget: {
+    title: 'Add a home-screen widget',
+    hint: 'Today’s total and a button that opens Add expense.',
+    today: 'Today',
+    add: 'Add',
+    unavailable:
+      'Your launcher cannot add it from here. Long-press the home screen, choose Widgets and look for Expenses.',
+  },
+
   yearReport: {
     title: 'Year in review',
     hint: 'Month by month, where it went, and how it compares with last year.',

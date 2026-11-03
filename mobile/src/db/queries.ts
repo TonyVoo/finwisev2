@@ -549,6 +549,16 @@ export async function monthlyTotals(
   return rows.map((row) => ({ month: row.ym, totalMinor: row.total }));
 }
 
+/** Live spending on one calendar day (`YYYY-MM-DD`): the home-screen widget's number. Income is not spending. */
+export async function daySpendTotal(database: SqliteDatabase, date: string): Promise<number> {
+  const row = await database.getFirstAsync<{ total: number | null }>(
+    `SELECT SUM(e.amountMinor) AS total FROM expenses e
+      WHERE e.deletedAt IS NULL AND ${SPEND} AND e.date = ?`,
+    [date],
+  );
+  return row?.total ?? 0;
+}
+
 /** Live income per calendar month across `[fromMonth, toMonth]`; absent months are zero. */
 export async function monthlyIncomeTotals(
   database: SqliteDatabase,

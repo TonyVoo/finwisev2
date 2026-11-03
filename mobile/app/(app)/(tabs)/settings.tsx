@@ -11,6 +11,7 @@ import { IconBadge } from '@/components/IconBadge';
 import { Row, RowSubtitle, RowTitle } from '@/components/Row';
 import { planDefaultRenames } from '@/categories/renameDefaults';
 import { paymentNotificationsSupported } from '@/capture/native';
+import { homeWidgetSupported, requestHomeWidgetPin } from '@/widget/native';
 import { useSuggestionCount } from '@/capture/hooks';
 import { COPY, SNACK_COPY } from '@/copy/strings';
 import { useDatabase } from '@/db/DatabaseProvider';
@@ -279,6 +280,20 @@ export default function SettingsScreen() {
           <RowTitle>{COPY.settings.goals}</RowTitle>
           <RowSubtitle lines={2}>{COPY.settings.goalsHint}</RowSubtitle>
         </Row>
+
+        {homeWidgetSupported() ? (
+          <Row
+            testID="settings-home-widget"
+            leading={<IconBadge name="plus-square" />}
+            onPress={() => {
+              if (!requestHomeWidgetPin()) showSnackbar({ message: COPY.homeWidget.unavailable });
+            }}
+            accessibilityLabel={`${COPY.homeWidget.title}. ${COPY.homeWidget.hint}`}
+          >
+            <RowTitle>{COPY.homeWidget.title}</RowTitle>
+            <RowSubtitle lines={2}>{COPY.homeWidget.hint}</RowSubtitle>
+          </Row>
+        ) : null}
 
         {paymentNotificationsSupported() ? (
           <Row
