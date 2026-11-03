@@ -719,6 +719,16 @@ export const COPY = {
     failed: 'Could not export your expenses. Try again.',
   },
 
+  recurringSuggestions: {
+    title: 'Looks recurring',
+    hint: 'You have paid these every month. Make one a rule and it is added for you.',
+    line: '{amount} · around day {day} each month',
+    seen: 'paid {count} months in a row',
+    add: 'Add rule',
+    dismiss: 'Not now',
+    added: 'Rule added.',
+  },
+
   monthlyLimit: {
     title: 'Monthly spending limit',
     hint: 'One limit for the whole month. Home shows what is safe to spend today.',

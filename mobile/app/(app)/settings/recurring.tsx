@@ -1,6 +1,9 @@
 import { EmptyIcon } from '@/components/EmptyIcon';
 import { useCallback, useState } from 'react';
-import { CardRow } from '@/components/Card';
+import { CardRow, SectionTitle } from '@/components/Card';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { dismissSuggestion, loadSuggestions } from '@/recurring/suggestions';
+import { SuggestionCard } from '@/recurring/SuggestionCard';
 import { AccessibilityInfo, FlatList, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AppBar, Fab, IconButton, PendingGlyph } from '@/components/Chrome';
@@ -22,6 +25,7 @@ import type { RecurringListItem } from '@/db/queries';
 import { useSelectedMonth } from '@/month/MonthProvider';
 import { requestReminderPermission, syncBillReminders } from '@/notifications/billReminders';
 import { generateDueRecurring } from '@/recurring/generate';
+import type { RecurringSuggestion } from '@/recurring/detectRecurring';
 import { RecurringFormSheet } from '@/recurring/RecurringFormSheet';
 import { recurringNextLabel, recurringSummary, recurringTitle } from '@/recurring/recurringModel';
 import { size, space, type } from '@/theme/tokens';
@@ -52,6 +56,13 @@ export default function RecurringScreen() {
   const currency = useUserCurrency().data ?? 'USD';
 
   const database = useDatabase();
+  const queryClient = useQueryClient();
+  // Payments that repeat every month in the person's own history and have no rule yet.
+  const suggestions =
+    useQuery({
+      queryKey: ['local', 'recurring', 'suggestions', today] as const,
+      queryFn: () => loadSuggestions(database, today),
+    }).data ?? [];
   const [editing, setEditing] = useState<RecurringListItem | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<RecurringListItem | null>(null);
@@ -78,6 +89,27 @@ export default function RecurringScreen() {
       showSnackbar({ message: SNACK_COPY.recurring.saved });
     },
     [editing, currency, localWrite, showSnackbar, database],
+  );
+
+  const addSuggested = useCallback(
+    async (suggestion: RecurringSuggestion) => {
+      await localWrite(async (db) => {
+        await createRecurring(db, {
+          categoryId: suggestion.categoryId,
+          amountMinor: suggestion.amountMinor,
+          currency: suggestion.currency,
+          note: suggestion.note,
+          frequency: 'monthly',
+          // The next payment: the history already holds the earlier ones, so nothing is back-filled.
+          startDate: suggestion.nextDate,
+          endDate: null,
+        });
+        await generateDueRecurring(db);
+      });
+      await queryClient.invalidateQueries({ queryKey: ['local', 'recurring'] });
+      showSnackbar({ message: COPY.recurringSuggestions.added });
+    },
+    [localWrite, queryClient, showSnackbar],
   );
 
   const confirmDelete = useCallback(async () => {
@@ -151,6 +183,31 @@ export default function RecurringScreen() {
             </SwipeToDelete>
           </CardRow>
         )}
+        ListHeaderComponent={
+          suggestions.length === 0 ? null : (
+            <View style={styles.suggestions} testID="recurring-suggestions">
+              <SectionTitle>{COPY.recurringSuggestions.title}</SectionTitle>
+              <Text style={styles.suggestionsHint}>{COPY.recurringSuggestions.hint}</Text>
+              {suggestions.map((suggestion, index) => (
+                <SuggestionCard
+                  key={suggestion.key}
+                  index={index}
+                  suggestion={suggestion}
+                  categoryName={
+                    categories.data?.find((c) => c.id === suggestion.categoryId)?.name ??
+                    fallbackName
+                  }
+                  onAdd={() => void addSuggested(suggestion)}
+                  onDismiss={() =>
+                    void dismissSuggestion(database, suggestion.key).then(() =>
+                      queryClient.invalidateQueries({ queryKey: ['local', 'recurring'] }),
+                    )
+                  }
+                />
+              ))}
+            </View>
+          )
+        }
         ListEmptyComponent={
           rules.isPending ? null : (
             <View style={styles.empty} testID="recurring-empty">
@@ -206,6 +263,8 @@ export default function RecurringScreen() {
 const useStyles = createStyles((color) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: color.bg.canvas },
+    suggestions: { gap: space[2], paddingBottom: space[3] },
+    suggestionsHint: { ...type.footnote, color: color.text.secondary, marginHorizontal: space[5] },
     list: { paddingTop: space[3], paddingBottom: size.fab + space[4] + space[4] },
     empty: { padding: space[6], gap: space[2], alignItems: 'center' },
     emptyHeadline: { ...type.title1, color: color.text.primary, textAlign: 'center' },

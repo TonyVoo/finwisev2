@@ -652,6 +652,16 @@ export const VIETNAMESE_COPY: CopyBundle = {
       failed: 'Không xuất được các khoản chi của bạn. Hãy thử lại.',
     },
 
+    recurringSuggestions: {
+      title: 'Có vẻ định kỳ',
+      hint: 'Bạn đã trả các khoản này mỗi tháng. Tạo thành quy tắc để chúng được thêm tự động.',
+      line: '{amount} · khoảng ngày {day} hằng tháng',
+      seen: 'đã trả {count} tháng liên tiếp',
+      add: 'Thêm quy tắc',
+      dismiss: 'Để sau',
+      added: 'Đã thêm quy tắc.',
+    },
+
     monthlyLimit: {
       title: 'Hạn mức chi tiêu hàng tháng',
       hint: 'Một hạn mức cho cả tháng. Màn hình chính cho biết hôm nay chi bao nhiêu là an toàn.',
