@@ -209,7 +209,7 @@ export default function HouseholdsScreen() {
 const useStyles = createStyles((color) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: color.bg.canvas },
-    content: { paddingBottom: space[8] },
+    content: { paddingTop: space[3], paddingBottom: space[8] },
     centered: { padding: space[6], gap: space[3], alignItems: 'center' },
     headline: { ...type.title1, color: color.text.primary, textAlign: 'center' },
     body: { ...type.body, color: color.text.secondary, textAlign: 'center' },

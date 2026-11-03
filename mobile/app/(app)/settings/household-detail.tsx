@@ -20,7 +20,7 @@ import { useBalances } from '@/household/useBalances';
 import { householdErrorMessage, useHousehold, useHouseholdActions } from '@/household/useHousehold';
 import { savedHaptic, warnHaptic } from '@/lib/haptics';
 import { formatMoney } from '@/lib/money';
-import { space, type } from '@/theme/tokens';
+import { radius, space, type } from '@/theme/tokens';
 import { createStyles } from '@/theme/ThemeProvider';
 
 /**
@@ -225,9 +225,12 @@ export default function HouseholdDetailScreen() {
 
             <View style={styles.actions}>
               {active?.kind === 'household' && active.householdId === data.id ? (
-                <Text style={styles.openNow} testID="household-open-now">
-                  {COPY.household.openNow}
-                </Text>
+                <View style={styles.openNowCard}>
+                  <View style={styles.dot} />
+                  <Text style={styles.openNow} testID="household-open-now">
+                    {COPY.household.openNow}
+                  </Text>
+                </View>
               ) : (
                 <Button
                   label={COPY.household.switchTo}
@@ -260,22 +263,26 @@ export default function HouseholdDetailScreen() {
                     fullWidth
                     testID="household-rename"
                   />
-                  <Button
-                    label={COPY.household.delete.action}
-                    variant="destructive"
-                    onPress={() => setConfirming({ kind: 'delete' })}
-                    fullWidth
-                    testID="household-delete"
-                  />
+                  <View style={styles.danger}>
+                    <Button
+                      label={COPY.household.delete.action}
+                      variant="destructive"
+                      onPress={() => setConfirming({ kind: 'delete' })}
+                      fullWidth
+                      testID="household-delete"
+                    />
+                  </View>
                 </>
               ) : (
-                <Button
-                  label={COPY.household.leave.action}
-                  variant="destructive"
-                  onPress={() => setConfirming({ kind: 'leave' })}
-                  fullWidth
-                  testID="household-leave"
-                />
+                <View style={styles.danger}>
+                  <Button
+                    label={COPY.household.leave.action}
+                    variant="destructive"
+                    onPress={() => setConfirming({ kind: 'leave' })}
+                    fullWidth
+                    testID="household-leave"
+                  />
+                </View>
               )}
             </View>
           </>
@@ -381,14 +388,32 @@ const useStyles = createStyles((color) =>
     headline: { ...type.title1, color: color.text.primary, textAlign: 'center' },
     body: { ...type.body, color: color.text.secondary, textAlign: 'center' },
     section: {
-      ...type.caption,
-      color: color.text.tertiary,
-      paddingHorizontal: space[4],
+      ...type.subhead,
+      color: color.text.secondary,
+      paddingHorizontal: space[5],
       paddingTop: space[4],
       paddingBottom: space[2],
     },
-    group: { backgroundColor: color.bg.surface },
-    actions: { alignSelf: 'stretch', gap: space[3], padding: space[4] },
-    openNow: { ...type.callout, color: color.text.secondary, textAlign: 'center' },
+    group: {
+      marginHorizontal: space[4],
+      borderRadius: radius.lg,
+      overflow: 'hidden',
+      backgroundColor: color.bg.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: color.border.hairline,
+    },
+    actions: { alignSelf: 'stretch', gap: space[3], padding: space[4], paddingTop: space[5] },
+    openNowCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: space[2],
+      padding: space[3],
+      borderRadius: radius.lg,
+      backgroundColor: color.success.subtle,
+    },
+    dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: color.success.default },
+    openNow: { ...type.callout, color: color.success.default },
+    danger: { marginTop: space[4] },
   }),
 );

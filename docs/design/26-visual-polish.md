@@ -49,3 +49,12 @@ Currency and Year in review.
 - **Change currency:** the current currency and the new one are one card, so what is changing is visible.
 - **Lists** (categories, goals, recurring) have a little air under the app bar.
 - `Card` takes `inset={false}` for screens that already pad their content (forms).
+
+## Fourth pass: households and the sheets
+
+- **Household detail:** members are a titled card; _Open now_ is a green status pill rather than a bare line; the destructive
+  action (_Delete household_ / _Leave_) sits apart from the others instead of directly under _Rename_. The household list
+  has air under the app bar.
+- **Sheets (new category, new goal):** looked at on a device and left as they are. With the keyboard open the new-category
+  sheet is taller than the space above the keyboard, so _Create_ sits at the bottom of a scrolling area (it scrolls; the
+  sheet does not clip it away). Shortening that sheet is a possible follow-up.
