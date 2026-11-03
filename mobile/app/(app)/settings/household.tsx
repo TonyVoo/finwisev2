@@ -18,7 +18,7 @@ import {
 } from '@/household/useHousehold';
 import { useSpaces } from '@/household/useSpaces';
 import { savedHaptic, warnHaptic } from '@/lib/haptics';
-import { space, type } from '@/theme/tokens';
+import { radius, space, type } from '@/theme/tokens';
 import { createStyles } from '@/theme/ThemeProvider';
 
 /**
@@ -213,7 +213,14 @@ const useStyles = createStyles((color) =>
     centered: { padding: space[6], gap: space[3], alignItems: 'center' },
     headline: { ...type.title1, color: color.text.primary, textAlign: 'center' },
     body: { ...type.body, color: color.text.secondary, textAlign: 'center' },
-    group: { backgroundColor: color.bg.surface },
+    group: {
+      marginHorizontal: space[4],
+      borderRadius: radius.lg,
+      overflow: 'hidden',
+      backgroundColor: color.bg.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: color.border.hairline,
+    },
     actions: { alignSelf: 'stretch', gap: space[3], padding: space[4] },
   }),
 );

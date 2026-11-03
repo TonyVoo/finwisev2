@@ -5,7 +5,7 @@ import { formatMoney } from '../lib/money';
 import { useReduceMotion } from '../lib/useReduceMotion';
 import { useCountUp } from './useCountUp';
 import { SpendSparkline } from './SpendSparkline';
-import { space, type } from '../theme/tokens';
+import { elevation, radius, space, type } from '../theme/tokens';
 import { createStyles } from '../theme/ThemeProvider';
 
 /**
@@ -156,16 +156,23 @@ export function MonthTotal({
 
 const useStyles = createStyles((color) =>
   StyleSheet.create({
+    // A card of its own rather than a band across the screen: the figure is what the screen is for.
     block: {
       backgroundColor: color.bg.surface,
+      marginHorizontal: space[4],
+      marginVertical: space[2],
       paddingHorizontal: space[4],
       paddingTop: space[3],
       paddingBottom: space[4],
       gap: space[1],
+      borderRadius: radius.lg + 4,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: color.border.hairline,
+      ...elevation[1],
     },
     label: {
-      ...type.caption,
-      color: color.text.tertiary,
+      ...type.subhead,
+      color: color.text.secondary,
     },
     amount: {
       ...type.display,

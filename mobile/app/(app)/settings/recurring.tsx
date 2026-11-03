@@ -1,5 +1,6 @@
 import { EmptyIcon } from '@/components/EmptyIcon';
 import { useCallback, useState } from 'react';
+import { CardRow } from '@/components/Card';
 import { AccessibilityInfo, FlatList, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AppBar, Fab, IconButton, PendingGlyph } from '@/components/Chrome';
@@ -108,45 +109,47 @@ export default function RecurringScreen() {
         keyExtractor={(rule) => rule.id}
         contentContainerStyle={styles.list}
         renderItem={({ item, index }) => (
-          <SwipeToDelete
-            onDelete={() => setPendingDelete(item)}
-            actionLabel={COPY.common.delete}
-            testID={`recurring-swipe-${item.id}`}
-          >
-            <Row
-              testID={`${RECURRING_ROW_TEST_ID_PREFIX}-${item.id}`}
-              onPress={() => {
-                setEditing(item);
-                setSheetOpen(true);
-              }}
-              chevron
-              lastInGroup={index === rows.length - 1}
-              leading={
-                <Swatch
-                  colorHex={item.categoryColor ?? color.text.tertiary}
-                  name={item.categoryName ?? undefined}
-                />
-              }
-              accessibilityLabel={`${recurringTitle(item, fallbackName)}, ${recurringSummary(item)}, ${recurringNextLabel(item, today)}`}
-              accessibilityHint={COPY.a11y.editRecurring}
-              accessibilityActions={[
-                {
-                  name: 'delete',
-                  label: COPY.a11y.deleteNamed.replace(
-                    '{name}',
-                    recurringTitle(item, fallbackName),
-                  ),
-                },
-              ]}
-              onAccessibilityAction={(event) => {
-                if (event.nativeEvent.actionName === 'delete') setPendingDelete(item);
-              }}
-              trailing={item.pending ? <PendingGlyph /> : null}
+          <CardRow index={index} count={rows.length}>
+            <SwipeToDelete
+              onDelete={() => setPendingDelete(item)}
+              actionLabel={COPY.common.delete}
+              testID={`recurring-swipe-${item.id}`}
             >
-              <RowTitle>{recurringTitle(item, fallbackName)}</RowTitle>
-              <RowSubtitle>{`${recurringSummary(item)} · ${recurringNextLabel(item, today)}`}</RowSubtitle>
-            </Row>
-          </SwipeToDelete>
+              <Row
+                testID={`${RECURRING_ROW_TEST_ID_PREFIX}-${item.id}`}
+                onPress={() => {
+                  setEditing(item);
+                  setSheetOpen(true);
+                }}
+                chevron
+                lastInGroup={index === rows.length - 1}
+                leading={
+                  <Swatch
+                    colorHex={item.categoryColor ?? color.text.tertiary}
+                    name={item.categoryName ?? undefined}
+                  />
+                }
+                accessibilityLabel={`${recurringTitle(item, fallbackName)}, ${recurringSummary(item)}, ${recurringNextLabel(item, today)}`}
+                accessibilityHint={COPY.a11y.editRecurring}
+                accessibilityActions={[
+                  {
+                    name: 'delete',
+                    label: COPY.a11y.deleteNamed.replace(
+                      '{name}',
+                      recurringTitle(item, fallbackName),
+                    ),
+                  },
+                ]}
+                onAccessibilityAction={(event) => {
+                  if (event.nativeEvent.actionName === 'delete') setPendingDelete(item);
+                }}
+                trailing={item.pending ? <PendingGlyph /> : null}
+              >
+                <RowTitle>{recurringTitle(item, fallbackName)}</RowTitle>
+                <RowSubtitle>{`${recurringSummary(item)} · ${recurringNextLabel(item, today)}`}</RowSubtitle>
+              </Row>
+            </SwipeToDelete>
+          </CardRow>
         )}
         ListEmptyComponent={
           rules.isPending ? null : (

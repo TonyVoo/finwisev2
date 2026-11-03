@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { Button } from '../components/Button';
 import { COPY } from '../copy/strings';
@@ -36,6 +37,8 @@ export function QuickAddLine({
   const styles = useStyles();
   const color = useColors();
   const { isDark } = useTheme();
+  // Where the sentence is read is worth a line - but only once someone is about to use it, not above every form.
+  const [focused, setFocused] = useState(false);
   return (
     <View style={styles.wrap}>
       <View style={styles.row}>
@@ -51,6 +54,8 @@ export function QuickAddLine({
           returnKeyType="done"
           onSubmitEditing={onFill}
           maxLength={300}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
         />
         <Button
           label={COPY.form.quickAdd.fill}
@@ -60,7 +65,7 @@ export function QuickAddLine({
           testID={QUICK_ADD_FILL_TEST_ID}
         />
       </View>
-      <Text style={styles.hint}>{hint}</Text>
+      {focused || value !== '' ? <Text style={styles.hint}>{hint}</Text> : null}
     </View>
   );
 }

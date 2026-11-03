@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Swatch } from '../components/Row';
 import { formatMoney } from '../lib/money';
-import { space, type } from '../theme/tokens';
+import { radius, space, type } from '../theme/tokens';
 import { createStyles } from '../theme/ThemeProvider';
 import { budgetLabel, legendRowLabel, type SpendEntry } from './summaryModel';
 
@@ -150,8 +150,14 @@ function LegendRow({
 
 const useStyles = createStyles((color) =>
   StyleSheet.create({
+    // A rounded card, like the total above and the insights below, rather than a band across the screen.
     legend: {
       backgroundColor: color.bg.surface,
+      marginHorizontal: space[4],
+      borderRadius: radius.lg,
+      overflow: 'hidden',
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: color.border.hairline,
     },
     row: {
       // A floor rather than a height: the row grows with the font scale (element 11).

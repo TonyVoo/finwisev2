@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { CardRow } from '@/components/Card';
 import { AccessibilityInfo, FlatList, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AppBar, Fab, IconButton, PendingGlyph, SkeletonBlock } from '@/components/Chrome';
@@ -183,15 +184,17 @@ export default function CategoriesScreen() {
         keyExtractor={(category) => category.id}
         contentContainerStyle={styles.list}
         renderItem={({ item, index }) => (
-          <CategoryRow
-            category={item}
-            lastInGroup={index === rows.length - 1}
-            onPress={() => {
-              setEditing(item);
-              setSheetOpen(true);
-            }}
-            onDelete={() => void askToDelete(item)}
-          />
+          <CardRow index={index} count={rows.length}>
+            <CategoryRow
+              category={item}
+              lastInGroup={index === rows.length - 1}
+              onPress={() => {
+                setEditing(item);
+                setSheetOpen(true);
+              }}
+              onDelete={() => void askToDelete(item)}
+            />
+          </CardRow>
         )}
         ListEmptyComponent={categories.isPending ? <ListSkeleton /> : null}
       />

@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AppBar } from '@/components/Chrome';
+import { Card } from '@/components/Card';
+import { IconBadge } from '@/components/IconBadge';
 import { Row, RowSubtitle, RowTitle } from '@/components/Row';
 import { COPY } from '@/copy/strings';
 import {
@@ -211,16 +213,20 @@ export default function SummaryScreen() {
         ) : null}
 
         {/* The whole year, one tap away from the month. */}
-        <Row
-          testID="summary-year"
-          onPress={() => router.push('/(app)/year')}
-          chevron
-          lastInGroup
-          accessibilityLabel={`${COPY.yearReport.title}. ${COPY.yearReport.hint}`}
-        >
-          <RowTitle>{COPY.yearReport.title}</RowTitle>
-          <RowSubtitle lines={2}>{COPY.yearReport.hint}</RowSubtitle>
-        </Row>
+        <View style={styles.yearGap} />
+        <Card>
+          <Row
+            testID="summary-year"
+            leading={<IconBadge name="calendar" />}
+            onPress={() => router.push('/(app)/year')}
+            chevron
+            lastInGroup
+            accessibilityLabel={`${COPY.yearReport.title}. ${COPY.yearReport.hint}`}
+          >
+            <RowTitle>{COPY.yearReport.title}</RowTitle>
+            <RowSubtitle lines={2}>{COPY.yearReport.hint}</RowSubtitle>
+          </Row>
+        </Card>
       </ScrollView>
     </View>
   );
@@ -232,6 +238,7 @@ const useStyles = createStyles((color) =>
       flex: 1,
       backgroundColor: color.bg.canvas,
     },
+    yearGap: { height: 16 },
     content: {
       // The legend is what scrolls when it is long (rule 7); nothing above it is cropped.
       flexGrow: 1,

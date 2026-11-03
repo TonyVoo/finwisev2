@@ -346,6 +346,13 @@ export const COPY = {
 
   settings: {
     title: 'Settings',
+    section: {
+      account: 'Account',
+      money: 'Money',
+      more: 'More',
+      app: 'App and data',
+      security: 'Security',
+    },
     email: 'Email',
     currency: 'Currency',
     currencyHint: 'Tap to change. Amounts are converted.',

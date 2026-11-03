@@ -1,4 +1,4 @@
-import { screen, userEvent, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, screen, userEvent, waitFor } from '@testing-library/react-native';
 import type { TransportRequest, TransportResponse } from '@/api/transport';
 import { COPY } from '@/copy/strings';
 import { resetQuickAddAvailabilityForTests } from '@/quickAdd/quickAddAvailability';
@@ -86,11 +86,16 @@ beforeEach(() => {
 });
 
 describe('the Describe it line', () => {
-  it('is on Add expense, says what it reads, and starts empty', async () => {
+  it('is on Add expense, starts empty, and says what it reads once it is used', async () => {
     await mountAdd();
 
     expect(screen.getByTestId(QUICK_ADD_INPUT_TEST_ID).props.value).toBe('');
     expect(screen.getByPlaceholderText(COPY.form.quickAdd.placeholder)).toBeTruthy();
+    // Not above every form: the line about where the sentence is read shows when the field is used.
+    expect(screen.queryByText(COPY.form.quickAdd.hint)).toBeNull();
+    await act(async () => {
+      fireEvent(screen.getByTestId(QUICK_ADD_INPUT_TEST_ID), 'focus');
+    });
     expect(screen.getByText(COPY.form.quickAdd.hint)).toBeTruthy();
     expect(COPY.form.quickAdd.hint).toMatch(/outside service/);
     expect(screen.getByLabelText(COPY.form.quickAdd.fill)).toBeTruthy();

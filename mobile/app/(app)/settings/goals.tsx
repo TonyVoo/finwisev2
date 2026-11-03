@@ -3,6 +3,7 @@ import { requestReminderPermission } from '@/notifications/billReminders';
 import { syncGoalReminders } from '@/notifications/goalReminders';
 import { EmptyIcon } from '@/components/EmptyIcon';
 import { useCallback, useState } from 'react';
+import { CardRow } from '@/components/Card';
 import { AccessibilityInfo, FlatList, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AppBar, Fab, IconButton, PendingGlyph } from '@/components/Chrome';
@@ -116,37 +117,39 @@ export default function GoalsScreen() {
           const progress = goalProgress(item.savedMinor, item.targetMinor);
           const status = goalStatus(item, today);
           return (
-            <SwipeToDelete
-              onDelete={() => setPendingDelete(item)}
-              actionLabel={COPY.common.delete}
-              testID={`goal-swipe-${item.id}`}
-            >
-              <Row
-                testID={`${GOAL_ROW_TEST_ID_PREFIX}-${item.id}`}
-                onPress={() => setDepositing(item)}
-                chevron
-                leading={<GoalBadge reached={progress.reached} />}
-                lastInGroup={index === rows.length - 1}
-                accessibilityLabel={`${item.name}, ${goalAmounts(item)}, ${progress.percent}%${status === null ? '' : `, ${status}`}`}
-                accessibilityHint={COPY.a11y.addToGoal}
-                accessibilityActions={[
-                  { name: 'delete', label: COPY.a11y.deleteNamed.replace('{name}', item.name) },
-                ]}
-                onAccessibilityAction={(event) => {
-                  if (event.nativeEvent.actionName === 'delete') setPendingDelete(item);
-                }}
-                trailing={item.pending ? <PendingGlyph /> : null}
+            <CardRow index={index} count={rows.length}>
+              <SwipeToDelete
+                onDelete={() => setPendingDelete(item)}
+                actionLabel={COPY.common.delete}
+                testID={`goal-swipe-${item.id}`}
               >
-                <RowTitle>{item.name}</RowTitle>
-                <RowSubtitle>{`${goalAmounts(item)} · ${progress.percent}%`}</RowSubtitle>
-                <GoalBar
-                  fill={progress.fill}
-                  reached={progress.reached}
-                  testID={`${GOAL_PROGRESS_TEST_ID_PREFIX}-${item.id}`}
-                />
-                {status === null ? null : <Text style={styles.status}>{status}</Text>}
-              </Row>
-            </SwipeToDelete>
+                <Row
+                  testID={`${GOAL_ROW_TEST_ID_PREFIX}-${item.id}`}
+                  onPress={() => setDepositing(item)}
+                  chevron
+                  leading={<GoalBadge reached={progress.reached} />}
+                  lastInGroup={index === rows.length - 1}
+                  accessibilityLabel={`${item.name}, ${goalAmounts(item)}, ${progress.percent}%${status === null ? '' : `, ${status}`}`}
+                  accessibilityHint={COPY.a11y.addToGoal}
+                  accessibilityActions={[
+                    { name: 'delete', label: COPY.a11y.deleteNamed.replace('{name}', item.name) },
+                  ]}
+                  onAccessibilityAction={(event) => {
+                    if (event.nativeEvent.actionName === 'delete') setPendingDelete(item);
+                  }}
+                  trailing={item.pending ? <PendingGlyph /> : null}
+                >
+                  <RowTitle>{item.name}</RowTitle>
+                  <RowSubtitle>{`${goalAmounts(item)} · ${progress.percent}%`}</RowSubtitle>
+                  <GoalBar
+                    fill={progress.fill}
+                    reached={progress.reached}
+                    testID={`${GOAL_PROGRESS_TEST_ID_PREFIX}-${item.id}`}
+                  />
+                  {status === null ? null : <Text style={styles.status}>{status}</Text>}
+                </Row>
+              </SwipeToDelete>
+            </CardRow>
           );
         }}
         ListEmptyComponent={

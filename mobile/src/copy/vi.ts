@@ -297,6 +297,13 @@ export const VIETNAMESE_COPY: CopyBundle = {
 
     settings: {
       title: 'Cài đặt',
+      section: {
+        account: 'Tài khoản',
+        money: 'Tiền bạc',
+        more: 'Thêm',
+        app: 'Ứng dụng và dữ liệu',
+        security: 'Bảo mật',
+      },
       email: 'Email',
       currency: 'Tiền tệ',
       currencyHint: 'Chạm để đổi. Các khoản tiền sẽ được quy đổi.',

@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { SectionList, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CardRow } from '@/components/Card';
 import { AppBar, Fab, IconButton } from '@/components/Chrome';
 import { COPY } from '@/copy/strings';
 import { useDatabase } from '@/db/DatabaseProvider';
@@ -188,13 +189,6 @@ export default function ExpenseListScreen() {
         />
       ) : null}
 
-      {reviewPending.data === true ? (
-        <CategoryReviewBanner
-          onReview={() => void answerCategoryReview(true)}
-          onDismiss={() => void answerCategoryReview(false)}
-        />
-      ) : null}
-
       {/* The total renders above the list and outside it, so it stays put while the rows
           scroll - and so a paginated list can never be mistaken for its source (rule 3). */}
       <MonthTotal
@@ -211,6 +205,13 @@ export default function ExpenseListScreen() {
         }
         daysInMonth={monthDays}
       />
+
+      {reviewPending.data === true ? (
+        <CategoryReviewBanner
+          onReview={() => void answerCategoryReview(true)}
+          onDismiss={() => void answerCategoryReview(false)}
+        />
+      ) : null}
 
       <HomeBalanceLine onOpen={() => router.push('/(app)/settings/household')} />
 
@@ -240,14 +241,17 @@ export default function ExpenseListScreen() {
           </Text>
         )}
         renderItem={({ item, index, section }) => (
-          <ExpenseRow
-            item={item}
-            today={today}
-            lastInGroup={index === section.data.length - 1}
-            addedBy={addedBy(item.createdBy)}
-            {...selection.rowProps(item, () => router.push(`/(app)/expense/${item.id}`))}
-            onDelete={() => void onDelete(item.id)}
-          />
+          // One rounded card per day: the first and last rows take the corners.
+          <CardRow index={index} count={section.data.length}>
+            <ExpenseRow
+              item={item}
+              today={today}
+              lastInGroup={index === section.data.length - 1}
+              addedBy={addedBy(item.createdBy)}
+              {...selection.rowProps(item, () => router.push(`/(app)/expense/${item.id}`))}
+              onDelete={() => void onDelete(item.id)}
+            />
+          </CardRow>
         )}
         ListEmptyComponent={
           showSkeleton ? (
@@ -293,11 +297,12 @@ const useStyles = createStyles((color) =>
       paddingBottom: space[2],
     },
     sectionHeader: {
-      ...type.caption,
-      color: color.text.tertiary,
+      ...type.subhead,
+      color: color.text.secondary,
       backgroundColor: color.bg.canvas,
-      paddingHorizontal: space[4],
-      paddingVertical: space[2],
+      paddingHorizontal: space[5],
+      paddingTop: space[4],
+      paddingBottom: space[2],
     },
   }),
 );

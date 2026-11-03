@@ -41,6 +41,8 @@ const useStyles = createStyles((color) =>
     card: {
       backgroundColor: color.bg.surface,
       borderRadius: radius.lg,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: color.border.hairline,
       marginHorizontal: space[4],
       marginTop: space[4],
       padding: space[4],

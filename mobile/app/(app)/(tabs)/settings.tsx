@@ -7,6 +7,7 @@ import { Button } from '@/components/Button';
 import { AppBar } from '@/components/Chrome';
 import { Dialog } from '@/components/Dialog';
 import { useSnackbar } from '@/components/Snackbar';
+import { Card, SectionTitle } from '@/components/Card';
 import { IconBadge } from '@/components/IconBadge';
 import { Row, RowSubtitle, RowTitle } from '@/components/Row';
 import { planDefaultRenames } from '@/categories/renameDefaults';
@@ -195,137 +196,147 @@ export default function SettingsScreen() {
       {/* Eight rows and a button no longer fit a short phone or a large font size; without
           this the Log out button below the fold simply could not be reached. */}
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]}>
-        <Row
-          testID="settings-email"
-          leading={<IconBadge name="mail" />}
-          onPress={() => router.push('/(app)/settings/change-email')}
-          chevron
-          accessibilityLabel={`${COPY.settings.email}, ${email.data ?? ''}`}
-          trailing={<Text style={styles.value}>{email.data ?? ''}</Text>}
-        >
-          <RowTitle>{COPY.settings.email}</RowTitle>
-        </Row>
-
-        <Row
-          testID="settings-display-name"
-          leading={<IconBadge name="user" />}
-          onPress={() => router.push('/(app)/settings/display-name')}
-          chevron
-          accessibilityLabel={`${COPY.settings.displayName}, ${displayName.data ?? COPY.account.displayName.none}`}
-          trailing={
-            <Text style={styles.value}>{displayName.data ?? COPY.account.displayName.none}</Text>
-          }
-        >
-          <RowTitle>{COPY.settings.displayName}</RowTitle>
-        </Row>
-
-        {/* Only while unverified, and only once the local row has answered: `false` is not
-            `undefined`, and a row that flashes in then out on every open would be noise. */}
-        {emailVerified.data === false ? (
+        <SectionTitle>{COPY.settings.section.account}</SectionTitle>
+        <Card>
           <Row
-            testID="settings-verify-email"
-            leading={<IconBadge name="check-circle" />}
-            onPress={() => router.push('/(app)/settings/verify-email')}
+            testID="settings-email"
+            leading={<IconBadge name="mail" />}
+            onPress={() => router.push('/(app)/settings/change-email')}
             chevron
-            accessibilityLabel={`${COPY.settings.verifyEmail}, ${COPY.settings.unverified}`}
-            trailing={<Text style={styles.value}>{COPY.settings.unverified}</Text>}
+            accessibilityLabel={`${COPY.settings.email}, ${email.data ?? ''}`}
+            trailing={<Text style={styles.value}>{email.data ?? ''}</Text>}
           >
-            <RowTitle>{COPY.settings.verifyEmail}</RowTitle>
+            <RowTitle>{COPY.settings.email}</RowTitle>
           </Row>
-        ) : null}
 
-        {/* Changing it converts every amount at a rate the person enters (`19-change-currency.md`). */}
-        <Row
-          testID="settings-currency"
-          leading={<IconBadge name="dollar-sign" />}
-          onPress={() => router.push('/(app)/settings/currency')}
-          chevron
-          accessibilityLabel={`${COPY.settings.currency}, ${currency.data ?? ''}. ${
-            COPY.settings.currencyHint
-          }`}
-          trailing={<Text style={styles.value}>{currency.data ?? ''}</Text>}
-        >
-          <RowTitle>{COPY.settings.currency}</RowTitle>
-          <RowSubtitle lines={2}>{COPY.settings.currencyHint}</RowSubtitle>
-        </Row>
-
-        <Row
-          testID="settings-categories"
-          leading={<IconBadge name="tag" />}
-          onPress={() => router.push('/(app)/settings/categories')}
-          chevron
-          accessibilityLabel={COPY.settings.categories}
-        >
-          <RowTitle>{COPY.settings.categories}</RowTitle>
-        </Row>
-
-        <Row
-          testID="settings-recurring"
-          leading={<IconBadge name="repeat" />}
-          onPress={() => router.push('/(app)/settings/recurring')}
-          chevron
-          accessibilityLabel={`${COPY.settings.recurring}. ${COPY.settings.recurringHint}`}
-        >
-          <RowTitle>{COPY.settings.recurring}</RowTitle>
-          <RowSubtitle lines={2}>{COPY.settings.recurringHint}</RowSubtitle>
-        </Row>
-
-        <Row
-          testID="settings-goals"
-          leading={<IconBadge name="target" />}
-          onPress={() => router.push('/(app)/settings/goals')}
-          chevron
-          accessibilityLabel={`${COPY.settings.goals}. ${COPY.settings.goalsHint}`}
-        >
-          <RowTitle>{COPY.settings.goals}</RowTitle>
-          <RowSubtitle lines={2}>{COPY.settings.goalsHint}</RowSubtitle>
-        </Row>
-
-        {homeWidgetSupported() ? (
           <Row
-            testID="settings-home-widget"
-            leading={<IconBadge name="plus-square" />}
-            onPress={() => {
-              if (!requestHomeWidgetPin()) showSnackbar({ message: COPY.homeWidget.unavailable });
-            }}
-            accessibilityLabel={`${COPY.homeWidget.title}. ${COPY.homeWidget.hint}`}
-          >
-            <RowTitle>{COPY.homeWidget.title}</RowTitle>
-            <RowSubtitle lines={2}>{COPY.homeWidget.hint}</RowSubtitle>
-          </Row>
-        ) : null}
-
-        {paymentNotificationsSupported() ? (
-          <Row
-            testID="settings-payment-detection"
-            leading={<IconBadge name="bell" />}
-            onPress={() => router.push('/(app)/settings/payment-detection')}
+            testID="settings-display-name"
+            leading={<IconBadge name="user" />}
+            onPress={() => router.push('/(app)/settings/display-name')}
             chevron
-            accessibilityLabel={`${COPY.paymentDetection.title}. ${COPY.paymentDetection.hint}`}
+            accessibilityLabel={`${COPY.settings.displayName}, ${displayName.data ?? COPY.account.displayName.none}`}
             trailing={
-              (suggestionCount.data ?? 0) > 0 ? (
-                <Text style={styles.value}>{suggestionCount.data}</Text>
-              ) : null
+              <Text style={styles.value}>{displayName.data ?? COPY.account.displayName.none}</Text>
             }
           >
-            <RowTitle>{COPY.paymentDetection.title}</RowTitle>
-            <RowSubtitle lines={2}>{COPY.paymentDetection.hint}</RowSubtitle>
+            <RowTitle>{COPY.settings.displayName}</RowTitle>
           </Row>
-        ) : null}
 
-        <Row
-          testID="settings-household"
-          leading={<IconBadge name="users" />}
-          onPress={() => router.push('/(app)/settings/household')}
-          chevron
-          lastInGroup
-          accessibilityLabel={`${COPY.settings.household}. ${COPY.settings.householdHint}`}
-        >
-          <RowTitle>{COPY.settings.household}</RowTitle>
-          <RowSubtitle lines={2}>{COPY.settings.householdHint}</RowSubtitle>
-        </Row>
+          {/* Only while unverified, and only once the local row has answered: `false` is not
+            `undefined`, and a row that flashes in then out on every open would be noise. */}
+          {emailVerified.data === false ? (
+            <Row
+              testID="settings-verify-email"
+              leading={<IconBadge name="check-circle" />}
+              onPress={() => router.push('/(app)/settings/verify-email')}
+              chevron
+              accessibilityLabel={`${COPY.settings.verifyEmail}, ${COPY.settings.unverified}`}
+              trailing={<Text style={styles.value}>{COPY.settings.unverified}</Text>}
+            >
+              <RowTitle>{COPY.settings.verifyEmail}</RowTitle>
+            </Row>
+          ) : null}
+        </Card>
 
-        <View style={styles.group}>
+        <SectionTitle>{COPY.settings.section.money}</SectionTitle>
+        <Card>
+          {/* Changing it converts every amount at a rate the person enters (`19-change-currency.md`). */}
+          <Row
+            testID="settings-currency"
+            leading={<IconBadge name="dollar-sign" />}
+            onPress={() => router.push('/(app)/settings/currency')}
+            chevron
+            accessibilityLabel={`${COPY.settings.currency}, ${currency.data ?? ''}. ${
+              COPY.settings.currencyHint
+            }`}
+            trailing={<Text style={styles.value}>{currency.data ?? ''}</Text>}
+          >
+            <RowTitle>{COPY.settings.currency}</RowTitle>
+            <RowSubtitle lines={2}>{COPY.settings.currencyHint}</RowSubtitle>
+          </Row>
+
+          <Row
+            testID="settings-categories"
+            leading={<IconBadge name="tag" />}
+            onPress={() => router.push('/(app)/settings/categories')}
+            chevron
+            accessibilityLabel={COPY.settings.categories}
+          >
+            <RowTitle>{COPY.settings.categories}</RowTitle>
+          </Row>
+
+          <Row
+            testID="settings-recurring"
+            leading={<IconBadge name="repeat" />}
+            onPress={() => router.push('/(app)/settings/recurring')}
+            chevron
+            accessibilityLabel={`${COPY.settings.recurring}. ${COPY.settings.recurringHint}`}
+          >
+            <RowTitle>{COPY.settings.recurring}</RowTitle>
+            <RowSubtitle lines={2}>{COPY.settings.recurringHint}</RowSubtitle>
+          </Row>
+
+          <Row
+            testID="settings-goals"
+            leading={<IconBadge name="target" />}
+            onPress={() => router.push('/(app)/settings/goals')}
+            chevron
+            accessibilityLabel={`${COPY.settings.goals}. ${COPY.settings.goalsHint}`}
+          >
+            <RowTitle>{COPY.settings.goals}</RowTitle>
+            <RowSubtitle lines={2}>{COPY.settings.goalsHint}</RowSubtitle>
+          </Row>
+        </Card>
+
+        <SectionTitle>{COPY.settings.section.more}</SectionTitle>
+        <Card>
+          {homeWidgetSupported() ? (
+            <Row
+              testID="settings-home-widget"
+              leading={<IconBadge name="plus-square" />}
+              onPress={() => {
+                if (!requestHomeWidgetPin()) showSnackbar({ message: COPY.homeWidget.unavailable });
+              }}
+              accessibilityLabel={`${COPY.homeWidget.title}. ${COPY.homeWidget.hint}`}
+            >
+              <RowTitle>{COPY.homeWidget.title}</RowTitle>
+              <RowSubtitle lines={2}>{COPY.homeWidget.hint}</RowSubtitle>
+            </Row>
+          ) : null}
+
+          {paymentNotificationsSupported() ? (
+            <Row
+              testID="settings-payment-detection"
+              leading={<IconBadge name="bell" />}
+              onPress={() => router.push('/(app)/settings/payment-detection')}
+              chevron
+              accessibilityLabel={`${COPY.paymentDetection.title}. ${COPY.paymentDetection.hint}`}
+              trailing={
+                (suggestionCount.data ?? 0) > 0 ? (
+                  <Text style={styles.value}>{suggestionCount.data}</Text>
+                ) : null
+              }
+            >
+              <RowTitle>{COPY.paymentDetection.title}</RowTitle>
+              <RowSubtitle lines={2}>{COPY.paymentDetection.hint}</RowSubtitle>
+            </Row>
+          ) : null}
+
+          <Row
+            testID="settings-household"
+            leading={<IconBadge name="users" />}
+            onPress={() => router.push('/(app)/settings/household')}
+            chevron
+            lastInGroup
+            accessibilityLabel={`${COPY.settings.household}. ${COPY.settings.householdHint}`}
+          >
+            <RowTitle>{COPY.settings.household}</RowTitle>
+            <RowSubtitle lines={2}>{COPY.settings.householdHint}</RowSubtitle>
+          </Row>
+        </Card>
+
+        <SectionTitle>{COPY.settings.section.app}</SectionTitle>
+        <Card>
           <Row
             testID="settings-appearance"
             leading={<IconBadge name="moon" />}
@@ -427,9 +438,10 @@ export default function SettingsScreen() {
               {exporting ? COPY.export.busy : COPY.settings.exportHint}
             </RowSubtitle>
           </Row>
-        </View>
+        </Card>
 
-        <View style={styles.group}>
+        <SectionTitle>{COPY.settings.section.security}</SectionTitle>
+        <Card>
           <Row
             testID="settings-change-password"
             leading={<IconBadge name="key" />}
@@ -449,7 +461,7 @@ export default function SettingsScreen() {
           >
             <RowTitle>{COPY.settings.deleteAccount}</RowTitle>
           </Row>
-        </View>
+        </Card>
 
         <View style={styles.logout}>
           <Button

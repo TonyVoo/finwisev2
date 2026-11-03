@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 import Feather from '@expo/vector-icons/Feather';
 import { AppBar, IconButton, SkeletonBlock } from '../components/Chrome';
 import { Button } from '../components/Button';
+import { Card } from '../components/Card';
 import { Dialog } from '../components/Dialog';
 import { Row, RowSubtitle, RowTitle, Swatch } from '../components/Row';
 import { memberLabel } from '../household/addedBy';
@@ -852,154 +853,156 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
                 onDismiss={() => setScan(null)}
               />
             )}
-            <Row
-              testID={CURRENCY_ROW_TEST_ID}
-              onPress={() => setOverlay('currency')}
-              chevron
-              leading={<Feather name="globe" size={20} color={color.text.tertiary} />}
-              trailing={<Text style={styles.valueText}>{entryCode}</Text>}
-              accessibilityLabel={`${COPY.form.currency.row}, ${entryCode}`}
-              accessibilityHint={COPY.a11y.payInOtherCurrency}
-            >
-              <RowTitle>{COPY.form.currency.row}</RowTitle>
-            </Row>
-
-            {foreign && currencyCode !== null ? (
+            <Card>
               <Row
-                testID={RATE_FIELD_TEST_ID}
-                onPress={() => setOverlay('rate')}
+                testID={CURRENCY_ROW_TEST_ID}
+                onPress={() => setOverlay('currency')}
                 chevron
-                leading={<Feather name="repeat" size={20} color={color.text.tertiary} />}
+                leading={<Feather name="globe" size={20} color={color.text.tertiary} />}
+                trailing={<Text style={styles.valueText}>{entryCode}</Text>}
+                accessibilityLabel={`${COPY.form.currency.row}, ${entryCode}`}
+                accessibilityHint={COPY.a11y.payInOtherCurrency}
+              >
+                <RowTitle>{COPY.form.currency.row}</RowTitle>
+              </Row>
+
+              {foreign && currencyCode !== null ? (
+                <Row
+                  testID={RATE_FIELD_TEST_ID}
+                  onPress={() => setOverlay('rate')}
+                  chevron
+                  leading={<Feather name="repeat" size={20} color={color.text.tertiary} />}
+                  trailing={
+                    <Text style={styles.valueText}>
+                      {rateText !== ''
+                        ? rateText
+                        : rateStatus === 'loading'
+                          ? COPY.form.rate.loading
+                          : ''}
+                    </Text>
+                  }
+                  accessibilityLabel={`${COPY.form.rate.label}, ${rateText}`}
+                  accessibilityHint={COPY.a11y.typeRate}
+                >
+                  <RowTitle>{COPY.form.rate.label}</RowTitle>
+                  {rateStatus === 'failed' && rateText === '' ? (
+                    <Text style={styles.rateNote}>{COPY.form.rate.failed}</Text>
+                  ) : null}
+                  {converted !== null && amount.amountMinor > 0 ? (
+                    <Text testID={CONVERTED_TEST_ID} style={styles.rateNote}>
+                      {COPY.form.rate.converted.replace(
+                        '{amount}',
+                        formatMoney(converted, currencyCode),
+                      )}
+                    </Text>
+                  ) : null}
+                </Row>
+              ) : null}
+
+              <Row
+                testID={CATEGORY_ROW_TEST_ID}
+                onPress={() => setOverlay('category')}
+                chevron
+                leading={<Feather name="tag" size={20} color={color.text.tertiary} />}
                 trailing={
-                  <Text style={styles.valueText}>
-                    {rateText !== ''
-                      ? rateText
-                      : rateStatus === 'loading'
-                        ? COPY.form.rate.loading
-                        : ''}
-                  </Text>
-                }
-                accessibilityLabel={`${COPY.form.rate.label}, ${rateText}`}
-                accessibilityHint={COPY.a11y.typeRate}
-              >
-                <RowTitle>{COPY.form.rate.label}</RowTitle>
-                {rateStatus === 'failed' && rateText === '' ? (
-                  <Text style={styles.rateNote}>{COPY.form.rate.failed}</Text>
-                ) : null}
-                {converted !== null && amount.amountMinor > 0 ? (
-                  <Text testID={CONVERTED_TEST_ID} style={styles.rateNote}>
-                    {COPY.form.rate.converted.replace(
-                      '{amount}',
-                      formatMoney(converted, currencyCode),
-                    )}
-                  </Text>
-                ) : null}
-              </Row>
-            ) : null}
-
-            <Row
-              testID={CATEGORY_ROW_TEST_ID}
-              onPress={() => setOverlay('category')}
-              chevron
-              leading={<Feather name="tag" size={20} color={color.text.tertiary} />}
-              trailing={
-                chosenCategory === null ? null : (
-                  <View style={styles.value}>
-                    <Swatch
-                      colorHex={chosenCategory.color}
-                      diameter={20}
-                      name={chosenCategory.name}
-                    />
-                    <Text style={styles.valueText}>{chosenCategory.name}</Text>
-                  </View>
-                )
-              }
-              accessibilityLabel={`${COPY.form.field.category}, ${chosenCategory?.name ?? ''}`}
-              accessibilityHint={COPY.a11y.changeCategory}
-            >
-              <RowTitle>{COPY.form.field.category}</RowTitle>
-            </Row>
-
-            {inHousehold && live.private !== true ? (
-              <Row
-                testID="form-paid-by"
-                onPress={() => setOverlay('paidBy')}
-                chevron
-                leading={<Feather name="user" size={20} color={color.text.tertiary} />}
-                trailing={<Text style={styles.valueText}>{payerLabel}</Text>}
-                accessibilityLabel={`${COPY.form.paidBy.label}, ${payerLabel}`}
-              >
-                <RowTitle>{COPY.form.paidBy.label}</RowTitle>
-              </Row>
-            ) : null}
-
-            {inHousehold ? (
-              <Row
-                testID="form-private"
-                leading={<Feather name="lock" size={20} color={color.text.tertiary} />}
-                onPress={() =>
-                  setDraft((current) =>
-                    current === null
-                      ? current
-                      : { ...current, private: !(current.private ?? false) },
+                  chosenCategory === null ? null : (
+                    <View style={styles.value}>
+                      <Swatch
+                        colorHex={chosenCategory.color}
+                        diameter={20}
+                        name={chosenCategory.name}
+                      />
+                      <Text style={styles.valueText}>{chosenCategory.name}</Text>
+                    </View>
                   )
                 }
-                accessibilityLabel={`${COPY.form.private.label}. ${COPY.form.private.hint}`}
-                accessibilityState={{ selected: live.private ?? false }}
-                trailing={
-                  <Switch
-                    testID="form-private-switch"
-                    value={live.private ?? false}
-                    onValueChange={(next) =>
-                      setDraft((current) =>
-                        current === null ? current : { ...current, private: next },
-                      )
-                    }
-                    accessibilityElementsHidden
-                    importantForAccessibility="no-hide-descendants"
-                  />
+                accessibilityLabel={`${COPY.form.field.category}, ${chosenCategory?.name ?? ''}`}
+                accessibilityHint={COPY.a11y.changeCategory}
+              >
+                <RowTitle>{COPY.form.field.category}</RowTitle>
+              </Row>
+
+              {inHousehold && live.private !== true ? (
+                <Row
+                  testID="form-paid-by"
+                  onPress={() => setOverlay('paidBy')}
+                  chevron
+                  leading={<Feather name="user" size={20} color={color.text.tertiary} />}
+                  trailing={<Text style={styles.valueText}>{payerLabel}</Text>}
+                  accessibilityLabel={`${COPY.form.paidBy.label}, ${payerLabel}`}
+                >
+                  <RowTitle>{COPY.form.paidBy.label}</RowTitle>
+                </Row>
+              ) : null}
+
+              {inHousehold ? (
+                <Row
+                  testID="form-private"
+                  leading={<Feather name="lock" size={20} color={color.text.tertiary} />}
+                  onPress={() =>
+                    setDraft((current) =>
+                      current === null
+                        ? current
+                        : { ...current, private: !(current.private ?? false) },
+                    )
+                  }
+                  accessibilityLabel={`${COPY.form.private.label}. ${COPY.form.private.hint}`}
+                  accessibilityState={{ selected: live.private ?? false }}
+                  trailing={
+                    <Switch
+                      testID="form-private-switch"
+                      value={live.private ?? false}
+                      onValueChange={(next) =>
+                        setDraft((current) =>
+                          current === null ? current : { ...current, private: next },
+                        )
+                      }
+                      accessibilityElementsHidden
+                      importantForAccessibility="no-hide-descendants"
+                    />
+                  }
+                >
+                  <RowTitle>{COPY.form.private.label}</RowTitle>
+                  <RowSubtitle lines={2}>{COPY.form.private.hint}</RowSubtitle>
+                </Row>
+              ) : null}
+
+              <Row
+                testID={DATE_ROW_TEST_ID}
+                onPress={() => setOverlay('date')}
+                chevron
+                leading={<Feather name="calendar" size={20} color={color.text.tertiary} />}
+                trailing={<Text style={styles.valueText}>{dateRowLabel(live.date, today)}</Text>}
+                // Both forms: the relative word is what the user sees, the absolute date is
+                // what makes it unambiguous read aloud (element 7).
+                accessibilityLabel={`${COPY.form.field.date}, ${dateRowLabel(
+                  live.date,
+                  today,
+                )}, ${spokenDate(live.date)}`}
+              >
+                <RowTitle>{COPY.form.field.date}</RowTitle>
+              </Row>
+
+              <Row
+                testID={NOTE_ROW_TEST_ID}
+                onPress={() => setOverlay('note')}
+                chevron
+                leading={<Feather name="file-text" size={20} color={color.text.tertiary} />}
+                accessibilityLabel={
+                  live.note === null || live.note.length === 0
+                    ? `${COPY.form.field.note}, empty`
+                    : `${COPY.form.field.note}, ${live.note}`
                 }
               >
-                <RowTitle>{COPY.form.private.label}</RowTitle>
-                <RowSubtitle lines={2}>{COPY.form.private.hint}</RowSubtitle>
+                <RowTitle>{COPY.form.field.note}</RowTitle>
+                <Text
+                  style={live.note === null ? styles.notePlaceholder : styles.noteValue}
+                  numberOfLines={2}
+                >
+                  {live.note ?? COPY.form.field.notePlaceholder}
+                </Text>
               </Row>
-            ) : null}
-
-            <Row
-              testID={DATE_ROW_TEST_ID}
-              onPress={() => setOverlay('date')}
-              chevron
-              leading={<Feather name="calendar" size={20} color={color.text.tertiary} />}
-              trailing={<Text style={styles.valueText}>{dateRowLabel(live.date, today)}</Text>}
-              // Both forms: the relative word is what the user sees, the absolute date is
-              // what makes it unambiguous read aloud (element 7).
-              accessibilityLabel={`${COPY.form.field.date}, ${dateRowLabel(
-                live.date,
-                today,
-              )}, ${spokenDate(live.date)}`}
-            >
-              <RowTitle>{COPY.form.field.date}</RowTitle>
-            </Row>
-
-            <Row
-              testID={NOTE_ROW_TEST_ID}
-              onPress={() => setOverlay('note')}
-              chevron
-              leading={<Feather name="file-text" size={20} color={color.text.tertiary} />}
-              accessibilityLabel={
-                live.note === null || live.note.length === 0
-                  ? `${COPY.form.field.note}, empty`
-                  : `${COPY.form.field.note}, ${live.note}`
-              }
-            >
-              <RowTitle>{COPY.form.field.note}</RowTitle>
-              <Text
-                style={live.note === null ? styles.notePlaceholder : styles.noteValue}
-                numberOfLines={2}
-              >
-                {live.note ?? COPY.form.field.notePlaceholder}
-              </Text>
-            </Row>
+            </Card>
 
             <ReceiptCard
               present={receiptPresent}
