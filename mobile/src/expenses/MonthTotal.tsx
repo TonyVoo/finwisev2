@@ -42,6 +42,7 @@ export const MONTH_TOTAL_COUNT_TEST_ID = 'month-total-count';
 export const MONTH_PACE_TEST_ID = 'month-total-pace';
 export const MONTH_PRIVATE_TEST_ID = 'month-total-private';
 export const MONTH_BALANCE_TEST_ID = 'month-total-balance';
+export const MONTH_LIMIT_TEST_ID = 'month-total-limit';
 
 export interface MonthTotalProps {
   /** In minor units. `undefined` while the first SQLite read is in flight. */
@@ -72,6 +73,8 @@ export interface MonthTotalProps {
    * includes it; this says so, and how much. Omitted or zero shows nothing.
    */
   readonly privateMinor?: number;
+  /** The monthly limit's line: what is safe to spend today, or how far over. Current month only. */
+  readonly limitLine?: { readonly text: string; readonly over: boolean };
 }
 
 export function MonthTotal({
@@ -84,6 +87,7 @@ export function MonthTotal({
   daysInMonth,
   paceMinor,
   privateMinor,
+  limitLine,
 }: MonthTotalProps) {
   const styles = useStyles();
   const drawn = useCountUp(totalMinor, useReduceMotion());
@@ -118,7 +122,7 @@ export function MonthTotal({
       style={styles.block}
       // One element: the caption, the figure and the count are meaningless apart.
       accessible
-      accessibilityLabel={[label, formatted, counted, balance]
+      accessibilityLabel={[label, formatted, counted, balance, limitLine?.text ?? null]
         .filter((part): part is string => part !== null)
         .join(', ')}
       // The pace is an estimate, so it is a hint read after the exact figures, not part of them.
@@ -135,6 +139,14 @@ export function MonthTotal({
       {privateMinor === undefined || privateMinor <= 0 ? null : (
         <Text testID={MONTH_PRIVATE_TEST_ID} style={styles.count}>
           {COPY.home.private.replace('{amount}', formatMoney(privateMinor, currency))}
+        </Text>
+      )}
+      {limitLine === undefined ? null : (
+        <Text
+          testID={MONTH_LIMIT_TEST_ID}
+          style={[styles.limit, limitLine.over ? styles.limitOver : null]}
+        >
+          {limitLine.text}
         </Text>
       )}
       {pace === null ? null : (
@@ -179,6 +191,8 @@ const useStyles = createStyles((color) =>
       color: color.text.primary,
       fontVariant: ['tabular-nums'],
     },
+    limit: { ...type.callout, color: color.primary.default, fontWeight: '600' },
+    limitOver: { color: color.danger.default },
     count: {
       ...type.footnote,
       color: color.text.tertiary,

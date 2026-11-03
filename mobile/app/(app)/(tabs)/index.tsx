@@ -24,6 +24,7 @@ import {
   useMonthDailySpend,
   useMonthPrivateSpend,
   useMonthIncome,
+  useMonthlyLimit,
   useMonthTotal,
   useUserCurrency,
 } from '@/db/hooks';
@@ -45,6 +46,8 @@ import { SpaceChip } from '@/household/SpaceChip';
 import { SyncIndicator } from '@/sync/SyncIndicator';
 import { usePullToRefresh } from '@/sync/usePullToRefresh';
 import { useSelectedMonth } from '@/month/MonthProvider';
+import { safeToSpend } from '@/limit/safeToSpend';
+import { formatMoney } from '@/lib/money';
 import { size, space, type } from '@/theme/tokens';
 import { createStyles } from '@/theme/ThemeProvider';
 
@@ -147,6 +150,31 @@ export default function ExpenseListScreen() {
   // a currency, and formatting an amount without one would put a dollar sign in front of
   // a euro figure - so both hold the total on its skeleton (`db/hooks.ts`).
   const currencyCode = currency.data ?? null;
+  const { limitMinor } = useMonthlyLimit();
+  // The overall monthly limit: what is safe to spend today, or how far over. Only for the month still going on.
+  const limitLine = (() => {
+    if (!isCurrent || limitMinor === null || total.data === undefined || currencyCode === null) {
+      return null;
+    }
+    const result = safeToSpend({
+      limitMinor,
+      spentMinor: total.data,
+      dayOfMonth: Number(today.slice(8, 10)),
+      daysInMonth: monthDays,
+    });
+    if (result.kind === 'over') {
+      return {
+        text: COPY.monthlyLimit.over.replace(
+          '{amount}',
+          formatMoney(result.overMinor, currencyCode),
+        ),
+        over: true,
+      };
+    }
+    const template = result.daysLeft === 1 ? COPY.monthlyLimit.safeLast : COPY.monthlyLimit.safe;
+    const amount = result.daysLeft === 1 ? result.remainingMinor : result.perDayMinor;
+    return { text: template.replace('{amount}', formatMoney(amount, currencyCode)), over: false };
+  })();
 
   const onDelete = useDeleteExpense();
   const selection = useExpenseSelection();
@@ -204,6 +232,7 @@ export default function ExpenseListScreen() {
             : null
         }
         daysInMonth={monthDays}
+        {...(limitLine === null ? {} : { limitLine })}
       />
 
       {reviewPending.data === true ? (

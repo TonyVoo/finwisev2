@@ -719,6 +719,20 @@ export const COPY = {
     failed: 'Could not export your expenses. Try again.',
   },
 
+  monthlyLimit: {
+    title: 'Monthly spending limit',
+    hint: 'One limit for the whole month. Home shows what is safe to spend today.',
+    none: 'Not set',
+    sheetTitle: 'Monthly limit',
+    field: 'Limit',
+    placeholder: 'No limit',
+    save: 'Save',
+    remove: 'Remove limit',
+    safe: 'Safe to spend today: {amount}',
+    safeLast: 'Last day of the month: {amount} left',
+    over: 'Over the monthly limit by {amount}',
+  },
+
   auth: {
     haveAccount: 'Already have an account? Log in',
     newHere: 'New here? Create an account',

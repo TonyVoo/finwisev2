@@ -8,6 +8,7 @@ import { AppBar } from '@/components/Chrome';
 import { Dialog } from '@/components/Dialog';
 import { useSnackbar } from '@/components/Snackbar';
 import { Card, SectionTitle } from '@/components/Card';
+import { MonthlyLimitSheet } from '@/limit/MonthlyLimitSheet';
 import { IconBadge } from '@/components/IconBadge';
 import { Row, RowSubtitle, RowTitle } from '@/components/Row';
 import { planDefaultRenames } from '@/categories/renameDefaults';
@@ -31,10 +32,12 @@ import {
   useUserDisplayName,
   useUserEmail,
   useBudgetRollover,
+  useMonthlyLimit,
 } from '@/db/hooks';
 import { LanguageSheet, languagePreferenceLabel } from '@/i18n/LanguageSheet';
 import { useLanguage } from '@/i18n/LanguageProvider';
 import { useAppLock } from '@/lock/AppLockProvider';
+import { currencyDecimals, formatMoney } from '@/lib/money';
 import { space, type } from '@/theme/tokens';
 import { TabBarStyleSheet, tabBarStyleLabel } from '@/navigation/TabBarStyleSheet';
 import { useTabBarStyle } from '@/navigation/tabBarStyle';
@@ -72,6 +75,8 @@ export default function SettingsScreen() {
   const showSnackbar = useSnackbar();
   const appLock = useAppLock();
   const rollover = useBudgetRollover();
+  const monthlyLimit = useMonthlyLimit();
+  const [editingLimit, setEditingLimit] = useState(false);
   const toggleLock = async () => {
     const result = await appLock.setEnabled(!appLock.enabled);
     if (result.status === 'unavailable') showSnackbar({ message: COPY.lock.unavailable });
@@ -277,6 +282,24 @@ export default function SettingsScreen() {
           </Row>
 
           <Row
+            testID="settings-monthly-limit"
+            leading={<IconBadge name="trending-down" />}
+            onPress={() => setEditingLimit(true)}
+            chevron
+            accessibilityLabel={`${COPY.monthlyLimit.title}. ${COPY.monthlyLimit.hint}`}
+            trailing={
+              <Text style={styles.value}>
+                {monthlyLimit.limitMinor === null
+                  ? COPY.monthlyLimit.none
+                  : formatMoney(monthlyLimit.limitMinor, currency.data ?? 'USD')}
+              </Text>
+            }
+          >
+            <RowTitle>{COPY.monthlyLimit.title}</RowTitle>
+            <RowSubtitle lines={2}>{COPY.monthlyLimit.hint}</RowSubtitle>
+          </Row>
+
+          <Row
             testID="settings-goals"
             leading={<IconBadge name="target" />}
             onPress={() => router.push('/(app)/settings/goals')}
@@ -474,6 +497,13 @@ export default function SettingsScreen() {
         </View>
       </ScrollView>
 
+      <MonthlyLimitSheet
+        visible={editingLimit}
+        onClose={() => setEditingLimit(false)}
+        limitMinor={monthlyLimit.limitMinor}
+        decimals={currencyDecimals(currency.data ?? 'USD')}
+        onSave={monthlyLimit.setLimit}
+      />
       <ThemeSheet visible={choosingTheme} onClose={() => setChoosingTheme(false)} />
       <TabBarStyleSheet visible={choosingTabBar} onClose={() => setChoosingTabBar(false)} />
       <LanguageSheet visible={choosingLanguage} onClose={() => setChoosingLanguage(false)} />

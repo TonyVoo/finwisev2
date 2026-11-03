@@ -92,6 +92,8 @@ export const META_KEYS = {
   budgetRollover: 'budgetRollover',
   /** The searches the person saved, as JSON (`src/search/savedSearches.ts`). Wiped with the account's data. */
   savedSearches: 'savedSearches',
+  /** The overall monthly spending limit in minor units of the account currency (`src/limit`). Wiped with the account's data - a currency change makes the number meaningless. */
+  monthlyLimit: 'monthlyLimit',
 } as const;
 
 export type MetaKey = (typeof META_KEYS)[keyof typeof META_KEYS];
@@ -110,6 +112,7 @@ export const WIPED_META_KEYS: readonly MetaKey[] = [
   META_KEYS.householdMembers,
   META_KEYS.spaces,
   META_KEYS.savedSearches,
+  META_KEYS.monthlyLimit,
 ];
 
 export async function readMeta(executor: SqliteExecutor, key: MetaKey): Promise<string | null> {

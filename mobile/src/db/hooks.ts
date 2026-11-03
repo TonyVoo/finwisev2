@@ -190,6 +190,31 @@ export function useMonthCategorySpend(month: MonthKey): UseQueryResult<readonly 
   });
 }
 
+/** The overall monthly spending limit, in minor units, or null when none is set; and the way to change it. */
+export function useMonthlyLimit(): {
+  readonly limitMinor: number | null;
+  readonly setLimit: (next: number | null) => Promise<void>;
+} {
+  const database = useDatabase();
+  const queryClient = useQueryClient();
+  const query = useQuery({
+    queryKey: ['local', 'meta', 'monthlyLimit'] as const,
+    queryFn: async () => {
+      const raw = await readMeta(database, META_KEYS.monthlyLimit);
+      const parsed = raw === null ? NaN : Number(raw);
+      return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+    },
+  });
+  const setLimit = useCallback(
+    async (next: number | null) => {
+      await writeMeta(database, META_KEYS.monthlyLimit, next === null ? '' : String(next));
+      await queryClient.invalidateQueries({ queryKey: queryKeys.local() });
+    },
+    [database, queryClient],
+  );
+  return { limitMinor: query.data ?? null, setLimit };
+}
+
 /** Whether unspent budget rolls into the next month, and the way to change it (a device setting). */
 export function useBudgetRollover(): {
   readonly enabled: boolean;

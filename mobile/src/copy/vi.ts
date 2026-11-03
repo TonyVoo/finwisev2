@@ -652,6 +652,20 @@ export const VIETNAMESE_COPY: CopyBundle = {
       failed: 'Không xuất được các khoản chi của bạn. Hãy thử lại.',
     },
 
+    monthlyLimit: {
+      title: 'Hạn mức chi tiêu hàng tháng',
+      hint: 'Một hạn mức cho cả tháng. Màn hình chính cho biết hôm nay chi bao nhiêu là an toàn.',
+      none: 'Chưa đặt',
+      sheetTitle: 'Hạn mức tháng',
+      field: 'Hạn mức',
+      placeholder: 'Không giới hạn',
+      save: 'Lưu',
+      remove: 'Bỏ hạn mức',
+      safe: 'Hôm nay chi an toàn: {amount}',
+      safeLast: 'Ngày cuối tháng: còn {amount}',
+      over: 'Vượt hạn mức tháng {amount}',
+    },
+
     auth: {
       haveAccount: 'Đã có tài khoản? Đăng nhập',
       newHere: 'Mới dùng? Tạo tài khoản',
