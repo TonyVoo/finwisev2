@@ -356,7 +356,7 @@ export default function SettingsScreen() {
           ) : null}
           <Row
             testID="settings-rollover"
-            leading={<IconBadge name="repeat" />}
+            leading={<IconBadge name="corner-up-right" />}
             onPress={() => void rollover.setEnabled(!rollover.enabled)}
             accessibilityLabel={`${COPY.rollover.title}. ${COPY.rollover.hint}`}
             accessibilityState={{ selected: rollover.enabled }}
