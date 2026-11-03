@@ -90,6 +90,8 @@ export const META_KEYS = {
   tabBarStyle: 'tabBarStyle',
   /** `'1'` when unspent budget rolls into the next month. A property of this device, so not in {@link WIPED_META_KEYS}. */
   budgetRollover: 'budgetRollover',
+  /** The searches the person saved, as JSON (`src/search/savedSearches.ts`). Wiped with the account's data. */
+  savedSearches: 'savedSearches',
 } as const;
 
 export type MetaKey = (typeof META_KEYS)[keyof typeof META_KEYS];
@@ -107,6 +109,7 @@ export const WIPED_META_KEYS: readonly MetaKey[] = [
   META_KEYS.dataScope,
   META_KEYS.householdMembers,
   META_KEYS.spaces,
+  META_KEYS.savedSearches,
 ];
 
 export async function readMeta(executor: SqliteExecutor, key: MetaKey): Promise<string | null> {

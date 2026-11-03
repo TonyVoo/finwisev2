@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { SectionList, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppBar, IconButton } from '@/components/Chrome';
 import { EmptyIcon } from '@/components/EmptyIcon';
+import { useSnackbar } from '@/components/Snackbar';
 import { COPY } from '@/copy/strings';
+import { useDatabase } from '@/db/DatabaseProvider';
 import {
   useExpenseSearch,
   useExpenseSearchSummary,
@@ -22,7 +25,18 @@ import { SelectButton } from '@/household/SelectButton';
 import { SelectionBar } from '@/household/SelectionBar';
 import { useExpenseSelection } from '@/household/useExpenseSelection';
 import { useInHousehold } from '@/household/useInHousehold';
-import { formatMoney } from '@/lib/money';
+import { parseAmount } from '@/import/planImport';
+import { currencyDecimals, formatMoney } from '@/lib/money';
+import { FiltersSheet } from '@/search/FiltersSheet';
+import { activeFilterCount, toSearch } from '@/search/filterModel';
+import {
+  type DatePreset,
+  type SavedSearch,
+  readSavedSearches,
+  removeSavedSearch,
+  saveSearch,
+} from '@/search/savedSearches';
+import { plainAmount } from '@/export/csv';
 import { useSelectedMonth } from '@/month/MonthProvider';
 import { space, type } from '@/theme/tokens';
 import { createStyles, useColors } from '@/theme/ThemeProvider';
@@ -51,6 +65,24 @@ export default function SearchScreen() {
   const [text, setText] = useState('');
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [privateOnly, setPrivateOnly] = useState(false);
+  const [kind, setKind] = useState<'expense' | 'income' | null>(null);
+  const [minText, setMinText] = useState('');
+  const [maxText, setMaxText] = useState('');
+  const [range, setRange] = useState<DatePreset | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const database = useDatabase();
+  const queryClient = useQueryClient();
+  const showSnackbar = useSnackbar();
+  const decimals = currencyDecimals(currency ?? 'USD');
+  const amountOf = (text: string) => (text.trim() === '' ? null : parseAmount(text, decimals));
+  const saved = useQuery({
+    queryKey: ['local', 'search', 'saved'] as const,
+    queryFn: () => readSavedSearches(database),
+  });
+  const refreshSaved = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: ['local', 'search', 'saved'] }),
+    [queryClient],
+  );
   const [debounced, setDebounced] = useState('');
   useEffect(() => {
     // Clearing is immediate; typing waits 200ms so a query is not run per keystroke.
@@ -62,9 +94,39 @@ export default function SearchScreen() {
     return () => clearTimeout(handle);
   }, [text]);
 
-  const search = { text: debounced, categoryId, privateOnly: inHousehold && privateOnly };
+  const filters = {
+    text: debounced,
+    categoryId,
+    kind,
+    minMinor: amountOf(minText),
+    maxMinor: amountOf(maxText),
+    range,
+  };
+  const search = {
+    ...toSearch(filters, today),
+    privateOnly: inHousehold && privateOnly,
+  };
   const searching = isSearchActive(search);
   const none = { text: '', categoryId: null, privateOnly: false };
+
+  const applySaved = (view: SavedSearch) => {
+    setText(view.search.text);
+    setDebounced(view.search.text);
+    setCategoryId(view.search.categoryId);
+    setKind(view.search.kind ?? null);
+    setMinText(
+      view.search.minMinor === undefined || view.search.minMinor === null
+        ? ''
+        : plainAmount(view.search.minMinor, decimals),
+    );
+    setMaxText(
+      view.search.maxMinor === undefined || view.search.maxMinor === null
+        ? ''
+        : plainAmount(view.search.maxMinor, decimals),
+    );
+    setRange(view.search.range ?? null);
+    setFiltersOpen(false);
+  };
   const rows = useExpenseSearch(searching ? search : none);
   const summary = useExpenseSearchSummary(searching ? search : none);
   const sections = groupByDate(searching ? (rows.data ?? []) : [], today);
@@ -95,6 +157,34 @@ export default function SearchScreen() {
         categories={categories.data ?? []}
         privateOnly={privateOnly}
         onChangePrivateOnly={inHousehold ? setPrivateOnly : undefined}
+        filterCount={activeFilterCount(filters)}
+        onOpenFilters={() => setFiltersOpen(true)}
+      />
+
+      <FiltersSheet
+        visible={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        kind={kind}
+        onKind={setKind}
+        minText={minText}
+        onMinText={setMinText}
+        maxText={maxText}
+        onMaxText={setMaxText}
+        range={range}
+        onRange={setRange}
+        onClear={() => {
+          setKind(null);
+          setMinText('');
+          setMaxText('');
+          setRange(null);
+        }}
+        saved={saved.data ?? []}
+        onApplySaved={applySaved}
+        onRemoveSaved={(id) => void removeSavedSearch(database, id).then(refreshSaved)}
+        onSave={(name) => {
+          void saveSearch(database, name, filters).then(refreshSaved);
+          showSnackbar({ message: COPY.searchFilters.saveDone });
+        }}
       />
 
       {searching ? (

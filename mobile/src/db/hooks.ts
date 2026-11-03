@@ -380,19 +380,26 @@ export function useColoursInUse(): UseQueryResult<readonly string[]> {
 }
 
 /** Matches for the Home search, across every month. Keyed on the trimmed text. */
+/** The filters beyond text, category and private, as one string for the cache key. */
+function moreOf(search: ExpenseSearch): string {
+  return [search.kind, search.minMinor, search.maxMinor, search.from, search.to]
+    .map((value) => value ?? '')
+    .join('|');
+}
+
 export function useExpenseSearch(
   search: ExpenseSearch,
 ): UseQueryResult<readonly ExpenseListItem[]> {
   const database = useDatabase();
   const text = search.text.trim();
   return useQuery({
-    queryKey: queryKeys.expenses.search(text, search.categoryId, search.privateOnly === true),
-    queryFn: () =>
-      searchExpenses(database, {
-        text,
-        categoryId: search.categoryId,
-        privateOnly: search.privateOnly,
-      }),
+    queryKey: queryKeys.expenses.search(
+      text,
+      search.categoryId,
+      search.privateOnly === true,
+      moreOf(search),
+    ),
+    queryFn: () => searchExpenses(database, { ...search, text }),
     enabled: isSearchActive(search),
   });
 }
@@ -405,15 +412,15 @@ export function useExpenseSearchSummary(
   const text = search.text.trim();
   return useQuery({
     queryKey: [
-      ...queryKeys.expenses.search(text, search.categoryId, search.privateOnly === true),
+      ...queryKeys.expenses.search(
+        text,
+        search.categoryId,
+        search.privateOnly === true,
+        moreOf(search),
+      ),
       'summary',
     ] as const,
-    queryFn: () =>
-      searchSummary(database, {
-        text,
-        categoryId: search.categoryId,
-        privateOnly: search.privateOnly,
-      }),
+    queryFn: () => searchSummary(database, { ...search, text }),
     enabled: isSearchActive(search),
   });
 }

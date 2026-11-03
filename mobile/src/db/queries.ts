@@ -824,11 +824,28 @@ export interface ExpenseSearch {
   readonly categoryId: string | null;
   /** Only the expenses kept private. Absent or false leaves them in with the rest. */
   readonly privateOnly?: boolean;
+  /** Only spending, or only income. Absent or null leaves both in. */
+  readonly kind?: 'expense' | 'income' | null;
+  /** Amount in minor units, inclusive. */
+  readonly minMinor?: number | null;
+  readonly maxMinor?: number | null;
+  /** Calendar days `YYYY-MM-DD`, inclusive. */
+  readonly from?: string | null;
+  readonly to?: string | null;
 }
 
 /** True when the search would narrow anything. Whitespace alone is not a search. */
 export function isSearchActive(search: ExpenseSearch): boolean {
-  return search.text.trim() !== '' || search.categoryId !== null || search.privateOnly === true;
+  return (
+    search.text.trim() !== '' ||
+    search.categoryId !== null ||
+    search.privateOnly === true ||
+    (search.kind ?? null) !== null ||
+    (search.minMinor ?? null) !== null ||
+    (search.maxMinor ?? null) !== null ||
+    (search.from ?? null) !== null ||
+    (search.to ?? null) !== null
+  );
 }
 
 /** Escape `%`, `_` and the escape character itself, so user text is matched literally. */
@@ -852,6 +869,31 @@ function searchWhere(search: ExpenseSearch): { where: string; params: (string | 
     params.push(search.categoryId);
   }
   if (search.privateOnly === true) clauses.push('e.private = 1');
+  const kindFilter = search.kind ?? null;
+  if (kindFilter !== null) {
+    clauses.push('e.kind = ?');
+    params.push(kindFilter);
+  }
+  const minMinorFilter = search.minMinor ?? null;
+  if (minMinorFilter !== null) {
+    clauses.push('e.amountMinor >= ?');
+    params.push(minMinorFilter);
+  }
+  const maxMinorFilter = search.maxMinor ?? null;
+  if (maxMinorFilter !== null) {
+    clauses.push('e.amountMinor <= ?');
+    params.push(maxMinorFilter);
+  }
+  const fromFilter = search.from ?? null;
+  if (fromFilter !== null) {
+    clauses.push('e.date >= ?');
+    params.push(fromFilter);
+  }
+  const toFilter = search.to ?? null;
+  if (toFilter !== null) {
+    clauses.push('e.date <= ?');
+    params.push(toFilter);
+  }
   return { where: clauses.join(' AND '), params };
 }
 

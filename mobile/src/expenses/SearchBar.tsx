@@ -25,6 +25,8 @@ export function SearchBar({
   categories,
   privateOnly = false,
   onChangePrivateOnly,
+  filterCount = 0,
+  onOpenFilters,
 }: {
   readonly text: string;
   readonly onChangeText: (next: string) => void;
@@ -34,6 +36,10 @@ export function SearchBar({
   readonly privateOnly?: boolean;
   /** Given only where there is a household to be private from; without it no chip is shown. */
   readonly onChangePrivateOnly?: (next: boolean) => void;
+  /** How many filters (type, amount, dates) are in use; shown on the Filters chip. */
+  readonly filterCount?: number;
+  /** Given where the filters sheet exists; without it no Filters chip is shown. */
+  readonly onOpenFilters?: () => void;
 }) {
   const color = useColors();
   const { isDark } = useTheme();
@@ -74,6 +80,18 @@ export function SearchBar({
         contentContainerStyle={styles.chips}
         keyboardShouldPersistTaps="handled"
       >
+        {onOpenFilters === undefined ? null : (
+          <Chip
+            testID="search-chip-filters"
+            label={
+              filterCount > 0
+                ? `${COPY.searchFilters.filters} · ${filterCount}`
+                : COPY.searchFilters.filters
+            }
+            selected={filterCount > 0}
+            onPress={onOpenFilters}
+          />
+        )}
         <Chip
           testID="search-chip-all"
           label={COPY.home.search.allCategories}

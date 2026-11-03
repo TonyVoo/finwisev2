@@ -77,8 +77,13 @@ export const queryKeys = {
     /** Spend per month over the six months ending at the given one - the Summary's trend. */
     trend: (endMonth: string) => ['local', 'expenses', 'trend', endMonth] as const,
     /** A search over every month. The text, category and private filter are part of the key. */
-    search: (text: string, categoryId: string | null, privateOnly = false) =>
-      ['local', 'expenses', 'search', text, categoryId, privateOnly] as const,
+    search: (
+      text: string,
+      categoryId: string | null,
+      privateOnly = false,
+      /** The other filters (kind, amount, dates), already reduced to what they are. */
+      more = '',
+    ) => ['local', 'expenses', 'search', text, categoryId, privateOnly, more] as const,
     detail: (id: string) => ['local', 'expenses', 'detail', id] as const,
     /** Whether any expense exists at all - which of Home's two empty states applies. */
     anyExist: () => ['local', 'expenses', 'anyExist'] as const,
