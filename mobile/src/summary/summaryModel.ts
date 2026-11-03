@@ -1,3 +1,4 @@
+import { COPY } from '../copy/strings';
 import { UNCATEGORIZED_NAME } from '@expense-tracker/shared';
 import type { CategorySpend } from '../db/queries';
 import { formatMoney } from '../lib/money';
@@ -103,7 +104,7 @@ function toEntry(row: CategorySpend, totalMinor: number): SpendEntry {
     color: row.color ?? CATEGORY_RESERVED_COLOR,
     totalMinor: row.totalMinor,
     expenseCount: row.expenseCount,
-    budget: budgetStatus(row.totalMinor, row.monthlyBudgetMinor),
+    budget: budgetStatus(row.totalMinor, row.monthlyBudgetMinor, row.carriedMinor),
     share: totalMinor === 0 ? null : row.totalMinor / totalMinor,
     percentLabel: totalMinor === 0 ? null : percentLabel(row.totalMinor, totalMinor),
   };
@@ -112,6 +113,8 @@ function toEntry(row: CategorySpend, totalMinor: number): SpendEntry {
 /** A month's spend against one category's budget. All integers, formatted at the edge. */
 export interface BudgetStatus {
   readonly budgetMinor: number;
+  /** The part of `budgetMinor` carried over from earlier months, when budget rollover is on. */
+  readonly carriedMinor?: number;
   readonly spentMinor: number;
   /** Budget minus spend; negative once over. */
   readonly remainingMinor: number;
@@ -124,10 +127,15 @@ export interface BudgetStatus {
  * Null budget means none. Exactly at the limit is *not* over: spending the budget is what
  * a budget is for, and warning at 100% would cry wolf on every month that goes to plan.
  */
-export function budgetStatus(spentMinor: number, budgetMinor: number | null): BudgetStatus | null {
+export function budgetStatus(
+  spentMinor: number,
+  budgetMinor: number | null,
+  carriedMinor?: number,
+): BudgetStatus | null {
   if (budgetMinor === null) return null;
   return {
     budgetMinor,
+    ...(carriedMinor === undefined ? {} : { carriedMinor }),
     spentMinor,
     remainingMinor: budgetMinor - spentMinor,
     over: spentMinor > budgetMinor,
@@ -138,9 +146,12 @@ export function budgetStatus(spentMinor: number, budgetMinor: number | null): Bu
 /** `$80.00 left of $400.00` / `$20.00 over $400.00`; read as written, so it is also the spoken form. */
 export function budgetLabel(status: BudgetStatus, currency: string, locale?: string): string {
   const limit = formatMoney(status.budgetMinor, currency, locale);
-  return status.over
+  const text = status.over
     ? `${formatMoney(-status.remainingMinor, currency, locale)} over ${limit}`
     : `${formatMoney(status.remainingMinor, currency, locale)} left of ${limit}`;
+  return status.carriedMinor === undefined
+    ? text
+    : `${text} (${COPY.rollover.carried.replace('{amount}', formatMoney(status.carriedMinor, currency, locale))})`;
 }
 
 /**

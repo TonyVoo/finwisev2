@@ -28,6 +28,7 @@ import {
   useUserCurrency,
   useUserDisplayName,
   useUserEmail,
+  useBudgetRollover,
 } from '@/db/hooks';
 import { LanguageSheet, languagePreferenceLabel } from '@/i18n/LanguageSheet';
 import { useLanguage } from '@/i18n/LanguageProvider';
@@ -68,6 +69,7 @@ export default function SettingsScreen() {
   const database = useDatabase();
   const showSnackbar = useSnackbar();
   const appLock = useAppLock();
+  const rollover = useBudgetRollover();
   const toggleLock = async () => {
     const result = await appLock.setEnabled(!appLock.enabled);
     if (result.status === 'unavailable') showSnackbar({ message: COPY.lock.unavailable });
@@ -352,6 +354,24 @@ export default function SettingsScreen() {
               <RowSubtitle lines={2}>{COPY.settings.renameCategoriesHint}</RowSubtitle>
             </Row>
           ) : null}
+          <Row
+            testID="settings-rollover"
+            leading={<IconBadge name="repeat" />}
+            onPress={() => void rollover.setEnabled(!rollover.enabled)}
+            accessibilityLabel={`${COPY.rollover.title}. ${COPY.rollover.hint}`}
+            accessibilityState={{ selected: rollover.enabled }}
+            trailing={
+              <Switch
+                value={rollover.enabled}
+                onValueChange={(next) => void rollover.setEnabled(next)}
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+              />
+            }
+          >
+            <RowTitle>{COPY.rollover.title}</RowTitle>
+            <RowSubtitle lines={2}>{COPY.rollover.hint}</RowSubtitle>
+          </Row>
           <Row
             testID="settings-app-lock"
             leading={<IconBadge name="lock" />}

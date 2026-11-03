@@ -633,6 +633,12 @@ export const VIETNAMESE_COPY: CopyBundle = {
       failed: 'Không xuất được các khoản chi của bạn. Hãy thử lại.',
     },
 
+    rollover: {
+      title: 'Cộng dồn ngân sách chưa dùng',
+      hint: 'Phần ngân sách tháng trước chưa dùng hết sẽ được cộng vào tháng này, với các danh mục có ngân sách.',
+      carried: 'đã cộng dồn {amount}',
+    },
+
     paymentDetection: {
       title: 'Tự nhận diện thanh toán',
       hint: 'Gợi ý khoản chi từ thông báo MoMo và ZaloPay.',

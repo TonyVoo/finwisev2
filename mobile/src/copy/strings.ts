@@ -700,6 +700,12 @@ export const COPY = {
     failed: 'Could not export your expenses. Try again.',
   },
 
+  rollover: {
+    title: 'Roll over unspent budget',
+    hint: 'Budget you did not spend last month is added to this month, for categories with a budget.',
+    carried: '{amount} carried over',
+  },
+
   paymentDetection: {
     title: 'Payment detection',
     hint: 'Suggest entries from MoMo and ZaloPay notifications.',

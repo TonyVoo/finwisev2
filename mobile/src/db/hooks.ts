@@ -1,9 +1,12 @@
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useCallback } from 'react';
+import { useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 import { LIMITS } from '@expense-tracker/shared';
 import type { BalanceExpense } from '../household/balances';
 import { queryKeys } from '../query/keys';
 import { type MonthKey, monthRange, stepMonth } from '../lib/calendar';
+import { ROLLOVER_MONTHS, rolloverBudgets } from '../summary/rollover';
 import { TREND_MONTHS } from '../summary/trendModel';
+import { META_KEYS, readMeta, writeMeta } from './meta';
 import { useDatabase } from './DatabaseProvider';
 import { readCategoryRenameAnswered, readCategoryReviewPending } from './onboarding';
 import { readEmailVerified, readUserCurrency, readUserDisplayName, readUserEmail } from './user';
@@ -175,8 +178,38 @@ export function useMonthCategorySpend(month: MonthKey): UseQueryResult<readonly 
   const database = useDatabase();
   return useQuery({
     queryKey: queryKeys.expenses.monthByCategory(month),
-    queryFn: () => monthCategorySpend(database, monthRange(month)),
+    queryFn: async () => {
+      const rows = await monthCategorySpend(database, monthRange(month));
+      if ((await readMeta(database, META_KEYS.budgetRollover)) !== '1') return rows;
+      const earlier: (readonly CategorySpend[])[] = [];
+      for (let back = ROLLOVER_MONTHS; back >= 1; back--) {
+        earlier.push(await monthCategorySpend(database, monthRange(stepMonth(month, -back))));
+      }
+      return rolloverBudgets(rows, earlier);
+    },
   });
+}
+
+/** Whether unspent budget rolls into the next month, and the way to change it (a device setting). */
+export function useBudgetRollover(): {
+  readonly enabled: boolean;
+  readonly setEnabled: (next: boolean) => Promise<void>;
+} {
+  const database = useDatabase();
+  const queryClient = useQueryClient();
+  const query = useQuery({
+    queryKey: ['local', 'meta', 'budgetRollover'] as const,
+    queryFn: async () => (await readMeta(database, META_KEYS.budgetRollover)) === '1',
+  });
+  const setEnabled = useCallback(
+    async (next: boolean) => {
+      await writeMeta(database, META_KEYS.budgetRollover, next ? '1' : '0');
+      // Every budget figure on Home and Summary changes with it.
+      await queryClient.invalidateQueries({ queryKey: queryKeys.local() });
+    },
+    [database, queryClient],
+  );
+  return { enabled: query.data ?? false, setEnabled };
 }
 
 /** Per-month spend for the trend chart: the {@link TREND_MONTHS} months ending at `month`. */

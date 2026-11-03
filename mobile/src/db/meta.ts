@@ -88,6 +88,8 @@ export const META_KEYS = {
    * of this device, like the theme, so deliberately absent from {@link WIPED_META_KEYS}.
    */
   tabBarStyle: 'tabBarStyle',
+  /** `'1'` when unspent budget rolls into the next month. A property of this device, so not in {@link WIPED_META_KEYS}. */
+  budgetRollover: 'budgetRollover',
 } as const;
 
 export type MetaKey = (typeof META_KEYS)[keyof typeof META_KEYS];

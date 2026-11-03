@@ -443,6 +443,8 @@ export interface CategorySpend {
    * orphaned expense reports the fallback's budget, because that is the row it is filed under.
    */
   readonly monthlyBudgetMinor: number | null;
+  /** How much of that budget was carried over from earlier months (budget rollover), when any was. */
+  readonly carriedMinor?: number;
   /** Minor units, summed by SQLite as an integer. */
   readonly totalMinor: number;
   /** Live expenses in the group, including any whose amount is zero. */
