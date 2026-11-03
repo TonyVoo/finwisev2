@@ -18,7 +18,6 @@ import { markCategoryReviewPending } from '@/db/onboarding';
 import { queryKeys } from '@/query/keys';
 import {
   CURRENCY_OPTIONS,
-  DEFAULT_CURRENCY_CODE,
   currencyAccessibilityLabel,
   deviceCurrency,
   currencyLabel,
