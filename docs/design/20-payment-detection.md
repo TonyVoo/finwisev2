@@ -48,3 +48,10 @@ are not allowed for the app, nothing is shown.
 - The category is a guess from the person's own entries: the one the same name (case and spaces ignored) was filed
   under most often, ties to the most recent (`src/capture/categoryGuess.ts`). A name never seen opens with the
   last-used category. Correcting a category on an entry is what teaches it; there is nothing to maintain.
+
+## The same guess in the ordinary form
+
+Typing a note in Add expense now does what Add on a detected payment does: if the same note (case and spaces ignored) was
+filed under a category before, the new entry goes there too, with a snackbar that says so (_Filed under Fuel, like your
+earlier "shell" entries._). It applies to a **new** entry only, and **only until the person chooses a category
+themselves** - a category picked by hand, or created in the form, is never moved by a note.

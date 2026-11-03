@@ -287,6 +287,8 @@ export const COPY = {
     close: 'Close without saving',
     /** The date sheet's three quick options (`06-expense-form.md` rule 7). */
     date: { today: 'Today', yesterday: 'Yesterday', choose: 'Choose a date…' },
+    /** After a note that was filed before: which category the entry went under, and why. `{name}` and `{note}`. */
+    categoryGuessed: 'Filed under {name}, like your earlier "{note}" entries.',
     keypad: {
       decimal: 'Decimal point',
       backspace: 'Delete last digit',

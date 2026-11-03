@@ -259,6 +259,7 @@ export const VIETNAMESE_COPY: CopyBundle = {
       deleteIncome: 'Xóa khoản thu',
       close: 'Đóng mà không lưu',
       date: { today: 'Hôm nay', yesterday: 'Hôm qua', choose: 'Chọn ngày…' },
+      categoryGuessed: 'Đã xếp vào {name}, giống các khoản "{note}" trước đây.',
       keypad: {
         tapHint: 'Chạm vào số tiền để nhập.',
         openHint: 'Mở bàn phím số.',

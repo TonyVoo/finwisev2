@@ -341,3 +341,8 @@ attached, `Remove photo`.
   being offline like any other edit.
 - Camera or library access refused: a snackbar says where to allow it. A photo that cannot be used:
   `Could not use that photo. Try another.`
+
+## Category from the note (added later)
+
+On a new entry, a note that was filed under a category before brings that category (`capture/categoryGuess.ts`), with a
+snackbar saying so; a category the person chose is never overridden. See `20-payment-detection.md`.

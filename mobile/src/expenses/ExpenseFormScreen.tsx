@@ -99,6 +99,7 @@ import { isQuickAddUnavailable, markQuickAddUnavailable } from '../quickAdd/quic
 import { useOptionalSyncStatus } from '../sync/SyncProvider';
 import { clearCapture, peekCapture } from '../capture/pendingCapture';
 import { markAdded } from '../capture/store';
+import { guessCategory } from '../capture/categoryGuess';
 import { clearStashedPhoto, peekStashedPhoto } from '../receipts/pendingPhoto';
 import { isScanUnavailable, markScanUnavailable } from '../receipts/scanAvailability';
 import { isEmptyScan, planSuggestion, suggestionSummary } from '../receipts/receiptSuggestion';
@@ -200,6 +201,8 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
   const [draft, setDraft] = useState<ExpenseDraft | null>(null);
   const [initial, setInitial] = useState<ExpenseDraft | null>(null);
   const [overlay, setOverlay] = useState<Overlay>('none');
+  // Once the person has chosen a category themselves, a note never moves it.
+  const [categoryChosen, setCategoryChosen] = useState(false);
   // The number keypad is closed until the amount is tapped (`docs/design/06-expense-form.md` rule 1), so the
   // fields are what you see first; Done closes it, and so does opening any sheet.
   const [keypadOpen, setKeypadOpen] = useState(false);
@@ -732,6 +735,7 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
       );
       // Selected automatically, and **both** sheets dismiss: the user came here to pick a
       // category, not to manage them (rule 4).
+      setCategoryChosen(true);
       setDraft((current) =>
         current === null ? current : { ...current, categoryId: queued.recordId },
       );
@@ -1056,6 +1060,7 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
         categories={liveCategories}
         selectedId={live?.categoryId ?? null}
         onSelect={(id) => {
+          setCategoryChosen(true);
           setDraft((current) => (current === null ? current : { ...current, categoryId: id }));
           setOverlay('none');
         }}
@@ -1130,6 +1135,23 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
             current === null ? current : { ...current, note: normaliseNote(note) },
           );
           setOverlay('none');
+          // A note this person has filed before brings its category with it - on a new entry, and only until they
+          // pick one themselves.
+          const trimmed = note.trim();
+          if (!isEdit && !categoryChosen && trimmed !== '' && live !== null) {
+            void guessCategory(database, trimmed, live.kind).then((guess) => {
+              const found = guess === null ? undefined : liveCategories.find((c) => c.id === guess);
+              if (found === undefined) return;
+              setDraft((current) =>
+                current === null ? current : { ...current, categoryId: found.id },
+              );
+              showSnackbar({
+                message: COPY.form.categoryGuessed
+                  .replace('{name}', found.name)
+                  .replace('{note}', trimmed),
+              });
+            });
+          }
         }}
       />
 
