@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AppBar } from '@/components/Chrome';
+import { Row, RowSubtitle, RowTitle } from '@/components/Row';
 import { COPY } from '@/copy/strings';
 import {
   useIncomeTrend,
@@ -208,6 +209,18 @@ export default function SummaryScreen() {
         {!pending && currencyCode !== null && trend.isWorthShowing ? (
           <SpendTrend trend={trend} currency={currencyCode} />
         ) : null}
+
+        {/* The whole year, one tap away from the month. */}
+        <Row
+          testID="summary-year"
+          onPress={() => router.push('/(app)/year')}
+          chevron
+          lastInGroup
+          accessibilityLabel={`${COPY.yearReport.title}. ${COPY.yearReport.hint}`}
+        >
+          <RowTitle>{COPY.yearReport.title}</RowTitle>
+          <RowSubtitle lines={2}>{COPY.yearReport.hint}</RowSubtitle>
+        </Row>
       </ScrollView>
     </View>
   );

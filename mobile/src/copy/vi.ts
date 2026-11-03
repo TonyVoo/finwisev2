@@ -633,6 +633,28 @@ export const VIETNAMESE_COPY: CopyBundle = {
       failed: 'Không xuất được các khoản chi của bạn. Hãy thử lại.',
     },
 
+    yearReport: {
+      title: 'Tổng kết năm',
+      hint: 'Theo từng tháng, tiền đi đâu, và so với năm trước.',
+      spent: 'Đã chi',
+      income: 'Thu nhập',
+      saved: 'Còn lại',
+      average: 'Trung bình mỗi tháng',
+      peak: 'Chi nhiều nhất',
+      lowest: 'Chi ít nhất',
+      months: 'Theo từng tháng',
+      categories: 'Tiền đi đâu',
+      vsLast: 'so với {year}',
+      rise: 'Tăng nhiều nhất: {name}, nhiều hơn {amount} so với {year}.',
+      fall: 'Giảm nhiều nhất: {name}, ít hơn {amount} so với {year}.',
+      empty: 'Chưa ghi gì trong năm {year}.',
+      share: 'Chia sẻ dạng PDF',
+      shareFailed: 'Không tạo được PDF. Hãy thử lại.',
+      shareUnavailable: 'Thiết bị này không hỗ trợ chia sẻ tệp.',
+      previousYear: 'Năm trước',
+      nextYear: 'Năm sau',
+    },
+
     searchFilters: {
       filters: 'Bộ lọc',
       filtersTitle: 'Bộ lọc',

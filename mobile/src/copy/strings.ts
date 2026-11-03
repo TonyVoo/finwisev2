@@ -700,6 +700,28 @@ export const COPY = {
     failed: 'Could not export your expenses. Try again.',
   },
 
+  yearReport: {
+    title: 'Year in review',
+    hint: 'Month by month, where it went, and how it compares with last year.',
+    spent: 'Spent',
+    income: 'Income',
+    saved: 'Left over',
+    average: 'Average per month',
+    peak: 'Most spent',
+    lowest: 'Least spent',
+    months: 'Month by month',
+    categories: 'Where it went',
+    vsLast: 'vs {year}',
+    rise: 'Biggest rise: {name}, {amount} more than {year}.',
+    fall: 'Biggest fall: {name}, {amount} less than {year}.',
+    empty: 'Nothing recorded in {year}.',
+    share: 'Share as PDF',
+    shareFailed: 'Could not create the PDF. Try again.',
+    shareUnavailable: 'Sharing files is not available on this device.',
+    previousYear: 'Previous year',
+    nextYear: 'Next year',
+  },
+
   searchFilters: {
     filters: 'Filters',
     filtersTitle: 'Filters',
