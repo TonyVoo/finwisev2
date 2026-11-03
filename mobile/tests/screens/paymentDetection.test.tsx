@@ -13,6 +13,7 @@ import {
 } from '@/expenses/ExpenseFormScreen';
 import NewExpenseScreen from '../../app/(app)/expense/new';
 import PaymentDetectionScreen, {
+  DETECTION_ALERTS_TEST_ID,
   DETECTION_STATUS_TEST_ID,
   DETECTION_TURN_ON_TEST_ID,
   SUGGESTION_ROW_TEST_ID_PREFIX,
@@ -34,6 +35,8 @@ const native = {
   supported: true,
   enabled: false,
   opened: 0,
+  alerts: false,
+  setAlerts: jest.fn(),
 };
 jest.mock('@/capture/native', () => ({
   paymentNotificationsSupported: () => native.supported,
@@ -42,6 +45,8 @@ jest.mock('@/capture/native', () => ({
     native.opened += 1;
   },
   drainPaymentNotifications: () => [],
+  paymentAlertsEnabled: () => native.alerts,
+  setPaymentAlerts: (...args: unknown[]) => native.setAlerts(...args),
 }));
 
 const MOMO = 'com.mservice.momotransfer';
@@ -73,6 +78,8 @@ beforeEach(() => {
   native.supported = true;
   native.enabled = false;
   native.opened = 0;
+  native.alerts = false;
+  native.setAlerts.mockClear();
 });
 
 describe('the Payment detection screen', () => {
@@ -167,6 +174,32 @@ describe('the Payment detection screen', () => {
     await waitFor(() => expect(screen.queryByTestId('detection-empty')).not.toBeNull());
     expect((await listRecent(database))[0]?.status).toBe('dismissed');
     expect(await outboxEntries(database)).toEqual([]);
+  });
+});
+
+describe('the heads-up', () => {
+  it('is off until switched on, then tells the service, with the words in the app’s language', async () => {
+    await mountScreen(<PaymentDetectionScreen />, { clock: () => NOW, seed });
+
+    await userEvent.press(screen.getByTestId(DETECTION_ALERTS_TEST_ID));
+
+    expect(native.setAlerts).toHaveBeenCalledWith(
+      true,
+      COPY.paymentDetection.alertTitle,
+      COPY.paymentDetection.alertBody,
+    );
+    await userEvent.press(screen.getByTestId(DETECTION_ALERTS_TEST_ID));
+    expect(native.setAlerts).toHaveBeenLastCalledWith(
+      false,
+      expect.any(String),
+      expect.any(String),
+    );
+  });
+
+  it('shows no switch where there is no service', async () => {
+    native.supported = false;
+    await mountScreen(<PaymentDetectionScreen />, { clock: () => NOW, seed });
+    expect(screen.queryByTestId(DETECTION_ALERTS_TEST_ID)).toBeNull();
   });
 });
 

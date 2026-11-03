@@ -1,8 +1,14 @@
+import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Redirect, Stack } from 'expo-router';
 import { useSession } from '@/auth/SessionProvider';
 import { useReadCapturedNotifications } from '@/capture/hooks';
-import { paymentNotificationsSupported } from '@/capture/native';
+import {
+  paymentAlertsEnabled,
+  paymentNotificationsSupported,
+  setPaymentAlerts,
+} from '@/capture/native';
+import { COPY } from '@/copy/strings';
 import { useSelectedMonth } from '@/month/MonthProvider';
 import { homeWidgetSupported } from '@/widget/native';
 import { useWidgetSync } from '@/widget/useWidgetSync';
@@ -17,6 +23,11 @@ function HomeWidgetSync() {
 /** Brings in what MoMo and ZaloPay notified while the app was closed (Android; nothing elsewhere). */
 function PaymentCapture() {
   useReadCapturedNotifications();
+  const { alertTitle, alertBody } = COPY.paymentDetection;
+  // The heads-up's words are written ahead of time, in the language the app is in now.
+  useEffect(() => {
+    setPaymentAlerts(paymentAlertsEnabled(), alertTitle, alertBody);
+  }, [alertTitle, alertBody]);
   return null;
 }
 

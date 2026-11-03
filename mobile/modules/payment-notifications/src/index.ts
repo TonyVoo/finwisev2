@@ -11,6 +11,8 @@ interface Native {
   isEnabled(): boolean;
   openSettings(): void;
   drain(): string;
+  setAlerts(enabled: boolean, title: string, body: string): void;
+  alertsEnabled(): boolean;
 }
 
 const native: Native | null =
@@ -44,4 +46,12 @@ export function drainPaymentNotifications(): readonly QueuedNotification[] {
   } catch {
     return [];
   }
+}
+
+export function paymentAlertsEnabled(): boolean {
+  return native?.alertsEnabled() ?? false;
+}
+
+export function setPaymentAlerts(enabled: boolean, title: string, body: string): void {
+  native?.setAlerts(enabled, title, body);
 }

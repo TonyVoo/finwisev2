@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { AppState, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AppState, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { AppBar, IconButton } from '@/components/Chrome';
@@ -7,6 +7,8 @@ import { Button } from '@/components/Button';
 import { Row, RowSubtitle, RowTitle } from '@/components/Row';
 import {
   openPaymentNotificationSettings,
+  paymentAlertsEnabled,
+  setPaymentAlerts,
   paymentNotificationsEnabled,
   paymentNotificationsSupported,
 } from '@/capture/native';
@@ -30,6 +32,7 @@ import { createStyles, useColors } from '@/theme/ThemeProvider';
 
 export const DETECTION_STATUS_TEST_ID = 'detection-status';
 export const DETECTION_TURN_ON_TEST_ID = 'detection-turn-on';
+export const DETECTION_ALERTS_TEST_ID = 'detection-alerts';
 export const SUGGESTION_ROW_TEST_ID_PREFIX = 'suggestion';
 
 export default function PaymentDetectionScreen() {
@@ -45,6 +48,7 @@ export default function PaymentDetectionScreen() {
 
   const supported = paymentNotificationsSupported();
   const [enabled, setEnabled] = useState(paymentNotificationsEnabled);
+  const [alerts, setAlerts] = useState(paymentAlertsEnabled);
   // The person comes back from Android settings, so the answer is asked again whenever the app returns.
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
@@ -52,6 +56,11 @@ export default function PaymentDetectionScreen() {
     });
     return () => subscription.remove();
   }, []);
+
+  function toggleAlerts(next: boolean): void {
+    setAlerts(next);
+    setPaymentAlerts(next, COPY.paymentDetection.alertTitle, COPY.paymentDetection.alertBody);
+  }
 
   const add = useCallback(
     async (item: Suggestion) => {
@@ -119,6 +128,27 @@ export default function PaymentDetectionScreen() {
               </>
             )}
           </View>
+        ) : null}
+
+        {supported ? (
+          <Row
+            testID={DETECTION_ALERTS_TEST_ID}
+            lastInGroup
+            onPress={() => toggleAlerts(!alerts)}
+            accessibilityLabel={`${COPY.paymentDetection.alerts}. ${COPY.paymentDetection.alertsHint}`}
+            accessibilityState={{ selected: alerts }}
+            trailing={
+              <Switch
+                value={alerts}
+                onValueChange={toggleAlerts}
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+              />
+            }
+          >
+            <RowTitle>{COPY.paymentDetection.alerts}</RowTitle>
+            <RowSubtitle lines={3}>{COPY.paymentDetection.alertsHint}</RowSubtitle>
+          </Row>
         ) : null}
 
         <Text style={styles.heading} onPress={() => void read()}>

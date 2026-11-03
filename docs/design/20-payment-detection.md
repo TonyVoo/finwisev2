@@ -29,12 +29,21 @@ In an account whose currency is not dong it is entered as a foreign amount in VN
 A suggestion whose amount, day and kind already match an entry says _Looks like one you already added._ and is left
 for the person to decide.
 
+## The heads-up (optional)
+
+Settings -> Payment detection -> _Notify me when a payment is spotted_ (off by default). The native service then posts a
+notification, _Possible payment detected - Tap to review it in Expenses_, which opens the Payment detection screen
+(`expensetracker://settings/payment-detection`). It uses a **rough check in Kotlin** - an amount in dong, words that say
+money moved, none of the words of codes and promotions - not the app's parser, so it can be wrong in both directions;
+the app does the real reading when it opens. The words are written by the app in its current language. If notifications
+are not allowed for the app, nothing is shown.
+
 ## Known limits
 
 - The apps' real notification wording is not published, so the rules are tolerant and were not written from real
   samples. The _Recent notifications_ log exists to correct them: a payment that was missed shows up there as
   `Not a payment` with its exact text.
-- A suggestion appears when the app is next opened; there is no notification of our own. Android may stop a listener
+- Without the heads-up a suggestion appears when the app is next opened. Android may stop a listener
   on aggressive battery savers; turning Notification access off and on again restarts it.
 - The category is a guess from the person's own entries: the one the same name (case and spaces ignored) was filed
   under most often, ties to the most recent (`src/capture/categoryGuess.ts`). A name never seen opens with the

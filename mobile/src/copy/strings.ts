@@ -785,6 +785,11 @@ export const COPY = {
     logEmpty: 'Nothing read yet.',
     ignored: 'Not a payment',
     unsupported: 'Payment detection is only available on Android.',
+    alerts: 'Notify me when a payment is spotted',
+    alertsHint:
+      'A notification, so you can add it without opening the app first. It can be wrong; the app does the careful reading.',
+    alertTitle: 'Possible payment detected',
+    alertBody: 'Tap to review it in Expenses.',
   },
 
   currencyChange: {

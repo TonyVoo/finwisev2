@@ -26,6 +26,22 @@ class PaymentNotificationsModule : Module() {
       context.startActivity(intent)
     }
 
+    // The optional heads-up when a payment is spotted: on or off, and its words in the app's language.
+    Function("setAlerts") { enabled: Boolean, title: String, body: String ->
+      val context = appContext.reactContext ?: return@Function Unit
+      context.getSharedPreferences(PaymentNotificationService.PREFS, Context.MODE_PRIVATE).edit()
+        .putBoolean(PaymentNotificationService.ALERTS, enabled)
+        .putString(PaymentNotificationService.ALERT_TITLE, title)
+        .putString(PaymentNotificationService.ALERT_BODY, body)
+        .apply()
+    }
+
+    Function("alertsEnabled") {
+      val context = appContext.reactContext ?: return@Function false
+      context.getSharedPreferences(PaymentNotificationService.PREFS, Context.MODE_PRIVATE)
+        .getBoolean(PaymentNotificationService.ALERTS, false)
+    }
+
     // What has arrived since the last call, as JSON, and forgets it.
     Function("drain") {
       val context = appContext.reactContext ?: return@Function "[]"
