@@ -158,6 +158,34 @@ minute for the first start). That `https://` address is what the app is built wi
 **4. The scheduled prune.** Free Render has no cron. For one person the table grows slowly, so run it by hand now and
 then from your Mac with the Neon string: `DATABASE_URL="..." pnpm --filter @expense-tracker/backend prune:tombstones`.
 
+## Backups
+
+Neon's free plan keeps only a short history, so keep a copy of your own. `scripts/backup-db.sh` writes a compressed
+SQL dump to `./backups` (git-ignored, readable only by you) and keeps the newest 14:
+
+```sh
+BACKUP_DATABASE_URL='postgresql://...neon.tech/...?sslmode=require' scripts/backup-db.sh
+```
+
+Use Neon's **direct** connection string. It uses `pg_dump` if installed, otherwise Docker. A dump that comes out empty is
+deleted and the script exits non-zero, so a failure is never mistaken for a backup.
+
+To run it every day on a Mac, add one line to `crontab -e` (the Mac must be awake; copy `backups/` somewhere off the
+machine now and then):
+
+```sh
+0 9 * * * BACKUP_DATABASE_URL='postgresql://...' /path/to/finwisev2/scripts/backup-db.sh >> /tmp/finwise-backup.log 2>&1
+```
+
+**Restore** into an empty database (a new Neon project, or local Postgres), then point `DATABASE_URL` at it:
+
+```sh
+gzip -dc backups/finwise-YYYYMMDD-HHMMSS.sql.gz | psql 'postgresql://...target...'
+```
+
+The dump drops and recreates the tables, so restore into the database you mean to replace, never into one you want
+to keep. Try a restore once on a throwaway database before you need it.
+
 ## The admin page
 
 `https://YOUR-SERVICE/admin` shows how the service is doing (accounts, sign-ups, households, database size, Gemini use)
