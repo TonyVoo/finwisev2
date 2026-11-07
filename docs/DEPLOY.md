@@ -220,7 +220,9 @@ and `MARKET_API_KEY`; the app never does, and the service has no database.
 
 - **Private network.** Give it no public address: only the API calls it, with `X-Api-Key` (the service refuses a
   call without it, except `GET /v1/health`).
-- **A model for the brief and the assistant.** `ANTHROPIC_API_KEY` (or `LLM_PROVIDER=openai_compat` with its base URL).
+- **A model for the brief and the assistant.** `ANTHROPIC_API_KEY`, or Gemini: `LLM_PROVIDER=openai_compat`, `OPENAI_COMPAT_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai`,
+  `OPENAI_COMPAT_API_KEY` (a Gemini key) and `OPENAI_COMPAT_MODEL` (model names change; list them with `/models` if one 404s).
+  On Gemini's free tier Google may use requests to improve its products: say so in the privacy policy, as for receipts.
   Without one both answer 503 and the app hides or explains them; quotes and the calculator still work. Each
   question is a model call, so the API limits an account (`ASSISTANT_MAX_PER_USER`) and caches nothing.
 - **Real prices.** The image uses VNDirect for prices; `vnstock` is not on PyPI and needs a free key (see that

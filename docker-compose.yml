@@ -45,6 +45,10 @@ services:
       MARKET_API_KEY: ${MARKET_API_KEY:?set MARKET_API_KEY to a long random string}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
+      # Gemini: LLM_PROVIDER=openai_compat, base https://generativelanguage.googleapis.com/v1beta/openai
+      OPENAI_COMPAT_BASE_URL: ${OPENAI_COMPAT_BASE_URL:-}
+      OPENAI_COMPAT_API_KEY: ${OPENAI_COMPAT_API_KEY:-}
+      OPENAI_COMPAT_MODEL: ${OPENAI_COMPAT_MODEL:-}
 
   api:
     build:
