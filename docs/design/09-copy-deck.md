@@ -1230,3 +1230,19 @@ them as proposals the Designer can reword; changing a row here means changing
 | `netWorth.chartEmpty` | `The chart builds up as the days pass and prices come in.` | Net worth screen and its Summary row |
 | `netWorth.offline` | `Connect to the internet to see how your stocks were worth day by day.` | Net worth screen and its Summary row |
 | `netWorth.vndOnly` | `Net worth is shown for accounts in Vietnamese dong.` | Net worth screen and its Summary row |
+| `summary.report.share` | `Share this month as PDF` | Summary, monthly PDF report |
+| `summary.report.title` | `Monthly report` | Summary, monthly PDF report |
+| `summary.report.spent` | `Spent` | Summary, monthly PDF report |
+| `summary.report.income` | `Income` | Summary, monthly PDF report |
+| `summary.report.left` | `Left over` | Summary, monthly PDF report |
+| `summary.report.categories` | `By category` | Summary, monthly PDF report |
+| `summary.report.budget` | `Budget` | Summary, monthly PDF report |
+| `summary.report.goals` | `Savings goals` | Summary, monthly PDF report |
+| `summary.report.stocks` | `Stocks` | Summary, monthly PDF report |
+| `summary.report.worth` | `Worth now` | Summary, monthly PDF report |
+| `summary.report.result` | `Unrealised result` | Summary, monthly PDF report |
+| `summary.report.insights` | `Highlights` | Summary, monthly PDF report |
+| `summary.report.generated` | `Made on {date}` | Summary, monthly PDF report |
+| `summary.report.unavailable` | `This device cannot share files.` | Summary, monthly PDF report |
+| `summary.report.failed` | `Could not create the PDF. Try again.` | Summary, monthly PDF report |
+| `summary.report.empty` | `Nothing recorded this month.` | Summary, monthly PDF report |

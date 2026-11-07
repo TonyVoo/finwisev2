@@ -155,6 +155,24 @@ export const COPY = {
   },
 
   summary: {
+    report: {
+      share: 'Share this month as PDF',
+      title: 'Monthly report',
+      spent: 'Spent',
+      income: 'Income',
+      left: 'Left over',
+      categories: 'By category',
+      budget: 'Budget',
+      goals: 'Savings goals',
+      stocks: 'Stocks',
+      worth: 'Worth now',
+      result: 'Unrealised result',
+      insights: 'Highlights',
+      generated: 'Made on {date}',
+      unavailable: 'This device cannot share files.',
+      failed: 'Could not create the PDF. Try again.',
+      empty: 'Nothing recorded this month.',
+    },
     suggest: {
       title: 'Suggested budgets',
       intro: 'Worked out from your last months of spending, with a little room.',

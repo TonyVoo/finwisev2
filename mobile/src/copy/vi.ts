@@ -147,6 +147,24 @@ export const VIETNAMESE_COPY: CopyBundle = {
     },
 
     summary: {
+      report: {
+        share: 'Chia sẻ tháng này dạng PDF',
+        title: 'Báo cáo tháng',
+        spent: 'Đã chi',
+        income: 'Thu nhập',
+        left: 'Còn lại',
+        categories: 'Theo danh mục',
+        budget: 'Ngân sách',
+        goals: 'Mục tiêu tiết kiệm',
+        stocks: 'Cổ phiếu',
+        worth: 'Giá trị hiện tại',
+        result: 'Lãi/lỗ chưa chốt',
+        insights: 'Điểm nổi bật',
+        generated: 'Lập ngày {date}',
+        unavailable: 'Thiết bị này không chia sẻ được tệp.',
+        failed: 'Chưa tạo được PDF. Hãy thử lại.',
+        empty: 'Tháng này chưa ghi gì.',
+      },
       suggest: {
         title: 'Gợi ý ngân sách',
         intro: 'Tính từ chi tiêu những tháng gần đây, có chừa một chút.',
