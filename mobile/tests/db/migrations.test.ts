@@ -46,6 +46,7 @@ describe('migrate', () => {
       'recurring',
       'settlements',
       'sync_rejections',
+      'trades',
       'user',
     ]);
   });

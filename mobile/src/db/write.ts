@@ -4,6 +4,7 @@ import {
   type ExpenseSyncFields,
   type GoalSyncFields,
   type SettlementSyncFields,
+  type TradeSyncFields,
   type SyncEntity,
   Uuid,
 } from '@expense-tracker/shared';
@@ -45,7 +46,8 @@ export type LocalMutation =
       readonly entity: 'settlement';
       readonly id: string;
       readonly fields: SettlementSyncFields;
-    };
+    }
+  | { readonly entity: 'trade'; readonly id: string; readonly fields: TradeSyncFields };
 
 export interface LocalMutationOptions {
   /** Injectable so tests can pin `updatedAt`. Defaults to the system clock. */

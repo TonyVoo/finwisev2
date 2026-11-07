@@ -10,6 +10,11 @@ import {
   HouseholdInviteResponse,
   HouseholdListResponse,
   HouseholdResponse,
+  MarketBriefResponse,
+  MarketNewsResponse,
+  MarketQuoteResponse,
+  MarketSignalResponse,
+  PositionSizeResponse,
   RatesResponse,
   ReceiptIndexResponse,
   ReceiptResponse,
@@ -119,6 +124,11 @@ export const ENDPOINTS = {
   deleteExpense: endpoint('deleteExpense', ExpenseResponse),
 
   getRate: endpoint('getRate', RatesResponse),
+  getMarketQuote: endpoint('getMarketQuote', MarketQuoteResponse),
+  getMarketSignal: endpoint('getMarketSignal', MarketSignalResponse),
+  getMarketNews: endpoint('getMarketNews', MarketNewsResponse),
+  getMarketBrief: endpoint('getMarketBrief', MarketBriefResponse),
+  getPositionSize: endpoint('getPositionSize', PositionSizeResponse),
   pullSync: endpoint('pullSync', SyncPullResponse),
   pushSync: endpoint('pushSync', SyncPushResponse),
 } as const satisfies Readonly<Record<ApiOperationId, Endpoint<unknown>>>;

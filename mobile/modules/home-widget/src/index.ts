@@ -7,7 +7,7 @@ import { requireOptionalNativeModule } from 'expo-modules-core';
  */
 
 interface Native {
-  update(title: string, amount: string, add: string): void;
+  update(title: string, amount: string, add: string, link: string): void;
   clear(): void;
   requestPin(): boolean;
 }
@@ -16,7 +16,8 @@ const native: Native | null =
   Platform.OS === 'android' ? requireOptionalNativeModule<Native>('HomeWidget') : null;
 
 export const homeWidgetSupported = (): boolean => native !== null;
-export const updateHomeWidget = (title: string, amount: string, add: string): void =>
-  native?.update(title, amount, add);
+/** `link` is where a tap opens the app: a link the app already answers to. */
+export const updateHomeWidget = (title: string, amount: string, add: string, link: string): void =>
+  native?.update(title, amount, add, link);
 export const clearHomeWidget = (): void => native?.clear();
 export const requestHomeWidgetPin = (): boolean => native?.requestPin() ?? false;

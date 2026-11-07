@@ -26,6 +26,13 @@ import type {
   HouseholdRenameRequest,
   HouseholdResponse,
   HouseholdTransferRequest,
+  MarketBriefResponse,
+  MarketNewsResponse,
+  MarketQuoteResponse,
+  MarketSymbolsQuery,
+  MarketSignalResponse,
+  PositionSizeRequest,
+  PositionSizeResponse,
   RatesQuery,
   RatesResponse,
   ReceiptIndexResponse,
@@ -156,6 +163,11 @@ export interface ApiClient {
 
   /** What to multiply a foreign amount by. Called only while entering one; fails soft. */
   getRate(query: RatesQuery): Promise<RatesResponse>;
+  getMarketQuote(symbol: string): Promise<MarketQuoteResponse>;
+  getMarketSignal(symbol: string): Promise<MarketSignalResponse>;
+  getMarketNews(query: MarketSymbolsQuery): Promise<MarketNewsResponse>;
+  getMarketBrief(query: MarketSymbolsQuery): Promise<MarketBriefResponse>;
+  getPositionSize(body: PositionSizeRequest): Promise<PositionSizeResponse>;
 
   /** Pull changes with `revision > since`. The cursor is a revision, never a timestamp. */
   pullSync(query?: SyncPullQuery): Promise<SyncPullResponse>;
@@ -274,6 +286,11 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     recap: (body) => send(ENDPOINTS.recap, { body }),
 
     getRate: (query) => send(ENDPOINTS.getRate, { query: toQuery(query) }),
+    getMarketQuote: (symbol) => send(ENDPOINTS.getMarketQuote, { pathParams: { symbol } }),
+    getMarketSignal: (symbol) => send(ENDPOINTS.getMarketSignal, { pathParams: { symbol } }),
+    getMarketNews: (query) => send(ENDPOINTS.getMarketNews, { query: toQuery(query) }),
+    getMarketBrief: (query) => send(ENDPOINTS.getMarketBrief, { query: toQuery(query) }),
+    getPositionSize: (body) => send(ENDPOINTS.getPositionSize, { body }),
     pullSync: (query) => send(ENDPOINTS.pullSync, { query: toQuery(query) }),
     pushSync: (body) => send(ENDPOINTS.pushSync, { body }),
   };

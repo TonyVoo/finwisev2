@@ -830,3 +830,104 @@ export async function restoreSettlement(
     options,
   );
 }
+
+/** A trade as the Add trade sheet submits it. Whole dong, whole shares. */
+export interface NewTrade {
+  readonly symbol: string;
+  readonly side: 'buy' | 'sell' | 'dividend';
+  readonly quantity: number;
+  /** Dong per share. */
+  readonly price: number;
+  /** Fee and tax paid, in dong. Zero when not tracked. */
+  readonly fee: number;
+  readonly date: string;
+  readonly note?: string | null;
+}
+
+/** A note as it is sent: trimmed, and absent rather than empty when nothing is left. */
+function tradeNote(note: string | null | undefined): { note?: string } {
+  const trimmed = note?.trim() ?? '';
+  return trimmed === '' ? {} : { note: trimmed };
+}
+
+/**
+ * Record a buy or a sell. The device refuses only what can never be valid - a non-integer, a
+ * non-positive size or price - before anything is written; the schema check in `applyLocalMutation`
+ * is the same one the server runs.
+ */
+export async function createTrade(
+  database: SqliteDatabase,
+  trade: NewTrade,
+  options: LocalMutationOptions & { readonly id?: string } = {},
+): Promise<QueuedMutation> {
+  return await applyLocalMutation(
+    database,
+    {
+      entity: 'trade',
+      id: options.id ?? uuidv7(),
+      fields: {
+        symbol: trade.symbol.trim().toUpperCase(),
+        side: trade.side,
+        quantity: trade.quantity,
+        price: trade.price,
+        fee: trade.fee,
+        date: trade.date,
+        ...tradeNote(trade.note),
+      },
+    },
+    options,
+  );
+}
+
+/** Correct a trade. Only the fields given are sent, so another device's edit is not undone. */
+export async function updateTrade(
+  database: SqliteDatabase,
+  id: string,
+  changes: Partial<NewTrade>,
+  options: LocalMutationOptions = {},
+): Promise<QueuedMutation> {
+  const { note, symbol, ...rest } = changes;
+  return await applyLocalMutation(
+    database,
+    {
+      entity: 'trade',
+      id,
+      fields: {
+        ...rest,
+        ...(symbol === undefined ? {} : { symbol: symbol.trim().toUpperCase() }),
+        // `null` clears the note; absent leaves it alone.
+        ...(note === undefined
+          ? {}
+          : { note: note === null || note.trim() === '' ? null : note.trim() }),
+      },
+    },
+    options,
+  );
+}
+
+/** Delete a trade: a soft delete, so it reaches the person's other devices as a tombstone. */
+export async function deleteTrade(
+  database: SqliteDatabase,
+  id: string,
+  options: LocalMutationOptions = {},
+): Promise<QueuedMutation> {
+  const stamp = (options.clock ?? systemClock)();
+  return await applyLocalMutation(
+    database,
+    { entity: 'trade', id, fields: { deletedAt: toTimestamp(stamp) } },
+    options,
+  );
+}
+
+/** Bring a deleted trade back. An ordinary update, so it works even after the delete synced. */
+export async function restoreTrade(
+  database: SqliteDatabase,
+  id: string,
+  options: LocalMutationOptions = {},
+): Promise<QueuedMutation> {
+  return await applyLocalMutation(
+    database,
+    { entity: 'trade', id, fields: { deletedAt: null } },
+    options,
+  );
+}

@@ -96,6 +96,14 @@ export const META_KEYS = {
   monthlyLimit: 'monthlyLimit',
   /** Keys of recurring-payment suggestions the person dismissed, as JSON (`src/recurring/suggestions.ts`). */
   recurringDismissed: 'recurringDismissed',
+  /** The stock symbols watched on the Investing tab, as JSON (`src/invest/watchlist.ts`). A property of this device, so not in {@link WIPED_META_KEYS}: a household scope switch must not empty it. */
+  watchlist: 'watchlist',
+  /** The price alerts set on the Investing tab, as JSON (`src/invest/alerts.ts`). A property of this device, so not in {@link WIPED_META_KEYS}. */
+  priceAlerts: 'priceAlerts',
+  /** `spending` or `portfolio`: what the home-screen widget shows. A property of this device, so not in {@link WIPED_META_KEYS}. */
+  widgetMode: 'widgetMode',
+  /** The monthly buying plans, as JSON (`src/invest/dca.ts`). A property of this device, so not in {@link WIPED_META_KEYS}. */
+  dcaPlans: 'dcaPlans',
 } as const;
 
 export type MetaKey = (typeof META_KEYS)[keyof typeof META_KEYS];

@@ -440,6 +440,96 @@ CREATE INDEX idx_captured_status ON captured_payments (status, postTime);
 `;
 
 /**
+ * A trade may also be a dividend (`shared/src/trade.ts`). SQLite cannot change a CHECK in place, so the table is
+ * rebuilt: create, copy, drop, rename, recreate the index. Nothing else points at it.
+ */
+const TRADE_DIVIDENDS = `
+CREATE TABLE trades_v19 (
+  id        TEXT    NOT NULL PRIMARY KEY,
+  symbol    TEXT    NOT NULL,
+  side      TEXT    NOT NULL CHECK (side IN ('buy', 'sell', 'dividend')),
+  quantity  INTEGER NOT NULL CHECK (quantity >= 1),
+  price     INTEGER NOT NULL CHECK (price >= 1),
+  fee       INTEGER NOT NULL DEFAULT 0 CHECK (fee >= 0),
+  date      TEXT    NOT NULL,
+  note      TEXT,
+  createdAt TEXT,
+  updatedAt TEXT    NOT NULL,
+  deletedAt TEXT,
+  revision  INTEGER NOT NULL DEFAULT 0
+);
+INSERT INTO trades_v19 (id, symbol, side, quantity, price, fee, date, note, createdAt, updatedAt, deletedAt, revision)
+  SELECT id, symbol, side, quantity, price, fee, date, note, createdAt, updatedAt, deletedAt, revision FROM trades;
+DROP TABLE trades;
+ALTER TABLE trades_v19 RENAME TO trades;
+CREATE INDEX idx_trades_live ON trades (deletedAt, symbol, date);
+`;
+
+/**
+ * Stock trades: a sixth synced entity, private to the person who entered it
+ * (`shared/src/trade.ts`). The table, and the two CHECKs that name the entities, rebuilt the way
+ * migrations 6, 10 and 16 did (create, copy, drop, rename, recreate the indexes), carrying the
+ * undrained queue and the AUTOINCREMENT high-water mark across.
+ *
+ * Money is whole dong, so every amount is an INTEGER and there is no currency column. The ranges
+ * are the server's. There is no `createdBy`: a trade is only ever delivered to its author, so on
+ * this device every row is the signed-in person's.
+ */
+const TRADES = `
+CREATE TABLE trades (
+  id        TEXT    NOT NULL PRIMARY KEY,
+  symbol    TEXT    NOT NULL,
+  side      TEXT    NOT NULL CHECK (side IN ('buy', 'sell')),
+  quantity  INTEGER NOT NULL CHECK (quantity >= 1),
+  price     INTEGER NOT NULL CHECK (price >= 1),
+  fee       INTEGER NOT NULL DEFAULT 0 CHECK (fee >= 0),
+  date      TEXT    NOT NULL,
+  note      TEXT,
+  createdAt TEXT,
+  updatedAt TEXT    NOT NULL,
+  deletedAt TEXT,
+  revision  INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX idx_trades_live ON trades (deletedAt, symbol, date);
+
+CREATE TABLE outbox_v18 (
+  seq              INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+  entity           TEXT    NOT NULL CHECK (entity IN ('category', 'recurring', 'goal', 'expense', 'settlement', 'trade')),
+  recordId         TEXT    NOT NULL,
+  fields           TEXT    NOT NULL,
+  updatedAt        TEXT    NOT NULL,
+  clientMutationId TEXT    NOT NULL UNIQUE,
+  queuedAt         TEXT    NOT NULL,
+  attempts         INTEGER NOT NULL DEFAULT 0,
+  lastError        TEXT
+);
+INSERT INTO outbox_v18 (seq, entity, recordId, fields, updatedAt, clientMutationId, queuedAt, attempts, lastError)
+  SELECT seq, entity, recordId, fields, updatedAt, clientMutationId, queuedAt, attempts, lastError
+    FROM outbox;
+DELETE FROM sqlite_sequence WHERE name = 'outbox_v18';
+INSERT INTO sqlite_sequence (name, seq)
+  SELECT 'outbox_v18', COALESCE(MAX(seq), 0) FROM sqlite_sequence WHERE name = 'outbox';
+DROP TABLE outbox;
+ALTER TABLE outbox_v18 RENAME TO outbox;
+CREATE INDEX idx_outbox_entity_seq ON outbox (entity, seq);
+CREATE INDEX idx_outbox_record ON outbox (entity, recordId);
+
+CREATE TABLE sync_rejections_v18 (
+  entity     TEXT NOT NULL CHECK (entity IN ('category', 'recurring', 'goal', 'expense', 'settlement', 'trade')),
+  recordId   TEXT NOT NULL,
+  code       TEXT NOT NULL,
+  message    TEXT NOT NULL,
+  rejectedAt TEXT NOT NULL,
+  PRIMARY KEY (entity, recordId)
+);
+INSERT INTO sync_rejections_v18 (entity, recordId, code, message, rejectedAt)
+  SELECT entity, recordId, code, message, rejectedAt FROM sync_rejections;
+DROP TABLE sync_rejections;
+ALTER TABLE sync_rejections_v18 RENAME TO sync_rejections;
+`;
+
+/**
  * Settlements: recorded payments between two household members, a fifth synced entity
  * (`docs/design/12-settle-up.md`). The table, and the two CHECKs that name the entities, rebuilt
  * the same way migrations 6 and 10 did (create, copy, drop, rename, recreate the indexes), carrying
@@ -520,6 +610,8 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 15, name: 'paid-by', up: PAID_BY },
   { version: 16, name: 'settlements', up: SETTLEMENTS },
   { version: 17, name: 'captured-payments', up: CAPTURED_PAYMENTS },
+  { version: 18, name: 'trades', up: TRADES },
+  { version: 19, name: 'trade-dividends', up: TRADE_DIVIDENDS },
 ];
 
 /** Highest version `MIGRATIONS` can bring a database to. */

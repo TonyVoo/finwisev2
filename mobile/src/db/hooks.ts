@@ -32,7 +32,9 @@ import {
   listBalanceExpenses,
   listMonthExpenses,
   listSettlements,
+  listTrades,
   type SettlementListItem,
+  type TradeListItem,
   listLiveRecurring,
   listPendingChanges,
   monthCategorySpend,
@@ -473,6 +475,15 @@ export function useBalanceExpenses(): UseQueryResult<readonly BalanceExpense[]> 
   return useQuery({
     queryKey: queryKeys.expenses.balance(),
     queryFn: () => listBalanceExpenses(database),
+  });
+}
+
+/** The person's live trades, oldest first. */
+export function useTrades(): UseQueryResult<readonly TradeListItem[]> {
+  const database = useDatabase();
+  return useQuery({
+    queryKey: queryKeys.trades.list(),
+    queryFn: () => listTrades(database),
   });
 }
 

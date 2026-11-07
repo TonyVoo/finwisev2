@@ -117,6 +117,8 @@ function toChange(result: SyncPushResult): SyncChange | null {
       return { entity: 'expense', record: result.record };
     case 'settlement':
       return { entity: 'settlement', record: result.record };
+    case 'trade':
+      return { entity: 'trade', record: result.record };
   }
 }
 

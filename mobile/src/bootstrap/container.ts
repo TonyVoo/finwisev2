@@ -12,6 +12,8 @@ import { generateDueRecurring } from '../recurring/generate';
 import { syncBillReminders } from '../notifications/billReminders';
 import { reconcileDataScope } from '../household/dataScope';
 import { createActiveSpaceSource } from '../household/spaces';
+import { checkPriceAlerts } from '../invest/checkAlerts';
+import { syncDcaReminders } from '../invest/dcaReminders';
 import { syncGoalReminders } from '../notifications/goalReminders';
 import { META_KEYS, readMeta } from '../db/meta';
 import { type LanguagePreference, parseLanguagePreference } from '../i18n/language';
@@ -161,6 +163,9 @@ export async function createAppContainer(options: AppContainerOptions = {}): Pro
       if (created > 0) void queryClient.invalidateQueries({ queryKey: queryKeys.local() });
       void syncBillReminders(database, clock()).catch(() => undefined);
       void syncGoalReminders(database, clock()).catch(() => undefined);
+      void syncDcaReminders(database, clock()).catch(() => undefined);
+      // After every pass, so when the app opens, comes forward or wakes to sync: throttled inside.
+      void checkPriceAlerts(api, database, clock()).catch(() => undefined);
     },
   });
 

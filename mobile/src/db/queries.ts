@@ -1006,6 +1006,38 @@ export async function listLiveGoals(database: SqliteDatabase): Promise<readonly 
   return rows.map((row) => ({ ...row, pending: row.pending === 1 }));
 }
 
+/** A trade as the portfolio consumes it: the row plus its local sync state. */
+export interface TradeListItem {
+  readonly id: string;
+  readonly symbol: string;
+  readonly side: 'buy' | 'sell' | 'dividend';
+  readonly quantity: number;
+  readonly price: number;
+  readonly fee: number;
+  readonly date: string;
+  readonly note: string | null;
+  readonly pending: boolean;
+}
+
+/**
+ * Every live trade, oldest first: the order a position is worked out in. Within a day, by id - a UUIDv7, so
+ * the order they were entered in and fixed for life; `updatedAt` would let a later edit of a buy slip it behind a
+ * sell made the same day.
+ */
+export async function listTrades(database: SqliteDatabase): Promise<readonly TradeListItem[]> {
+  const rows = await database.getAllAsync<Omit<TradeListItem, 'pending'> & { pending: number }>(
+    `SELECT t.id, t.symbol, t.side, t.quantity, t.price, t.fee, t.date, t.note,
+            EXISTS (
+              SELECT 1 FROM outbox o WHERE o.entity = 'trade' AND o.recordId = t.id
+            ) AS pending
+       FROM trades t
+      WHERE t.deletedAt IS NULL
+      ORDER BY t.date, t.id`,
+    [],
+  );
+  return rows.map((row) => ({ ...row, pending: row.pending === 1 }));
+}
+
 /** A recorded payment as the lists consume it: the row plus its local sync state. */
 export interface SettlementListItem {
   readonly id: string;

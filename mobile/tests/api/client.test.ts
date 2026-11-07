@@ -165,6 +165,14 @@ describe('every client method', () => {
     ['deleteExpense', (client) => client.deleteExpense(ID)],
 
     ['getRate', (client) => client.getRate({ from: 'EUR', to: 'USD' })],
+    ['getMarketQuote', (client) => client.getMarketQuote('VNM')],
+    ['getMarketSignal', (client) => client.getMarketSignal('VNM')],
+    ['getMarketNews', (client) => client.getMarketNews({ symbols: 'VNM,FPT' })],
+    ['getMarketBrief', (client) => client.getMarketBrief({ symbols: 'VNM' })],
+    [
+      'getPositionSize',
+      (client) => client.getPositionSize({ capital: 100000000, entry: 50000, stop: 47000 }),
+    ],
 
     ['pullSync', (client) => client.pullSync({ since: 0 })],
     ['pushSync', (client) => client.pushSync({ changes: [] })],
@@ -187,7 +195,7 @@ describe('every client method', () => {
       expect(seen).toHaveLength(1);
       expect(seen[0]).toMatchObject({
         method: route.method,
-        path: resolvePath(route.path, { id: ID, memberId: ID, householdId: ID }),
+        path: resolvePath(route.path, { id: ID, memberId: ID, householdId: ID, symbol: 'VNM' }),
         requiresAuth: route.auth,
       });
     },

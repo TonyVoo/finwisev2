@@ -28,6 +28,11 @@ export const queryKeys = {
   /** When the last sync completed, as persisted - what tells "empty" from "not loaded yet". */
   lastSyncedAt: () => ['local', 'sync', 'lastSyncedAt'] as const,
 
+  trades: {
+    /** The person's live trades, oldest first: what the portfolio is worked out from. */
+    list: () => ['local', 'trades', 'list'] as const,
+  },
+
   settlements: {
     /** Recorded payments between household members, newest first. */
     list: () => ['local', 'settlements', 'list'] as const,

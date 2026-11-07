@@ -3,11 +3,10 @@ import { Tabs } from 'expo-router';
 import { FloatingTabBar, type FloatingTabBarProps } from '@/navigation/tabBar';
 import { useColors } from '@/theme/ThemeProvider';
 import { COPY } from '@/copy/strings';
-import { useScanShortcut } from '@/receipts/useScanShortcut';
 
 /**
- * The tabs: the expense list, the monthly summary and Settings, with a camera button between them
- * that opens Add expense with a receipt photo (`docs/design/11-receipt-scan.md`). Settings began as a button in
+ * The tabs: the expense list, the monthly summary, Investing and Settings. A receipt is read from Add expense
+ * (`docs/design/11-receipt-scan.md`); the camera shortcut that used to sit in the bar is gone. Settings began as a button in
  * Home's app bar and became a tab once it held more than a few rows
  * (`docs/design/04-expense-list.md` §Behaviour rule 14).
  *
@@ -16,16 +15,10 @@ import { useScanShortcut } from '@/receipts/useScanShortcut';
  */
 export default function TabsLayout() {
   const color = useColors();
-  const scan = useScanShortcut();
   return (
     <Tabs
       // A capsule that floats over the screen instead of a bar stuck to the bottom edge.
-      tabBar={(props) => (
-        <FloatingTabBar
-          {...(props as unknown as FloatingTabBarProps)}
-          onScan={() => void scan.start()}
-        />
-      )}
+      tabBar={(props) => <FloatingTabBar {...(props as unknown as FloatingTabBarProps)} />}
       screenOptions={{
         headerShown: false,
         sceneStyle: { backgroundColor: color.bg.canvas },
@@ -48,12 +41,13 @@ export default function TabsLayout() {
           ),
         }}
       />
-      {/* Not a screen: the bar draws it as the camera button and runs `onScan` (`tabBar.tsx`). */}
       <Tabs.Screen
-        name="scan"
+        name="invest"
         options={{
-          title: COPY.scan.tab,
-          tabBarIcon: ({ color: tint, size }) => <Feather name="camera" size={size} color={tint} />,
+          title: COPY.invest.title,
+          tabBarIcon: ({ color: tint, size }) => (
+            <Feather name="trending-up" size={size} color={tint} />
+          ),
         }}
       />
       <Tabs.Screen

@@ -13,7 +13,10 @@ import { IconBadge } from '@/components/IconBadge';
 import { Row, RowSubtitle, RowTitle } from '@/components/Row';
 import { planDefaultRenames } from '@/categories/renameDefaults';
 import { paymentNotificationsSupported } from '@/capture/native';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { homeWidgetSupported, requestHomeWidgetPin } from '@/widget/native';
+import { WIDGET_MODE_KEY } from '@/widget/useWidgetSync';
+import { readWidgetMode, writeWidgetMode, type WidgetMode } from '@/widget/widgetMode';
 import { useSuggestionCount } from '@/capture/hooks';
 import { COPY, SNACK_COPY } from '@/copy/strings';
 import { useDatabase } from '@/db/DatabaseProvider';
@@ -72,6 +75,12 @@ export default function SettingsScreen() {
   const emailVerified = useEmailVerified();
   const pending = usePendingRecordCount();
   const database = useDatabase();
+  const queryClient = useQueryClient();
+  const widgetModeQuery = useQuery({
+    queryKey: WIDGET_MODE_KEY,
+    queryFn: () => readWidgetMode(database),
+  });
+  const widgetMode: WidgetMode = widgetModeQuery.data ?? 'spending';
   const showSnackbar = useSnackbar();
   const appLock = useAppLock();
   const rollover = useBudgetRollover();
@@ -324,6 +333,34 @@ export default function SettingsScreen() {
             >
               <RowTitle>{COPY.homeWidget.title}</RowTitle>
               <RowSubtitle lines={2}>{COPY.homeWidget.hint}</RowSubtitle>
+            </Row>
+          ) : null}
+
+          {homeWidgetSupported() ? (
+            <Row
+              testID="settings-widget-mode"
+              leading={<IconBadge name="trending-up" />}
+              onPress={() => {
+                void (async () => {
+                  const next = widgetMode === 'portfolio' ? 'spending' : 'portfolio';
+                  await writeWidgetMode(database, next);
+                  void queryClient.invalidateQueries({ queryKey: WIDGET_MODE_KEY });
+                })();
+              }}
+              accessibilityLabel={`${COPY.homeWidget.showTitle}, ${
+                widgetMode === 'portfolio'
+                  ? COPY.homeWidget.showPortfolio
+                  : COPY.homeWidget.showSpending
+              }`}
+              trailing={
+                <Text style={styles.value}>
+                  {widgetMode === 'portfolio'
+                    ? COPY.homeWidget.showPortfolio
+                    : COPY.homeWidget.showSpending}
+                </Text>
+              }
+            >
+              <RowTitle>{COPY.homeWidget.showTitle}</RowTitle>
             </Row>
           ) : null}
 

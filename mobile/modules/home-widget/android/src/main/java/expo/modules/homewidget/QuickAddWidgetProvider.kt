@@ -10,7 +10,8 @@ import android.net.Uri
 import android.widget.RemoteViews
 
 /**
- * A small home-screen widget: today's total, and a button that opens Add expense. The words and the amount are
+ * A small home-screen widget: a headline figure (today's total, or the portfolio's value), and a button that opens the
+ * link the app wrote with it (Add expense, or the portfolio). The words and the amount are
  * written by the app (already formatted in the person's currency and language); the widget only shows them.
  * Everything is kept in a private preferences file; nothing is read from the app's database.
  */
@@ -24,6 +25,8 @@ class QuickAddWidgetProvider : AppWidgetProvider() {
     const val TITLE = "title"
     const val AMOUNT = "amount"
     const val ADD = "add"
+    const val LINK = "link"
+    const val DEFAULT_LINK = "expensetracker://expense/new"
 
     fun build(context: Context): RemoteViews {
       val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -32,8 +35,9 @@ class QuickAddWidgetProvider : AppWidgetProvider() {
       views.setTextViewText(R.id.widget_amount, prefs.getString(AMOUNT, "") ?: "")
       prefs.getString(ADD, null)?.let { views.setTextViewText(R.id.widget_add, it) }
 
-      // Opens the app on Add expense, through the same link the app already answers to.
-      val open = Intent(Intent.ACTION_VIEW, Uri.parse("expensetracker://expense/new")).apply {
+      // Opens the app where the app said to, through a link it already answers to: Add expense unless told otherwise.
+      val link = prefs.getString(LINK, null) ?: DEFAULT_LINK
+      val open = Intent(Intent.ACTION_VIEW, Uri.parse(link)).apply {
         setPackage(context.packageName)
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
       }

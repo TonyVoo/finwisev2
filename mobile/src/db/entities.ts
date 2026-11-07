@@ -5,6 +5,7 @@ import {
   SettlementSyncFields,
   RecurringSyncFields,
   type SyncEntity,
+  TradeSyncFields,
 } from '@expense-tracker/shared';
 import type { SqliteBindValue } from './sqlite';
 
@@ -77,6 +78,25 @@ export interface SettlementRow {
   readonly revision: number;
 }
 
+/** A row of the local `trades` table (migration 18): one buy or one sell, in whole dong. */
+export interface TradeRow {
+  readonly id: string;
+  readonly symbol: string;
+  readonly side: 'buy' | 'sell' | 'dividend';
+  readonly quantity: number;
+  /** Dong per share. */
+  readonly price: number;
+  /** Fee and tax paid on the trade, in dong. */
+  readonly fee: number;
+  /** Calendar date `YYYY-MM-DD`. */
+  readonly date: string;
+  readonly note: string | null;
+  readonly createdAt: string | null;
+  readonly updatedAt: string;
+  readonly deletedAt: string | null;
+  readonly revision: number;
+}
+
 /** A row of the local `goals` table (migration 10). */
 export interface GoalRow {
   readonly id: string;
@@ -115,6 +135,7 @@ export interface LocalRowByEntity {
   readonly goal: GoalRow;
   readonly expense: ExpenseRow;
   readonly settlement: SettlementRow;
+  readonly trade: TradeRow;
 }
 
 export interface EntitySpec {
@@ -233,12 +254,22 @@ const SETTLEMENT_SPEC: EntitySpec = {
   parseFields: (fields) => SettlementSyncFields.parse(fields),
 };
 
+const TRADE_SPEC: EntitySpec = {
+  entity: 'trade',
+  table: 'trades',
+  mutableColumns: ['symbol', 'side', 'quantity', 'price', 'fee', 'date', 'note', 'deletedAt'],
+  requiredOnCreate: ['symbol', 'side', 'quantity', 'price', 'date'],
+  insertDefaults: { fee: 0, note: null, createdAt: null, deletedAt: null, revision: 0 },
+  parseFields: (fields) => TradeSyncFields.parse(fields),
+};
+
 export const ENTITY_SPECS: Readonly<Record<SyncEntity, EntitySpec>> = {
   category: CATEGORY_SPEC,
   recurring: RECURRING_SPEC,
   goal: GOAL_SPEC,
   expense: EXPENSE_SPEC,
   settlement: SETTLEMENT_SPEC,
+  trade: TRADE_SPEC,
 };
 
 export function entitySpec(entity: SyncEntity): EntitySpec {

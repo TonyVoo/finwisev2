@@ -12,12 +12,13 @@ class HomeWidgetModule : Module() {
     Name("HomeWidget")
 
     // Remember the words and the amount, and redraw any widget already on the home screen.
-    Function("update") { title: String, amount: String, add: String ->
+    Function("update") { title: String, amount: String, add: String, link: String ->
       val context = appContext.reactContext ?: return@Function Unit
       context.getSharedPreferences(QuickAddWidgetProvider.PREFS, Context.MODE_PRIVATE).edit()
         .putString(QuickAddWidgetProvider.TITLE, title)
         .putString(QuickAddWidgetProvider.AMOUNT, amount)
         .putString(QuickAddWidgetProvider.ADD, add)
+        .putString(QuickAddWidgetProvider.LINK, link)
         .apply()
       QuickAddWidgetProvider.refresh(context)
     }
