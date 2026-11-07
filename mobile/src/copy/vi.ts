@@ -619,6 +619,7 @@ export const VIETNAMESE_COPY: CopyBundle = {
       system: 'Theo hệ thống',
       light: 'Sáng',
       dark: 'Tối',
+      tutien: 'Tu tiên',
     },
 
     lock: {

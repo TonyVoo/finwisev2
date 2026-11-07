@@ -5,6 +5,7 @@ import { DatabaseProvider } from '../db/DatabaseProvider';
 import { MonthProvider } from '../month/MonthProvider';
 import { SnackbarProvider } from '../components/Snackbar';
 import { SyncProvider } from '../sync/SyncProvider';
+import { setActiveFlavor } from '../i18n/apply';
 import { LanguageProvider } from '../i18n/LanguageProvider';
 import { AppLockProvider } from '../lock/AppLockProvider';
 import { META_KEYS, writeMeta } from '../db/meta';
@@ -55,6 +56,9 @@ export function AppProviders({ container, startSync = true, children }: AppProvi
     },
     [database],
   );
+
+  // The cultivation skin has wording of its own, which has to be in place before the first language is applied.
+  setActiveFlavor(container.themePreference === 'tutien' ? 'tutien' : 'none');
 
   return (
     <ThemeProvider initialPreference={container.themePreference} onPreferenceChange={saveTheme}>

@@ -48,7 +48,7 @@ describe('monthReportHtml', () => {
     expect(html).toContain('Food');
     expect(html).toContain('$700.00');
     expect(html).toContain('class="over"');
-    expect(html).toContain('Made on 2026-11-14');
+    expect(html).toContain('Created 2026-11-14');
   });
 
   it('escapes what a person typed', () => {

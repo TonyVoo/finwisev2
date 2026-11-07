@@ -2,6 +2,8 @@ import { Text } from 'react-native';
 import { Row, RowTitle } from '../components/Row';
 import { Sheet } from '../components/Sheet';
 import { COPY } from '../copy/strings';
+import { setActiveFlavor } from '../i18n/apply';
+import { useLanguage } from '../i18n/LanguageProvider';
 import { THEME_PREFERENCES, type ThemePreference, createStyles, useTheme } from './ThemeProvider';
 
 /**
@@ -26,6 +28,7 @@ export function ThemeSheet({
   readonly onClose: () => void;
 }) {
   const { preference, setPreference } = useTheme();
+  const { refresh } = useLanguage();
   const styles = useStyles();
 
   return (
@@ -43,6 +46,9 @@ export function ThemeSheet({
             testID={`${THEME_OPTION_TEST_ID_PREFIX}-${option}`}
             onPress={() => {
               setPreference(option);
+              // The skin has its own wording: lay it on, or take it off, and say everything again.
+              setActiveFlavor(option === 'tutien' ? 'tutien' : 'none');
+              refresh();
               onClose();
             }}
             lastInGroup={index === THEME_PREFERENCES.length - 1}

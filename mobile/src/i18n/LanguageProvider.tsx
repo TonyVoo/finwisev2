@@ -35,12 +35,15 @@ interface LanguageValue {
   /** The language actually in use, after `system` has been resolved. */
   readonly language: Language;
   readonly setPreference: (next: LanguagePreference) => void;
+  /** Say the words again and redraw everything: for when the skin's wording was switched on or off. */
+  readonly refresh: () => void;
 }
 
 const LanguageContext = createContext<LanguageValue>({
   preference: 'system',
   language: 'en',
   setPreference: () => undefined,
+  refresh: () => undefined,
 });
 
 export function useLanguage(): LanguageValue {
@@ -77,13 +80,22 @@ export function LanguageProvider({
     [database],
   );
 
+  const refresh = useCallback(() => {
+    setState((current) => ({
+      preference: current.preference,
+      language: applyLanguagePreference(current.preference),
+      version: current.version + 1,
+    }));
+  }, []);
+
   const value = useMemo(
     () => ({
       preference: state.preference,
       language: resolveLanguage(state.preference),
       setPreference,
+      refresh,
     }),
-    [state.preference, setPreference],
+    [state.preference, setPreference, refresh],
   );
 
   return (

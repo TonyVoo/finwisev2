@@ -8,6 +8,7 @@ import {
   SYNC_COPY,
   VALIDATION_COPY,
 } from '../copy/strings';
+import { TUTIEN_EN, TUTIEN_VI } from '../copy/tutien';
 import { VIETNAMESE_COPY } from '../copy/vi';
 import {
   type Language,
@@ -75,6 +76,18 @@ function assignLeaves(target: Record<string, unknown>, source: Record<string, un
   }
 }
 
+/** The skin whose wording is laid over the language (`copy/tutien.ts`). Set by the theme, read when a language is applied. */
+export type Flavor = 'none' | 'tutien';
+let activeFlavor: Flavor = 'none';
+
+export function setActiveFlavor(flavor: Flavor): void {
+  activeFlavor = flavor;
+}
+
+export function getActiveFlavor(): Flavor {
+  return activeFlavor;
+}
+
 export function bundleFor(language: Language): CopyBundle {
   return language === 'vi' ? VIETNAMESE_COPY : ENGLISH_COPY;
 }
@@ -93,6 +106,13 @@ export function applyLanguagePreference(
   assignLeaves(LIVE_COPY as unknown as Record<string, unknown>, ENGLISH_COPY);
   if (language !== 'en') {
     assignLeaves(LIVE_COPY as unknown as Record<string, unknown>, bundleFor(language));
+  }
+  // The skin's names over the words, in the language in use.
+  if (activeFlavor === 'tutien') {
+    assignLeaves(
+      LIVE_COPY.COPY as unknown as Record<string, unknown>,
+      (language === 'vi' ? TUTIEN_VI : TUTIEN_EN) as unknown as Record<string, unknown>,
+    );
   }
   setActiveIntlLocale(intlLocaleFor(preference));
   return language;

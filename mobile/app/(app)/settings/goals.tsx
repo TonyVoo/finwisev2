@@ -30,6 +30,9 @@ import { formatDong } from '@/invest/investModel';
 import { useApiClient } from '@/bootstrap/AppProviders';
 import { useOptionalSyncStatus } from '@/sync/SyncProvider';
 import { savedHaptic } from '@/lib/haptics';
+import { REALMS_EN, REALMS_VI, realmIndex } from '@/copy/tutien';
+import { useLanguage } from '@/i18n/LanguageProvider';
+import { useTheme } from '@/theme/ThemeProvider';
 import { goalAmounts, goalProgress, goalStatus } from '@/goals/goalModel';
 import { useSelectedMonth } from '@/month/MonthProvider';
 import { size, space, type } from '@/theme/tokens';
@@ -50,6 +53,11 @@ export default function GoalsScreen() {
   const styles = useStyles();
   const router = useRouter();
   const showSnackbar = useSnackbar();
+  // In the cultivation skin a goal's progress is also a realm: Qi Refining at the start, Ascension when it is reached.
+  const { scheme } = useTheme();
+  const { language } = useLanguage();
+  const realm = (percent: number) =>
+    scheme === 'tutien' ? (language === 'vi' ? REALMS_VI : REALMS_EN)[realmIndex(percent)] : null;
   const localWrite = useLocalWrite();
   const { today } = useSelectedMonth();
 
@@ -178,7 +186,7 @@ export default function GoalsScreen() {
                   trailing={item.pending ? <PendingGlyph /> : null}
                 >
                   <RowTitle>{item.name}</RowTitle>
-                  <RowSubtitle>{`${goalAmounts(shown.goal)} · ${progress.percent}%`}</RowSubtitle>
+                  <RowSubtitle>{`${goalAmounts(shown.goal)} · ${progress.percent}%${realm(progress.percent) === null ? '' : ` · ${realm(progress.percent)}`}`}</RowSubtitle>
                   <GoalBar
                     fill={progress.fill}
                     reached={progress.reached}

@@ -127,6 +127,21 @@ describe('the settings screen', () => {
     );
   });
 
+  it('offers the cultivation skin, which also lays its names over the words, and remembers it', async () => {
+    await waitFor(() => expect(screen.getByTestId('settings-appearance')).toBeTruthy());
+    await fireEvent.press(screen.getByTestId('settings-appearance'));
+    await waitFor(() => expect(screen.getByTestId('theme-option-tutien')).toBeTruthy());
+
+    await fireEvent.press(screen.getByTestId('theme-option-tutien'));
+
+    await waitFor(async () =>
+      expect(await readMeta(mounted.database, META_KEYS.themePreference)).toBe('tutien'),
+    );
+    // The screen's own title is one of the renamed strings.
+    await waitFor(() => expect(screen.getByText(COPY.settings.title)).toBeTruthy());
+    expect(COPY.settings.title).toMatch(/Cave Abode|Động phủ/);
+  });
+
   it('lets the person pick the tab bar style, applies it at once and remembers it on the device', async () => {
     await waitFor(() => expect(screen.getByTestId('settings-tab-bar')).toBeTruthy());
     expect(

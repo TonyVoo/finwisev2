@@ -3,7 +3,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HIT_SLOP_44, elevation, radius, size, space, type } from '../theme/tokens';
-import { createStyles, useColors } from '../theme/ThemeProvider';
+import { createStyles, useColors, useTheme } from '../theme/ThemeProvider';
+import { Ornament } from './Ornament';
 
 /**
  * The screen furniture every expense screen shares: the app bar, the FAB, a skeleton
@@ -43,6 +44,8 @@ export function AppBar({
 }: AppBarProps) {
   const styles = useStyles();
   const insets = useSafeAreaInsets();
+  const { scheme } = useTheme();
+  const tutien = scheme === 'tutien';
 
   return (
     <View
@@ -71,6 +74,7 @@ export function AppBar({
           style={[
             styles.appBarTitle,
             large ? styles.appBarTitleLarge : null,
+            tutien ? styles.appBarTitleTutien : null,
             centred ? styles.appBarTitleCentred : null,
           ]}
           accessibilityRole="header"
@@ -80,6 +84,7 @@ export function AppBar({
         </Text>
         <View style={[styles.appBarSide, styles.appBarSideTrailing]}>{trailing}</View>
       </View>
+      {tutien ? <Ornament /> : null}
     </View>
   );
 }
@@ -258,6 +263,11 @@ const useStyles = createStyles((color) =>
     },
     appBarTitleLarge: {
       ...type.title1,
+    },
+    // The cultivation skin: titles in gold, a little spaced, like a scroll heading.
+    appBarTitleTutien: {
+      color: color.primary.default,
+      letterSpacing: 0.6,
     },
     appBarTitleCentred: {
       textAlign: 'center',

@@ -675,6 +675,7 @@ them as proposals the Designer can reword; changing a row here means changing
 | `appearance.system`                     | `Match system`                                                                                                                                                                               | Theme sheet, option and Settings row value                                   |
 | `appearance.light`                      | `Light`                                                                                                                                                                                      | Theme sheet, option and Settings row value                                   |
 | `appearance.dark`                       | `Dark`                                                                                                                                                                                       | Theme sheet, option and Settings row value                                   |
+| `appearance.tutien` | `Cultivation` | Theme sheet, option and Settings row value |
 | `home.budgetAlert.overOne`              | `Over budget`                                                                                                                                                                                | Home, budget banner title (one category)                                     |
 | `home.budgetAlert.overMany`             | `{count} categories over budget`                                                                                                                                                             | Home, budget banner title                                                    |
 | `home.budgetAlert.nearOne`              | `Close to budget`                                                                                                                                                                            | Home, budget banner title (one category)                                     |
@@ -1242,7 +1243,7 @@ them as proposals the Designer can reword; changing a row here means changing
 | `summary.report.worth` | `Worth now` | Summary, monthly PDF report |
 | `summary.report.result` | `Unrealised result` | Summary, monthly PDF report |
 | `summary.report.insights` | `Highlights` | Summary, monthly PDF report |
-| `summary.report.generated` | `Made on {date}` | Summary, monthly PDF report |
+| `summary.report.generated` | `Created {date}` | Summary, monthly PDF report |
 | `summary.report.unavailable` | `This device cannot share files.` | Summary, monthly PDF report |
 | `summary.report.failed` | `Could not create the PDF. Try again.` | Summary, monthly PDF report |
 | `summary.report.empty` | `Nothing recorded this month.` | Summary, monthly PDF report |

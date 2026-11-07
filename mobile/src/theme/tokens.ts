@@ -85,7 +85,44 @@ export const darkColor: ColorTokens = {
   },
 };
 
-export type ColorScheme = 'light' | 'dark';
+/**
+ * "Tu tiên": ink-black ground, parchment text, gold where the light version has green and jade where it has success - a
+ * cultivation-novel look. Dark in every sense that matters to a component (`isDark`), so the category hues lift, the
+ * keyboard goes dark and status colours keep their meaning: gold is the accent (`primary`), jade is good news
+ * (`success`), cinnabar is danger. Contrast-checked in `tests/theme/tutienPalette.test.ts`.
+ */
+export const tutienColor: ColorTokens = {
+  bg: {
+    canvas: '#0A0D0C',
+    surface: '#131917',
+    sunken: '#070908',
+    scrim: 'rgba(0,0,0,0.65)',
+  },
+  text: {
+    primary: '#EFE6CF',
+    secondary: '#BDB197',
+    tertiary: '#9A8F78',
+    inverse: '#1A1406',
+    disabled: '#6B6552',
+  },
+  primary: {
+    default: '#D8B25E',
+    pressed: '#EBCB82',
+    subtle: '#2A2412',
+  },
+  danger: { default: '#E4675A', subtle: '#3A1A16' },
+  warning: { default: '#E3A94B', subtle: '#33260C' },
+  success: { default: '#59C3A0', subtle: '#0F2B23' },
+  info: { default: '#7FB2D9', subtle: '#13222E' },
+  border: {
+    hairline: '#2E2A1E',
+    strong: '#4A4128',
+    input: '#8C7F5C',
+    focus: '#D8B25E',
+  },
+};
+
+export type ColorScheme = 'light' | 'dark' | 'tutien';
 
 /** Anything the OS reports other than `dark` (including `null`, "no preference") is light. */
 export function resolveScheme(raw: string | null | undefined): ColorScheme {

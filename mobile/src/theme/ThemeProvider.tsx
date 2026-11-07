@@ -1,6 +1,13 @@
 import { type ReactNode, createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { Appearance, useColorScheme } from 'react-native';
-import { type ColorScheme, type ColorTokens, darkColor, lightColor, resolveScheme } from './tokens';
+import {
+  type ColorScheme,
+  type ColorTokens,
+  darkColor,
+  lightColor,
+  resolveScheme,
+  tutienColor,
+} from './tokens';
 
 /**
  * The theme, as React state.
@@ -18,12 +25,12 @@ import { type ColorScheme, type ColorTokens, darkColor, lightColor, resolveSchem
  * business knowing.
  */
 
-export type ThemePreference = 'system' | 'light' | 'dark';
+export type ThemePreference = 'system' | 'light' | 'dark' | 'tutien';
 
-export const THEME_PREFERENCES: readonly ThemePreference[] = ['system', 'light', 'dark'];
+export const THEME_PREFERENCES: readonly ThemePreference[] = ['system', 'light', 'dark', 'tutien'];
 
 export function parseThemePreference(raw: string | null | undefined): ThemePreference {
-  return raw === 'light' || raw === 'dark' ? raw : 'system';
+  return raw === 'light' || raw === 'dark' || raw === 'tutien' ? raw : 'system';
 }
 
 export interface ThemeValue {
@@ -57,7 +64,10 @@ const ThemeContext = createContext<ThemeValue>(DEFAULT_THEME);
  */
 export function applyThemePreference(preference: ThemePreference): void {
   try {
-    Appearance.setColorScheme?.(preference === 'system' ? 'unspecified' : preference);
+    // The cultivation skin is dark to the system: its keyboard, alerts and pickers should be.
+    const system =
+      preference === 'system' ? 'unspecified' : preference === 'tutien' ? 'dark' : preference;
+    Appearance.setColorScheme?.(system);
   } catch {
     // Nothing to do: the app's own colours do not depend on this call.
   }
@@ -92,8 +102,8 @@ export function ThemeProvider({
   const value = useMemo<ThemeValue>(
     () => ({
       scheme,
-      isDark: scheme === 'dark',
-      color: scheme === 'dark' ? darkColor : lightColor,
+      isDark: scheme !== 'light',
+      color: scheme === 'tutien' ? tutienColor : scheme === 'dark' ? darkColor : lightColor,
       preference,
       setPreference,
     }),

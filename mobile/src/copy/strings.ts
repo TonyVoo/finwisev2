@@ -168,7 +168,7 @@ export const COPY = {
       worth: 'Worth now',
       result: 'Unrealised result',
       insights: 'Highlights',
-      generated: 'Made on {date}',
+      generated: 'Created {date}',
       unavailable: 'This device cannot share files.',
       failed: 'Could not create the PDF. Try again.',
       empty: 'Nothing recorded this month.',
@@ -678,6 +678,7 @@ export const COPY = {
     system: 'Match system',
     light: 'Light',
     dark: 'Dark',
+    tutien: 'Cultivation',
   },
 
   /** The app lock: Face ID, a fingerprint or the device passcode on opening. */
