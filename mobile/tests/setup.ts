@@ -99,3 +99,24 @@ jest.mock('expo-haptics', () => ({
   NotificationFeedbackType: { Success: 'success', Warning: 'warning', Error: 'error' },
   ImpactFeedbackStyle: { Light: 'light', Medium: 'medium', Heavy: 'heavy' },
 }));
+
+// Skia is native and draws only the cultivation appearance's scenery (`theme/Backdrop.tsx`): in a test it is a set of
+// components that render nothing, and a path that records nothing.
+jest.mock('@shopify/react-native-skia', () => {
+  const nothing = () => null;
+  return {
+    Canvas: nothing,
+    Circle: nothing,
+    Group: nothing,
+    LinearGradient: nothing,
+    Path: nothing,
+    RadialGradient: nothing,
+    Rect: nothing,
+    vec: (x: number, y: number) => ({ x, y }),
+    Skia: {
+      Path: {
+        Make: () => ({ moveTo: () => undefined, lineTo: () => undefined, close: () => undefined }),
+      },
+    },
+  };
+});

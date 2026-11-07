@@ -38,6 +38,7 @@ import { summariseMonth } from '@/summary/summaryModel';
 import { ExpenseRow } from '@/expenses/ExpenseRow';
 import { groupByDate } from '@/expenses/listModel';
 import { FirstRunEmpty, ListSkeleton, MonthEmpty } from '@/expenses/ListStates';
+import { CultivationCard } from '@/cultivation/CultivationCard';
 import { MonthTotal } from '@/expenses/MonthTotal';
 import { useFirstPaintSkeleton } from '@/expenses/useFirstPaint';
 import { useAwaitingFirstSync } from '@/sync/useAwaitingFirstSync';
@@ -239,6 +240,8 @@ export default function ExpenseListScreen() {
         daysInMonth={monthDays}
         {...(limitLine === null ? {} : { limitLine })}
       />
+
+      <CultivationCard />
 
       {reviewPending.data === true ? (
         <CategoryReviewBanner

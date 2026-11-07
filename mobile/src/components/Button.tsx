@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import type { ColorTokens } from '../theme/tokens';
 import { radius, size, space, type } from '../theme/tokens';
-import { createStyles, useColors, useTheme } from '../theme/ThemeProvider';
+import { createStyles, useColors, useDisplayFont, useTheme } from '../theme/ThemeProvider';
 
 /**
  * The button, as `docs/design/00-foundations.md` §6 specifies it.
@@ -120,6 +120,8 @@ export function Button({
   testID,
 }: ButtonProps) {
   const color = useColors();
+  const serif = useDisplayFont('semibold');
+  const seal = useTheme().scheme === 'tutien' && variant === 'primary';
   const { isDark } = useTheme();
   const styles = useStyles();
   const base = variantsFor(color, isDark)[variant];
@@ -156,11 +158,14 @@ export function Button({
           palette.borderColor !== undefined && !disabled
             ? { borderWidth: 1, borderColor: palette.borderColor }
             : null,
+          // The seal: the gold fill gets a thin dark rule inside its edge, like a stamped mark.
+          seal && !disabled ? styles.seal : null,
         ]}
       >
         <Text
           style={[
             styles.label,
+            serif,
             { color: disabled ? color.text.disabled : palette.label },
             // Held, not unmounted: this is what keeps the width from jumping when the
             // label is swapped for a 20px indicator.
@@ -189,6 +194,7 @@ const useStyles = createStyles((color) =>
     fullWidth: {
       alignSelf: 'stretch',
     },
+    seal: { borderWidth: 2, borderColor: color.text.inverse, borderRadius: radius.sm },
     button: {
       // `minHeight`, not `height`: the heights in §6 are floors that grow with font scale.
       borderRadius: radius.md,

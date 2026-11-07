@@ -127,6 +127,9 @@ importers:
       '@expense-tracker/shared':
         specifier: workspace:*
         version: link:../shared
+      '@expo-google-fonts/noto-serif':
+        specifier: 0.4.2
+        version: 0.4.2
       '@expo/metro-runtime':
         specifier: ~57.0.17
         version: 57.0.17(@expo/log-box@57.0.4)(expo@57.0.31)(react-dom@19.2.3(react@19.2.3))(react-native@0.86.3(@babel/core@7.29.7)(@react-native/jest-preset@0.86.3(@babel/core@7.29.7)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)
@@ -1008,6 +1011,9 @@ packages:
 
   '@expo-google-fonts/material-symbols@0.4.49':
     resolution: {integrity: sha512-HtoaXYCk7A9kOjwoxrjq6i0iDtAoQnOPm31zUn+TgmKlHVUU+yyqvQDxN830MvGmBQV8eINv/SK7JRtWhB2xcg==}
+
+  '@expo-google-fonts/noto-serif@0.4.2':
+    resolution: {integrity: sha512-1xvAYegrtpCuPPunSyhvhV9FHWEzCWjikEoUJkvHt+WWvt+h7lKr+vkXNpqwFQM4W3KjXOccfLd5s04xLMjjDQ==}
 
   '@expo/cli@57.0.32':
     resolution: {integrity: sha512-3p1qL/pvWblGNwDE1bt2wh/NUiGpSer61s5GKKFfpEpBkZTYnqve0pdK1UvEFzJGT6PW9vX2RofQQ2LP6MgvDQ==}
@@ -6786,6 +6792,8 @@ snapshots:
       '@noble/hashes': 1.8.0
 
   '@expo-google-fonts/material-symbols@0.4.49': {}
+
+  '@expo-google-fonts/noto-serif@0.4.2': {}
 
   '@expo/cli@57.0.32(@expo/dom-webview@57.0.1)(@expo/metro-runtime@57.0.17)(expo-constants@57.0.22)(expo-font@57.0.4)(expo-router@57.0.29)(expo@57.0.31)(react-dom@19.2.3(react@19.2.3))(react-native@0.86.3(@babel/core@7.29.7)(@react-native/jest-preset@0.86.3(@babel/core@7.29.7)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)(typescript@6.0.3)':
     dependencies:

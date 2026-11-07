@@ -290,6 +290,20 @@ export const VIETNAMESE_COPY: CopyBundle = {
       unwatch: 'Bỏ khỏi theo dõi',
     },
 
+    cultivation: {
+      caption: 'Tu vi',
+      points: '{points} đạo hạnh',
+      streak: 'Bế quan {days} ngày',
+      streakNone: 'Ghi một khoản chi hôm nay để bắt đầu bế quan.',
+      toNext: 'Còn {count} để lên {name}',
+      toRealm: 'Còn {count} để đột phá {name}',
+      ascended: 'Bạn đã phi thăng.',
+      breakthroughTitle: 'Đột phá!',
+      breakthroughBody: 'Bạn đã bước vào {realm}.',
+      continue: 'Tiếp tục',
+      gauge: 'Tiến độ đến giai đoạn kế tiếp',
+    },
+
     netWorth: {
       title: 'Tài sản ròng',
       hint: 'Tiền tiết kiệm và cổ phiếu của bạn theo thời gian.',

@@ -1,5 +1,6 @@
 import { type ReactNode, createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { Appearance, useColorScheme } from 'react-native';
+import { SERIF_BOLD, SERIF_SEMIBOLD } from './fonts';
 import {
   type ColorScheme,
   type ColorTokens,
@@ -111,6 +112,15 @@ export function ThemeProvider({
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+}
+
+/** The serif display face while the cultivation appearance is on, and nothing (the system face) otherwise. */
+export function useDisplayFont(weight: 'semibold' | 'bold' = 'bold'): {
+  readonly fontFamily?: string;
+} {
+  const { scheme } = useTheme();
+  if (scheme !== 'tutien') return {};
+  return { fontFamily: weight === 'bold' ? SERIF_BOLD : SERIF_SEMIBOLD };
 }
 
 export function useTheme(): ThemeValue {

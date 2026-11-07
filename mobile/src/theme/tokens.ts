@@ -91,9 +91,13 @@ export const darkColor: ColorTokens = {
  * keyboard goes dark and status colours keep their meaning: gold is the accent (`primary`), jade is good news
  * (`success`), cinnabar is danger. Contrast-checked in `tests/theme/tutienPalette.test.ts`.
  */
+/** The ground colour of the cultivation appearance: what shows where no scenery is drawn, and behind the status bar. */
+export const TUTIEN_INK = '#0A0D0C';
+
 export const tutienColor: ColorTokens = {
   bg: {
-    canvas: '#0A0D0C',
+    // Transparent: each screen sits on the scenery drawn behind it (`theme/TutienScene.tsx`), which is ink anyway.
+    canvas: 'transparent',
     surface: '#131917',
     sunken: '#070908',
     scrim: 'rgba(0,0,0,0.65)',

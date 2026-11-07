@@ -1,5 +1,6 @@
 import { Redirect, Stack } from 'expo-router';
 import { useSession } from '@/auth/SessionProvider';
+import { TutienScene } from '@/theme/TutienScene';
 
 /**
  * The public half of the app: Welcome, Sign up, Log in.
@@ -15,5 +16,10 @@ export default function AuthLayout() {
     return <Redirect href="/(app)/(tabs)" />;
   }
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <Stack
+      screenOptions={{ headerShown: false }}
+      screenLayout={({ children }) => <TutienScene>{children}</TutienScene>}
+    />
+  );
 }

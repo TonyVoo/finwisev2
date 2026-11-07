@@ -1,4 +1,10 @@
-import { categoryColorDark, darkColor, tutienColor, type ColorTokens } from '@/theme/tokens';
+import {
+  TUTIEN_INK,
+  categoryColorDark,
+  darkColor,
+  tutienColor,
+  type ColorTokens,
+} from '@/theme/tokens';
 
 /** The cultivation palette: the same roles as the others, and WCAG contrast for the pairs the app draws. */
 
@@ -17,7 +23,8 @@ function contrast(a: string, b: string): number {
 }
 
 const c = tutienColor;
-const surfaces = [c.bg.canvas, c.bg.surface, c.bg.sunken];
+// The canvas is transparent over the scenery, whose ground is ink: contrast is measured against that.
+const surfaces = [TUTIEN_INK, c.bg.surface, c.bg.sunken];
 
 describe('tutien palette', () => {
   it('defines exactly the roles the dark palette does', () => {

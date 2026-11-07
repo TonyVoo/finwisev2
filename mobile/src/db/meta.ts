@@ -120,6 +120,8 @@ export const META_KEYS = {
   budgetSuggestDismissed: 'budgetSuggestDismissed',
   /** The savings in goals as last seen each day (`[{ date, savingsMinor }]`), from which the net worth chart builds its history. A device setting. */
   netWorthSnapshots: 'netWorthSnapshots',
+  /** The cultivation realm last shown to the person (an index), so a step up is noticed once. A device setting. */
+  cultivationRealm: 'cultivationRealm',
   /**
    * The id of the savings goal that counts the stock portfolio towards its progress, or empty for none.
    * Wiped with the store: goal ids belong to one account.

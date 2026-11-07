@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { radius, space, type } from '../theme/tokens';
-import { createStyles } from '../theme/ThemeProvider';
+import { createStyles, useDisplayFont, useTheme } from '../theme/ThemeProvider';
+import { PanelCorners } from './PanelCorners';
 
 /**
  * A group of rows as one rounded card, with a small title above it - the shape Settings and the other list
@@ -19,9 +20,14 @@ export function Card({
   readonly inset?: boolean;
 }) {
   const styles = useStyles();
+  const tutien = useTheme().scheme === 'tutien';
   return (
-    <View style={[styles.card, inset ? null : styles.flush]} testID={testID}>
+    <View
+      style={[styles.card, tutien ? styles.panel : null, inset ? null : styles.flush]}
+      testID={testID}
+    >
       <View style={styles.inner}>{children}</View>
+      {tutien ? <PanelCorners /> : null}
     </View>
   );
 }
@@ -56,8 +62,9 @@ export function CardRow({
 /** The small caps-less heading above a {@link Card}. */
 export function SectionTitle({ children }: { readonly children: ReactNode }) {
   const styles = useStyles();
+  const serif = useDisplayFont('semibold');
   return (
-    <Text style={styles.title} accessibilityRole="header">
+    <Text style={[styles.title, serif]} accessibilityRole="header">
       {children}
     </Text>
   );
@@ -73,6 +80,8 @@ const useStyles = createStyles((color) =>
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: color.border.hairline,
     },
+    // The cultivation panel: a gold hairline instead of the grey one.
+    panel: { borderColor: color.border.strong },
     row: {
       marginHorizontal: space[4],
       overflow: 'hidden',

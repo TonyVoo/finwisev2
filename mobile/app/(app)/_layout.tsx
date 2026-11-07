@@ -13,6 +13,7 @@ import { useSelectedMonth } from '@/month/MonthProvider';
 import { homeWidgetSupported } from '@/widget/native';
 import { useWidgetSync } from '@/widget/useWidgetSync';
 import { ResyncOverlay } from '@/sync/ResyncOverlay';
+import { TutienScene } from '@/theme/TutienScene';
 
 /** Keeps the home-screen widget's number current (Android; nothing elsewhere). */
 function HomeWidgetSync() {
@@ -52,7 +53,10 @@ export default function AppLayout() {
 
   return (
     <View style={styles.root}>
-      <Stack screenOptions={{ headerShown: false }}>
+      <Stack
+        screenOptions={{ headerShown: false }}
+        screenLayout={({ children }) => <TutienScene>{children}</TutienScene>}
+      >
         <Stack.Screen name="(tabs)" />
         {/* Jumping further than a step at a time, per docs/design/05-month-switcher.md. */}
         <Stack.Screen name="month-picker" options={{ presentation: 'modal' }} />

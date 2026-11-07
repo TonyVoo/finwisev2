@@ -1247,3 +1247,14 @@ them as proposals the Designer can reword; changing a row here means changing
 | `summary.report.unavailable` | `This device cannot share files.` | Summary, monthly PDF report |
 | `summary.report.failed` | `Could not create the PDF. Try again.` | Summary, monthly PDF report |
 | `summary.report.empty` | `Nothing recorded this month.` | Summary, monthly PDF report |
+| `cultivation.caption` | `Cultivation` | Home, cultivation card and breakthrough (cultivation appearance only) |
+| `cultivation.points` | `{points} Dao points` | Home, cultivation card and breakthrough (cultivation appearance only) |
+| `cultivation.streak` | `In seclusion {days} days` | Home, cultivation card and breakthrough (cultivation appearance only) |
+| `cultivation.streakNone` | `Record an expense today to begin your seclusion.` | Home, cultivation card and breakthrough (cultivation appearance only) |
+| `cultivation.toNext` | `{count} more to reach {name}` | Home, cultivation card and breakthrough (cultivation appearance only) |
+| `cultivation.toRealm` | `{count} more to break through to {name}` | Home, cultivation card and breakthrough (cultivation appearance only) |
+| `cultivation.ascended` | `You have ascended.` | Home, cultivation card and breakthrough (cultivation appearance only) |
+| `cultivation.breakthroughTitle` | `Breakthrough!` | Home, cultivation card and breakthrough (cultivation appearance only) |
+| `cultivation.breakthroughBody` | `You have entered {realm}.` | Home, cultivation card and breakthrough (cultivation appearance only) |
+| `cultivation.continue` | `Continue` | Home, cultivation card and breakthrough (cultivation appearance only) |
+| `cultivation.gauge` | `Progress to the next stage` | Home, cultivation card and breakthrough (cultivation appearance only) |

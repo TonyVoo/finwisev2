@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@expense-tracker/shared": "workspace:*",
+    "@expo-google-fonts/noto-serif": "0.4.2",
     "@expo/metro-runtime": "~57.0.17",
     "@expo/vector-icons": "15.1.1",
     "@react-native-community/netinfo": "12.0.1",

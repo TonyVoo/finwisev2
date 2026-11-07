@@ -3,6 +3,10 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Slot } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
+import { useFonts } from 'expo-font';
+import { NotoSerif_600SemiBold, NotoSerif_700Bold } from '@expo-google-fonts/noto-serif';
+import { SERIF_BOLD, SERIF_SEMIBOLD } from '@/theme/fonts';
+import { TUTIEN_INK } from '@/theme/tokens';
 import { COPY } from '@/copy/strings';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { installForegroundHandler } from '@/notifications/budgetNotifier';
@@ -38,6 +42,8 @@ installForegroundHandler();
 void SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 export default function RootLayout() {
+  // The cultivation appearance's display face. Nothing waits on it: until it is ready a title uses the system face.
+  useFonts({ [SERIF_SEMIBOLD]: NotoSerif_600SemiBold, [SERIF_BOLD]: NotoSerif_700Bold });
   const [container, setContainer] = useState<AppContainer | null>(null);
   const [bootError, setBootError] = useState<Error | null>(null);
 
@@ -106,7 +112,13 @@ function ThemedStatusBar() {
 /** The backdrop behind every route, so a screen transition never shows the navigator's white. */
 function ThemedRoot({ children }: { readonly children: ReactNode }) {
   const color = useColors();
-  return <View style={{ flex: 1, backgroundColor: color.bg.canvas }}>{children}</View>;
+  const { scheme } = useTheme();
+  // The cultivation canvas is transparent (the scenery sits under each screen), so the root needs a ground of its own.
+  return (
+    <View style={{ flex: 1, backgroundColor: scheme === 'tutien' ? TUTIEN_INK : color.bg.canvas }}>
+      {children}
+    </View>
+  );
 }
 
 function BootError({ message }: { readonly message: string }) {

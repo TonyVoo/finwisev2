@@ -47,7 +47,7 @@ describe('the overlay in use', () => {
     expect(COPY.settings.title).toBe('Động phủ');
 
     applyLanguagePreference('en');
-    expect(COPY.invest.title).toBe('Heaven’s Secrets');
+    expect(COPY.invest.title).toBe('Oracle');
 
     setActiveFlavor('none');
     applyLanguagePreference('en');

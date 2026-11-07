@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HIT_SLOP_44, elevation, radius, size, space, type } from '../theme/tokens';
-import { createStyles, useColors, useTheme } from '../theme/ThemeProvider';
+import { createStyles, useColors, useDisplayFont, useTheme } from '../theme/ThemeProvider';
 import { Ornament } from './Ornament';
 
 /**
@@ -46,13 +46,20 @@ export function AppBar({
   const insets = useSafeAreaInsets();
   const { scheme } = useTheme();
   const tutien = scheme === 'tutien';
+  const serif = useDisplayFont('bold');
 
   return (
     <View
       testID={testID}
       // The top inset is additive to the bar's own height, never a substitute for it
       // (`00-foundations.md` §3).
-      style={[styles.appBar, { paddingTop: insets.top }, elevated ? elevation[1] : null]}
+      style={[
+        styles.appBar,
+        // The cultivation appearance lets the sky show behind the title: no solid bar.
+        tutien ? styles.appBarClear : null,
+        { paddingTop: insets.top },
+        elevated ? elevation[1] : null,
+      ]}
     >
       <View
         // The bar's own height lives on this layer, the inset on the one above, which is
@@ -75,6 +82,7 @@ export function AppBar({
             styles.appBarTitle,
             large ? styles.appBarTitleLarge : null,
             tutien ? styles.appBarTitleTutien : null,
+            serif,
             centred ? styles.appBarTitleCentred : null,
           ]}
           accessibilityRole="header"
@@ -240,6 +248,7 @@ const useStyles = createStyles((color) =>
     appBar: {
       backgroundColor: color.bg.surface,
     },
+    appBarClear: { backgroundColor: 'transparent' },
     appBarContent: {
       minHeight: size.appBarHeight,
       flexDirection: 'row',

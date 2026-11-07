@@ -314,6 +314,20 @@ export const COPY = {
    * The portfolio: trades entered by the person and the holdings and profit worked out from them
    * (`invest/portfolioModel.ts`). Private to the person, even in a household.
    */
+  cultivation: {
+    caption: 'Cultivation',
+    points: '{points} Dao points',
+    streak: 'In seclusion {days} days',
+    streakNone: 'Record an expense today to begin your seclusion.',
+    toNext: '{count} more to reach {name}',
+    toRealm: '{count} more to break through to {name}',
+    ascended: 'You have ascended.',
+    breakthroughTitle: 'Breakthrough!',
+    breakthroughBody: 'You have entered {realm}.',
+    continue: 'Continue',
+    gauge: 'Progress to the next stage',
+  },
+
   netWorth: {
     title: 'Net worth',
     hint: 'Your savings and your stocks over time.',

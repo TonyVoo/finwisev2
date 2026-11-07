@@ -6,7 +6,7 @@ import { useReduceMotion } from '../lib/useReduceMotion';
 import { useCountUp } from './useCountUp';
 import { SpendSparkline } from './SpendSparkline';
 import { elevation, radius, space, type } from '../theme/tokens';
-import { createStyles } from '../theme/ThemeProvider';
+import { createStyles, useDisplayFont } from '../theme/ThemeProvider';
 
 /**
  * The month total: `docs/design/04-expense-list.md` elements 6 and 7.
@@ -90,6 +90,7 @@ export function MonthTotal({
   limitLine,
 }: MonthTotalProps) {
   const styles = useStyles();
+  const serif = useDisplayFont('bold');
   const drawn = useCountUp(totalMinor, useReduceMotion());
   const label = isCurrentMonth ? COPY.home.total.current : COPY.home.total.other;
 
@@ -130,7 +131,7 @@ export function MonthTotal({
       accessibilityLiveRegion="polite"
     >
       <Text style={styles.label}>{label}</Text>
-      <Text style={styles.amount}>{formatMoney(drawn ?? totalMinor, currency)}</Text>
+      <Text style={[styles.amount, serif]}>{formatMoney(drawn ?? totalMinor, currency)}</Text>
       {balance === null ? null : (
         <Text testID={MONTH_BALANCE_TEST_ID} style={styles.count}>
           {balance}

@@ -35,7 +35,7 @@ export const TUTIEN_EN: Overlay = {
     total: { current: 'Spirit stones spent this month', other: 'Spirit stones spent' },
   },
   summary: { title: 'Dao Realm', suggest: { title: 'Heavenly budget omens' } },
-  invest: { title: 'Heaven’s Secrets' },
+  invest: { title: 'Oracle' },
   settings: { title: 'Cave Abode' },
   goals: { title: 'Breakthroughs' },
   portfolio: { title: 'Treasure Pavilion' },
