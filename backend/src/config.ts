@@ -87,6 +87,13 @@ const EnvSchema = z.object({
    */
   MARKET_API_URL: z.url().optional(),
   MARKET_API_KEY: z.string().min(1).optional(),
+  /**
+   * How often (seconds) the server looks at the waiting price alerts and pushes the ones a price has reached. 0 turns
+   * it off. Unset, it runs every five minutes when the market service is configured and not at all when it is not.
+   */
+  ALERT_JOB_INTERVAL_SECONDS: z.coerce.number().int().min(0).max(86400).optional(),
+  /** Expo's push endpoint; overridable so a test or a proxy can stand in for it. */
+  EXPO_PUSH_URL: z.url().default('https://exp.host/--/api/v2/push/send'),
 
   /**
    * Reading receipts with a vision model (Google Gemini; `docs/design/14-ai-receipt-reading.md`),
@@ -200,6 +207,11 @@ function build() {
       googleVisionApiKey: env.GOOGLE_VISION_API_KEY,
     },
     market: { url: env.MARKET_API_URL, apiKey: env.MARKET_API_KEY },
+    alerts: {
+      intervalSeconds:
+        env.ALERT_JOB_INTERVAL_SECONDS ?? (env.MARKET_API_URL === undefined ? 0 : 300),
+      pushUrl: env.EXPO_PUSH_URL,
+    },
     vision: {
       geminiApiKey: env.GEMINI_API_KEY,
       geminiModel: env.GEMINI_MODEL,

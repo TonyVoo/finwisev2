@@ -29,6 +29,8 @@ export async function readWatchlist(database: SqliteDatabase): Promise<readonly 
 
 async function write(database: SqliteDatabase, list: readonly string[]): Promise<void> {
   await writeMeta(database, META_KEYS.watchlist, JSON.stringify(list));
+  // A change made here is waiting to go to the server (`investingSync.ts`).
+  await writeMeta(database, META_KEYS.investingDirty, '1');
 }
 
 /** Newest first; one already watched moves to the front; the oldest beyond twenty go. Returns the new list. */

@@ -3,6 +3,7 @@ import { createApp } from './app.ts';
 import { getConfig } from './config.ts';
 import { disconnectPrisma } from './db/client.ts';
 import { logger } from './logger.ts';
+import { startAlertJob } from './services/alertJob.ts';
 
 /**
  * Process entry point: `pnpm dev` / `pnpm start`.
@@ -20,6 +21,8 @@ const server: Server = createApp().listen(config.port, () => {
     database: config.databaseName,
   });
 });
+
+const stopAlertJob = startAlertJob(config.alerts.intervalSeconds);
 
 /**
  * Shut down on a signal without dropping in-flight requests.
@@ -43,6 +46,7 @@ async function shutdown(signal: string): Promise<void> {
   }, SHUTDOWN_TIMEOUT_MS);
   forced.unref();
 
+  stopAlertJob();
   await new Promise<void>((resolve) => server.close(() => resolve()));
   await disconnectPrisma();
   logger.info('stopped');

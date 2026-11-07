@@ -105,6 +105,16 @@ export const META_KEYS = {
   /** The monthly buying plans, as JSON (`src/invest/dca.ts`). A property of this device, so not in {@link WIPED_META_KEYS}. */
   dcaPlans: 'dcaPlans',
   /**
+   * Where this device's watchlist and price alerts stand against the server's copy: the version last seen, whether a
+   * local edit is waiting to be sent, and whose they are. Device settings like the lists themselves, so not wiped
+   * with the store; the owner is what stops one account's lists being sent as another's.
+   */
+  investingVersion: 'investingVersion',
+  investingDirty: 'investingDirty',
+  investingOwner: 'investingOwner',
+  /** The Expo push token last sent to the server, so it is sent again only when it changes. */
+  pushToken: 'pushToken',
+  /**
    * The id of the savings goal that counts the stock portfolio towards its progress, or empty for none.
    * Wiped with the store: goal ids belong to one account.
    */

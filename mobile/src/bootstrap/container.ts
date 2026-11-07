@@ -12,7 +12,10 @@ import { generateDueRecurring } from '../recurring/generate';
 import { syncBillReminders } from '../notifications/billReminders';
 import { reconcileDataScope } from '../household/dataScope';
 import { createActiveSpaceSource } from '../household/spaces';
+import { readAlerts } from '../invest/alerts';
 import { checkPriceAlerts } from '../invest/checkAlerts';
+import { syncInvesting } from '../invest/investingSync';
+import { registerPushToken } from '../notifications/pushToken';
 import { syncDcaReminders } from '../invest/dcaReminders';
 import { syncGoalReminders } from '../notifications/goalReminders';
 import { META_KEYS, readMeta } from '../db/meta';
@@ -165,7 +168,17 @@ export async function createAppContainer(options: AppContainerOptions = {}): Pro
       void syncGoalReminders(database, clock()).catch(() => undefined);
       void syncDcaReminders(database, clock()).catch(() => undefined);
       // After every pass, so when the app opens, comes forward or wakes to sync: throttled inside.
-      void checkPriceAlerts(api, database, clock()).catch(() => undefined);
+      // The lists are level with the server's first, so a second phone's alerts are looked at too, and the server
+      // knows where to push; then the local check (the server's own runs on its timer).
+      void (async () => {
+        const userId = await readMeta(database, META_KEYS.owner);
+        if (userId !== null) {
+          await syncInvesting(api, database, userId).catch(() => undefined);
+          const alerts = await readAlerts(database);
+          await registerPushToken(api, database, alerts.length > 0).catch(() => undefined);
+        }
+        await checkPriceAlerts(api, database, clock()).catch(() => undefined);
+      })();
     },
   });
 

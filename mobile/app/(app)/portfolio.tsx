@@ -36,6 +36,7 @@ import {
 import { SymbolAvatar } from '@/invest/SymbolAvatar';
 import { type DcaPlan, nextBuyDate, readPlans, removePlan, savePlan } from '@/invest/dca';
 import { syncDcaReminders } from '@/invest/dcaReminders';
+import { requestReminderPermission } from '@/notifications/billReminders';
 import { DcaPlanSheet } from '@/invest/DcaPlanSheet';
 import { ImportTradesSheet } from '@/invest/ImportTradesSheet';
 import { sideLabel, TradeFormSheet } from '@/invest/TradeFormSheet';
@@ -194,6 +195,8 @@ export default function PortfolioScreen() {
     input: { symbol: string; amount: number; day: number },
     editingId: string | null,
   ) => {
+    // A plan is a reminder: ask to notify now, since the reminders themselves never ask.
+    void requestReminderPermission().catch(() => undefined);
     setPlans(await savePlan(database, input, editingId));
     setPlanOpen(false);
     showSnackbar({ message: COPY.portfolio.dcaSaved });

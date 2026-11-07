@@ -367,6 +367,28 @@ export const API_ROUTES = [
     successStatus: 200,
   },
 
+  {
+    method: 'get',
+    path: '/v1/me/investing',
+    operationId: 'getInvesting',
+    auth: true,
+    successStatus: 200,
+  },
+  {
+    method: 'put',
+    path: '/v1/me/investing',
+    operationId: 'putInvesting',
+    auth: true,
+    successStatus: 200,
+  },
+  {
+    method: 'post',
+    path: '/v1/me/push-token',
+    operationId: 'registerPushToken',
+    auth: true,
+    successStatus: 204,
+  },
+
   { method: 'get', path: '/v1/sync', operationId: 'pullSync', auth: true, successStatus: 200 },
   { method: 'post', path: '/v1/sync', operationId: 'pushSync', auth: true, successStatus: 200 },
 ] as const satisfies ReadonlyArray<RouteSpec>;

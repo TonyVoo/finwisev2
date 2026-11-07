@@ -30,6 +30,7 @@ import {
   readCalc,
 } from '@/invest/investModel';
 import { buildPortfolio } from '@/invest/portfolioModel';
+import { requestReminderPermission } from '@/notifications/billReminders';
 import { NewsSection } from '@/invest/NewsSection';
 import { PriceChart } from '@/invest/PriceChart';
 import { QuoteSkeleton } from '@/invest/QuoteSkeleton';
@@ -142,6 +143,8 @@ export default function InvestScreen() {
 
   async function saveAlert(direction: 'above' | 'below', price: number): Promise<void> {
     if (ready === null) return;
+    // An alert that cannot notify is worth nothing, so this is the moment to ask (the check itself never asks).
+    void requestReminderPermission().catch(() => undefined);
     setAlerts(await addAlert(database, ready.quote.symbol, direction, price));
     setAlertOpen(false);
   }

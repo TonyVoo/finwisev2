@@ -3368,6 +3368,130 @@ paths:
         '503':
           $ref: '#/components/responses/MarketUnavailable'
 
+  /v1/me/investing:
+    get:
+      operationId: getInvesting
+      tags: [market]
+      summary: The investing settings
+      description: |
+        The account's watchlist and price alerts, as one document with a `version` (0 before the first write). Kept
+        here so a second device has the same ones and so the server can notify when a price reaches an alert.
+      x-errorCodes:
+        - unauthorized
+        - token_expired
+        - token_invalid
+        - rate_limited
+        - internal_error
+      responses:
+        '200':
+          description: The document.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InvestingResponse' }
+              example:
+                data:
+                  watchlist: [VNM, FPT]
+                  alerts:
+                    - { id: a1, symbol: VNM, direction: above, price: 60000, firedAt: null, firedPrice: null }
+                  version: 3
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      operationId: putInvesting
+      tags: [market]
+      summary: Replace the investing settings
+      description: |
+        Replaces the document, under optimistic concurrency: the write names the `baseVersion` it was made against and
+        is applied only when that is still current, raising `version` by one. When it is stale nothing is written and
+        the answer is `applied: false` with the current document, which the device merges and writes again.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InvestingPutRequest' }
+            example:
+              watchlist: [VNM]
+              alerts: []
+              baseVersion: 3
+      x-errorCodes:
+        - validation_error
+        - malformed_request
+        - unsupported_media_type
+        - unauthorized
+        - token_expired
+        - token_invalid
+        - rate_limited
+        - internal_error
+      responses:
+        '200':
+          description: Applied, or stale (see `applied`).
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InvestingPutResponse' }
+              example:
+                data: { watchlist: [VNM], alerts: [], version: 4 }
+                applied: true
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/me/push-token:
+    post:
+      operationId: registerPushToken
+      tags: [market]
+      summary: Register this device for price-alert pushes
+      description: |
+        Records an Expo push token for the account, so the server can tell this device when a price alert fires while
+        the app is closed. Idempotent: a token already known is moved to this account and refreshed. A token the push
+        service reports as no longer valid is forgotten by the server.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PushTokenRequest' }
+            example:
+              token: 'ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]'
+              platform: android
+      x-errorCodes:
+        - validation_error
+        - malformed_request
+        - unsupported_media_type
+        - unauthorized
+        - token_expired
+        - token_invalid
+        - rate_limited
+        - internal_error
+      responses:
+        '204':
+          description: Recorded. No body.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /v1/sync:
     get:
       operationId: pullSync
@@ -5896,6 +6020,71 @@ components:
       required: [data]
       properties:
         data: { $ref: '#/components/schemas/MarketBrief' }
+
+    InvestingAlert:
+      type: object
+      additionalProperties: false
+      required: [id, symbol, direction, price, firedAt, firedPrice]
+      properties:
+        id: { type: string, minLength: 1, maxLength: 64 }
+        symbol: { type: string, pattern: '^[A-Z0-9]{1,10}$' }
+        direction: { type: string, enum: [above, below] }
+        price: { type: integer, minimum: 1, maximum: 1000000000 }
+        firedAt: { type: [string, 'null'], maxLength: 40 }
+        firedPrice: { type: [integer, 'null'], minimum: 0, maximum: 1000000000 }
+
+    InvestingSettings:
+      type: object
+      additionalProperties: false
+      required: [watchlist, alerts, version]
+      properties:
+        watchlist:
+          type: array
+          maxItems: 20
+          items: { type: string, pattern: '^[A-Z0-9]{1,10}$' }
+        alerts:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/InvestingAlert' }
+        version: { type: integer, minimum: 0 }
+
+    InvestingResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/InvestingSettings' }
+
+    InvestingPutRequest:
+      type: object
+      additionalProperties: false
+      required: [watchlist, alerts, baseVersion]
+      properties:
+        watchlist:
+          type: array
+          maxItems: 20
+          items: { type: string, pattern: '^[A-Z0-9]{1,10}$' }
+        alerts:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/InvestingAlert' }
+        baseVersion: { type: integer, minimum: 0 }
+
+    InvestingPutResponse:
+      type: object
+      additionalProperties: false
+      required: [data, applied]
+      properties:
+        data: { $ref: '#/components/schemas/InvestingSettings' }
+        applied: { type: boolean }
+
+    PushTokenRequest:
+      type: object
+      additionalProperties: false
+      required: [token, platform]
+      properties:
+        token: { type: string, minLength: 10, maxLength: 200, pattern: '^Expo(nent)?PushToken\\[[^\\]]+\\]$' }
+        platform: { type: string, enum: [ios, android] }
 
     AssistantAskRequest:
       type: object

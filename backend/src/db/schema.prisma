@@ -59,23 +59,25 @@ model User {
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  revisionCounter RevisionCounter?
-  categories      Category[]
-  expenses        Expense[]       @relation("ExpenseOwner")
-  authoredExpenses Expense[]      @relation("ExpenseAuthor")
-  recurringRules  RecurringRule[]
-  goals           Goal[]
-  settlements     Settlement[]
-  trades          Trade[]          @relation("TradeBook")
-  authoredTrades  Trade[]          @relation("TradeAuthor")
-  refreshTokens   RefreshToken[]
-  passwordResetCode PasswordResetCode?
+  revisionCounter       RevisionCounter?
+  investing             InvestingSettings?
+  pushTokens            PushToken[]
+  categories            Category[]
+  expenses              Expense[]              @relation("ExpenseOwner")
+  authoredExpenses      Expense[]              @relation("ExpenseAuthor")
+  recurringRules        RecurringRule[]
+  goals                 Goal[]
+  settlements           Settlement[]
+  trades                Trade[]                @relation("TradeBook")
+  authoredTrades        Trade[]                @relation("TradeAuthor")
+  refreshTokens         RefreshToken[]
+  passwordResetCode     PasswordResetCode?
   emailVerificationCode EmailVerificationCode?
-  expenseReceipts ExpenseReceipt[]
-  syncMutations   SyncMutation[]
-  ownedHouseholds Household[]      @relation("HouseholdOwner")
-  bookOf          Household?       @relation("HouseholdBook")
-  householdMemberships HouseholdMember[]
+  expenseReceipts       ExpenseReceipt[]
+  syncMutations         SyncMutation[]
+  ownedHouseholds       Household[]            @relation("HouseholdOwner")
+  bookOf                Household?             @relation("HouseholdBook")
+  householdMemberships  HouseholdMember[]
 
   @@map("users")
 }
@@ -164,8 +166,8 @@ model Expense {
   /// What was actually paid, when that was not the account currency. Both or neither, and
   /// never the account's own currency - held by CHECK constraints. `amount_minor` stays in the
   /// account currency, so every total sums it unchanged.
-  originalAmountMinor BigInt?  @map("original_amount_minor")
-  originalCurrency    String?  @map("original_currency") @db.Char(3)
+  originalAmountMinor BigInt? @map("original_amount_minor")
+  originalCurrency    String? @map("original_currency") @db.Char(3)
 
   /// Who added it: the *actor* (the account that made the request), which in a household is not
   /// the owner whose id scopes the row. Server-assigned, immutable, and nulled - not cascaded - if
@@ -193,9 +195,9 @@ model Expense {
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)
   revision  Int
 
-  user     User     @relation("ExpenseOwner", fields: [userId], references: [id], onDelete: Cascade)
-  author   User?    @relation("ExpenseAuthor", fields: [createdBy], references: [id], onDelete: SetNull)
-  category Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  user     User            @relation("ExpenseOwner", fields: [userId], references: [id], onDelete: Cascade)
+  author   User?           @relation("ExpenseAuthor", fields: [createdBy], references: [id], onDelete: SetNull)
+  category Category        @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   receipt  ExpenseReceipt?
 
   @@unique([userId, revision])
@@ -247,10 +249,10 @@ model Goal {
   id     String @id @db.Uuid
   userId String @map("user_id") @db.Uuid
 
-  name        String  @db.VarChar(60)
-  targetMinor BigInt  @map("target_minor")
-  savedMinor  BigInt  @default(0) @map("saved_minor")
-  currency    String  @db.Char(3)
+  name        String    @db.VarChar(60)
+  targetMinor BigInt    @map("target_minor")
+  savedMinor  BigInt    @default(0) @map("saved_minor")
+  currency    String    @db.Char(3)
   deadline    DateTime? @db.Date
 
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
@@ -269,9 +271,9 @@ model Goal {
 /// (`shared/src/trade.ts`). The portfolio is derived on the device; nothing aggregated lives here.
 /// Prices are whole dong, so there is no currency column and no minor unit.
 model Trade {
-  id     String @id @db.Uuid
+  id        String @id @db.Uuid
   /// The book the row lives in, as on every syncable row.
-  userId String @map("user_id") @db.Uuid
+  userId    String @map("user_id") @db.Uuid
   /// Who entered it, and the only person it is ever shown to. Gone with their account.
   createdBy String @map("created_by") @db.Uuid
 
@@ -491,4 +493,33 @@ model HouseholdInvite {
   household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 
   @@map("household_invites")
+}
+
+/// The account's watchlist and price alerts (`shared/src/investing.ts`), replaced as a whole under optimistic
+/// concurrency: `version` is raised by one on every write, and a write is applied only against the current one.
+/// Not a syncable row: it has no revision and no tombstone, because the whole document is its own unit.
+model InvestingSettings {
+  userId    String   @id @map("user_id") @db.Uuid
+  watchlist Json
+  alerts    Json
+  version   Int
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("investing_settings")
+}
+
+/// An Expo push token the server may use to tell a device that a price alert fired. Unique by token: a phone that is
+/// signed into another account takes the token with it.
+model PushToken {
+  token     String   @id @db.VarChar(200)
+  userId    String   @map("user_id") @db.Uuid
+  platform  String   @db.VarChar(7)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_tokens")
 }

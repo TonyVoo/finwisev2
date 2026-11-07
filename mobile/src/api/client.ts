@@ -32,6 +32,10 @@ import type {
   MarketSymbolsQuery,
   MarketSignalResponse,
   AssistantAnswerResponse,
+  InvestingPutRequest,
+  InvestingPutResponse,
+  InvestingResponse,
+  PushTokenRequest,
   AssistantAskRequest,
   PositionSizeRequest,
   PositionSizeResponse,
@@ -171,6 +175,11 @@ export interface ApiClient {
   getMarketBrief(query: MarketSymbolsQuery): Promise<MarketBriefResponse>;
   getPositionSize(body: PositionSizeRequest): Promise<PositionSizeResponse>;
   askAssistant(body: AssistantAskRequest): Promise<AssistantAnswerResponse>;
+  /** The account's watchlist and price alerts, kept on the server so a second device has them. */
+  getInvesting(): Promise<InvestingResponse>;
+  putInvesting(body: InvestingPutRequest): Promise<InvestingPutResponse>;
+  /** Tells the server which device to push a price alert to. */
+  registerPushToken(body: PushTokenRequest): Promise<void>;
 
   /** Pull changes with `revision > since`. The cursor is a revision, never a timestamp. */
   pullSync(query?: SyncPullQuery): Promise<SyncPullResponse>;
@@ -295,6 +304,9 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     getMarketBrief: (query) => send(ENDPOINTS.getMarketBrief, { query: toQuery(query) }),
     getPositionSize: (body) => send(ENDPOINTS.getPositionSize, { body }),
     askAssistant: (body) => send(ENDPOINTS.askAssistant, { body }),
+    getInvesting: () => send(ENDPOINTS.getInvesting, {}),
+    putInvesting: (body) => send(ENDPOINTS.putInvesting, { body }),
+    registerPushToken: (body) => send(ENDPOINTS.registerPushToken, { body }),
     pullSync: (query) => send(ENDPOINTS.pullSync, { query: toQuery(query) }),
     pushSync: (body) => send(ENDPOINTS.pushSync, { body }),
   };

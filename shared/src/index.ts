@@ -28,6 +28,7 @@ export * from './trade.js';
 export * from './settlement.js';
 export * from './household.js';
 export * from './rates.js';
+export * from './investing.js';
 export * from './market.js';
 export * from './recurring.js';
 export * from './sync.js';

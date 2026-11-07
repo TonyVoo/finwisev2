@@ -12,6 +12,7 @@ import { expensesRouter } from './routes/expenses.ts';
 import { healthRouter } from './routes/health.ts';
 import { householdRouter } from './routes/household.ts';
 import { householdsRouter } from './routes/households.ts';
+import { investingRouter } from './routes/investing.ts';
 import { marketRouter } from './routes/market.ts';
 import { meRouter } from './routes/me.ts';
 import { ratesRouter } from './routes/rates.ts';
@@ -87,6 +88,7 @@ export function createApp(): Express {
   authed.use(expensesRouter);
   authed.use(ratesRouter);
   authed.use(marketRouter);
+  authed.use(investingRouter);
   authed.use(syncRouter);
   app.use('/v1', authed);
 

@@ -78,6 +78,10 @@ jest.mock('expo-notifications', () => ({
   getPermissionsAsync: jest.fn(async () => ({ granted: true, canAskAgain: true })),
   requestPermissionsAsync: jest.fn(async () => ({ granted: true, canAskAgain: true })),
   scheduleNotificationAsync: jest.fn(async () => 'id'),
+  // No push token in tests unless one asks for it: nothing native, nothing sent.
+  getExpoPushTokenAsync: jest.fn(async () => {
+    throw new Error('no push token in tests');
+  }),
   setNotificationHandler: jest.fn(),
   setNotificationChannelAsync: jest.fn(async () => null),
   getAllScheduledNotificationsAsync: jest.fn(async () => []),

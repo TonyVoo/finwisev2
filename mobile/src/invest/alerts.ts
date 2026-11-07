@@ -56,6 +56,8 @@ export async function readAlerts(database: SqliteDatabase): Promise<readonly Pri
 
 async function write(database: SqliteDatabase, list: readonly PriceAlert[]): Promise<void> {
   await writeMeta(database, META_KEYS.priceAlerts, JSON.stringify(list));
+  // A change made here is waiting to go to the server (`investingSync.ts`).
+  await writeMeta(database, META_KEYS.investingDirty, '1');
 }
 
 /**

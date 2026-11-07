@@ -176,6 +176,17 @@ describe('every client method', () => {
 
     ['askAssistant', (client) => client.askAssistant({ question: 'Hi', context: 'Ăn uống: 1' })],
 
+    ['getInvesting', (client) => client.getInvesting()],
+    [
+      'putInvesting',
+      (client) => client.putInvesting({ watchlist: ['VNM'], alerts: [], baseVersion: 0 }),
+    ],
+    [
+      'registerPushToken',
+      (client) =>
+        client.registerPushToken({ token: 'ExponentPushToken[abcdefghij]', platform: 'ios' }),
+    ],
+
     ['pullSync', (client) => client.pullSync({ since: 0 })],
     ['pushSync', (client) => client.pushSync({ changes: [] })],
   ];

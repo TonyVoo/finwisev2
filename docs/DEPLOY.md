@@ -230,6 +230,12 @@ and `MARKET_API_KEY`; the app never does, and the service has no database.
   in production.
 - **Privacy.** The assistant forwards a person's question and a digest of their figures (no notes) to the model
   provider and stores neither. Say so in the privacy policy, as for receipt reading.
+- **Price alerts while the app is closed.** The API itself looks at every waiting alert (`ALERT_JOB_INTERVAL_SECONDS`,
+  every five minutes by default when `MARKET_API_URL` is set, `0` turns it off) and pushes the ones a price has reached
+  through Expo's push service (`EXPO_PUSH_URL`, no key needed). One instance is enough, and two do no harm: an alert is
+  marked fired with a compare-and-set before it is pushed, so it is pushed once. Pushes reach only a **development or
+  store build** with an EAS project id (not Expo Go), on a device that allowed notifications; the push text is Vietnamese.
+  A device that has not synced the lists, or has no token, still gets the app's own check whenever it opens.
 - **Without it** the rest of the app is unaffected: unset `MARKET_API_URL` and `/v1/market/*` answers
   `503 market_unavailable`.
 
