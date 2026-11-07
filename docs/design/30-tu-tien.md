@@ -21,7 +21,7 @@ condenses in the dantian, seals, talismans, mist over mountains). Three rules fo
 
 | Element | Light/Dark app | Cultivation |
 | --- | --- | --- |
-| Ground | flat canvas | ink-wash scenery: night gradient, a gold moon, three ridges of mountains in jade-black, mist between them (one Skia canvas under every screen, static) |
+| Ground | flat canvas | ink-wash scenery: night gradient, a gold moon, three ridges of mountains in jade-black, mist between them (a hand-painted ink-wash image, `mobile/assets/tutien-backdrop.jpg`, under every screen with an ink scrim that deepens toward the bottom) |
 | Titles | system sans | Noto Serif bold, gold, spaced; a gold rule with a diamond under them |
 | Panels | white card | "scroll panel": translucent ink surface, gold hairline, small gold corner brackets |
 | Primary button | solid fill | "seal": gold fill, serif label, inset hairline |
@@ -61,9 +61,8 @@ haptic, the realm's name; tap to continue. Savings goals borrow the same realm n
 - No network, no new data collected, no gamified pressure: there is no penalty state, only a realm that does not go
   down.
 
-## 5. Assets still wanted from an artist or an image model
+## 5. Assets
 
-The scenery and the crane are drawn in code (paths and gradients) so the appearance works with no asset pipeline. A
-hand-painted backdrop, an app icon and splash in this style, and a brush-calligraphy face for the largest titles would
-lift it further; the plugins offered alongside this change (Icon Creator, image-generation, Icons8, Streamline) are
-for exactly those.
+The backdrop is a generated ink-wash painting (moon, peaks, mist; lower half left calm for content), laid under a scrim
+of the app's ink so text keeps the contrast of plain Dark. The crane is still drawn in code. Still wanted: a
+brush-calligraphy face for the largest titles. The app icon and splash are shared by every appearance and are unchanged.
