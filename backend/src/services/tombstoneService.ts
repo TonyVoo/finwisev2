@@ -40,6 +40,7 @@ export interface PruneResult {
   readonly recurring: number;
   readonly goals: number;
   readonly settlements: number;
+  readonly trades: number;
   /** Idempotency-ledger rows swept on the same horizon. */
   readonly ledgerEntries: number;
   /** Rows older than the horizon that could not be pruned yet; see below. */
@@ -119,6 +120,14 @@ export async function pruneTombstones(
       RETURNING "revision"
     `;
 
+    const trades = await tx.$queryRaw<{ revision: number }[]>`
+      DELETE FROM "trades"
+       WHERE "user_id" = ${userId}::uuid
+         AND "deleted_at" IS NOT NULL
+         AND "deleted_at" < ${horizon}
+      RETURNING "revision"
+    `;
+
     // Repair before the category delete: free expired tombstones of the live expenses that
     // would otherwise hold them forever (see above). Skipped, and the category retained and
     // counted, if the account somehow has no live default to move them to.
@@ -185,6 +194,7 @@ export async function pruneTombstones(
       ...recurring,
       ...goals,
       ...settlements,
+      ...trades,
       ...categories,
     ].map((row) => row.revision);
     // The watermark is the *highest* revision destroyed, not a count: a client whose
@@ -210,6 +220,7 @@ export async function pruneTombstones(
       recurring: recurring.length,
       goals: goals.length,
       settlements: settlements.length,
+      trades: trades.length,
       ledgerEntries: ledgerEntries.count,
       categoriesRetained: retained,
       expensesReassigned,
@@ -242,6 +253,7 @@ export async function pruneAllTombstones(now = new Date()): Promise<{
   recurring: number;
   goals: number;
   settlements: number;
+  trades: number;
   ledgerEntries: number;
   /** Expired category tombstones still held after this run. An operator wants this at 0. */
   categoriesRetained: number;
@@ -262,6 +274,8 @@ export async function pruneAllTombstones(now = new Date()): Promise<{
       UNION ALL
       SELECT "user_id" FROM "settlements" WHERE "deleted_at" IS NOT NULL AND "deleted_at" < ${horizon}
       UNION ALL
+      SELECT "user_id" FROM "trades" WHERE "deleted_at" IS NOT NULL AND "deleted_at" < ${horizon}
+      UNION ALL
       SELECT "user_id" FROM "sync_mutations" WHERE "created_at" < ${horizon}
     ) AS "stale"
   `;
@@ -271,6 +285,7 @@ export async function pruneAllTombstones(now = new Date()): Promise<{
   let recurring = 0;
   let goals = 0;
   let settlements = 0;
+  let trades = 0;
   let ledgerEntries = 0;
   let categoriesRetained = 0;
   let expensesReassigned = 0;
@@ -281,6 +296,7 @@ export async function pruneAllTombstones(now = new Date()): Promise<{
     recurring += result.recurring;
     goals += result.goals;
     settlements += result.settlements;
+    trades += result.trades;
     ledgerEntries += result.ledgerEntries;
     categoriesRetained += result.categoriesRetained;
     expensesReassigned += result.expensesReassigned;
@@ -294,6 +310,7 @@ export async function pruneAllTombstones(now = new Date()): Promise<{
     recurring,
     goals,
     settlements,
+    trades,
     ledgerEntries,
     categoriesRetained,
     expensesReassigned,
@@ -305,6 +322,7 @@ export async function pruneAllTombstones(now = new Date()): Promise<{
     recurring,
     goals,
     settlements,
+    trades,
     ledgerEntries,
     categoriesRetained,
     expensesReassigned,

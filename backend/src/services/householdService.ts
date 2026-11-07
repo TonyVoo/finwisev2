@@ -15,6 +15,7 @@ import {
   createBook,
   ensureOwnDefaultCategory,
   handBackPrivateExpenses,
+  handBackTrades,
   mergeBooks,
   moveBooks,
   unusablePasswordHash,
@@ -319,6 +320,7 @@ export async function leaveHousehold(db: Db, userId: string, householdId: string
     await ensureOwnDefaultCategory(tx, userId);
     // Private means "only I see it": it goes with the person, not into books they can't open.
     await handBackPrivateExpenses(tx, scopeId, userId);
+    await handBackTrades(tx, scopeId, userId);
   });
   logger.info('household left', { userId, householdId });
 }
@@ -344,6 +346,7 @@ export async function removeMember(
       select: { scopeId: true },
     });
     await handBackPrivateExpenses(tx, scopeId, memberId);
+    await handBackTrades(tx, scopeId, memberId);
   });
 
   logger.info('household member removed', { userId: ownerUserId, householdId });
@@ -365,6 +368,7 @@ export async function deleteHousehold(db: Db, userId: string, householdId: strin
     });
     for (const { userId: memberId } of others) {
       await handBackPrivateExpenses(tx, household.scopeId, memberId);
+      await handBackTrades(tx, household.scopeId, memberId);
     }
     // The owner's own private expenses are theirs in their books now; "private" has no meaning
     // in a book only they read. Only this household's rows: the owner's others stay as they are.

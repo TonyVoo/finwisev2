@@ -127,6 +127,9 @@ export const problems = {
   /** The exchange-rate provider failed or answered something unusable. Retryable. */
   ratesUnavailable: () =>
     new ApiProblem('rates_unavailable', 'Exchange rates are unavailable right now.'),
+  /** The market-data service is not configured, or failed. Says nothing of why: its message may name a key. */
+  marketUnavailable: () =>
+    new ApiProblem('market_unavailable', 'Market data is unavailable right now.'),
   /** Receipt reading is not configured on this server. */
   ocrUnavailable: () =>
     new ApiProblem('ocr_unavailable', 'Reading receipts is not available on this server.'),

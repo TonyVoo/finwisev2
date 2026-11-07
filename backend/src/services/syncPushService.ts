@@ -16,6 +16,8 @@ import {
   type SyncPushResponse,
   type SyncPushResult,
   type SyncPushStatus,
+  type Trade as WireTrade,
+  type TradeSyncFields,
 } from '@expense-tracker/shared';
 import type { Db } from '../db/client.ts';
 import { getPrisma } from '../db/client.ts';
@@ -24,10 +26,12 @@ import {
   fromCalendarDate,
   toWireCategory,
   canSeeExpense,
+  canSeeTrade,
   toWireExpense,
   toWireGoal,
   toWireRecurringRule,
   toWireSettlement,
+  toWireTrade,
 } from '../db/mappers.ts';
 import { nextRevision } from '../db/revision.ts';
 import { ApiProblem, isApiProblem, problems } from '../errors.ts';
@@ -48,6 +52,7 @@ import type {
   Prisma,
   RecurringRule as RecurringRuleRow,
   Settlement as SettlementRow,
+  Trade as TradeRow,
 } from '../db/generated/client.ts';
 
 /**
@@ -78,10 +83,13 @@ type RecordFor<E extends SyncEntity> = E extends 'category'
       ? WireGoal
       : E extends 'settlement'
         ? WireSettlement
-        : WireExpense;
+        : E extends 'trade'
+          ? WireTrade
+          : WireExpense;
 
 /** Any row the sync can report. */
-type WireRecord = WireCategory | WireExpense | WireRecurringRule | WireGoal | WireSettlement;
+type WireRecord =
+  WireCategory | WireExpense | WireRecurringRule | WireGoal | WireSettlement | WireTrade;
 
 /** What applying (or declining to apply) one item produced. */
 interface Outcome {
@@ -436,6 +444,101 @@ async function applyGoalItem(
 }
 
 // ---------------------------------------------------------------------------
+// Trade (a stock buy or sell, private to its author)
+// ---------------------------------------------------------------------------
+
+async function applyTradeItem(
+  tx: Db,
+  userId: string,
+  item: Extract<SyncPushItem, { entity: 'trade' }>,
+  now: Date,
+  actorId: string,
+): Promise<Outcome> {
+  const fields: TradeSyncFields = item.fields;
+  const existing: TradeRow | null = await tx.trade.findUnique({ where: { id: item.id } });
+  if (existing && existing.userId !== userId) throw idAlreadyInUse();
+  // Another member's trade is exactly as unavailable as an id that belongs to someone else, and
+  // answers the same way, so nothing about it can be learned from here.
+  if (existing && !canSeeTrade(existing, actorId)) throw idAlreadyInUse();
+
+  const incomingUpdatedAt = clampPushedUpdatedAt(item.updatedAt, now, {
+    userId,
+    entity: 'trade',
+    id: item.id,
+  });
+
+  if (!existing) {
+    const { symbol, side, quantity, price, date } = fields;
+    if (
+      symbol === undefined ||
+      side === undefined ||
+      quantity === undefined ||
+      price === undefined ||
+      date === undefined
+    ) {
+      throw requiredToCreate(
+        'trade',
+        [
+          symbol === undefined ? 'symbol' : undefined,
+          side === undefined ? 'side' : undefined,
+          quantity === undefined ? 'quantity' : undefined,
+          price === undefined ? 'price' : undefined,
+          date === undefined ? 'date' : undefined,
+        ].filter((name): name is string => name !== undefined),
+      );
+    }
+    const deletedAt = fields.deletedAt === undefined ? null : toDate(fields.deletedAt);
+    const note = fields.note === undefined || fields.note === null ? null : fields.note.trim();
+
+    const revision = await nextRevision(tx, userId);
+    const created = await tx.trade.create({
+      data: {
+        id: item.id,
+        userId,
+        createdBy: actorId,
+        symbol,
+        side,
+        quantity: BigInt(quantity),
+        price: BigInt(price),
+        fee: BigInt(fields.fee ?? 0),
+        date: fromCalendarDate(date),
+        note: note === '' ? null : note,
+        createdAt: now,
+        updatedAt: incomingUpdatedAt,
+        deletedAt,
+        revision,
+      },
+    });
+    return applied(toWireTrade(created));
+  }
+
+  if (decideLww({ incomingUpdatedAt, storedUpdatedAt: existing.updatedAt }) !== 'applied') {
+    return conflict(toWireTrade(existing));
+  }
+
+  const deletedAt = fields.deletedAt === undefined ? existing.deletedAt : toDate(fields.deletedAt);
+  const note =
+    fields.note === undefined ? undefined : fields.note === null ? null : fields.note.trim();
+  const revision = await nextRevision(tx, userId);
+  const updated = await tx.trade.update({
+    where: { id: existing.id },
+    data: {
+      ...(fields.symbol === undefined ? {} : { symbol: fields.symbol }),
+      ...(fields.side === undefined ? {} : { side: fields.side }),
+      ...(fields.quantity === undefined ? {} : { quantity: BigInt(fields.quantity) }),
+      ...(fields.price === undefined ? {} : { price: BigInt(fields.price) }),
+      ...(fields.fee === undefined ? {} : { fee: BigInt(fields.fee) }),
+      ...(fields.date === undefined ? {} : { date: fromCalendarDate(fields.date) }),
+      ...(note === undefined ? {} : { note: note === '' ? null : note }),
+      deletedAt,
+      updatedAt: incomingUpdatedAt,
+      revision,
+    },
+  });
+  return applied(toWireTrade(updated));
+}
+
+// ---------------------------------------------------------------------------
 // Recurring rule
 // ---------------------------------------------------------------------------
 
@@ -702,6 +805,11 @@ async function currentRecord(
     const row = await tx.settlement.findFirst({ where: { id, userId } });
     return row ? toWireSettlement(row) : null;
   }
+  if (entity === 'trade') {
+    // Only the author's own: someone else's trade is exactly as absent here as in the pull.
+    const row = await tx.trade.findFirst({ where: { id, userId, createdBy: viewerId } });
+    return row ? toWireTrade(row) : null;
+  }
   const row = await tx.expense.findFirst({ where: { id, userId } });
   return row ? toWireExpense(row, viewerId) : null;
 }
@@ -952,6 +1060,9 @@ function buildResult(args: {
       record: args.outcome.record as RecordFor<'settlement'> | null,
     };
   }
+  if (args.entity === 'trade') {
+    return { entity: 'trade', ...base, record: args.outcome.record as RecordFor<'trade'> | null };
+  }
   return { entity: 'expense', ...base, record: args.outcome.record as RecordFor<'expense'> | null };
 }
 
@@ -1043,6 +1154,8 @@ async function attemptItem(
             return applyGoalItem(tx, userId, parsed.item, now);
           case 'settlement':
             return applySettlementItem(tx, userId, parsed.item, now, actorId);
+          case 'trade':
+            return applyTradeItem(tx, userId, parsed.item, now, actorId);
           default:
             return applyExpenseItem(tx, userId, parsed.item, now, actorId);
         }
@@ -1114,6 +1227,7 @@ const PRIMARY_KEY_TABLE: Readonly<Record<SyncEntity, string>> = {
   goal: 'goals',
   expense: 'expenses',
   settlement: 'settlements',
+  trade: 'trades',
 };
 
 /**

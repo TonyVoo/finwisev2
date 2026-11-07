@@ -81,6 +81,14 @@ const EnvSchema = z.object({
   MAIL_FROM: z.string().min(3).optional(),
 
   /**
+   * The market-data service (`vn-stock-assistant`'s `api/`, uvicorn), behind the Investing tab.
+   * Unset, `/v1/market/*` answers `503 market_unavailable` and nothing else is affected. The key
+   * is sent as `X-Api-Key`; it must match the service's `MARKET_API_KEY`.
+   */
+  MARKET_API_URL: z.url().optional(),
+  MARKET_API_KEY: z.string().min(1).optional(),
+
+  /**
    * Reading receipts with a vision model (Google Gemini; `docs/design/14-ai-receipt-reading.md`),
    * tried before OCR when a key is set. Free-tier requests may be used by Google to improve its
    * products, which is why this is opt-in and disclosed in the app. `GEMINI_MODEL` is config
@@ -191,6 +199,7 @@ function build() {
       ocrSpaceApiKey: env.OCR_SPACE_API_KEY,
       googleVisionApiKey: env.GOOGLE_VISION_API_KEY,
     },
+    market: { url: env.MARKET_API_URL, apiKey: env.MARKET_API_KEY },
     vision: {
       geminiApiKey: env.GEMINI_API_KEY,
       geminiModel: env.GEMINI_MODEL,

@@ -88,6 +88,11 @@ tags:
       data-loss bug.
   - name: expenses
     description: Expense CRUD and a filtered, keyset-paginated list.
+  - name: market
+    description: |
+      Vietnamese stock data for the Investing tab: quotes, a screening score and a position-size
+      calculator. Fetched from the market service and cached briefly; nothing is stored.
+      Not investment advice, and every answer says when its prices are simulated.
   - name: sync
     description: |
       The offline-first sync protocol: pull changes by revision watermark, push a batch of
@@ -3010,6 +3015,302 @@ paths:
         '502':
           $ref: '#/components/responses/RatesUnavailable'
 
+  /v1/market/quotes/{symbol}:
+    get:
+      operationId: getMarketQuote
+      tags: [market]
+      summary: Latest price and recent history of a stock
+      description: |
+        Last close, change against the previous close, the 52-week range and up to 260 daily
+        closes, for a Vietnamese ticker or index (`VNM`, `VNINDEX`). Cached for a minute.
+
+        `demo` is true when the market service had no real prices and simulated some. A client
+        must say so on screen. A ticker the service has no prices for is `404 not_found` (a typo, not an
+        outage). Answers `503 market_unavailable` when the service is not set up
+        or cannot be reached; the rest of the app is unaffected.
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          description: Ticker, 1-10 letters or digits. Lower case is accepted and upper-cased.
+          schema: { $ref: '#/components/schemas/MarketSymbol' }
+          example: VNM
+      x-errorCodes:
+        - validation_error
+        - unauthorized
+        - token_expired
+        - token_invalid
+        - rate_limited
+        - not_found
+        - market_unavailable
+        - internal_error
+      responses:
+        '200':
+          description: The quote.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MarketQuoteResponse' }
+              example:
+                data:
+                  symbol: VNM
+                  source: vnstock
+                  demo: false
+                  asOf: '2026-11-06'
+                  close: 56800
+                  prevClose: 56500
+                  changePct: 0.0053
+                  high52w: 66000
+                  low52w: 52000
+                  series:
+                    - { date: '2026-11-05', close: 56500, volume: 1200000 }
+                    - { date: '2026-11-06', close: 56800, volume: 1500000 }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/MarketUnavailable'
+
+  /v1/market/signals/{symbol}:
+    get:
+      operationId: getMarketSignal
+      tags: [market]
+      summary: Screening score of a stock
+      description: |
+        A 0-100 score with the reasons and warnings behind it, and a stop-loss suggested from the
+        stock's recent volatility. It is a filter to narrow what to look at, **not** a buy or sell
+        signal and not a forecast; every answer carries that disclaimer. Cached for five minutes.
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          description: Ticker, 1-10 letters or digits.
+          schema: { $ref: '#/components/schemas/MarketSymbol' }
+          example: VNM
+      x-errorCodes:
+        - validation_error
+        - unauthorized
+        - token_expired
+        - token_invalid
+        - rate_limited
+        - not_found
+        - market_unavailable
+        - internal_error
+      responses:
+        '200':
+          description: The score.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MarketSignalResponse' }
+              example:
+                data:
+                  symbol: VNM
+                  source: vnstock
+                  demo: false
+                  label: Yếu
+                  score: 15
+                  close: 56800
+                  suggestedStop: 55136
+                  stopPct: 0.0293
+                  liquid: true
+                  reasons: ['Giá dưới MA50']
+                  warnings: []
+                  disclaimer: 'Công cụ hỗ trợ ra quyết định, không phải lời khuyên đầu tư.'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/MarketUnavailable'
+
+  /v1/market/news:
+    get:
+      operationId: getMarketNews
+      tags: [market]
+      summary: Headlines that name the stocks
+      description: |
+        Headlines from Vietnamese financial news feeds (CafeF, VnExpress, Vietstock) that name each stock **explicitly**
+        in the title or summary; a headline is never guessed to be related. Several stocks may share a headline, which
+        then appears once per stock. Cached for five minutes. Every `link` is an http(s) URL.
+      parameters:
+        - name: symbols
+          in: query
+          required: true
+          description: One to twenty tickers, comma separated.
+          schema: { type: string }
+          example: VNM,FPT
+      x-errorCodes:
+        - validation_error
+        - unauthorized
+        - token_expired
+        - token_invalid
+        - rate_limited
+        - market_unavailable
+        - internal_error
+      responses:
+        '200':
+          description: The headlines.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MarketNewsResponse' }
+              example:
+                data:
+                  items:
+                    - symbol: VNM
+                      source: CafeF
+                      title: VNM công bố cổ tức
+                      link: https://cafef.vn/vnm.chn
+                      published: 'Fri, 06 Nov 2026 08:00:00 +0700'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/MarketUnavailable'
+
+  /v1/market/brief:
+    get:
+      operationId: getMarketBrief
+      tags: [market]
+      summary: A morning brief written by AI
+      description: |
+        A brief for the stocks, written by a language model from headlines, world markets and the stocks' screening
+        scores. The text is in Vietnamese whatever the app's language; the client must say it was written by AI, and
+        that it is not investment advice. Cached for thirty minutes per set of stocks, since it costs a model call.
+        `503 market_unavailable` when the market service has no model configured or the model fails.
+      parameters:
+        - name: symbols
+          in: query
+          required: true
+          description: One to twenty tickers, comma separated.
+          schema: { type: string }
+          example: VNM,FPT
+      x-errorCodes:
+        - validation_error
+        - unauthorized
+        - token_expired
+        - token_invalid
+        - rate_limited
+        - market_unavailable
+        - internal_error
+      responses:
+        '200':
+          description: The brief.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MarketBriefResponse' }
+              example:
+                data:
+                  overview: Thị trường đi ngang.
+                  worldLink: Phố Wall tăng nhẹ.
+                  topNews:
+                    - {
+                        title: VNM công bố cổ tức,
+                        symbols: [VNM],
+                        impact: tich_cuc,
+                        level: vua,
+                        comment: Tích cực với cổ đông.,
+                      }
+                  notes:
+                    - { symbol: VNM, comment: Điểm kỹ thuật còn yếu. }
+                  risks: [Lãi suất]
+                  confidence: vua
+                  disclaimer: Công cụ hỗ trợ ra quyết định, không phải lời khuyên đầu tư.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/MarketUnavailable'
+
+  /v1/market/position-size:
+    post:
+      operationId: getPositionSize
+      tags: [market]
+      summary: How many shares fit a risk budget
+      description: |
+        Given capital, an entry price and a stop-loss below it, the largest whole number of lots
+        (100 shares) whose loss at the stop stays within `riskPct` of capital (default 1.5%), within
+        `maxAlloc` of capital in one stock (default 30%) and within the cash available. Fees and
+        sales tax are included. `shares` is 0, with a `message`, when not even one lot fits.
+        Writes nothing and is not cached.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PositionSizeRequest' }
+            example: { capital: 100000000, entry: 50000, stop: 47000 }
+      x-errorCodes:
+        - validation_error
+        - malformed_request
+        - unsupported_media_type
+        - unauthorized
+        - token_expired
+        - token_invalid
+        - rate_limited
+        - market_unavailable
+        - internal_error
+      responses:
+        '200':
+          description: The size.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PositionSizeResponse' }
+              example:
+                data:
+                  shares: 400
+                  lots: 4
+                  cost: 20030000
+                  allocPct: 0.2003
+                  maxLoss: 1277000
+                  maxLossPct: 0.01277
+                  breakeven: 50200.5
+                  limitedBy: rủi ro
+                  message: null
+                  disclaimer: 'Công cụ hỗ trợ ra quyết định, không phải lời khuyên đầu tư.'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/MarketUnavailable'
+
   /v1/sync:
     get:
       operationId: pullSync
@@ -3659,6 +3960,20 @@ components:
             error:
               code: rates_unavailable
               message: Exchange rates are unavailable right now.
+    MarketUnavailable:
+      description: |
+        The market-data service is not set up on this server, or could not be reached or gave an
+        unusable answer. Code: `market_unavailable`. Not cached. The Investing tab shows an offline
+        note; nothing else in the app depends on it.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            error:
+              code: market_unavailable
+              message: Market data is unavailable right now.
     OcrUnavailable:
       description: |
         Receipt reading is not set up on this server. Code: `ocr_unavailable`. The app stops
@@ -3892,6 +4207,7 @@ components:
         | `owner_cannot_leave` | 409 | The owner cannot leave their own household; they delete it instead. |
         | `household_has_members` | 409 | An account that owns a household with other members cannot be deleted until ownership is handed over or the household is deleted. |
         | `rates_unavailable` | 502 | The exchange-rate provider could not be reached or gave an unusable answer. Retry later, or enter the rate by hand. |
+        | `market_unavailable` | 503 | The market-data service is not set up on this server, or could not be reached. The Investing tab shows an offline note; nothing else depends on it. |
         | `ocr_unavailable` | 503 | Receipt reading is not set up on this server. The app stops offering it; entering an expense by hand is unaffected. |
         | `ocr_failed` | 502 | The receipt-reading provider could not be reached or failed. Nothing was stored; retry later or type the expense. |
         | `quick_add_unavailable` | 503 | Reading typed descriptions with a model is not set up on this server, or its day's budget is spent. The app stops asking for the session; the phone keeps what it read itself. |
@@ -3929,6 +4245,7 @@ components:
         - owner_cannot_leave
         - household_has_members
         - rates_unavailable
+        - market_unavailable
         - ocr_unavailable
         - ocr_failed
         - quick_add_unavailable
@@ -4757,6 +5074,71 @@ components:
         lands on the 28th/29th in February and the 30th in April, and is back on the 31st
         in May - it does not drift).
 
+    Trade:
+      type: object
+      description: |
+        One buy or one sell of a Vietnamese stock, as the server reports it. The portfolio (positions,
+        average cost, profit and loss) is **derived on the device** from these rows; nothing aggregated is
+        stored or synced, so two devices entering trades never overwrite each other's totals.
+
+        Sync-only, like goals: no REST route, a change travels as a push item and arrives as a pull change.
+        **Private to its author**: a household shares one book, but a trade is delivered only to the person
+        who entered it. Other members never receive the row at all (unlike a private expense, which arrives
+        as a placeholder), and an id that belongs to someone else's trade answers as an id already in use.
+
+        Prices are whole dong per share, integers, never floats. A trade is in dong whatever currency the
+        account keeps its expenses in.
+      additionalProperties: false
+      required:
+        - id
+        - symbol
+        - side
+        - quantity
+        - price
+        - fee
+        - date
+        - note
+        - createdAt
+        - updatedAt
+        - deletedAt
+        - revision
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        symbol: { $ref: '#/components/schemas/MarketSymbol' }
+        side:
+          type: string
+          enum: [buy, sell, dividend]
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 1000000000
+          description: Shares. Any whole number; lots of 100 are the norm but odd lots exist.
+        price:
+          type: integer
+          minimum: 1
+          maximum: 1000000000
+          description: Dong per share, as a whole number.
+        fee:
+          type: integer
+          minimum: 0
+          maximum: 1000000000000
+          description: Brokerage fee and tax paid on the trade, in whole dong. Zero when not tracked.
+        date:
+          allOf: [{ $ref: '#/components/schemas/CalendarDate' }]
+          description: The day the trade was made.
+        note:
+          oneOf:
+            - type: string
+              maxLength: 200
+            - type: 'null'
+        createdAt: { $ref: '#/components/schemas/Timestamp' }
+        updatedAt: { $ref: '#/components/schemas/Timestamp' }
+        deletedAt:
+          oneOf:
+            - { $ref: '#/components/schemas/Timestamp' }
+            - type: 'null'
+        revision: { $ref: '#/components/schemas/Revision' }
+
     Settlement:
       type: object
       description: |
@@ -5281,6 +5663,246 @@ components:
       properties:
         data: { $ref: '#/components/schemas/ExchangeRate' }
 
+    MarketSymbol:
+      type: string
+      pattern: '^[A-Z0-9]{1,10}$'
+      description: Ticker, such as `VNM` or `VNINDEX`.
+      example: VNM
+
+    MarketQuotePoint:
+      type: object
+      additionalProperties: false
+      required: [date, close, volume]
+      properties:
+        date: { $ref: '#/components/schemas/CalendarDate' }
+        close: { type: number, exclusiveMinimum: 0 }
+        volume: { type: number, minimum: 0 }
+
+    MarketQuote:
+      type: object
+      additionalProperties: false
+      required: [symbol, source, demo, asOf, close, prevClose, changePct, high52w, low52w, series]
+      properties:
+        symbol: { $ref: '#/components/schemas/MarketSymbol' }
+        source:
+          type: string
+          description: 'Where the prices came from: csv, vnstock, vndirect, cache or demo.'
+        demo:
+          type: boolean
+          description: True when the prices are simulated and must be labelled as such.
+        asOf: { $ref: '#/components/schemas/CalendarDate' }
+        close: { type: number, exclusiveMinimum: 0 }
+        prevClose: { type: [number, 'null'], exclusiveMinimum: 0 }
+        changePct:
+          type: [number, 'null']
+          description: Fraction, 0.012 is +1.2%.
+        high52w: { type: number, exclusiveMinimum: 0 }
+        low52w: { type: number, exclusiveMinimum: 0 }
+        series:
+          type: array
+          maxItems: 260
+          items: { $ref: '#/components/schemas/MarketQuotePoint' }
+
+    MarketQuoteResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/MarketQuote' }
+
+    MarketSignal:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          symbol,
+          source,
+          demo,
+          label,
+          score,
+          close,
+          suggestedStop,
+          stopPct,
+          liquid,
+          reasons,
+          warnings,
+          disclaimer,
+        ]
+      properties:
+        symbol: { $ref: '#/components/schemas/MarketSymbol' }
+        source: { type: string }
+        demo: { type: boolean }
+        label:
+          type: string
+          enum: ['Mạnh', 'Khá', 'Trung tính', 'Yếu', 'N/A']
+        score:
+          type: [number, 'null']
+          minimum: 0
+          maximum: 100
+          description: Null when there is too little history.
+        close: { type: [number, 'null'], exclusiveMinimum: 0 }
+        suggestedStop:
+          type: [number, 'null']
+          exclusiveMinimum: 0
+          description: Close minus two ATR.
+        stopPct: { type: [number, 'null'] }
+        liquid: { type: boolean }
+        reasons:
+          type: array
+          items: { type: string }
+        warnings:
+          type: array
+          items: { type: string }
+        disclaimer: { type: string }
+
+    MarketSignalResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/MarketSignal' }
+
+    MarketNewsItem:
+      type: object
+      additionalProperties: false
+      required: [symbol, source, title, link, published]
+      properties:
+        symbol: { $ref: '#/components/schemas/MarketSymbol' }
+        source: { type: string }
+        title: { type: string }
+        link:
+          type: string
+          format: uri
+          description: 'Always an http(s) link, never any other scheme.'
+        published:
+          { type: string, description: 'As the feed wrote it; not a normalised timestamp.' }
+
+    MarketNews:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          maxItems: 200
+          items: { $ref: '#/components/schemas/MarketNewsItem' }
+
+    MarketNewsResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/MarketNews' }
+
+    MarketBrief:
+      type: object
+      additionalProperties: false
+      required: [overview, worldLink, topNews, notes, risks, confidence, disclaimer]
+      properties:
+        overview: { type: string }
+        worldLink: { type: string }
+        topNews:
+          type: array
+          maxItems: 6
+          items:
+            type: object
+            additionalProperties: false
+            required: [title, symbols, impact, level, comment]
+            properties:
+              title: { type: string }
+              symbols:
+                type: array
+                items: { type: string }
+              impact:
+                type: string
+                enum: [tich_cuc, tieu_cuc, trung_tinh]
+              level: { type: string }
+              comment: { type: string }
+        notes:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [symbol, comment]
+            properties:
+              symbol: { type: string }
+              comment: { type: string }
+        risks:
+          type: array
+          items: { type: string }
+        confidence: { type: string }
+        disclaimer: { type: string }
+
+    MarketBriefResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/MarketBrief' }
+
+    PositionSizeRequest:
+      type: object
+      additionalProperties: false
+      required: [capital, entry, stop]
+      properties:
+        capital: { type: number, exclusiveMinimum: 0, maximum: 10000000000000 }
+        entry: { type: number, exclusiveMinimum: 0, maximum: 1000000000 }
+        stop:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 1000000000
+          description: Must be below `entry`.
+        riskPct:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 0.1
+          description: Share of capital to risk. Default 1.5%.
+        maxAlloc:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 1
+          description: Largest share of capital in one stock. Default 30%.
+
+    PositionSize:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          shares,
+          lots,
+          cost,
+          allocPct,
+          maxLoss,
+          maxLossPct,
+          breakeven,
+          limitedBy,
+          message,
+          disclaimer,
+        ]
+      properties:
+        shares:
+          type: integer
+          minimum: 0
+          description: A multiple of 100 (one lot), or 0.
+        lots: { type: integer, minimum: 0 }
+        cost: { type: number, minimum: 0 }
+        allocPct: { type: number, minimum: 0 }
+        maxLoss: { type: number, minimum: 0 }
+        maxLossPct: { type: number, minimum: 0 }
+        breakeven: { type: number, minimum: 0 }
+        limitedBy: { type: string }
+        message:
+          type: [string, 'null']
+          description: Why no lot fits, when `shares` is 0.
+        disclaimer: { type: string }
+
+    PositionSizeResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/PositionSize' }
+
     ReceiptIndexResponse:
       type: object
       additionalProperties: false
@@ -5348,6 +5970,16 @@ components:
         entity: { const: settlement }
         record: { $ref: '#/components/schemas/Settlement' }
 
+    TradeSyncChange:
+      type: object
+      title: Trade change
+      description: A changed trade, as delivered by `GET /v1/sync`. Only to the person who entered it.
+      additionalProperties: false
+      required: [entity, record]
+      properties:
+        entity: { const: trade }
+        record: { $ref: '#/components/schemas/Trade' }
+
     SyncChange:
       description: |
         One changed row, discriminated on `entity` so a client gets a precise type for
@@ -5355,7 +5987,7 @@ components:
         is the only way a delete crosses the wire.
 
         `entity` also fixes the order the server applies a batch in: all `category` items,
-        then all `recurring` items, then all `goal` items, then all `expense` items, then all `settlement` items — so an expense created offline
+        then all `recurring` items, then all `goal` items, then all `expense` items, then all `settlement` items, then all `trade` items — so an expense created offline
         against a category created offline syncs in one round trip.
       oneOf:
         - { $ref: '#/components/schemas/CategorySyncChange' }
@@ -5363,6 +5995,7 @@ components:
         - { $ref: '#/components/schemas/GoalSyncChange' }
         - { $ref: '#/components/schemas/ExpenseSyncChange' }
         - { $ref: '#/components/schemas/SettlementSyncChange' }
+        - { $ref: '#/components/schemas/TradeSyncChange' }
       discriminator:
         propertyName: entity
         mapping:
@@ -5371,6 +6004,7 @@ components:
           goal: '#/components/schemas/GoalSyncChange'
           expense: '#/components/schemas/ExpenseSyncChange'
           settlement: '#/components/schemas/SettlementSyncChange'
+          trade: '#/components/schemas/TradeSyncChange'
 
     SyncPullResponse:
       type: object
@@ -5502,6 +6136,32 @@ components:
           type: integer
           minimum: 1
           maximum: 999999999999
+        date: { $ref: '#/components/schemas/CalendarDate' }
+        note:
+          oneOf:
+            - type: string
+              maxLength: 200
+            - type: 'null'
+          description: Trimmed; a note that trims to nothing is stored as `null`.
+        deletedAt: { $ref: '#/components/schemas/DeletedAt' }
+
+    TradeSyncFields:
+      type: object
+      description: |
+        Mutable trade fields in a push. Same upsert/merge semantics as `CategorySyncFields`. To create a
+        trade that does not exist yet, `symbol`, `side`, `quantity`, `price` and `date` are required;
+        `fee` defaults to 0. Set `deletedAt` to delete; `null` to undelete. Only the person who entered a
+        trade may change it.
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        symbol: { $ref: '#/components/schemas/MarketSymbol' }
+        side:
+          type: string
+          enum: [buy, sell, dividend]
+        quantity: { type: integer, minimum: 1, maximum: 1000000000 }
+        price: { type: integer, minimum: 1, maximum: 1000000000 }
+        fee: { type: integer, minimum: 0, maximum: 1000000000000 }
         date: { $ref: '#/components/schemas/CalendarDate' }
         note:
           oneOf:
@@ -5660,6 +6320,19 @@ components:
         clientMutationId: { $ref: '#/components/schemas/ClientMutationId' }
         fields: { $ref: '#/components/schemas/SettlementSyncFields' }
 
+    TradeSyncPushItem:
+      type: object
+      title: Trade push item
+      description: An upsert of one trade.
+      additionalProperties: false
+      required: [entity, id, updatedAt, clientMutationId, fields]
+      properties:
+        entity: { const: trade }
+        id: { $ref: '#/components/schemas/SyncPushItemId' }
+        updatedAt: { $ref: '#/components/schemas/SyncPushUpdatedAt' }
+        clientMutationId: { $ref: '#/components/schemas/ClientMutationId' }
+        fields: { $ref: '#/components/schemas/TradeSyncFields' }
+
     SyncPushItem:
       description: |
         One item in a push batch, discriminated on `entity` so `fields` is precisely typed.
@@ -5670,6 +6343,7 @@ components:
         - { $ref: '#/components/schemas/GoalSyncPushItem' }
         - { $ref: '#/components/schemas/ExpenseSyncPushItem' }
         - { $ref: '#/components/schemas/SettlementSyncPushItem' }
+        - { $ref: '#/components/schemas/TradeSyncPushItem' }
       discriminator:
         propertyName: entity
         mapping:
@@ -5678,6 +6352,7 @@ components:
           goal: '#/components/schemas/GoalSyncPushItem'
           expense: '#/components/schemas/ExpenseSyncPushItem'
           settlement: '#/components/schemas/SettlementSyncPushItem'
+          trade: '#/components/schemas/TradeSyncPushItem'
 
     SyncPushRequest:
       type: object
@@ -5840,6 +6515,28 @@ components:
             `conflict_server_wins` alike. `null` only for an `invalid` item whose row does
             not exist server-side.
 
+    TradeSyncPushResult:
+      type: object
+      title: Trade push result
+      description: The outcome of one trade upsert, plus the authoritative server row.
+      additionalProperties: false
+      required: [entity, clientMutationId, id, status, idempotentReplay, error, record]
+      properties:
+        entity: { const: trade }
+        clientMutationId: { $ref: '#/components/schemas/SyncPushEchoedMutationId' }
+        id: { $ref: '#/components/schemas/Uuid' }
+        status: { $ref: '#/components/schemas/SyncPushStatus' }
+        idempotentReplay: { $ref: '#/components/schemas/SyncPushIdempotentReplay' }
+        error: { $ref: '#/components/schemas/SyncPushError' }
+        record:
+          oneOf:
+            - { $ref: '#/components/schemas/Trade' }
+            - type: 'null'
+          description: |
+            The authoritative server row after the batch — present for `applied` and
+            `conflict_server_wins` alike. `null` only for an `invalid` item whose row does
+            not exist server-side.
+
     SyncPushResult:
       description: |
         One push result, discriminated on `entity`.
@@ -5855,6 +6552,7 @@ components:
         - { $ref: '#/components/schemas/GoalSyncPushResult' }
         - { $ref: '#/components/schemas/ExpenseSyncPushResult' }
         - { $ref: '#/components/schemas/SettlementSyncPushResult' }
+        - { $ref: '#/components/schemas/TradeSyncPushResult' }
       discriminator:
         propertyName: entity
         mapping:
@@ -5863,6 +6561,7 @@ components:
           goal: '#/components/schemas/GoalSyncPushResult'
           expense: '#/components/schemas/ExpenseSyncPushResult'
           settlement: '#/components/schemas/SettlementSyncPushResult'
+          trade: '#/components/schemas/TradeSyncPushResult'
 
     SyncPushResponse:
       type: object

@@ -25,6 +25,7 @@ const BOOK_TABLES = [
   'recurring_rules',
   'goals',
   'settlements',
+  'trades',
   'sync_mutations',
   'expense_receipts',
 ] as const;
@@ -141,6 +142,15 @@ export async function mergeBooks(tx: Db, from: string, into: string): Promise<vo
     where: { id: { in: keep.filter((id) => id !== promoteToDefault) } },
     data: { isDefault: false },
   });
+
+  // A trade is private to its author, so every author's trades go back to their own account rather
+  // than into the owner's books, where only the owner could ever see them.
+  const authors = await tx.trade.findMany({
+    where: { userId: from },
+    distinct: ['createdBy'],
+    select: { createdBy: true },
+  });
+  for (const { createdBy } of authors) await handBackTrades(tx, from, createdBy);
 
   // Recorded payments only mean something between household members, so they do not follow the
   // book into someone's own account: deleting a household discards its settlement history.
@@ -261,4 +271,26 @@ export async function handBackPrivateExpenses(
     where: { expenseId: { in: rows.map((row) => row.id) } },
     data: { userId: memberId },
   });
+}
+
+/**
+ * Give a person back the trades they entered in a household's book.
+ *
+ * A trade is shown only to its author, so when that person stops being a member - leaves, is removed,
+ * or the household is deleted - their trades go with them to their own account rather than staying
+ * behind in books they can no longer open. Deleted ones go too, so a device that still holds the row
+ * is told. Each gets a fresh revision from their own counter so their devices pick it up on resync.
+ */
+export async function handBackTrades(tx: Db, bookId: string, memberId: string): Promise<void> {
+  const count = await tx.trade.count({ where: { userId: bookId, createdBy: memberId } });
+  if (count === 0) return;
+  const revisions = await nextRevisionBlock(tx, memberId, count);
+  const base = (revisions[0] ?? 1) - 1;
+  await tx.$executeRaw`
+    UPDATE "trades" t
+       SET "user_id" = ${memberId}::uuid, "revision" = ${base}::int + r.rn
+      FROM (SELECT "id", row_number() OVER (ORDER BY "revision") AS rn
+              FROM "trades"
+             WHERE "user_id" = ${bookId}::uuid AND "created_by" = ${memberId}::uuid) r
+     WHERE t."id" = r."id"`;
 }

@@ -5,6 +5,7 @@ import type {
   RecurringRule,
   Settlement,
   SyncPushItem,
+  Trade,
 } from '@expense-tracker/shared';
 import { v7 as uuidv7 } from 'uuid';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -34,7 +35,7 @@ beforeEach(async () => {
   user = await createUser();
 });
 
-type Row = Category | Expense | Goal | RecurringRule | Settlement;
+type Row = Category | Expense | Goal | RecurringRule | Settlement | Trade;
 
 /** A simulated offline client: local rows, an outbox, and a revision watermark. */
 class Device {

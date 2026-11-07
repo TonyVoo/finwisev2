@@ -5,6 +5,7 @@ import type {
   Goal as WireGoal,
   RecurringRule as WireRecurringRule,
   Settlement as WireSettlement,
+  Trade as WireTrade,
   User as WireUser,
 } from '@expense-tracker/shared';
 import type {
@@ -13,6 +14,7 @@ import type {
   Goal as GoalRow,
   RecurringRule as RecurringRuleRow,
   Settlement as SettlementRow,
+  Trade as TradeRow,
   User as UserRow,
 } from './generated/client.ts';
 
@@ -156,6 +158,32 @@ export function toWireGoal(row: GoalRow): WireGoal {
     deletedAt: row.deletedAt?.toISOString() ?? null,
     revision: row.revision,
   };
+}
+
+/**
+ * A trade as it goes on the wire. There is deliberately no viewer parameter: a trade is only ever
+ * delivered to its author (see `canSeeTrade`), so nothing here has to hide anything.
+ */
+export function toWireTrade(row: TradeRow): WireTrade {
+  return {
+    id: row.id,
+    symbol: row.symbol,
+    side: row.side === 'sell' || row.side === 'dividend' ? row.side : 'buy',
+    quantity: Number(row.quantity),
+    price: Number(row.price),
+    fee: Number(row.fee),
+    date: toCalendarDate(row.date),
+    note: row.note,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    deletedAt: row.deletedAt?.toISOString() ?? null,
+    revision: row.revision,
+  };
+}
+
+/** Whether `viewerId` is the author of this trade, and so the only person who may see or change it. */
+export function canSeeTrade(row: Pick<TradeRow, 'createdBy'>, viewerId: string): boolean {
+  return row.createdBy === viewerId;
 }
 
 export function toWireSettlement(row: SettlementRow): WireSettlement {

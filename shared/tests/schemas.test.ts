@@ -31,6 +31,8 @@ import {
   apiError,
   Settlement,
   SettlementSyncFields,
+  Trade,
+  TradeSyncFields,
 } from '../src/index.js';
 
 /**
@@ -342,7 +344,14 @@ describe('sync push shapes', () => {
   });
 
   it('applies categories, then recurring rules, then goals, then expenses', () => {
-    expect(SYNC_APPLY_ORDER).toEqual(['category', 'recurring', 'goal', 'expense', 'settlement']);
+    expect(SYNC_APPLY_ORDER).toEqual([
+      'category',
+      'recurring',
+      'goal',
+      'expense',
+      'settlement',
+      'trade',
+    ]);
     expect([...SYNC_APPLY_ORDER].sort()).toEqual([...SYNC_ENTITIES].sort());
   });
 });
@@ -498,9 +507,11 @@ describe('a settlement', () => {
     );
   });
 
-  it('travels in the sync stream as its own entity, applied last', () => {
+  it('travels in the sync stream as its own entity, applied after expenses', () => {
     expect(SYNC_ENTITIES).toContain('settlement');
-    expect(SYNC_APPLY_ORDER[SYNC_APPLY_ORDER.length - 1]).toBe('settlement');
+    expect(SYNC_APPLY_ORDER.indexOf('settlement')).toBeGreaterThan(
+      SYNC_APPLY_ORDER.indexOf('expense'),
+    );
     expect(SyncChange.safeParse({ entity: 'settlement', record: row }).success).toBe(true);
     expect(
       SyncPushItem.safeParse({
@@ -511,5 +522,60 @@ describe('a settlement', () => {
         fields: { amountMinor: 100 },
       }).success,
     ).toBe(true);
+  });
+});
+
+describe('a trade', () => {
+  const row = {
+    id: UUID_V7,
+    symbol: 'VNM',
+    side: 'buy',
+    quantity: 100,
+    price: 56800,
+    fee: 8520,
+    date: '2026-11-04',
+    note: null,
+    createdAt: NOW,
+    updatedAt: NOW,
+    deletedAt: null,
+    revision: 7,
+  };
+
+  it('parses a complete row and needs every field', () => {
+    expect(Trade.safeParse(row).success).toBe(true);
+    for (const key of Object.keys(row)) {
+      const { [key as keyof typeof row]: _omitted, ...partial } = row;
+      expect(Trade.safeParse(partial).success, `missing ${key}`).toBe(false);
+    }
+  });
+
+  it('keeps money and shares whole and in range', () => {
+    expect(Trade.safeParse({ ...row, price: 56800.5 }).success).toBe(false);
+    expect(Trade.safeParse({ ...row, price: 0 }).success).toBe(false);
+    expect(Trade.safeParse({ ...row, quantity: 0 }).success).toBe(false);
+    expect(Trade.safeParse({ ...row, quantity: 1.5 }).success).toBe(false);
+    expect(Trade.safeParse({ ...row, fee: -1 }).success).toBe(false);
+    expect(Trade.safeParse({ ...row, fee: 0 }).success).toBe(true);
+  });
+
+  it('is a buy, a sell or a dividend of an upper-case ticker', () => {
+    expect(Trade.safeParse({ ...row, side: 'dividend' }).success).toBe(true);
+    expect(Trade.safeParse({ ...row, side: 'hold' }).success).toBe(false);
+    expect(Trade.safeParse({ ...row, symbol: 'vnm' }).success).toBe(false);
+    expect(Trade.safeParse({ ...row, note: 'x'.repeat(200) }).success).toBe(true);
+    expect(Trade.safeParse({ ...row, note: 'x'.repeat(201) }).success).toBe(false);
+  });
+
+  it('carries no owner or author on the wire', () => {
+    expect(Trade.safeParse({ ...row, userId: UUID_V7 }).success).toBe(false);
+    expect(Trade.safeParse({ ...row, createdBy: UUID_V7 }).success).toBe(false);
+  });
+
+  it('is its own sync entity, applied last', () => {
+    expect(SYNC_ENTITIES).toContain('trade');
+    expect(SYNC_APPLY_ORDER[SYNC_APPLY_ORDER.length - 1]).toBe('trade');
+    expect(SyncChange.safeParse({ entity: 'trade', record: row }).success).toBe(true);
+    expect(TradeSyncFields.safeParse({}).success).toBe(false);
+    expect(TradeSyncFields.safeParse({ quantity: 200 }).success).toBe(true);
   });
 });

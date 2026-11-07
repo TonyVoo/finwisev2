@@ -66,6 +66,8 @@ model User {
   recurringRules  RecurringRule[]
   goals           Goal[]
   settlements     Settlement[]
+  trades          Trade[]          @relation("TradeBook")
+  authoredTrades  Trade[]          @relation("TradeAuthor")
   refreshTokens   RefreshToken[]
   passwordResetCode PasswordResetCode?
   emailVerificationCode EmailVerificationCode?
@@ -262,6 +264,39 @@ model Goal {
   @@map("goals")
 }
 
+/// A stock trade: one buy or one sell. Syncable, in the account's book, but **private to its author**: the
+/// pull sends a trade only to `created_by`, so a household's other members never receive the row
+/// (`shared/src/trade.ts`). The portfolio is derived on the device; nothing aggregated lives here.
+/// Prices are whole dong, so there is no currency column and no minor unit.
+model Trade {
+  id     String @id @db.Uuid
+  /// The book the row lives in, as on every syncable row.
+  userId String @map("user_id") @db.Uuid
+  /// Who entered it, and the only person it is ever shown to. Gone with their account.
+  createdBy String @map("created_by") @db.Uuid
+
+  symbol   String   @db.VarChar(10)
+  /// `buy` | `sell` | `dividend`.
+  side     String   @db.VarChar(8)
+  quantity BigInt
+  price    BigInt
+  fee      BigInt   @default(0)
+  date     DateTime @db.Date
+  note     String?  @db.VarChar(200)
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime  @map("updated_at") @db.Timestamptz(3)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)
+  revision  Int
+
+  book   User @relation("TradeBook", fields: [userId], references: [id], onDelete: Cascade)
+  author User @relation("TradeAuthor", fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@unique([userId, revision])
+  @@index([userId, createdBy, revision])
+  @@map("trades")
+}
+
 /// A recorded payment between two members of a household (`shared/src/settlement.ts`,
 /// `docs/design/12-settle-up.md`). Syncable, in the household's book, so every member sees it.
 ///
@@ -307,7 +342,7 @@ model SyncMutation {
   userId           String @map("user_id") @db.Uuid
   clientMutationId String @map("client_mutation_id") @db.Uuid
 
-  /// `category` | `recurring` | `goal` | `expense`. Not a Prisma enum: the wire values are owned by
+  /// `category` | `recurring` | `goal` | `expense` | `settlement` | `trade`. Not a Prisma enum: the wire values are owned by
   /// `SYNC_ENTITIES` in `shared/`, and a second enum here could disagree with it.
   entity String @db.VarChar(16)
 

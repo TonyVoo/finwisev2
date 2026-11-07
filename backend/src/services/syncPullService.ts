@@ -12,6 +12,7 @@ import {
   toWireGoal,
   toWireRecurringRule,
   toWireSettlement,
+  toWireTrade,
 } from '../db/mappers.ts';
 import { needsResync } from '../sync/resolver.ts';
 
@@ -83,7 +84,7 @@ async function readPage(
 
   const run = async (tx: Db): Promise<PageSnapshot> => {
     const counter = await tx.revisionCounter.findUnique({ where: { userId } });
-    const [categories, recurring, goals, expenses, settlements] = await Promise.all([
+    const [categories, recurring, goals, expenses, settlements, trades] = await Promise.all([
       tx.category.findMany({
         where: { userId, revision: { gt: since } },
         orderBy: { revision: 'asc' },
@@ -106,6 +107,13 @@ async function readPage(
       }),
       tx.settlement.findMany({
         where: { userId, revision: { gt: since } },
+        orderBy: { revision: 'asc' },
+        take,
+      }),
+      // Only the viewer's own: a trade is private to its author, and in a household's book the
+      // other members' rows are simply never sent (`shared/src/trade.ts`).
+      tx.trade.findMany({
+        where: { userId, createdBy: viewerId, revision: { gt: since } },
         orderBy: { revision: 'asc' },
         take,
       }),
@@ -135,6 +143,10 @@ async function readPage(
       ...settlements.map((row) => ({
         revision: row.revision,
         change: { entity: 'settlement', record: toWireSettlement(row) } satisfies SyncChange,
+      })),
+      ...trades.map((row) => ({
+        revision: row.revision,
+        change: { entity: 'trade', record: toWireTrade(row) } satisfies SyncChange,
       })),
     ].sort((a, b) => a.revision - b.revision);
 
