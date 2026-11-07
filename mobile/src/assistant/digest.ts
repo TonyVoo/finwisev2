@@ -68,7 +68,9 @@ export function buildDigest(input: DigestInput): string {
       const share = spent > 0 ? Math.round((row.totalMinor * 100) / spent) : 0;
       const budget =
         row.monthlyBudgetMinor === null ? '' : `, ngân sách ${money(row.monthlyBudgetMinor)}`;
-      lines.push(`- ${row.name ?? 'Chưa phân loại'}: ${money(row.totalMinor)} (${share}%${budget})`);
+      lines.push(
+        `- ${row.name ?? 'Chưa phân loại'}: ${money(row.totalMinor)} (${share}%${budget})`,
+      );
     }
     const rest = input.spend.length - MAX_CATEGORIES;
     if (rest > 0) lines.push(`- và ${rest} danh mục nhỏ khác`);

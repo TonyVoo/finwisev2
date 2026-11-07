@@ -6,8 +6,22 @@ const base: DigestInput = {
   currency: 'VND',
   locale: 'vi-VN',
   spend: [
-    { categoryId: 'a', name: 'Ăn uống', color: null, monthlyBudgetMinor: 3_000_000, totalMinor: 3_200_000, expenseCount: 20 },
-    { categoryId: 'b', name: 'Đi lại', color: null, monthlyBudgetMinor: null, totalMinor: 800_000, expenseCount: 8 },
+    {
+      categoryId: 'a',
+      name: 'Ăn uống',
+      color: null,
+      monthlyBudgetMinor: 3_000_000,
+      totalMinor: 3_200_000,
+      expenseCount: 20,
+    },
+    {
+      categoryId: 'b',
+      name: 'Đi lại',
+      color: null,
+      monthlyBudgetMinor: null,
+      totalMinor: 800_000,
+      expenseCount: 8,
+    },
   ],
   incomeMinor: 15_000_000,
   limitMinor: 10_000_000,
@@ -16,7 +30,15 @@ const base: DigestInput = {
     { month: '2026-11', totalMinor: 4_000_000 },
   ],
   goals: [
-    { id: 'g', name: 'Mua laptop', targetMinor: 30_000_000, savedMinor: 7_500_000, currency: 'VND', deadline: '2027-03-01', pending: false },
+    {
+      id: 'g',
+      name: 'Mua laptop',
+      targetMinor: 30_000_000,
+      savedMinor: 7_500_000,
+      currency: 'VND',
+      deadline: '2027-03-01',
+      pending: false,
+    },
   ],
   holdings: [],
   realized: 0,
@@ -36,7 +58,9 @@ describe('buildDigest', () => {
 
   it('leaves out what there is none of', () => {
     const text = buildDigest({ ...base, spend: [], goals: [], limitMinor: null, trend: [] });
-    expect(text).not.toMatch(/Hạn mức|Chi theo danh mục|Mục tiêu|Chi các tháng|Danh mục chứng khoán/);
+    expect(text).not.toMatch(
+      /Hạn mức|Chi theo danh mục|Mục tiêu|Chi các tháng|Danh mục chứng khoán/,
+    );
   });
 
   it('weighs holdings, values an unpriced one at cost and says it has no price', () => {
@@ -78,7 +102,15 @@ describe('buildDigest', () => {
 });
 
 describe('holdingOf', () => {
-  const position = { symbol: 'VNM', quantity: 100, cost: 5_000_000, avgCost: 50_000, realized: 0, dividends: 0, oversold: 0 };
+  const position = {
+    symbol: 'VNM',
+    quantity: 100,
+    cost: 5_000_000,
+    avgCost: 50_000,
+    realized: 0,
+    dividends: 0,
+    oversold: 0,
+  };
   it('values at the close, or not at all', () => {
     expect(holdingOf(position, 56_000).marketValue).toBe(5_600_000);
     expect(holdingOf(position, null).marketValue).toBeNull();

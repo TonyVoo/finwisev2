@@ -3,11 +3,7 @@ import type { TransportRequest, TransportResponse } from '@/api/transport';
 import { COPY } from '@/copy/strings';
 import { writeUser } from '@/db/user';
 import { PRICE_CHART_TEST_ID } from '@/invest/PriceChart';
-import {
-  ALERT_BELOW_TEST_ID,
-  ALERT_PRICE_TEST_ID,
-  ALERT_SAVE_TEST_ID,
-} from '@/invest/AlertSheet';
+import { ALERT_BELOW_TEST_ID, ALERT_PRICE_TEST_ID, ALERT_SAVE_TEST_ID } from '@/invest/AlertSheet';
 import { readAlerts } from '@/invest/alerts';
 import {
   BRIEF_BUTTON_TEST_ID,

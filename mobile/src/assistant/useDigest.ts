@@ -67,7 +67,18 @@ export function useDigest(
       realized: book.realized,
       dividends: book.dividends,
     });
-  }, [ready, month, spend.data, income.data, trend.data, goals.data, currency.data, limit.limitMinor, book, quotes.closes]);
+  }, [
+    ready,
+    month,
+    spend.data,
+    income.data,
+    trend.data,
+    goals.data,
+    currency.data,
+    limit.limitMinor,
+    book,
+    quotes.closes,
+  ]);
 
   return { text, refresh: quotes.refresh };
 }
