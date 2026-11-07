@@ -1,10 +1,11 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { EmptyIcon } from '../components/EmptyIcon';
 import Feather from '@expo/vector-icons/Feather';
 import { SkeletonBlock } from '../components/Chrome';
 import { Button } from '../components/Button';
 import { COPY, EMPTY_COPY, emptyMonthHeadline, goToMonthAction } from '../copy/strings';
 import { size, space, type } from '../theme/tokens';
-import { createStyles, useColors } from '../theme/ThemeProvider';
+import { createStyles, useColors, useTheme } from '../theme/ThemeProvider';
 
 /**
  * Home's non-default list states: `docs/design/04-expense-list.md` §States.
@@ -29,18 +30,23 @@ export const EMPTY_ILLUSTRATION_TEST_ID = 'empty-illustration';
 export function FirstRunEmpty({ onAddFirst }: { readonly onAddFirst: () => void }) {
   const color = useColors();
   const styles = useStyles();
+  const tutien = useTheme().scheme === 'tutien';
   return (
     <View testID={FIRST_RUN_EMPTY_TEST_ID} style={styles.empty}>
-      <Feather
-        testID={EMPTY_ILLUSTRATION_TEST_ID}
-        name="pie-chart"
-        size={48}
-        color={color.text.tertiary}
-        // §Accessibility rule 7: the illustration is hidden and the headline carries the
-        // meaning, so a screen reader hears the sentence rather than "image".
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-      />
+      {tutien ? (
+        <EmptyIcon name="pie-chart" />
+      ) : (
+        <Feather
+          testID={EMPTY_ILLUSTRATION_TEST_ID}
+          name="pie-chart"
+          size={48}
+          color={color.text.tertiary}
+          // §Accessibility rule 7: the illustration is hidden and the headline carries the
+          // meaning, so a screen reader hears the sentence rather than "image".
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        />
+      )}
       <Text style={styles.headline} accessibilityRole="header">
         {EMPTY_COPY.home.firstRun.headline}
       </Text>
@@ -133,7 +139,7 @@ export function ListSkeleton() {
   );
 }
 
-const useStyles = createStyles((color) =>
+const useStyles = createStyles((color, { display }) =>
   StyleSheet.create({
     empty: {
       alignItems: 'center',
@@ -143,6 +149,7 @@ const useStyles = createStyles((color) =>
     },
     headline: {
       ...type.title2,
+      ...display('semibold'),
       color: color.text.primary,
       textAlign: 'center',
       marginTop: space[4],

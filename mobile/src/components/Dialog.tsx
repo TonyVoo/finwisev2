@@ -98,7 +98,7 @@ export function Dialog({
   );
 }
 
-const useStyles = createStyles((color) =>
+const useStyles = createStyles((color, { display }) =>
   StyleSheet.create({
     scrim: {
       flex: 1,
@@ -118,6 +118,7 @@ const useStyles = createStyles((color) =>
     },
     title: {
       ...type.title2,
+      ...display('semibold'),
       color: color.text.primary,
     },
     body: {

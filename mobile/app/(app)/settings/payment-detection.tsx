@@ -224,7 +224,7 @@ export default function PaymentDetectionScreen() {
   );
 }
 
-const useStyles = createStyles((color) =>
+const useStyles = createStyles((color, { display }) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: color.bg.canvas },
     content: { padding: space[4], gap: space[3] },
@@ -257,8 +257,13 @@ const useStyles = createStyles((color) =>
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: color.border.hairline,
     },
-    status: { ...type.headline, color: color.text.primary },
-    heading: { ...type.headline, color: color.text.primary, marginTop: space[3] },
+    status: { ...type.headline, ...display('semibold'), color: color.text.primary },
+    heading: {
+      ...type.headline,
+      ...display('semibold'),
+      color: color.text.primary,
+      marginTop: space[3],
+    },
     note: { ...type.footnote, color: color.text.secondary },
     amount: { ...type.body, color: color.text.primary },
     actions: { flexDirection: 'row', gap: space[2], padding: space[3], paddingTop: 0 },

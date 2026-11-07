@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
 import { HIT_SLOP_44, size, space, type } from '../theme/tokens';
-import { createStyles, useColors } from '../theme/ThemeProvider';
+import { createStyles, useColors, useTheme } from '../theme/ThemeProvider';
 import { monthLabel, stepMonth } from '../lib/calendar';
 import { SNACK_COPY } from '../copy/strings';
 import { useSnackbar } from '../components/Snackbar';
@@ -49,6 +49,7 @@ export interface MonthSwitcherProps {
 
 export function MonthSwitcher({ onOpenPicker }: MonthSwitcherProps) {
   const styles = useStyles();
+  const tutien = useTheme().scheme === 'tutien';
   const { month, canGoNext, step } = useSelectedMonth();
   const showSnackbar = useSnackbar();
 
@@ -57,7 +58,7 @@ export function MonthSwitcher({ onOpenPicker }: MonthSwitcherProps) {
   const nextLabel = monthLabel(stepMonth(month, 1));
 
   return (
-    <View testID={MONTH_SWITCHER_TEST_ID} style={styles.bar}>
+    <View testID={MONTH_SWITCHER_TEST_ID} style={[styles.bar, tutien ? styles.barTutien : null]}>
       <Arrow
         testID={MONTH_PREVIOUS_TEST_ID}
         icon="chevron-left"
@@ -125,7 +126,7 @@ function Arrow({
   );
 }
 
-const useStyles = createStyles((color) =>
+const useStyles = createStyles((color, { display }) =>
   StyleSheet.create({
     bar: {
       // A floor, so the bar grows with the label rather than clipping it (rule 6).
@@ -136,6 +137,11 @@ const useStyles = createStyles((color) =>
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: color.border.hairline,
       paddingHorizontal: space[2],
+    },
+    // The cultivation appearance lets the scenery show through: ink veil and a gold hairline, no solid band.
+    barTutien: {
+      backgroundColor: 'rgba(11,18,16,0.5)',
+      borderBottomColor: color.border.strong,
     },
     arrow: {
       minWidth: size.tapTargetMin,
@@ -151,6 +157,7 @@ const useStyles = createStyles((color) =>
     },
     labelText: {
       ...type.headline,
+      ...display('semibold'),
       color: color.text.primary,
       textAlign: 'center',
     },

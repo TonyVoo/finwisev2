@@ -48,7 +48,7 @@ export function BudgetAlertBanner({
   );
 }
 
-const useStyles = createStyles((color) =>
+const useStyles = createStyles((color, { display }) =>
   StyleSheet.create({
     card: {
       marginHorizontal: space[4],
@@ -61,7 +61,7 @@ const useStyles = createStyles((color) =>
     // Not colour alone: the title states the level in words.
     over: { backgroundColor: color.danger.subtle, borderColor: color.danger.default },
     near: { backgroundColor: color.warning.subtle, borderColor: color.warning.default },
-    title: { ...type.headline, color: color.text.primary },
+    title: { ...type.headline, ...display('semibold'), color: color.text.primary },
     body: { ...type.body, color: color.text.secondary },
     actions: { flexDirection: 'row', gap: space[2], alignItems: 'center', marginTop: space[1] },
   }),

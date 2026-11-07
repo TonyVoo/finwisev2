@@ -6,7 +6,8 @@ import { useReduceMotion } from '../lib/useReduceMotion';
 import { useCountUp } from './useCountUp';
 import { SpendSparkline } from './SpendSparkline';
 import { elevation, radius, space, type } from '../theme/tokens';
-import { createStyles, useDisplayFont } from '../theme/ThemeProvider';
+import { createStyles, useDisplayFont, useTheme } from '../theme/ThemeProvider';
+import { PanelCorners } from '../components/PanelCorners';
 
 /**
  * The month total: `docs/design/04-expense-list.md` elements 6 and 7.
@@ -90,6 +91,7 @@ export function MonthTotal({
   limitLine,
 }: MonthTotalProps) {
   const styles = useStyles();
+  const tutien = useTheme().scheme === 'tutien';
   const serif = useDisplayFont('bold');
   const drawn = useCountUp(totalMinor, useReduceMotion());
   const label = isCurrentMonth ? COPY.home.total.current : COPY.home.total.other;
@@ -120,7 +122,7 @@ export function MonthTotal({
   return (
     <View
       testID={MONTH_TOTAL_TEST_ID}
-      style={styles.block}
+      style={[styles.block, tutien ? styles.blockTutien : null]}
       // One element: the caption, the figure and the count are meaningless apart.
       accessible
       accessibilityLabel={[label, formatted, counted, balance, limitLine?.text ?? null]
@@ -163,6 +165,7 @@ export function MonthTotal({
           {counted}
         </Text>
       )}
+      {tutien ? <PanelCorners /> : null}
     </View>
   );
 }
@@ -183,6 +186,7 @@ const useStyles = createStyles((color) =>
       borderColor: color.border.hairline,
       ...elevation[1],
     },
+    blockTutien: { borderColor: color.border.strong },
     label: {
       ...type.subhead,
       color: color.text.secondary,

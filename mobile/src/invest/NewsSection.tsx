@@ -233,7 +233,7 @@ export function NewsSection({
   );
 }
 
-const useStyles = createStyles((color) =>
+const useStyles = createStyles((color, { display }) =>
   StyleSheet.create({
     wrap: { gap: space[2] },
     titleRow: {
@@ -242,8 +242,8 @@ const useStyles = createStyles((color) =>
       justifyContent: 'space-between',
       paddingHorizontal: space[4],
     },
-    sectionTitle: { ...type.subhead, color: color.text.secondary },
-    cardTitle: { ...type.headline, color: color.text.primary },
+    sectionTitle: { ...type.subhead, ...display('semibold'), color: color.text.secondary },
+    cardTitle: { ...type.headline, ...display('semibold'), color: color.text.primary },
     body: { padding: space[4], gap: space[3] },
     item: { flexDirection: 'row', alignItems: 'flex-start', gap: space[3] },
     itemText: { flex: 1, gap: 2 },

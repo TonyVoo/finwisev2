@@ -141,13 +141,18 @@ export default function SettlementHistoryScreen() {
   );
 }
 
-const useStyles = createStyles((color) =>
+const useStyles = createStyles((color, { display }) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: color.bg.canvas },
     trailing: { flexDirection: 'row', alignItems: 'center', gap: space[1] },
     amount: { ...type.bodyStrong, color: color.text.primary, fontVariant: ['tabular-nums'] },
     empty: { alignItems: 'center', gap: space[2], padding: space[8] },
-    emptyHeadline: { ...type.title2, color: color.text.primary, textAlign: 'center' },
+    emptyHeadline: {
+      ...type.title2,
+      ...display('semibold'),
+      color: color.text.primary,
+      textAlign: 'center',
+    },
     emptyBody: { ...type.body, color: color.text.secondary, textAlign: 'center' },
   }),
 );

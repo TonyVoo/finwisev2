@@ -178,12 +178,12 @@ export default function NotificationsScreen() {
   );
 }
 
-const useStyles = createStyles((color) =>
+const useStyles = createStyles((color, { display }) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: color.bg.canvas },
     content: { gap: space[3], paddingTop: space[3], paddingBottom: space[6] },
     off: { padding: space[4], gap: space[3] },
-    offTitle: { ...type.headline, color: color.text.primary },
+    offTitle: { ...type.headline, ...display('semibold'), color: color.text.primary },
     muted: { ...type.callout, color: color.text.secondary, textAlign: 'left' },
     empty: { padding: space[6], gap: space[3], alignItems: 'center' },
   }),

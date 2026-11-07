@@ -142,7 +142,7 @@ function useReduceMotion(): boolean {
 const TRACK_WIDTH = 200;
 const BAR_WIDTH = 80;
 
-const useStyles = createStyles((color) =>
+const useStyles = createStyles((color, { display }) =>
   StyleSheet.create({
     screen: {
       position: 'absolute',
@@ -158,6 +158,7 @@ const useStyles = createStyles((color) =>
     },
     title: {
       ...type.title2,
+      ...display('semibold'),
       color: color.text.primary,
       textAlign: 'center',
     },

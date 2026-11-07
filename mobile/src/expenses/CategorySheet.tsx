@@ -121,7 +121,7 @@ export function CategorySheet({
   );
 }
 
-const useStyles = createStyles((color) =>
+const useStyles = createStyles((color, { display }) =>
   StyleSheet.create({
     list: {
       // A cap rather than a height, so a short list does not leave a gap below it.
@@ -137,6 +137,7 @@ const useStyles = createStyles((color) =>
     },
     emptyHeadline: {
       ...type.title2,
+      ...display('semibold'),
       color: color.text.primary,
     },
   }),

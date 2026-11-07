@@ -165,3 +165,31 @@ describe('parseThemePreference', () => {
     expect(parseThemePreference(null)).toBe('system');
   });
 });
+
+describe('createStyles display font', () => {
+  const useHeading = createStyles((_color, { display }) => ({
+    title: { ...display('semibold') },
+    big: { ...display() },
+  }));
+
+  function Heading() {
+    const styles = useHeading();
+    return (
+      <>
+        <Text testID="title">{String(styles.title.fontFamily)}</Text>
+        <Text testID="big">{String(styles.big.fontFamily)}</Text>
+      </>
+    );
+  }
+
+  it('is the serif face in the cultivation appearance', async () => {
+    await mount(<Heading />, { initialPreference: 'tutien' });
+    expect(screen.getByTestId('title').props.children).toBe('NotoSerif_600SemiBold');
+    expect(screen.getByTestId('big').props.children).toBe('NotoSerif_700Bold');
+  });
+
+  it('is nothing in the others', async () => {
+    await mount(<Heading />, { initialPreference: 'dark' });
+    expect(screen.getByTestId('title').props.children).toBe('undefined');
+  });
+});

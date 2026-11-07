@@ -141,16 +141,27 @@ export function useColors(): ColorTokens {
  * factory's parameter `color`: inside it, every `color.x.y` reads exactly as it did when
  * `color` was a module import.
  */
-export function createStyles<T>(
-  factory: (color: ColorTokens, theme: { readonly isDark: boolean }) => T,
-): () => T {
+/** What a style factory is given besides the palette. */
+export interface StyleTheme {
+  readonly isDark: boolean;
+  /** The serif face for a heading in the cultivation appearance, nothing in the others. */
+  readonly display: (weight?: 'semibold' | 'bold') => { readonly fontFamily?: string };
+}
+
+export function createStyles<T>(factory: (color: ColorTokens, theme: StyleTheme) => T): () => T {
   const cache = new Map<ColorScheme, T>();
 
   return function useStyles(): T {
     const { scheme, color, isDark } = useTheme();
     let styles = cache.get(scheme);
     if (styles === undefined) {
-      styles = factory(color, { isDark });
+      styles = factory(color, {
+        isDark,
+        display: (weight = 'bold') =>
+          scheme === 'tutien'
+            ? { fontFamily: weight === 'bold' ? SERIF_BOLD : SERIF_SEMIBOLD }
+            : {},
+      });
       cache.set(scheme, styles);
     }
     return styles;

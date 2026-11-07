@@ -36,7 +36,7 @@ export function InsightsCard({
   );
 }
 
-const useStyles = createStyles((color) =>
+const useStyles = createStyles((color, { display }) =>
   StyleSheet.create({
     card: {
       backgroundColor: color.bg.surface,
@@ -48,7 +48,7 @@ const useStyles = createStyles((color) =>
       padding: space[4],
       gap: space[2],
     },
-    heading: { ...type.headline, color: color.text.primary },
+    heading: { ...type.headline, ...display('semibold'), color: color.text.primary },
     line: { ...type.body, color: color.text.secondary },
   }),
 );

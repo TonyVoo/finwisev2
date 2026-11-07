@@ -109,7 +109,7 @@ export function BudgetSuggestionsCard({
   );
 }
 
-const useStyles = createStyles((color) =>
+const useStyles = createStyles((color, { display }) =>
   StyleSheet.create({
     card: {
       backgroundColor: color.bg.surface,
@@ -121,7 +121,7 @@ const useStyles = createStyles((color) =>
       padding: space[4],
       gap: space[3],
     },
-    heading: { ...type.headline, color: color.text.primary },
+    heading: { ...type.headline, ...display('semibold'), color: color.text.primary },
     row: { flexDirection: 'row', alignItems: 'center', gap: space[3] },
     text: { flex: 1, gap: 2 },
     title: { ...type.bodyStrong, color: color.text.primary },

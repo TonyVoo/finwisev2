@@ -42,7 +42,7 @@ export function CategoryReviewBanner({
   );
 }
 
-const useStyles = createStyles((color) =>
+const useStyles = createStyles((color, { display }) =>
   StyleSheet.create({
     card: {
       marginHorizontal: space[4],
@@ -54,7 +54,7 @@ const useStyles = createStyles((color) =>
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: color.border.hairline,
     },
-    title: { ...type.headline, color: color.text.primary },
+    title: { ...type.headline, ...display('semibold'), color: color.text.primary },
     body: { ...type.body, color: color.text.secondary },
     actions: { flexDirection: 'row', gap: space[2], alignItems: 'center', marginTop: space[1] },
   }),

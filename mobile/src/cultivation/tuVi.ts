@@ -73,7 +73,7 @@ export function streakDays(dates: readonly string[], today: string): number {
     d.setUTCDate(d.getUTCDate() - back);
     return d.toISOString().slice(0, 10);
   };
-  let start = have.has(today) ? 0 : 1;
+  const start = have.has(today) ? 0 : 1;
   if (!have.has(day(today, start))) return 0;
   let run = 0;
   while (have.has(day(today, start + run))) run += 1;

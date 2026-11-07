@@ -24,7 +24,7 @@ export function Backdrop() {
           <LinearGradient
             start={vec(0, 0)}
             end={vec(0, height)}
-            colors={['rgba(11,18,16,0.25)', 'rgba(11,18,16,0.55)', 'rgba(11,18,16,0.9)']}
+            colors={['rgba(11,18,16,0.5)', 'rgba(11,18,16,0.55)', 'rgba(11,18,16,0.9)']}
             positions={[0, 0.45, 1]}
           />
         </Rect>

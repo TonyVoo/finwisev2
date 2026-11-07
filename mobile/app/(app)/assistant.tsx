@@ -400,7 +400,7 @@ export default function AssistantScreen() {
   );
 }
 
-const useStyles = createStyles((color) =>
+const useStyles = createStyles((color, { display }) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: color.bg.canvas },
     flex: { flex: 1 },
@@ -414,7 +414,7 @@ const useStyles = createStyles((color) =>
       justifyContent: 'center',
       backgroundColor: color.bg.sunken,
     },
-    introText: { ...type.title2, color: color.text.primary },
+    introText: { ...type.title2, ...display('semibold'), color: color.text.primary },
     consent: { ...type.footnote, color: color.text.tertiary },
     chips: { gap: space[2] },
     chip: {

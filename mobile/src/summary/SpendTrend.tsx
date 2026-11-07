@@ -99,7 +99,7 @@ export function SpendTrend({ trend, currency }: SpendTrendProps) {
   );
 }
 
-const useStyles = createStyles((color) =>
+const useStyles = createStyles((color, { display }) =>
   StyleSheet.create({
     card: {
       backgroundColor: color.bg.surface,
@@ -109,7 +109,12 @@ const useStyles = createStyles((color) =>
       marginBottom: space[4],
       padding: space[4],
     },
-    heading: { ...type.headline, color: color.text.primary, marginBottom: space[3] },
+    heading: {
+      ...type.headline,
+      ...display('semibold'),
+      color: color.text.primary,
+      marginBottom: space[3],
+    },
     legend: { flexDirection: 'row', alignItems: 'center', gap: space[2], marginBottom: space[3] },
     swatch: { width: 12, height: 12, borderRadius: 3 },
     legendText: { ...type.caption, color: color.text.secondary, marginRight: space[2] },

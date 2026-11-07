@@ -600,14 +600,14 @@ export default function InvestScreen() {
   );
 }
 
-const useStyles = createStyles((color) =>
+const useStyles = createStyles((color, { display }) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: color.bg.canvas },
     content: { flexGrow: 1, gap: space[4], paddingTop: space[2] },
     block: { paddingHorizontal: space[4] },
     watch: { gap: space[2] },
     alerts: { gap: space[2] },
-    sectionTitle: { ...type.subhead, color: color.text.secondary },
+    sectionTitle: { ...type.subhead, ...display('semibold'), color: color.text.secondary },
     chips: { gap: space[2], paddingHorizontal: space[4] },
     chip: {
       flexDirection: 'row',
@@ -632,7 +632,7 @@ const useStyles = createStyles((color) =>
     price: { ...type.amountHero, fontVariant: ['tabular-nums'], color: color.text.primary },
     moveRow: { flexDirection: 'row', alignItems: 'center', gap: space[2], marginTop: -space[1] },
     divider: { height: StyleSheet.hairlineWidth, backgroundColor: color.border.hairline },
-    title: { ...type.headline, color: color.text.primary },
+    title: { ...type.headline, ...display('semibold'), color: color.text.primary },
     scoreHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     tonePill: { paddingHorizontal: space[3], paddingVertical: space[1], borderRadius: radius.pill },
     toneText: { ...type.subhead },

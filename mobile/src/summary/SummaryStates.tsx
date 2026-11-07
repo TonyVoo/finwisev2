@@ -1,9 +1,10 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { EmptyIcon } from '../components/EmptyIcon';
 import Feather from '@expo/vector-icons/Feather';
 import { SkeletonBlock } from '../components/Chrome';
 import { EMPTY_COPY } from '../copy/strings';
 import { radius, space, type } from '../theme/tokens';
-import { createStyles, useColors } from '../theme/ThemeProvider';
+import { createStyles, useColors, useTheme } from '../theme/ThemeProvider';
 
 /**
  * The Summary's non-default states: `docs/design/08-monthly-summary.md` §States.
@@ -44,18 +45,23 @@ const SKELETON_ROWS = [0, 1, 2, 3];
 export function SummaryEmpty() {
   const color = useColors();
   const styles = useStyles();
+  const tutien = useTheme().scheme === 'tutien';
   return (
     <View testID={SUMMARY_EMPTY_TEST_ID} style={styles.empty}>
-      <Feather
-        testID={SUMMARY_EMPTY_ILLUSTRATION_TEST_ID}
-        name="pie-chart"
-        size={48}
-        color={color.text.tertiary}
-        // The headline carries the meaning; a screen reader hearing "image" first would
-        // be hearing the one element here that says nothing.
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-      />
+      {tutien ? (
+        <EmptyIcon name="pie-chart" />
+      ) : (
+        <Feather
+          testID={SUMMARY_EMPTY_ILLUSTRATION_TEST_ID}
+          name="pie-chart"
+          size={48}
+          color={color.text.tertiary}
+          // The headline carries the meaning; a screen reader hearing "image" first would
+          // be hearing the one element here that says nothing.
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        />
+      )}
       <Text style={styles.headline} accessibilityRole="header">
         {EMPTY_COPY.summary.headline}
       </Text>
@@ -105,7 +111,7 @@ export function SummarySkeleton() {
   );
 }
 
-const useStyles = createStyles((color) =>
+const useStyles = createStyles((color, { display }) =>
   StyleSheet.create({
     empty: {
       alignItems: 'center',
@@ -116,6 +122,7 @@ const useStyles = createStyles((color) =>
     },
     headline: {
       ...type.title2,
+      ...display('semibold'),
       color: color.text.primary,
       textAlign: 'center',
       // §States: `space.6` under the illustration, then `space.2` under the headline.

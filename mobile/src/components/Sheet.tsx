@@ -166,7 +166,7 @@ export function Sheet({ visible, title, onClose, children, testID }: SheetProps)
   );
 }
 
-const useStyles = createStyles((color) =>
+const useStyles = createStyles((color, { display }) =>
   StyleSheet.create({
     root: {
       flex: 1,
@@ -212,6 +212,7 @@ const useStyles = createStyles((color) =>
     },
     title: {
       ...type.title2,
+      ...display('semibold'),
       color: color.text.primary,
       flex: 1,
     },
