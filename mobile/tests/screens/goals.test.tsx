@@ -2,6 +2,7 @@ import * as Haptics from 'expo-haptics';
 import * as Notifications from 'expo-notifications';
 import { act, screen, userEvent, waitFor } from '@testing-library/react-native';
 import { COPY, SNACK_COPY } from '@/copy/strings';
+import { META_KEYS, writeMeta } from '@/db/meta';
 import { createGoal, createTrade } from '@/db/mutations';
 import { writeLinkedGoal } from '@/goals/portfolioLink';
 import { ok } from '../support/mount';
@@ -197,5 +198,40 @@ describe('a goal that counts the stock portfolio', () => {
     expect(String(screen.getByTestId(`goal-included-${GOAL_ID}`).props.children)).toMatch(
       /5[.,]000[.,]000/,
     );
+  });
+});
+
+describe('a goal in the cultivation appearance', () => {
+  it('shows the realm its progress has reached, on a line of its own', async () => {
+    await mountScreen(<GoalsScreen />, {
+      clock: () => NOW,
+      seed: async (database) => {
+        await seedFallbackCategory(database);
+        await createGoal(
+          database,
+          {
+            name: 'Holiday',
+            targetMinor: 100000,
+            savedMinor: 40000,
+            currency: 'USD',
+            deadline: null,
+          },
+          { id: GOAL_ID },
+        );
+        await writeMeta(database, META_KEYS.themePreference, 'tutien');
+      },
+    });
+
+    await waitFor(() => expect(screen.queryByTestId(`goal-realm-${GOAL_ID}`)).not.toBeNull());
+    // 40% is the third realm.
+    expect(screen.getByTestId(`goal-realm-${GOAL_ID}`).props.children).toBe('Golden Core');
+  });
+
+  it('shows no realm in the other appearances', async () => {
+    await mountScreen(<GoalsScreen />, { clock: () => NOW, seed });
+    await waitFor(() =>
+      expect(screen.queryByTestId(`${GOAL_ROW_TEST_ID_PREFIX}-${GOAL_ID}`)).not.toBeNull(),
+    );
+    expect(screen.queryByTestId(`goal-realm-${GOAL_ID}`)).toBeNull();
   });
 });

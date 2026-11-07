@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { AppState, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Toggle } from '@/components/Toggle';
+import { AppState, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { AppBar, IconButton } from '@/components/Chrome';
@@ -139,7 +140,7 @@ export default function PaymentDetectionScreen() {
                 accessibilityLabel={`${COPY.paymentDetection.alerts}. ${COPY.paymentDetection.alertsHint}`}
                 accessibilityState={{ selected: alerts }}
                 trailing={
-                  <Switch
+                  <Toggle
                     value={alerts}
                     onValueChange={toggleAlerts}
                     accessibilityElementsHidden

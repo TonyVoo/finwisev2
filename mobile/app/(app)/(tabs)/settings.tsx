@@ -1,6 +1,7 @@
 import { useTabBarClearance } from '@/navigation/tabBar';
+import { Toggle } from '@/components/Toggle';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSessionController } from '@/auth/SessionProvider';
 import { Button } from '@/components/Button';
@@ -447,7 +448,7 @@ export default function SettingsScreen() {
             accessibilityLabel={`${COPY.rollover.title}. ${COPY.rollover.hint}`}
             accessibilityState={{ selected: rollover.enabled }}
             trailing={
-              <Switch
+              <Toggle
                 value={rollover.enabled}
                 onValueChange={(next) => void rollover.setEnabled(next)}
                 accessibilityElementsHidden
@@ -465,7 +466,7 @@ export default function SettingsScreen() {
             accessibilityLabel={`${COPY.lock.settingsRow}. ${COPY.lock.settingsHint}`}
             accessibilityState={{ selected: appLock.enabled }}
             trailing={
-              <Switch
+              <Toggle
                 value={appLock.enabled}
                 onValueChange={() => void toggleLock()}
                 accessibilityElementsHidden

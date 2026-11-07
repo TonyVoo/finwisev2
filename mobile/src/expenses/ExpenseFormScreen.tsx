@@ -1,15 +1,8 @@
 import type { ReceiptScan } from '@expense-tracker/shared';
+import { Toggle } from '@/components/Toggle';
 import { ApiRequestError } from '../api/errors';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  AccessibilityInfo,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  View,
-} from 'react-native';
+import { AccessibilityInfo, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Feather from '@expo/vector-icons/Feather';
 import { AppBar, IconButton, SkeletonBlock } from '../components/Chrome';
@@ -1004,7 +997,7 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
                   accessibilityLabel={`${COPY.form.private.label}. ${COPY.form.private.hint}`}
                   accessibilityState={{ selected: live.private ?? false }}
                   trailing={
-                    <Switch
+                    <Toggle
                       testID="form-private-switch"
                       value={live.private ?? false}
                       onValueChange={(next) =>

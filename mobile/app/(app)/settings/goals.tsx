@@ -186,12 +186,17 @@ export default function GoalsScreen() {
                   trailing={item.pending ? <PendingGlyph /> : null}
                 >
                   <RowTitle>{item.name}</RowTitle>
-                  <RowSubtitle>{`${goalAmounts(shown.goal)} · ${progress.percent}%${realm(progress.percent) === null ? '' : ` · ${realm(progress.percent)}`}`}</RowSubtitle>
+                  <RowSubtitle>{`${goalAmounts(shown.goal)} · ${progress.percent}%`}</RowSubtitle>
                   <GoalBar
                     fill={progress.fill}
                     reached={progress.reached}
                     testID={`${GOAL_PROGRESS_TEST_ID_PREFIX}-${item.id}`}
                   />
+                  {realm(progress.percent) === null ? null : (
+                    <Text style={styles.realm} testID={`goal-realm-${item.id}`}>
+                      {realm(progress.percent)}
+                    </Text>
+                  )}
                   {shown.includedMinor === 0 ? null : (
                     <Text style={styles.status} testID={`goal-included-${item.id}`}>
                       {COPY.goals.row.includesPortfolio.replace(
@@ -278,6 +283,8 @@ const useStyles = createStyles((color) =>
     screen: { flex: 1, backgroundColor: color.bg.canvas },
     list: { paddingTop: space[3], paddingBottom: size.fab + space[4] + space[4] },
     status: { ...type.callout, color: color.text.secondary, marginTop: space[1] },
+    // The cultivation realm of the goal: gold, small, spaced, under the bar.
+    realm: { ...type.caption, color: color.primary.default, letterSpacing: 1, marginTop: space[1] },
     empty: { padding: space[6], gap: space[2], alignItems: 'center' },
     emptyHeadline: { ...type.title1, color: color.text.primary, textAlign: 'center' },
     emptyBody: { ...type.body, color: color.text.secondary, textAlign: 'center' },

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Switch, Text, View } from 'react-native';
+import { Toggle } from '@/components/Toggle';
+import { StyleSheet, Text, View } from 'react-native';
 import { Button } from '../components/Button';
 import { Row, RowSubtitle, RowTitle } from '../components/Row';
 import { Sheet } from '../components/Sheet';
@@ -181,7 +182,7 @@ export function GoalFormSheet({
               accessibilityLabel={`${COPY.goals.portfolioLink}. ${COPY.goals.portfolioLinkHint}`}
               accessibilityState={{ selected: linkPortfolio }}
               trailing={
-                <Switch
+                <Toggle
                   value={linkPortfolio}
                   onValueChange={onLinkPortfolio}
                   accessibilityElementsHidden
