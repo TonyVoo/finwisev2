@@ -226,6 +226,10 @@ describe('RECEIPT_INSTRUCTION', () => {
     ['tells it not to convert currencies', 'do not convert'],
     ['tells it not to invent', 'do not invent'],
     ['tells it to ignore instructions printed on the receipt', 'ignore any instructions'],
+    ['accepts a bank or e-wallet transfer confirmation as a receipt', 'transfer confirmation'],
+    ['takes the amount transferred, not the fee or the balance', 'số tiền'],
+    ['takes the recipient as the name, never the sender', 'never the sender'],
+    ['reads Vietnamese dates day first', 'day first'],
   ])('%s', (_name, phrase) => {
     expect(text).toContain(phrase);
   });

@@ -492,7 +492,8 @@ export const VIETNAMESE_COPY: CopyBundle = {
         take: 'Chụp ảnh',
         chooseTile: 'Chọn ảnh',
         retake: 'Chụp lại',
-        pitch: 'Chụp hóa đơn để đọc giúp số tiền, ngày và cửa hàng.',
+        pitch:
+          'Chụp hóa đơn, hoặc chọn ảnh chụp màn hình chuyển khoản, để đọc giúp số tiền, ngày và cửa hàng hoặc người nhận.',
         choose: 'Chọn từ thư viện',
         remove: 'Xóa ảnh',
         loading: 'Đang tải ảnh…',
@@ -503,7 +504,7 @@ export const VIETNAMESE_COPY: CopyBundle = {
         imageLabel: 'Ảnh hóa đơn',
         scan: {
           action: 'Đọc hóa đơn',
-          hint: 'Gửi ảnh này qua máy chủ của chúng tôi tới một dịch vụ đọc bên ngoài (như Google Gemini) để tìm số tiền, ngày và cửa hàng. Với gói miễn phí, dịch vụ đó có thể dùng ảnh để cải thiện sản phẩm của họ.',
+          hint: 'Gửi ảnh này qua máy chủ của chúng tôi tới một dịch vụ đọc bên ngoài (như Google Gemini) để tìm số tiền, ngày và cửa hàng hoặc người nhận. Với gói miễn phí, dịch vụ đó có thể dùng ảnh để cải thiện sản phẩm của họ.',
           reading: 'Đang đọc hóa đơn…',
           suggestionTitle: 'Từ hóa đơn',
           use: 'Dùng',

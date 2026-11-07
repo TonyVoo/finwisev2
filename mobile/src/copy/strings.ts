@@ -524,7 +524,8 @@ export const COPY = {
       chooseTile: 'Choose photo',
       retake: 'Retake photo',
       /** Under "Receipt" on the card while there is no photo. */
-      pitch: 'Snap it and the amount, date and shop can be read for you.',
+      pitch:
+        'Snap a receipt, or pick a transfer screenshot, and the amount, date and shop or recipient can be read for you.',
       remove: 'Remove photo',
       loading: 'Loading photo…',
       unavailable: 'Connect to the internet to view this photo.',
@@ -535,7 +536,7 @@ export const COPY = {
       /** Reading the photo into suggestions; the person always chooses whether to use them. */
       scan: {
         action: 'Read receipt',
-        hint: 'Sends this photo through our server to an outside reading service (such as Google Gemini) to find the amount, date and shop. On a free plan, that service may use it to improve its products.',
+        hint: 'Sends this photo through our server to an outside reading service (such as Google Gemini) to find the amount, date and shop or recipient. On a free plan, that service may use it to improve its products.',
         reading: 'Reading receipt…',
         suggestionTitle: 'From the receipt',
         use: 'Use',

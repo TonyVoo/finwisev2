@@ -66,7 +66,13 @@ so an unreadable file never leaves the server.
 One call, a short fixed instruction, the photo, and a response schema. The instruction (English; the model
 reads Vietnamese and other languages from the photo) says, in effect:
 
-- This is a photo of a shop receipt. If it is not one, set `isReceipt` to false and leave the rest null.
+- This is a photo of a shop receipt **or a screenshot of a bank or e-wallet transfer confirmation** (MoMo, ZaloPay,
+  VietQR, a bank app). If it is neither, set `isReceipt` to false and leave the rest null. For a transfer the
+  amount is the amount transferred (never the fee, the balance after or an account number), the merchant is the
+  recipient (or, with none shown, the transfer message; never the sender), a transfer to a person has no
+  category, and Vietnamese screens write the date day first. A transfer needs no new endpoint or field: it
+  fills the same suggestion card, with the recipient where the shop name would be. The OCR fallback
+  (`receiptParser.ts`) knows the same labels (`Số tiền`, `Người nhận`, `Nội dung`) and skips fee and balance lines.
 - Report the **final amount the customer paid** (the grand total), not a subtotal, tax line, change or amount
   tendered; if two totals disagree, prefer the one labelled total / amount due.
 - Report the amount **as printed, in major units, as a number** (`12.5`, not `1250`), and the currency code

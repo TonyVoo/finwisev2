@@ -45,7 +45,8 @@ export const ReceiptIndexResponse = z.strictObject({ data: z.array(ReceiptIndexI
 /**
  * `POST /v1/receipts/scan`: read a photo and suggest values. The body is the same JPEG as an
  * upload, but nothing is stored and no expense is involved. Every suggestion is nullable: what
- * the text does not clearly say is left out rather than guessed.
+ * the text does not clearly say is left out rather than guessed. The photo may be a shop receipt or a screenshot of a
+ * bank or e-wallet transfer confirmation, in which case `merchant` is the recipient (or the transfer message).
  */
 export const ReceiptScanRequest = ReceiptPutRequest;
 
@@ -67,7 +68,12 @@ export const ReceiptScan = z.strictObject({
     .describe('The total, in minor units of `currency`, or null when none was found.'),
   currency: CurrencyCode.describe("The account's currency, which the amount is read in."),
   date: CalendarDate.nullable().describe('The receipt date, or null.'),
-  merchant: z.string().min(1).max(80).nullable().describe('The shop or business name, or null.'),
+  merchant: z
+    .string()
+    .min(1)
+    .max(80)
+    .nullable()
+    .describe('The shop or business name (the recipient, for a transfer), or null.'),
   category: ReceiptCategoryKey.nullable().describe('A suggested default category, or null.'),
 });
 

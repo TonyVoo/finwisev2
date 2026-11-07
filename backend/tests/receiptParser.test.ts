@@ -270,3 +270,73 @@ describe('more date writings', () => {
     );
   });
 });
+
+/**
+ * A screenshot of a bank or e-wallet transfer confirmation read by OCR: the amount transferred, the day, and who it
+ * went to - never the fee, the balance after, or the account number.
+ */
+describe('a transfer confirmation', () => {
+  const momo = [
+    'Chuyển tiền thành công',
+    '1.500.000đ',
+    'Số tiền: 1.500.000 VND',
+    'Phí giao dịch: 0đ',
+    'Người nhận: NGUYEN VAN A',
+    'Nội dung: tien an trua',
+    'Thời gian: 14:35 - 09/10/2026',
+    'Mã giao dịch: 7788990011',
+    'Số dư: 9.250.000đ',
+  ].join('\n');
+
+  it('takes the amount transferred, not the fee, the balance or the transaction code', () => {
+    expect(parse(momo, 'VND').amountMinor).toBe(1_500_000);
+  });
+
+  it('reads the day first, as Vietnamese screens write it', () => {
+    expect(parse(momo, 'VND').date).toBe('2026-10-09');
+  });
+
+  it('takes the recipient as the name, ahead of the success banner at the top', () => {
+    expect(parse(momo, 'VND').merchant).toBe('NGUYEN VAN A');
+  });
+
+  it('reads a recipient on the line under its label', () => {
+    const text = [
+      'Giao dịch thành công',
+      'Số tiền',
+      '250.000 VND',
+      'Tên người nhận',
+      'CONG TY ABC',
+      '10/10/2026',
+    ].join('\n');
+    const r = parse(text, 'VND');
+    expect(r.amountMinor).toBe(250_000);
+    expect(r.merchant).toBe('CONG TY ABC');
+  });
+
+  it('falls back to the message when no recipient is shown', () => {
+    const text = [
+      'Chuyển khoản thành công',
+      'Số tiền: 80.000 VND',
+      'Nội dung: ca phe sang',
+      '10/10/2026',
+    ].join('\n');
+    expect(parse(text, 'VND').merchant).toBe('ca phe sang');
+  });
+
+  it('is English too', () => {
+    const text = [
+      'Transfer successful',
+      'Amount: 2,000,000 VND',
+      'Fee: 0 VND',
+      'Recipient: LE THI B',
+      '2026-10-08',
+    ].join('\n');
+    const r = parse(text, 'VND');
+    expect(r).toMatchObject({ amountMinor: 2_000_000, merchant: 'LE THI B', date: '2026-10-08' });
+  });
+
+  it('leaves an ordinary receipt as it was', () => {
+    expect(parse('MILK MART\nMilk 2.50\nTOTAL 6.50').merchant).toBe('MILK MART');
+  });
+});

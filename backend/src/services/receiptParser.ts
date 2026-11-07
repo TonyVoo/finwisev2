@@ -60,14 +60,15 @@ function fold(text: string): string {
 
 // --- Amount -----------------------------------------------------------------------------
 
-const TOTAL_LABEL = /\b(total|amount due|balance due|grand total|tong cong|tong|thanh toan)\b/;
+const TOTAL_LABEL =
+  /\b(total|amount due|balance due|grand total|tong cong|tong|thanh toan|so tien|so tien chuyen|gia tri giao dich|transfer amount|amount)\b/;
 /**
  * Lines that name a total of something other than what was paid: a subtotal, tax, a tip, what was
  * handed over or given back, a saving, a count of items or points. Matched on folded text, so the
  * Vietnamese `tien mat` (cash), `tien thua` (change) and `khach dua` (tendered) are here too.
  */
 const NOT_A_TOTAL =
-  /sub\s*-?\s*total|\btax\b|\bvat\b|\bchange\b|\bcash\b|tender|\btip\b|discount|\bsavings?\b|\bitems?\b|\bqty\b|\bquantity\b|\bpoints?\b|\bnumber\b|\bcount\b|tien mat|tien thua|khach dua|so luong/;
+  /sub\s*-?\s*total|\btax\b|\bvat\b|\bchange\b|\bcash\b|tender|\btip\b|discount|\bsavings?\b|\bitems?\b|\bqty\b|\bquantity\b|\bpoints?\b|\bnumber\b|\bcount\b|tien mat|tien thua|khach dua|so luong|\bphi\b|\bfee\b|so du|\bbalance\b(?! due)|so tai khoan|account number/;
 const NUMBER_TOKEN = /\d[\d.,]*\d|\d/g;
 
 /**
@@ -230,9 +231,46 @@ function parseDate(text: string, currency: string, today: Date): string | null {
 // --- Merchant ---------------------------------------------------------------------------
 
 const BOILERPLATE =
-  /^(receipt|invoice|tel|telephone|phone|fax|www|http|thank|welcome|order|date|time|cashier|table|tax invoice|hoa don)\b|www\.|@|\.com\b/i;
+  /^(receipt|invoice|tel|telephone|phone|fax|www|http|thank|welcome|order|date|time|cashier|table|tax invoice|hoa don|giao dich|chuyen tien|chuyen khoan|thanh cong|successful|transfer|transaction|ma giao dich)\b|www\.|@|\.com\b/i;
+
+/**
+ * A transfer names who was paid on a labelled line ("Người nhận: NGUYEN VAN A") or the line under the label, and what for
+ * under "Nội dung". The recipient is who the money went to, so it comes before anything read from the top of the page;
+ * the message is the fallback.
+ */
+const RECIPIENT_LABEL =
+  /^(ten )?(nguoi nhan|nguoi thu huong|nguoi huong|ten tai khoan nhan|recipient|beneficiary|den|to)\b\s*:?\s*(.*)$/;
+const MESSAGE_LABEL =
+  /^(noi dung|loi nhan|loi nhan chuyen khoan|message|description|note)\b\s*:?\s*(.*)$/;
+
+function labelled(lines: readonly string[], label: RegExp, valueGroup: number): string | null {
+  for (let i = 0; i < lines.length; i += 1) {
+    const original = (lines[i] ?? '').replace(/\s+/g, ' ').trim();
+    const match = label.exec(fold(original));
+    if (match === null) continue;
+    // The value follows the colon on the same line; fold() keeps the length, so the same offset reads the original.
+    const folded = fold(original);
+    const tail = (match[valueGroup] ?? '').trim();
+    const sameLength = original.length === folded.length;
+    const value =
+      tail === ''
+        ? (lines[i + 1] ?? '').replace(/\s+/g, ' ').trim()
+        : sameLength
+          ? original.slice(folded.length - tail.length).trim()
+          : tail;
+    const letters = (value.match(/\p{L}/gu) ?? []).length;
+    if (letters >= 2 && !label.test(fold(value))) {
+      return value.replace(/[\s:;,.-]+$/, '').slice(0, MAX_MERCHANT_LENGTH);
+    }
+  }
+  return null;
+}
 
 function parseMerchant(lines: readonly string[]): string | null {
+  const recipient = labelled(lines, RECIPIENT_LABEL, 3);
+  if (recipient !== null) return recipient;
+  const message = labelled(lines, MESSAGE_LABEL, 2);
+  if (message !== null) return message;
   for (const line of lines.slice(0, MERCHANT_SCAN_LINES)) {
     const compact = line.replace(/\s+/g, ' ').trim();
     if (BOILERPLATE.test(fold(compact))) continue;

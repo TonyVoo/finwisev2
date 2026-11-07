@@ -2697,7 +2697,9 @@ paths:
       summary: Read a receipt photo and suggest values
       description: |
         Reads one JPEG with the server's text-recognition provider and answers what it could
-        find: the total, the date, the merchant and a suggested default category. **Nothing is
+        find: the total, the date, the merchant and a suggested default category. The JPEG may be a
+        shop receipt or a screenshot of a bank or e-wallet transfer confirmation: for a transfer the
+        total is the amount transferred and the merchant is the recipient (or the transfer message). **Nothing is
         stored and no expense is involved** - the image is read and dropped, and neither it nor
         the text read from it is logged. Every suggestion is nullable: what the text does not
         clearly say is left out rather than guessed, and the app only ever offers the values for
