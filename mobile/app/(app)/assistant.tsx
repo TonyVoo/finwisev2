@@ -1,8 +1,12 @@
 import Feather from '@expo/vector-icons/Feather';
-import { ASSISTANT_QUESTION_MAX } from '@expense-tracker/shared';
+import {
+  ASSISTANT_ANSWER_ECHO_MAX,
+  ASSISTANT_HISTORY_MAX,
+  ASSISTANT_QUESTION_MAX,
+} from '@expense-tracker/shared';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -17,6 +21,13 @@ import {
 import { ApiRequestError } from '@/api/errors';
 import { useExpenseSearch, useExpenseSearchSummary, useUserCurrency } from '@/db/hooks';
 import { formatMoney } from '@/lib/money';
+import { useFallbackCategory, useLiveCategories } from '@/db/hooks';
+import { useLocalWrite } from '@/db/localWrite';
+import { createExpense } from '@/db/mutations';
+import { parseQuickAdd } from '@/quickAdd/parseQuickAdd';
+import { quickAddSummary } from '@/quickAdd/planQuickAdd';
+import { dateRowLabel } from '@/lib/calendar';
+import { useSnackbar } from '@/components/Snackbar';
 import { useApiClient } from '@/bootstrap/AppProviders';
 import { useDigest } from '@/assistant/useDigest';
 import { AppBar, IconButton } from '@/components/Chrome';
@@ -35,6 +46,8 @@ export const ASSISTANT_CLEAR_TEST_ID = 'assistant-clear';
 export const ASSISTANT_SUGGESTION_PREFIX = 'assistant-suggestion';
 export const ASSISTANT_ANSWER_PREFIX = 'assistant-answer';
 export const ASSISTANT_RESULTS_TEST_ID = 'assistant-results';
+export const ASSISTANT_RECORD_TEST_ID = 'assistant-record';
+export const ASSISTANT_REVIEW_TEST_ID = 'assistant-review';
 export const ASSISTANT_RESULT_PREFIX = 'assistant-result';
 export const ASSISTANT_SEE_ALL_TEST_ID = 'assistant-see-all';
 
@@ -65,7 +78,9 @@ export default function AssistantScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const api = useApiClient();
-  const { month } = useSelectedMonth();
+  const { month, today } = useSelectedMonth();
+  const localWrite = useLocalWrite();
+  const showSnackbar = useSnackbar();
   const status = useOptionalSyncStatus();
   const offline = status !== null && !status.reachable;
   const digest = useDigest(api, month, !offline);
@@ -76,6 +91,40 @@ export default function AssistantScreen() {
   const found = useExpenseSearch({ text: query, categoryId: null });
   const foundSummary = useExpenseSearchSummary({ text: query, categoryId: null });
   const currency = useUserCurrency().data ?? 'USD';
+  // Typed like an expense ("lunch 50k"), the same box offers to record it. The person's tap is what saves it.
+  const categories = useLiveCategories();
+  const fallback = useFallbackCategory();
+  const reading = useMemo(() => {
+    const t = text.trim();
+    if (t.length < 3 || t.includes('?') || categories.data === undefined) return null;
+    const read = parseQuickAdd(t, {
+      currency,
+      today,
+      categories: categories.data.map((c) => ({ id: c.id, name: c.name })),
+    });
+    return read.amountMinor !== null && read.confident ? read : null;
+  }, [text, currency, today, categories.data]);
+  const recordable = reading !== null && (reading.categoryId ?? fallback.data?.id ?? null) !== null;
+
+  async function record(): Promise<void> {
+    if (reading === null || reading.amountMinor === null) return;
+    const categoryId = reading.categoryId ?? fallback.data?.id ?? null;
+    if (categoryId === null) return;
+    const amountMinor = reading.amountMinor;
+    await localWrite((db) =>
+      createExpense(db, {
+        categoryId,
+        kind: reading.type,
+        amountMinor,
+        currency,
+        date: reading.date ?? today,
+        note: reading.note,
+      }),
+    );
+    savedHaptic();
+    setText('');
+    showSnackbar({ message: COPY.assistant.added });
+  }
   const [turns, setTurns] = useState<readonly Turn[]>([]);
   const next = useRef(1);
   const scroller = useRef<ScrollView>(null);
@@ -95,7 +144,19 @@ export default function AssistantScreen() {
     const settle = (turn: Turn) =>
       setTurns((current) => current.map((t) => (t.id === id ? turn : t)));
     try {
-      const { data } = await api.askAssistant({ question, context: digest.text });
+      // The last few answered turns go along, so a follow-up is understood. An answer is cut to what the server takes.
+      const history = turns
+        .filter((t): t is Extract<Turn, { status: 'done' }> => t.status === 'done')
+        .slice(-ASSISTANT_HISTORY_MAX)
+        .map((t) => ({
+          question: t.question,
+          answer: t.answer.slice(0, ASSISTANT_ANSWER_ECHO_MAX),
+        }));
+      const { data } = await api.askAssistant({
+        question,
+        context: digest.text,
+        ...(history.length === 0 ? {} : { history }),
+      });
       settle({ id, question, status: 'done', answer: data.answer, disclaimer: data.disclaimer });
       savedHaptic();
     } catch (error) {
@@ -160,6 +221,21 @@ export default function AssistantScreen() {
 
           {turns.length === 0 ? (
             <View style={styles.chips}>
+              <Pressable
+                testID={ASSISTANT_REVIEW_TEST_ID}
+                onPress={() => void ask(COPY.assistant.reviewQuestion)}
+                disabled={!canAsk}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: !canAsk }}
+                style={({ pressed }) => [
+                  styles.review,
+                  !canAsk ? styles.chipDisabled : null,
+                  pressed ? { opacity: 0.85 } : null,
+                ]}
+              >
+                <Feather name="file-text" size={18} color={color.text.inverse} />
+                <Text style={styles.reviewText}>{COPY.assistant.review}</Text>
+              </Pressable>
               {suggestions.map((s, index) => (
                 <Pressable
                   key={s}
@@ -217,6 +293,23 @@ export default function AssistantScreen() {
             </FadeInUp>
           ))}
         </ScrollView>
+
+        {reading === null || !recordable ? null : (
+          <Pressable
+            testID={ASSISTANT_RECORD_TEST_ID}
+            onPress={() => void record()}
+            accessibilityRole="button"
+            style={styles.recordRow}
+          >
+            <Feather name="plus-circle" size={20} color={color.primary.default} />
+            <Text style={styles.recordText} numberOfLines={2}>
+              {COPY.assistant.addRow.replace(
+                '{summary}',
+                quickAddSummary(reading, currency, (d) => dateRowLabel(d, today)),
+              )}
+            </Text>
+          </Pressable>
+        )}
 
         {query === '' || (found.data ?? []).length === 0 ? null : (
           <View style={styles.results} testID={ASSISTANT_RESULTS_TEST_ID}>
@@ -333,6 +426,16 @@ const useStyles = createStyles((color) =>
       borderColor: color.border.hairline,
     },
     chipDisabled: { opacity: 0.5 },
+    review: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space[2],
+      paddingVertical: space[3],
+      paddingHorizontal: space[4],
+      borderRadius: radius.lg,
+      backgroundColor: color.primary.default,
+    },
+    reviewText: { ...type.bodyStrong, color: color.text.inverse },
     chipText: { ...type.body, color: color.text.primary },
     turn: { gap: space[2] },
     asked: {
@@ -358,6 +461,18 @@ const useStyles = createStyles((color) =>
     thinking: { flexDirection: 'row', alignItems: 'center', gap: space[2] },
     muted: { ...type.footnote, color: color.text.tertiary },
     error: { ...type.body, color: color.danger.default },
+    recordRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space[3],
+      marginHorizontal: space[4],
+      marginBottom: space[2],
+      paddingVertical: space[3],
+      paddingHorizontal: space[4],
+      borderRadius: radius.lg,
+      backgroundColor: color.bg.sunken,
+    },
+    recordText: { ...type.bodyStrong, flex: 1, color: color.text.primary },
     results: {
       marginHorizontal: space[4],
       marginBottom: space[2],

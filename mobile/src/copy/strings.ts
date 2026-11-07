@@ -283,6 +283,8 @@ export const COPY = {
   assistant: {
     title: 'Search and ask',
     intro: 'Search your expenses, or ask about your spending, your savings goals and your stocks.',
+    addRow: 'Add {summary}',
+    added: 'Expense added.',
     seeAll: 'See all {count}',
     found: '{count} found',
     consent:
@@ -299,6 +301,9 @@ export const COPY = {
     s2: 'Am I on track with my spending limit?',
     s3: 'How is my portfolio spread out?',
     s4: 'Which savings goal needs money first?',
+    review: 'Review my month',
+    reviewQuestion:
+      'Write a short review of my month: spending, savings goals and stocks, and one thing to watch.',
   },
 
   portfolio: {

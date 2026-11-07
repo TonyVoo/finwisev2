@@ -1170,6 +1170,8 @@ them as proposals the Designer can reword; changing a row here means changing
 | `homeWidget.showPortfolio`              | `Portfolio value`                                                                                                                                                                            | Settings, widget row                                                         |
 | `assistant.title` | `Search and ask` | Search and ask screen |
 | `assistant.intro` | `Search your expenses, or ask about your spending, your savings goals and your stocks.` | Search and ask screen |
+| `assistant.addRow` | `Add {summary}` | Search and ask screen, quick add row |
+| `assistant.added` | `Expense added.` | Search and ask screen, quick add row |
 | `assistant.seeAll` | `See all {count}` | Search and ask screen, results |
 | `assistant.found` | `{count} found` | Search and ask screen, results |
 | `assistant.consent` | `Your question and a summary of this month’s figures (no notes) are sent to an AI service to write the answer. It is not investment advice.` | Ask your money screen |
@@ -1185,6 +1187,8 @@ them as proposals the Designer can reword; changing a row here means changing
 | `assistant.s2` | `Am I on track with my spending limit?` | Ask your money screen |
 | `assistant.s3` | `How is my portfolio spread out?` | Ask your money screen |
 | `assistant.s4` | `Which savings goal needs money first?` | Ask your money screen |
+| `assistant.review` | `Review my month` | Search and ask screen, month review button |
+| `assistant.reviewQuestion` | `Write a short review of my month: spending, savings goals and stocks, and one thing to watch.` | Search and ask screen, month review button |
 | `goals.portfolioLink` | `Count my stock portfolio` | Goal sheet, portfolio switch |
 | `goals.portfolioLinkHint` | `Adds what your stocks are worth now to this goal's progress. Only on this device.` | Goal sheet, portfolio switch |
 | `goals.row.includesPortfolio` | `Includes {amount} from your stocks` | Goals list, row status |

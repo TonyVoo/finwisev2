@@ -7,7 +7,9 @@ import AssistantScreen, {
   ASSISTANT_ANSWER_PREFIX,
   ASSISTANT_CLEAR_TEST_ID,
   ASSISTANT_INPUT_TEST_ID,
+  ASSISTANT_RECORD_TEST_ID,
   ASSISTANT_RESULTS_TEST_ID,
+  ASSISTANT_REVIEW_TEST_ID,
   ASSISTANT_SEE_ALL_TEST_ID,
   ASSISTANT_SEND_TEST_ID,
   ASSISTANT_SUGGESTION_PREFIX,
@@ -189,6 +191,35 @@ describe('asking', () => {
   });
 });
 
+describe('follow-ups', () => {
+  it('sends the earlier answered turns with the next question', async () => {
+    const bodies: Array<{
+      question: string;
+      history?: Array<{ question: string; answer: string }>;
+    }> = [];
+    await mountAssistant((request) => {
+      bodies.push(request.body as (typeof bodies)[number]);
+      return ok(200, ANSWER);
+    });
+    await waitFor(() =>
+      expect(
+        screen.getByTestId(ASSISTANT_SUGGESTION_PREFIX + '-0').props.accessibilityState?.disabled,
+      ).not.toBe(true),
+    );
+    await pressOn(ASSISTANT_SUGGESTION_PREFIX + '-0');
+    await waitFor(() => expect(screen.queryByText('- Ăn uống nhiều nhất.')).not.toBeNull());
+
+    await typeInto(ASSISTANT_INPUT_TEST_ID, 'Còn tháng trước?');
+    await pressOn(ASSISTANT_SEND_TEST_ID);
+    await waitFor(() => expect(bodies).toHaveLength(2));
+
+    expect(bodies[0]?.history).toBeUndefined();
+    expect(bodies[1]?.history).toEqual([
+      { question: COPY.assistant.s1, answer: '- Ăn uống nhiều nhất.' },
+    ]);
+  });
+});
+
 describe('search in the same box', () => {
   it('lists matching expenses as you type, opens one, and hands the text to the full search', async () => {
     await mountAssistant(() => ok(200, ANSWER));
@@ -219,5 +250,62 @@ describe('search in the same box', () => {
     await waitFor(() => expect(screen.queryByTestId(ASSISTANT_INPUT_TEST_ID)).not.toBeNull());
     expect(screen.queryByTestId(ASSISTANT_RESULTS_TEST_ID)).toBeNull();
     expect(asked).toBe(0);
+  });
+});
+
+describe('recording an expense from the same box', () => {
+  it('offers to add what reads like an expense, and saves it only on the tap', async () => {
+    const { database } = await mountAssistant(() => ok(200, ANSWER));
+    await waitFor(() => expect(screen.queryByTestId(ASSISTANT_INPUT_TEST_ID)).not.toBeNull());
+    const before = await database.getAllAsync('SELECT id FROM expenses', []);
+
+    await typeInto(ASSISTANT_INPUT_TEST_ID, 'lunch 50k');
+    await waitFor(() => expect(screen.queryByTestId(ASSISTANT_RECORD_TEST_ID)).not.toBeNull());
+    expect(await database.getAllAsync('SELECT id FROM expenses', [])).toHaveLength(before.length);
+
+    await pressOn(ASSISTANT_RECORD_TEST_ID);
+
+    await waitFor(() => expect(screen.queryByText(COPY.assistant.added)).not.toBeNull());
+    const rows = await database.getAllAsync<{
+      amountMinor: number;
+      note: string | null;
+      date: string;
+    }>("SELECT amountMinor, note, date FROM expenses WHERE note LIKE '%lunch%'", []);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.amountMinor).toBe(50000);
+    expect(rows[0]?.date).toBe('2026-11-06');
+    const outbox = await database.getAllAsync<{ entity: string }>('SELECT entity FROM outbox', []);
+    expect(outbox.some((row) => row.entity === 'expense')).toBe(true);
+    expect((screen.getByTestId(ASSISTANT_INPUT_TEST_ID).props as { value: string }).value).toBe('');
+  });
+
+  it('does not offer to add a question, even one with an amount in it', async () => {
+    await mountAssistant(() => ok(200, ANSWER));
+    await waitFor(() => expect(screen.queryByTestId(ASSISTANT_INPUT_TEST_ID)).not.toBeNull());
+
+    await typeInto(ASSISTANT_INPUT_TEST_ID, 'did I spend over 3tr on food?');
+    await waitFor(() => expect(screen.queryByTestId(ASSISTANT_INPUT_TEST_ID)).not.toBeNull());
+
+    expect(screen.queryByTestId(ASSISTANT_RECORD_TEST_ID)).toBeNull();
+  });
+});
+
+describe('the month review', () => {
+  it('asks for a review of the month with one tap', async () => {
+    let question = '';
+    await mountAssistant((request) => {
+      question = (request.body as { question: string }).question;
+      return ok(200, ANSWER);
+    });
+    await waitFor(() =>
+      expect(
+        screen.getByTestId(ASSISTANT_REVIEW_TEST_ID).props.accessibilityState?.disabled,
+      ).not.toBe(true),
+    );
+
+    await pressOn(ASSISTANT_REVIEW_TEST_ID);
+
+    await waitFor(() => expect(screen.queryByText('- Ăn uống nhiều nhất.')).not.toBeNull());
+    expect(question).toBe(COPY.assistant.reviewQuestion);
   });
 });

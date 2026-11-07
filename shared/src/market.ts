@@ -155,9 +155,17 @@ export const MarketBrief = z.strictObject({
 /** A question about the person's own money, with the digest of their figures it is answered from. */
 export const ASSISTANT_QUESTION_MAX = 500;
 export const ASSISTANT_CONTEXT_MAX = 6000;
+/** Recent turns, so a follow-up ("and last month?") can be understood. Oldest first. */
+export const ASSISTANT_HISTORY_MAX = 4;
+export const ASSISTANT_ANSWER_ECHO_MAX = 800;
+export const AssistantTurn = z.strictObject({
+  question: z.string().trim().min(1).max(ASSISTANT_QUESTION_MAX),
+  answer: z.string().min(1).max(ASSISTANT_ANSWER_ECHO_MAX),
+});
 export const AssistantAskRequest = z.strictObject({
   question: z.string().trim().min(1).max(ASSISTANT_QUESTION_MAX),
   context: z.string().min(1).max(ASSISTANT_CONTEXT_MAX),
+  history: z.array(AssistantTurn).max(ASSISTANT_HISTORY_MAX).optional(),
 });
 export const AssistantAnswer = z.strictObject({
   answer: z.string().min(1),
@@ -171,6 +179,7 @@ export const MarketNewsResponse = z.strictObject({ data: MarketNews });
 export const MarketBriefResponse = z.strictObject({ data: MarketBrief });
 export const PositionSizeResponse = z.strictObject({ data: PositionSize });
 
+export type AssistantTurn = z.infer<typeof AssistantTurn>;
 export type AssistantAskRequest = z.infer<typeof AssistantAskRequest>;
 export type AssistantAnswer = z.infer<typeof AssistantAnswer>;
 export type AssistantAnswerResponse = z.infer<typeof AssistantAnswerResponse>;

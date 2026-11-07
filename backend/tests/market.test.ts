@@ -363,6 +363,29 @@ describe('/v1/market', () => {
       expect(JSON.parse(String((init as { body: string }).body))).toEqual(ask);
     });
 
+    it('forwards recent turns so a follow-up is understood, and caps them', async () => {
+      const fetcher = service(ANSWER);
+      vi.stubGlobal('fetch', fetcher);
+      const user = await createUser();
+      const turn = { question: 'Tháng này?', answer: 'Ăn uống nhiều nhất.' };
+
+      const ok = await api()
+        .post('/v1/assistant/ask')
+        .set('Authorization', user.auth)
+        .send({ ...ask, history: [turn] });
+      const tooMany = await api()
+        .post('/v1/assistant/ask')
+        .set('Authorization', user.auth)
+        .send({ ...ask, history: [turn, turn, turn, turn, turn] });
+
+      expect(ok.status).toBe(200);
+      expect(
+        JSON.parse(String((fetcher.mock.calls[0]?.[1] as { body: string }).body)).history,
+      ).toEqual([turn]);
+      expect(tooMany.status).toBe(400);
+      expect(fetcher).toHaveBeenCalledTimes(1);
+    });
+
     it('refuses an empty or oversized question before calling out', async () => {
       const fetcher = service(ANSWER);
       vi.stubGlobal('fetch', fetcher);

@@ -259,6 +259,8 @@ export const VIETNAMESE_COPY: CopyBundle = {
     assistant: {
       title: 'Tìm kiếm và hỏi',
       intro: 'Tìm khoản chi, hoặc hỏi về chi tiêu, mục tiêu tiết kiệm và cổ phiếu của bạn.',
+      addRow: 'Thêm {summary}',
+      added: 'Đã thêm khoản chi.',
       seeAll: 'Xem cả {count}',
       found: 'Tìm thấy {count}',
       consent:
@@ -275,6 +277,9 @@ export const VIETNAMESE_COPY: CopyBundle = {
       s2: 'Tôi có đang giữ đúng hạn mức chi không?',
       s3: 'Danh mục cổ phiếu của tôi phân bổ thế nào?',
       s4: 'Mục tiêu tiết kiệm nào cần tiền trước?',
+      review: 'Tổng kết tháng của tôi',
+      reviewQuestion:
+        'Viết bản tổng kết ngắn về tháng của tôi: chi tiêu, mục tiêu tiết kiệm và cổ phiếu, kèm một điều cần để ý.',
     },
 
     portfolio: {
