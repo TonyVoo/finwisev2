@@ -117,7 +117,7 @@ describe('Home and search', () => {
 
     await userEvent.press(screen.getByTestId('home-search'));
 
-    expect(routerRecord.push).toEqual(['/(app)/search']);
+    expect(routerRecord.push).toEqual(['/(app)/assistant']);
     // Search is a screen of its own: Home does not turn into a results list.
     expect(screen.queryByTestId('search-input')).toBeNull();
     expect(screen.getByTestId(MONTH_TOTAL_TEST_ID)).toBeTruthy();

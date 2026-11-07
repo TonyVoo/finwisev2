@@ -281,12 +281,13 @@ export const COPY = {
    * (`invest/portfolioModel.ts`). Private to the person, even in a household.
    */
   assistant: {
-    title: 'Ask your money',
-    entry: 'Ask about your money',
-    intro: 'Ask about your spending, your savings goals and your stocks.',
+    title: 'Search and ask',
+    intro: 'Search your expenses, or ask about your spending, your savings goals and your stocks.',
+    seeAll: 'See all {count}',
+    found: '{count} found',
     consent:
       'Your question and a summary of this month’s figures (no notes) are sent to an AI service to write the answer. It is not investment advice.',
-    placeholder: 'Ask a question',
+    placeholder: 'Search expenses or ask a question',
     send: 'Ask',
     thinking: 'Thinking…',
     failed: "Couldn't answer right now.",

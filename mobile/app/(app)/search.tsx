@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { SectionList, StyleSheet, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CardRow } from '@/components/Card';
@@ -63,7 +63,9 @@ export default function SearchScreen() {
   const inHousehold = useInHousehold();
   const selection = useExpenseSelection();
 
-  const [text, setText] = useState('');
+  // Opened from the search-and-ask screen with what was typed there.
+  const { q } = useLocalSearchParams<{ q?: string }>();
+  const [text, setText] = useState(typeof q === 'string' ? q : '');
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [privateOnly, setPrivateOnly] = useState(false);
   const [kind, setKind] = useState<'expense' | 'income' | null>(null);

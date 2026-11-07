@@ -1168,11 +1168,12 @@ them as proposals the Designer can reword; changing a row here means changing
 | `homeWidget.showTitle`                  | `Widget shows`                                                                                                                                                                               | Settings, widget row                                                         |
 | `homeWidget.showSpending`               | `Today’s spending`                                                                                                                                                                           | Settings, widget row                                                         |
 | `homeWidget.showPortfolio`              | `Portfolio value`                                                                                                                                                                            | Settings, widget row                                                         |
-| `assistant.title` | `Ask your money` | Ask your money screen |
-| `assistant.entry` | `Ask about your money` | Ask your money screen |
-| `assistant.intro` | `Ask about your spending, your savings goals and your stocks.` | Ask your money screen |
+| `assistant.title` | `Search and ask` | Search and ask screen |
+| `assistant.intro` | `Search your expenses, or ask about your spending, your savings goals and your stocks.` | Search and ask screen |
+| `assistant.seeAll` | `See all {count}` | Search and ask screen, results |
+| `assistant.found` | `{count} found` | Search and ask screen, results |
 | `assistant.consent` | `Your question and a summary of this month’s figures (no notes) are sent to an AI service to write the answer. It is not investment advice.` | Ask your money screen |
-| `assistant.placeholder` | `Ask a question` | Ask your money screen |
+| `assistant.placeholder` | `Search expenses or ask a question` | Ask your money screen |
 | `assistant.send` | `Ask` | Ask your money screen |
 | `assistant.thinking` | `Thinking…` | Ask your money screen |
 | `assistant.failed` | `Couldn't answer right now.` | Ask your money screen |

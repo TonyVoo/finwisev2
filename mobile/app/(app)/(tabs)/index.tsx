@@ -193,15 +193,9 @@ export default function ExpenseListScreen() {
             <SyncIndicator />
             <SelectButton selection={selection} testID="home-select" />
             <IconButton
-              icon="message-circle"
-              label={COPY.assistant.entry}
-              onPress={() => router.push('/(app)/assistant')}
-              testID="home-assistant"
-            />
-            <IconButton
               icon="search"
               label={COPY.home.search.open}
-              onPress={() => router.push('/(app)/search')}
+              onPress={() => router.push('/(app)/assistant')}
               testID="home-search"
             />
           </>

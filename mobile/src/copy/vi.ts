@@ -257,12 +257,13 @@ export const VIETNAMESE_COPY: CopyBundle = {
     },
 
     assistant: {
-      title: 'Hỏi về tiền của bạn',
-      entry: 'Hỏi về tiền của bạn',
-      intro: 'Hỏi về chi tiêu, mục tiêu tiết kiệm và cổ phiếu của bạn.',
+      title: 'Tìm kiếm và hỏi',
+      intro: 'Tìm khoản chi, hoặc hỏi về chi tiêu, mục tiêu tiết kiệm và cổ phiếu của bạn.',
+      seeAll: 'Xem cả {count}',
+      found: 'Tìm thấy {count}',
       consent:
         'Câu hỏi và bản tóm tắt số liệu tháng này (không gồm ghi chú) được gửi tới dịch vụ AI để viết câu trả lời. Đây không phải lời khuyên đầu tư.',
-      placeholder: 'Đặt câu hỏi',
+      placeholder: 'Tìm khoản chi hoặc đặt câu hỏi',
       send: 'Hỏi',
       thinking: 'Đang suy nghĩ…',
       failed: 'Chưa trả lời được lúc này.',

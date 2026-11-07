@@ -14,6 +14,8 @@ import {
   View,
 } from 'react-native';
 import { ApiRequestError } from '@/api/errors';
+import { useExpenseSearch, useExpenseSearchSummary, useUserCurrency } from '@/db/hooks';
+import { formatMoney } from '@/lib/money';
 import { useApiClient } from '@/bootstrap/AppProviders';
 import { useDigest } from '@/assistant/useDigest';
 import { AppBar, IconButton } from '@/components/Chrome';
@@ -31,6 +33,9 @@ export const ASSISTANT_SEND_TEST_ID = 'assistant-send';
 export const ASSISTANT_CLEAR_TEST_ID = 'assistant-clear';
 export const ASSISTANT_SUGGESTION_PREFIX = 'assistant-suggestion';
 export const ASSISTANT_ANSWER_PREFIX = 'assistant-answer';
+export const ASSISTANT_RESULTS_TEST_ID = 'assistant-results';
+export const ASSISTANT_RESULT_PREFIX = 'assistant-result';
+export const ASSISTANT_SEE_ALL_TEST_ID = 'assistant-see-all';
 
 type Turn =
   | { readonly id: number; readonly question: string; readonly status: 'loading' }
@@ -64,6 +69,11 @@ export default function AssistantScreen() {
   const digest = useDigest(api, month, !offline);
 
   const [text, setText] = useState('');
+  // What is typed also searches the expenses, live, so the one box does both jobs.
+  const query = text.trim().length >= 2 ? text.trim() : '';
+  const found = useExpenseSearch({ text: query, categoryId: null });
+  const foundSummary = useExpenseSearchSummary({ text: query, categoryId: null });
+  const currency = useUserCurrency().data ?? 'USD';
   const [turns, setTurns] = useState<readonly Turn[]>([]);
   const next = useRef(1);
   const scroller = useRef<ScrollView>(null);
@@ -206,6 +216,53 @@ export default function AssistantScreen() {
           ))}
         </ScrollView>
 
+        {query === '' || (found.data ?? []).length === 0 ? null : (
+          <View style={styles.results} testID={ASSISTANT_RESULTS_TEST_ID}>
+            {(found.data ?? []).slice(0, 4).map((item) => (
+              <Pressable
+                key={item.id}
+                testID={`${ASSISTANT_RESULT_PREFIX}-${item.id}`}
+                onPress={() => router.push(`/(app)/expense/${item.id}`)}
+                accessibilityRole="button"
+                style={({ pressed }) => [
+                  styles.resultRow,
+                  pressed ? { backgroundColor: color.bg.sunken } : null,
+                ]}
+              >
+                <View style={styles.resultText}>
+                  <Text style={styles.resultTitle} numberOfLines={1}>
+                    {item.note !== null && item.note !== ''
+                      ? item.note
+                      : (item.categoryName ?? item.fallbackName ?? '')}
+                  </Text>
+                  <Text style={styles.muted} numberOfLines={1}>
+                    {`${item.categoryName ?? item.fallbackName ?? ''} · ${item.date}`}
+                  </Text>
+                </View>
+                <Text style={styles.resultAmount}>
+                  {formatMoney(item.amountMinor, item.currency)}
+                </Text>
+              </Pressable>
+            ))}
+            <Pressable
+              testID={ASSISTANT_SEE_ALL_TEST_ID}
+              onPress={() => router.push({ pathname: '/(app)/search', params: { q: query } })}
+              accessibilityRole="button"
+              style={styles.seeAll}
+            >
+              <Text style={styles.muted}>
+                {COPY.assistant.found.replace('{count}', String(foundSummary.data?.count ?? 0))}
+                {foundSummary.data === undefined
+                  ? ''
+                  : ` · ${formatMoney(foundSummary.data.totalMinor, currency)}`}
+              </Text>
+              <Text style={styles.seeAllText}>
+                {COPY.assistant.seeAll.replace('{count}', String(foundSummary.data?.count ?? 0))}
+              </Text>
+            </Pressable>
+          </View>
+        )}
+
         <View style={styles.composer}>
           {hint === null ? null : <Text style={styles.hint}>{hint}</Text>}
           <View style={styles.field}>
@@ -299,6 +356,35 @@ const useStyles = createStyles((color) =>
     thinking: { flexDirection: 'row', alignItems: 'center', gap: space[2] },
     muted: { ...type.footnote, color: color.text.tertiary },
     error: { ...type.body, color: color.danger.default },
+    results: {
+      marginHorizontal: space[4],
+      marginBottom: space[2],
+      borderRadius: radius.lg,
+      backgroundColor: color.bg.surface,
+      borderWidth: 1,
+      borderColor: color.border.hairline,
+      overflow: 'hidden',
+    },
+    resultRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space[3],
+      paddingVertical: space[2],
+      paddingHorizontal: space[4],
+    },
+    resultText: { flex: 1, gap: 2 },
+    resultTitle: { ...type.body, color: color.text.primary },
+    resultAmount: { ...type.bodyStrong, color: color.text.primary, fontVariant: ['tabular-nums'] },
+    seeAll: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: space[3],
+      paddingHorizontal: space[4],
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: color.border.hairline,
+    },
+    seeAllText: { ...type.callout, color: color.primary.default },
     composer: {
       gap: space[1],
       paddingHorizontal: space[4],

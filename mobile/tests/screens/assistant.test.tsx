@@ -7,11 +7,14 @@ import AssistantScreen, {
   ASSISTANT_ANSWER_PREFIX,
   ASSISTANT_CLEAR_TEST_ID,
   ASSISTANT_INPUT_TEST_ID,
+  ASSISTANT_RESULTS_TEST_ID,
+  ASSISTANT_SEE_ALL_TEST_ID,
   ASSISTANT_SEND_TEST_ID,
   ASSISTANT_SUGGESTION_PREFIX,
 } from '../../app/(app)/assistant';
 import { apiError, mountScreen, ok, pressOn, typeInto, type MountedScreen } from '../support/mount';
-import { resetRouter } from '../support/router';
+import { resetRouter, routerRecord } from '../support/router';
+import { seedExpense, seedFallbackCategory } from '../support/seed';
 
 jest.mock('expo-router');
 
@@ -58,6 +61,14 @@ async function mountAssistant(onAsk: Handler): Promise<MountedScreen> {
         email: 'ada@example.com',
         currency: 'VND',
         createdAt: '2026-10-01T00:00:00.000Z',
+      });
+      const fallback = await seedFallbackCategory(database);
+      await seedExpense(database, {
+        categoryId: fallback,
+        id: '0192f5a0-0000-7000-8000-0000000000e1',
+        amountMinor: 45000,
+        date: '2026-11-03',
+        note: 'Cà phê sáng',
       });
       await createTrade(database, {
         symbol: 'VNM',
@@ -175,5 +186,38 @@ describe('asking', () => {
 
     expect(screen.queryByText('- Ăn uống nhiều nhất.')).toBeNull();
     expect(screen.queryByTestId(ASSISTANT_SUGGESTION_PREFIX + '-0')).not.toBeNull();
+  });
+});
+
+describe('search in the same box', () => {
+  it('lists matching expenses as you type, opens one, and hands the text to the full search', async () => {
+    await mountAssistant(() => ok(200, ANSWER));
+    await waitFor(() => expect(screen.queryByTestId(ASSISTANT_INPUT_TEST_ID)).not.toBeNull());
+
+    await typeInto(ASSISTANT_INPUT_TEST_ID, 'cà phê');
+
+    await waitFor(() => expect(screen.queryByTestId(ASSISTANT_RESULTS_TEST_ID)).not.toBeNull());
+    expect(screen.getByText('Cà phê sáng')).toBeTruthy();
+
+    await pressOn('assistant-result-0192f5a0-0000-7000-8000-0000000000e1');
+    expect(routerRecord.push).toContainEqual('/(app)/expense/0192f5a0-0000-7000-8000-0000000000e1');
+
+    await pressOn(ASSISTANT_SEE_ALL_TEST_ID);
+    expect(routerRecord.push).toContainEqual({
+      pathname: '/(app)/search',
+      params: { q: 'cà phê' },
+    });
+  });
+
+  it('shows no results for text that matches nothing, and asks nothing of the model', async () => {
+    let asked = 0;
+    await mountAssistant(() => {
+      asked += 1;
+      return ok(200, ANSWER);
+    });
+    await typeInto(ASSISTANT_INPUT_TEST_ID, 'zzzz');
+    await waitFor(() => expect(screen.queryByTestId(ASSISTANT_INPUT_TEST_ID)).not.toBeNull());
+    expect(screen.queryByTestId(ASSISTANT_RESULTS_TEST_ID)).toBeNull();
+    expect(asked).toBe(0);
   });
 });
