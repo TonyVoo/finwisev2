@@ -256,6 +256,24 @@ export const VIETNAMESE_COPY: CopyBundle = {
       unwatch: 'Bỏ khỏi theo dõi',
     },
 
+    notifications: {
+      title: 'Thông báo',
+      open: 'Thông báo',
+      openNew: 'Thông báo, {count} mới',
+      priceAlerts: 'Cảnh báo giá',
+      comingUp: 'Sắp tới',
+      empty: 'Chưa có gì. Cảnh báo giá và nhắc kế hoạch sẽ hiện ở đây.',
+      alertRow: '{symbol} đã chạm {price}',
+      alertDetail: 'Cảnh báo của bạn: {direction} {target}',
+      above: 'từ trở lên',
+      below: 'từ trở xuống',
+      planRow: '{symbol}: mua {amount}',
+      offTitle: 'Thông báo đang tắt',
+      offBody: 'Bật thông báo để biết khi cảnh báo giá nổ hoặc đến hạn kế hoạch.',
+      allow: 'Bật thông báo',
+      openSettings: 'Mở cài đặt',
+    },
+
     assistant: {
       title: 'Tìm kiếm và hỏi',
       intro: 'Tìm khoản chi, hoặc hỏi về chi tiêu, mục tiêu tiết kiệm và cổ phiếu của bạn.',

@@ -114,6 +114,8 @@ export const META_KEYS = {
   investingOwner: 'investingOwner',
   /** The Expo push token last sent to the server, so it is sent again only when it changes. */
   pushToken: 'pushToken',
+  /** When the person last opened the notifications screen, ISO: what fired after it is new. A device setting. */
+  notificationsSeenAt: 'notificationsSeenAt',
   /**
    * The id of the savings goal that counts the stock portfolio towards its progress, or empty for none.
    * Wiped with the store: goal ids belong to one account.

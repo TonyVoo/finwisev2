@@ -1192,3 +1192,18 @@ them as proposals the Designer can reword; changing a row here means changing
 | `goals.portfolioLink` | `Count my stock portfolio` | Goal sheet, portfolio switch |
 | `goals.portfolioLinkHint` | `Adds what your stocks are worth now to this goal's progress. Only on this device.` | Goal sheet, portfolio switch |
 | `goals.row.includesPortfolio` | `Includes {amount} from your stocks` | Goals list, row status |
+| `notifications.title` | `Notifications` | Notifications screen and its bell |
+| `notifications.open` | `Notifications` | Notifications screen and its bell |
+| `notifications.openNew` | `Notifications, {count} new` | Notifications screen and its bell |
+| `notifications.priceAlerts` | `Price alerts` | Notifications screen and its bell |
+| `notifications.comingUp` | `Coming up` | Notifications screen and its bell |
+| `notifications.empty` | `Nothing yet. Price alerts and plan reminders show up here.` | Notifications screen and its bell |
+| `notifications.alertRow` | `{symbol} reached {price}` | Notifications screen and its bell |
+| `notifications.alertDetail` | `Your alert: {direction} {target}` | Notifications screen and its bell |
+| `notifications.above` | `at or above` | Notifications screen and its bell |
+| `notifications.below` | `at or below` | Notifications screen and its bell |
+| `notifications.planRow` | `{symbol}: buy {amount}` | Notifications screen and its bell |
+| `notifications.offTitle` | `Notifications are off` | Notifications screen and its bell |
+| `notifications.offBody` | `Allow notifications to be told when a price alert fires or a plan is due.` | Notifications screen and its bell |
+| `notifications.allow` | `Allow notifications` | Notifications screen and its bell |
+| `notifications.openSettings` | `Open settings` | Notifications screen and its bell |

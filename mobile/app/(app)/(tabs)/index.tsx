@@ -11,6 +11,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CardRow } from '@/components/Card';
 import { AppBar, Fab, IconButton } from '@/components/Chrome';
+import { NotificationBell } from '@/notifications/NotificationBell';
 import { COPY } from '@/copy/strings';
 import { useDatabase } from '@/db/DatabaseProvider';
 import { clearCategoryReviewPending } from '@/db/onboarding';
@@ -192,6 +193,7 @@ export default function ExpenseListScreen() {
                 the title never shifts when sync state changes (`02-offline-and-sync.md` §3). */}
             <SyncIndicator />
             <SelectButton selection={selection} testID="home-select" />
+            <NotificationBell />
             <IconButton
               icon="search"
               label={COPY.home.search.open}

@@ -280,6 +280,24 @@ export const COPY = {
    * The portfolio: trades entered by the person and the holdings and profit worked out from them
    * (`invest/portfolioModel.ts`). Private to the person, even in a household.
    */
+  notifications: {
+    title: 'Notifications',
+    open: 'Notifications',
+    openNew: 'Notifications, {count} new',
+    priceAlerts: 'Price alerts',
+    comingUp: 'Coming up',
+    empty: 'Nothing yet. Price alerts and plan reminders show up here.',
+    alertRow: '{symbol} reached {price}',
+    alertDetail: 'Your alert: {direction} {target}',
+    above: 'at or above',
+    below: 'at or below',
+    planRow: '{symbol}: buy {amount}',
+    offTitle: 'Notifications are off',
+    offBody: 'Allow notifications to be told when a price alert fires or a plan is due.',
+    allow: 'Allow notifications',
+    openSettings: 'Open settings',
+  },
+
   assistant: {
     title: 'Search and ask',
     intro: 'Search your expenses, or ask about your spending, your savings goals and your stocks.',
