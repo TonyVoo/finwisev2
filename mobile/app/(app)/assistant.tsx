@@ -1,6 +1,7 @@
 import Feather from '@expo/vector-icons/Feather';
 import { ASSISTANT_QUESTION_MAX } from '@expense-tracker/shared';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -62,6 +63,7 @@ export default function AssistantScreen() {
   const styles = useStyles();
   const { isDark } = useTheme();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const api = useApiClient();
   const { month } = useSelectedMonth();
   const status = useOptionalSyncStatus();
@@ -263,7 +265,7 @@ export default function AssistantScreen() {
           </View>
         )}
 
-        <View style={styles.composer}>
+        <View style={[styles.composer, { paddingBottom: space[3] + insets.bottom }]}>
           {hint === null ? null : <Text style={styles.hint}>{hint}</Text>}
           <View style={styles.field}>
             <TextInput
