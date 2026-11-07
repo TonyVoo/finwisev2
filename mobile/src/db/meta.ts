@@ -104,6 +104,11 @@ export const META_KEYS = {
   widgetMode: 'widgetMode',
   /** The monthly buying plans, as JSON (`src/invest/dca.ts`). A property of this device, so not in {@link WIPED_META_KEYS}. */
   dcaPlans: 'dcaPlans',
+  /**
+   * The id of the savings goal that counts the stock portfolio towards its progress, or empty for none.
+   * Wiped with the store: goal ids belong to one account.
+   */
+  goalPortfolio: 'goalPortfolio',
 } as const;
 
 export type MetaKey = (typeof META_KEYS)[keyof typeof META_KEYS];
@@ -124,6 +129,7 @@ export const WIPED_META_KEYS: readonly MetaKey[] = [
   META_KEYS.savedSearches,
   META_KEYS.monthlyLimit,
   META_KEYS.recurringDismissed,
+  META_KEYS.goalPortfolio,
 ];
 
 export async function readMeta(executor: SqliteExecutor, key: MetaKey): Promise<string | null> {

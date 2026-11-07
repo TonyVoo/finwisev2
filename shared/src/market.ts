@@ -152,12 +152,28 @@ export const MarketBrief = z.strictObject({
   disclaimer: z.string(),
 });
 
+/** A question about the person's own money, with the digest of their figures it is answered from. */
+export const ASSISTANT_QUESTION_MAX = 500;
+export const ASSISTANT_CONTEXT_MAX = 6000;
+export const AssistantAskRequest = z.strictObject({
+  question: z.string().trim().min(1).max(ASSISTANT_QUESTION_MAX),
+  context: z.string().min(1).max(ASSISTANT_CONTEXT_MAX),
+});
+export const AssistantAnswer = z.strictObject({
+  answer: z.string().min(1),
+  disclaimer: z.string(),
+});
+export const AssistantAnswerResponse = z.strictObject({ data: AssistantAnswer });
+
 export const MarketQuoteResponse = z.strictObject({ data: MarketQuote });
 export const MarketSignalResponse = z.strictObject({ data: MarketSignal });
 export const MarketNewsResponse = z.strictObject({ data: MarketNews });
 export const MarketBriefResponse = z.strictObject({ data: MarketBrief });
 export const PositionSizeResponse = z.strictObject({ data: PositionSize });
 
+export type AssistantAskRequest = z.infer<typeof AssistantAskRequest>;
+export type AssistantAnswer = z.infer<typeof AssistantAnswer>;
+export type AssistantAnswerResponse = z.infer<typeof AssistantAnswerResponse>;
 export type MarketQuotePoint = z.infer<typeof MarketQuotePoint>;
 export type MarketSymbolsQuery = z.infer<typeof MarketSymbolsQuery>;
 export type MarketNewsItem = z.infer<typeof MarketNewsItem>;

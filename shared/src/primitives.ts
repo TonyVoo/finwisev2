@@ -112,6 +112,8 @@ export const LIMITS = {
   QUICK_ADD_TEXT_MAX: 300,
   /** Sentences one account may ask the server to read per rate-limit window: each may spend the model's quota. */
   QUICK_ADD_MAX_PER_USER: 30,
+  /** Questions one account may put to the assistant per rate-limit window: each is a model call. */
+  ASSISTANT_MAX_PER_USER: 20,
   /** Most insight sentences one recap request may carry, and the longest of them. */
   RECAP_MAX_FACTS: 12,
   RECAP_FACT_MAX: 200,

@@ -212,6 +212,25 @@ or another admin; remove an email from `ADMIN_EMAILS` first.
   receipt text.
 - `docs/RELEASE.md` lists the store-side items; `docs/qa/DEVICE_CHECKLIST.md` is the pre-release test pass.
 
+## The market service
+
+The Investing tab (quotes, screening scores, news) and the assistant are served by a second, stateless service: the
+`api/` of the vn-stock-assistant repository, which has its own `Dockerfile`. The API reaches it with `MARKET_API_URL`
+and `MARKET_API_KEY`; the app never does, and the service has no database.
+
+- **Private network.** Give it no public address: only the API calls it, with `X-Api-Key` (the service refuses a
+  call without it, except `GET /v1/health`).
+- **A model for the brief and the assistant.** `ANTHROPIC_API_KEY` (or `LLM_PROVIDER=openai_compat` with its base URL).
+  Without one both answer 503 and the app hides or explains them; quotes and the calculator still work. Each
+  question is a model call, so the API limits an account (`ASSISTANT_MAX_PER_USER`) and caches nothing.
+- **Real prices.** The image uses VNDirect for prices; `vnstock` is not on PyPI and needs a free key (see that
+  repository's README). `DEMO_MODE=1` would serve simulated prices, flagged `demo: true` in every answer: never set it
+  in production.
+- **Privacy.** The assistant forwards a person's question and a digest of their figures (no notes) to the model
+  provider and stores neither. Say so in the privacy policy, as for receipt reading.
+- **Without it** the rest of the app is unaffected: unset `MARKET_API_URL` and `/v1/market/*` answers
+  `503 market_unavailable`.
+
 ## Try it locally
 
 `docker-compose.yml` runs the real image with a throwaway Postgres, the migrations, and the API, on port 3100 so
@@ -219,6 +238,7 @@ it does not clash with a dev server on 3000:
 
 ```bash
 JWT_SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))") \
+MARKET_API_KEY=$(node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))") \
   docker compose -p expense-trial up --build
 curl http://localhost:3100/v1/health
 docker compose -p expense-trial down -v

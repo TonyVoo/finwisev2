@@ -174,6 +174,8 @@ describe('every client method', () => {
       (client) => client.getPositionSize({ capital: 100000000, entry: 50000, stop: 47000 }),
     ],
 
+    ['askAssistant', (client) => client.askAssistant({ question: 'Hi', context: 'Ăn uống: 1' })],
+
     ['pullSync', (client) => client.pullSync({ since: 0 })],
     ['pushSync', (client) => client.pushSync({ changes: [] })],
   ];

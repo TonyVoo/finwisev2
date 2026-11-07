@@ -4,6 +4,11 @@
 #   JWT_SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))") \
 #     docker compose -p expense-trial up --build
 #
+# The Investing tab and the assistant need the market service (the vn-stock-assistant repository). Beside this
+# repository it is found by default; elsewhere, set MARKET_SERVICE_DIR. Give it a model with ANTHROPIC_API_KEY, or
+# LLM_PROVIDER=mock to see the screens with canned answers. Without a model the quotes work and the brief and the
+# assistant say they are unavailable.
+#
 # The API is then on http://localhost:3100/v1/health. Tear down with `docker compose -p expense-trial down -v`.
 services:
   db:
@@ -32,6 +37,15 @@ services:
         condition: service_healthy
     restart: 'no'
 
+  market:
+    build:
+      context: ${MARKET_SERVICE_DIR:-../vn-stock-assistant/vn-stock-assistant}
+    init: true
+    environment:
+      MARKET_API_KEY: ${MARKET_API_KEY:?set MARKET_API_KEY to a long random string}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
+
   api:
     build:
       context: .
@@ -43,9 +57,13 @@ services:
       DATABASE_URL: postgresql://expense:trial-only-password@db:5432/expense_tracker?schema=public
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET to a long random string}
       TRUST_PROXY: 'false'
+      MARKET_API_URL: http://market:8001
+      MARKET_API_KEY: ${MARKET_API_KEY:?set MARKET_API_KEY to a long random string}
     depends_on:
       migrate:
         condition: service_completed_successfully
+      market:
+        condition: service_started
 
 volumes:
   db-data:

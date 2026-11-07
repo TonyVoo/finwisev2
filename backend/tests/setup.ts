@@ -6,6 +6,7 @@ import { resetPasswordResetRateLimitForTests } from '../src/middleware/passwordR
 import { resetHouseholdJoinRateLimitForTests } from '../src/middleware/householdJoinRateLimit.ts';
 import { resetReceiptScanRateLimitForTests } from '../src/middleware/receiptScanRateLimit.ts';
 import { resetPasswordConfirmRateLimitForTests } from '../src/middleware/passwordConfirmRateLimit.ts';
+import { resetAssistantRateLimitForTests } from '../src/middleware/assistantRateLimit.ts';
 import { resetQuickAddRateLimitForTests } from '../src/middleware/quickAddRateLimit.ts';
 import { setQuickAddReaderForTests } from '../src/services/quickAddReader.ts';
 import { resetRecapRateLimitForTests } from '../src/middleware/recapRateLimit.ts';
@@ -36,6 +37,7 @@ beforeEach(async () => {
   resetHouseholdJoinRateLimitForTests();
   resetReceiptScanRateLimitForTests();
   resetQuickAddRateLimitForTests();
+  resetAssistantRateLimitForTests();
   resetRecapRateLimitForTests();
   /**
    * Receipt readers come from `.env` (the config reads it even under test), so a developer who

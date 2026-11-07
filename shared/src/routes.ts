@@ -359,6 +359,13 @@ export const API_ROUTES = [
     auth: true,
     successStatus: 200,
   },
+  {
+    method: 'post',
+    path: '/v1/assistant/ask',
+    operationId: 'askAssistant',
+    auth: true,
+    successStatus: 200,
+  },
 
   { method: 'get', path: '/v1/sync', operationId: 'pullSync', auth: true, successStatus: 200 },
   { method: 'post', path: '/v1/sync', operationId: 'pushSync', auth: true, successStatus: 200 },

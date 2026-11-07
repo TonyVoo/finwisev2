@@ -2,7 +2,9 @@ import * as Haptics from 'expo-haptics';
 import * as Notifications from 'expo-notifications';
 import { act, screen, userEvent, waitFor } from '@testing-library/react-native';
 import { COPY, SNACK_COPY } from '@/copy/strings';
-import { createGoal } from '@/db/mutations';
+import { createGoal, createTrade } from '@/db/mutations';
+import { writeLinkedGoal } from '@/goals/portfolioLink';
+import { ok } from '../support/mount';
 import type { SqliteDatabase } from '@/db/sqlite';
 import GoalsScreen, { GOAL_ROW_TEST_ID_PREFIX } from '../../app/(app)/settings/goals';
 import { resetRouter } from '../support/router';
@@ -125,5 +127,75 @@ describe('the savings goals screen', () => {
     await waitFor(() => expect(screen.queryByTestId('goals-empty')).not.toBeNull());
     expect(screen.getByText(COPY.goals.empty.headline)).toBeTruthy();
     expect(screen.getByTestId('empty-icon-target', hidden)).toBeTruthy();
+  });
+});
+
+describe('a goal that counts the stock portfolio', () => {
+  const seedLinked = async (database: SqliteDatabase) => {
+    await seedFallbackCategory(database);
+    await createGoal(
+      database,
+      {
+        name: 'Laptop',
+        targetMinor: 30_000_000,
+        savedMinor: 5_000_000,
+        currency: 'VND',
+        deadline: null,
+      },
+      { id: GOAL_ID },
+    );
+    await createTrade(database, {
+      symbol: 'VNM',
+      side: 'buy',
+      quantity: 100,
+      price: 50000,
+      fee: 0,
+      date: '2026-10-01',
+    });
+    await writeLinkedGoal(database, GOAL_ID);
+  };
+
+  it('adds what the stocks are worth now to its progress, and says so', async () => {
+    await mountScreen(<GoalsScreen />, {
+      clock: () => NOW,
+      seed: seedLinked,
+      transport: async () =>
+        ok(200, {
+          data: {
+            symbol: 'VNM',
+            source: 'vnstock',
+            demo: false,
+            asOf: '2026-10-26',
+            close: 60000,
+            prevClose: 60000,
+            changePct: 0,
+            high52w: 60000,
+            low52w: 60000,
+            series: [{ date: '2026-10-26', close: 60000, volume: 1 }],
+          },
+        }),
+    });
+
+    // 5.000.000 saved + 100 shares at 60.000 = 11.000.000 of 30.000.000.
+    await waitFor(() => expect(screen.queryByTestId(`goal-included-${GOAL_ID}`)).not.toBeNull());
+    expect(String(screen.getByTestId(`goal-included-${GOAL_ID}`).props.children)).toMatch(
+      /6[.,]000[.,]000/,
+    );
+    expect(screen.getByText(/36%/)).toBeTruthy();
+  });
+
+  it('shows the goal as saved when no price can be had: the stocks count at cost', async () => {
+    await mountScreen(<GoalsScreen />, {
+      clock: () => NOW,
+      seed: seedLinked,
+      transport: async () => {
+        throw new Error('offline');
+      },
+    });
+
+    await waitFor(() => expect(screen.queryByTestId(`goal-included-${GOAL_ID}`)).not.toBeNull());
+    expect(String(screen.getByTestId(`goal-included-${GOAL_ID}`).props.children)).toMatch(
+      /5[.,]000[.,]000/,
+    );
   });
 });

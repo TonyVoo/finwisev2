@@ -31,6 +31,8 @@ import type {
   MarketQuoteResponse,
   MarketSymbolsQuery,
   MarketSignalResponse,
+  AssistantAnswerResponse,
+  AssistantAskRequest,
   PositionSizeRequest,
   PositionSizeResponse,
   RatesQuery,
@@ -168,6 +170,7 @@ export interface ApiClient {
   getMarketNews(query: MarketSymbolsQuery): Promise<MarketNewsResponse>;
   getMarketBrief(query: MarketSymbolsQuery): Promise<MarketBriefResponse>;
   getPositionSize(body: PositionSizeRequest): Promise<PositionSizeResponse>;
+  askAssistant(body: AssistantAskRequest): Promise<AssistantAnswerResponse>;
 
   /** Pull changes with `revision > since`. The cursor is a revision, never a timestamp. */
   pullSync(query?: SyncPullQuery): Promise<SyncPullResponse>;
@@ -291,6 +294,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     getMarketNews: (query) => send(ENDPOINTS.getMarketNews, { query: toQuery(query) }),
     getMarketBrief: (query) => send(ENDPOINTS.getMarketBrief, { query: toQuery(query) }),
     getPositionSize: (body) => send(ENDPOINTS.getPositionSize, { body }),
+    askAssistant: (body) => send(ENDPOINTS.askAssistant, { body }),
     pullSync: (query) => send(ENDPOINTS.pullSync, { query: toQuery(query) }),
     pushSync: (body) => send(ENDPOINTS.pushSync, { body }),
   };

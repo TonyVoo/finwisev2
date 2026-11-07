@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { LIMITS } from '@expense-tracker/shared';
 import { resetConfigForTests } from '../src/config.ts';
 import { clearMarketCache } from '../src/services/marketService.ts';
 import { api } from './support/api.ts';
@@ -337,5 +338,77 @@ describe('/v1/market', () => {
 
     expect(first.status).toBe(503);
     expect(second.status).toBe(200);
+  });
+  describe('POST /v1/assistant/ask', () => {
+    const ask = { question: 'Tháng này tôi tiêu gì nhiều?', context: 'Ăn uống: 3.200.000' };
+    const ANSWER = { answer: '- Ăn uống.', disclaimer: 'Không phải lời khuyên đầu tư.' };
+
+    it('needs a sign-in', async () => {
+      expect((await api().post('/v1/assistant/ask').send(ask)).status).toBe(401);
+    });
+
+    it('forwards the question and the digest, answers what came back, and caches nothing', async () => {
+      const fetcher = service(ANSWER);
+      vi.stubGlobal('fetch', fetcher);
+      const user = await createUser();
+
+      const first = await api().post('/v1/assistant/ask').set('Authorization', user.auth).send(ask);
+      await api().post('/v1/assistant/ask').set('Authorization', user.auth).send(ask);
+
+      expect(first.status).toBe(200);
+      expect(first.body.data).toEqual(ANSWER);
+      expect(fetcher).toHaveBeenCalledTimes(2);
+      const [url, init] = fetcher.mock.calls[0] ?? [];
+      expect(new URL(String(url)).pathname).toBe('/v1/assistant');
+      expect(JSON.parse(String((init as { body: string }).body))).toEqual(ask);
+    });
+
+    it('refuses an empty or oversized question before calling out', async () => {
+      const fetcher = service(ANSWER);
+      vi.stubGlobal('fetch', fetcher);
+      const user = await createUser();
+
+      for (const body of [
+        { question: '  ', context: 'x' },
+        { question: 'x'.repeat(501), context: 'x' },
+        { question: 'x', context: 'y'.repeat(6001) },
+        { question: 'x', context: 'y', extra: 1 },
+      ]) {
+        const r = await api().post('/v1/assistant/ask').set('Authorization', user.auth).send(body);
+        expect(r.status).toBe(400);
+      }
+      expect(fetcher).not.toHaveBeenCalled();
+    });
+
+    it('answers a failure as the one opaque market_unavailable', async () => {
+      vi.stubGlobal('fetch', service({ detail: 'bad key sk-abc' }, 502));
+      const user = await createUser();
+
+      const r = await api().post('/v1/assistant/ask').set('Authorization', user.auth).send(ask);
+
+      expect(r.status).toBe(503);
+      expect(r.body.error.code).toBe('market_unavailable');
+      expect(JSON.stringify(r.body)).not.toMatch(/sk-abc/);
+    });
+
+    it('limits each account, not everyone', async () => {
+      vi.stubGlobal('fetch', service(ANSWER));
+      const busy = await createUser();
+      const other = await createUser();
+
+      for (let i = 0; i < LIMITS.ASSISTANT_MAX_PER_USER; i += 1) {
+        const r = await api().post('/v1/assistant/ask').set('Authorization', busy.auth).send(ask);
+        expect(r.status).toBe(200);
+      }
+      const limited = await api()
+        .post('/v1/assistant/ask')
+        .set('Authorization', busy.auth)
+        .send(ask);
+
+      expect(limited.status).toBe(429);
+      expect(
+        (await api().post('/v1/assistant/ask').set('Authorization', other.auth).send(ask)).status,
+      ).toBe(200);
+    });
   });
 });

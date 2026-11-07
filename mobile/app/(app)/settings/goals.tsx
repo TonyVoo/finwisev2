@@ -2,7 +2,7 @@ import { useDatabase } from '@/db/DatabaseProvider';
 import { requestReminderPermission } from '@/notifications/billReminders';
 import { syncGoalReminders } from '@/notifications/goalReminders';
 import { EmptyIcon } from '@/components/EmptyIcon';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { CardRow } from '@/components/Card';
 import { AccessibilityInfo, FlatList, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -19,6 +19,16 @@ import type { GoalListItem } from '@/db/queries';
 import { DepositSheet } from '@/goals/DepositSheet';
 import { GoalFormSheet } from '@/goals/GoalFormSheet';
 import { GoalBadge, GoalBar } from '@/goals/GoalVisuals';
+import {
+  PORTFOLIO_CURRENCY,
+  readLinkedGoal,
+  withPortfolio,
+  writeLinkedGoal,
+} from '@/goals/portfolioLink';
+import { usePortfolioWorth } from '@/goals/usePortfolioWorth';
+import { formatDong } from '@/invest/investModel';
+import { useApiClient } from '@/bootstrap/AppProviders';
+import { useOptionalSyncStatus } from '@/sync/SyncProvider';
 import { savedHaptic } from '@/lib/haptics';
 import { goalAmounts, goalProgress, goalStatus } from '@/goals/goalModel';
 import { useSelectedMonth } from '@/month/MonthProvider';
@@ -52,6 +62,33 @@ export default function GoalsScreen() {
   const [pendingDelete, setPendingDelete] = useState<GoalListItem | null>(null);
 
   const rows = goals.data ?? [];
+
+  // The one goal (if any) that counts the stock portfolio; its worth is only fetched when there is one.
+  const api = useApiClient();
+  const syncStatus = useOptionalSyncStatus();
+  const [linkedId, setLinkedId] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void readLinkedGoal(database).then((id) => {
+      if (!cancelled) setLinkedId(id);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [database]);
+  const linkedGoalExists = linkedId !== null && rows.some((g) => g.id === linkedId);
+  const worth = usePortfolioWorth(
+    api,
+    linkedGoalExists && !(syncStatus !== null && !syncStatus.reachable),
+  );
+  const linkPortfolio = useCallback(
+    async (goalId: string, next: boolean) => {
+      const id = next ? goalId : null;
+      setLinkedId(id);
+      await writeLinkedGoal(database, id);
+    },
+    [database],
+  );
 
   const submit = useCallback(
     async (value: Omit<NewGoal, 'currency'>) => {
@@ -114,8 +151,9 @@ export default function GoalsScreen() {
         keyExtractor={(goal) => goal.id}
         contentContainerStyle={styles.list}
         renderItem={({ item, index }) => {
-          const progress = goalProgress(item.savedMinor, item.targetMinor);
-          const status = goalStatus(item, today);
+          const shown = withPortfolio(item, linkedId, worth);
+          const progress = goalProgress(shown.goal.savedMinor, shown.goal.targetMinor);
+          const status = goalStatus(shown.goal, today);
           return (
             <CardRow index={index} count={rows.length}>
               <SwipeToDelete
@@ -129,7 +167,7 @@ export default function GoalsScreen() {
                   chevron
                   leading={<GoalBadge reached={progress.reached} />}
                   lastInGroup={index === rows.length - 1}
-                  accessibilityLabel={`${item.name}, ${goalAmounts(item)}, ${progress.percent}%${status === null ? '' : `, ${status}`}`}
+                  accessibilityLabel={`${item.name}, ${goalAmounts(shown.goal)}, ${progress.percent}%${status === null ? '' : `, ${status}`}`}
                   accessibilityHint={COPY.a11y.addToGoal}
                   accessibilityActions={[
                     { name: 'delete', label: COPY.a11y.deleteNamed.replace('{name}', item.name) },
@@ -140,12 +178,20 @@ export default function GoalsScreen() {
                   trailing={item.pending ? <PendingGlyph /> : null}
                 >
                   <RowTitle>{item.name}</RowTitle>
-                  <RowSubtitle>{`${goalAmounts(item)} · ${progress.percent}%`}</RowSubtitle>
+                  <RowSubtitle>{`${goalAmounts(shown.goal)} · ${progress.percent}%`}</RowSubtitle>
                   <GoalBar
                     fill={progress.fill}
                     reached={progress.reached}
                     testID={`${GOAL_PROGRESS_TEST_ID_PREFIX}-${item.id}`}
                   />
+                  {shown.includedMinor === 0 ? null : (
+                    <Text style={styles.status} testID={`goal-included-${item.id}`}>
+                      {COPY.goals.row.includesPortfolio.replace(
+                        '{amount}',
+                        formatDong(shown.includedMinor),
+                      )}
+                    </Text>
+                  )}
                   {status === null ? null : <Text style={styles.status}>{status}</Text>}
                 </Row>
               </SwipeToDelete>
@@ -192,6 +238,11 @@ export default function GoalsScreen() {
         currency={currency}
         today={today}
         onSubmit={submit}
+        canLinkPortfolio={editing?.currency === PORTFOLIO_CURRENCY}
+        linkPortfolio={editing !== null && editing.id === linkedId}
+        onLinkPortfolio={(next) => {
+          if (editing !== null) void linkPortfolio(editing.id, next);
+        }}
         onDelete={
           editing === null
             ? undefined

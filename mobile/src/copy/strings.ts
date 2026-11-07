@@ -280,6 +280,26 @@ export const COPY = {
    * The portfolio: trades entered by the person and the holdings and profit worked out from them
    * (`invest/portfolioModel.ts`). Private to the person, even in a household.
    */
+  assistant: {
+    title: 'Ask your money',
+    entry: 'Ask about your money',
+    intro: 'Ask about your spending, your savings goals and your stocks.',
+    consent:
+      'Your question and a summary of this month’s figures (no notes) are sent to an AI service to write the answer. It is not investment advice.',
+    placeholder: 'Ask a question',
+    send: 'Ask',
+    thinking: 'Thinking…',
+    failed: "Couldn't answer right now.",
+    unavailable: 'The assistant isn’t available on this server.',
+    offline: 'Connect to the internet to ask.',
+    clear: 'Clear the answers',
+    youAsked: 'You asked',
+    s1: 'Where did most of my money go this month?',
+    s2: 'Am I on track with my spending limit?',
+    s3: 'How is my portfolio spread out?',
+    s4: 'Which savings goal needs money first?',
+  },
+
   portfolio: {
     title: 'Portfolio',
     entryEmpty: 'Record your buys and sells',
@@ -815,8 +835,12 @@ export const COPY = {
       add: 'Add',
       editGoal: 'Edit goal',
     },
+    portfolioLink: 'Count my stock portfolio',
+    portfolioLinkHint:
+      "Adds what your stocks are worth now to this goal's progress. Only on this device.",
     row: {
       amounts: '{saved} of {target}',
+      includesPortfolio: 'Includes {amount} from your stocks',
       reached: 'Goal reached',
       perMonth: 'Save {amount} a month to reach it by {date}',
       pastDeadline: 'Deadline was {date}',

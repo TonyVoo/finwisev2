@@ -1,6 +1,8 @@
 import {
   MARKET_QUOTE_SERIES_MAX,
   MarketBriefImpact,
+  type AssistantAnswer,
+  type AssistantAskRequest,
   type MarketBrief,
   type MarketNews,
   MarketSignalLabel,
@@ -294,4 +296,21 @@ export async function getPositionSize(request: PositionSizeRequest): Promise<Pos
     message: p.message ?? null,
     disclaimer: p.disclaimer,
   };
+}
+
+const UpstreamAssistant = z.object({ answer: z.string().min(1), disclaimer: z.string() });
+
+/**
+ * One answer about the person's own money. Never cached and never logged: the question and the digest are
+ * theirs, and a repeat of the same words is not the same moment. A longer timeout than a quote, since a model
+ * is writing.
+ */
+export async function askAssistant(request: AssistantAskRequest): Promise<AssistantAnswer> {
+  const path = '/v1/assistant';
+  const raw = await call(path, { method: 'POST', body: request });
+  if (typeof raw === 'object' && raw !== null && 'invalid' in raw) {
+    throw problems.validation('That question could not be answered.');
+  }
+  const a = parseOrThrow(UpstreamAssistant, raw, path);
+  return { answer: a.answer, disclaimer: a.disclaimer };
 }

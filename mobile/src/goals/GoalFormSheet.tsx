@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Switch, Text, View } from 'react-native';
 import { Button } from '../components/Button';
-import { Row, RowTitle } from '../components/Row';
+import { Row, RowSubtitle, RowTitle } from '../components/Row';
 import { Sheet } from '../components/Sheet';
 import { TextField } from '../components/TextField';
 import { budgetInputText } from '../categories/budgetInput';
@@ -29,6 +29,7 @@ export const GOAL_SAVED_TEST_ID = 'goal-saved';
 export const GOAL_DEADLINE_TEST_ID = 'goal-deadline';
 export const GOAL_SUBMIT_TEST_ID = 'goal-submit';
 export const GOAL_DELETE_TEST_ID = 'goal-delete';
+export const GOAL_PORTFOLIO_TEST_ID = 'goal-portfolio';
 
 export interface GoalFormSheetProps {
   readonly visible: boolean;
@@ -38,6 +39,10 @@ export interface GoalFormSheetProps {
   readonly today: string;
   readonly onSubmit: (value: Omit<NewGoal, 'currency'>) => Promise<void>;
   readonly onDelete?: () => void;
+  /** Whether this goal can count the stock portfolio (a goal in dong); the switch is hidden otherwise. */
+  readonly canLinkPortfolio?: boolean;
+  readonly linkPortfolio?: boolean;
+  readonly onLinkPortfolio?: (next: boolean) => void;
 }
 
 export function GoalFormSheet({
@@ -48,6 +53,9 @@ export function GoalFormSheet({
   today,
   onSubmit,
   onDelete,
+  canLinkPortfolio = false,
+  linkPortfolio = false,
+  onLinkPortfolio,
 }: GoalFormSheetProps) {
   const styles = useStyles();
   const decimals = currencyDecimals(currency);
@@ -164,6 +172,27 @@ export function GoalFormSheet({
               <Text style={styles.error}>{errors.deadline}</Text>
             )}
           </View>
+
+          {isEdit && canLinkPortfolio && onLinkPortfolio !== undefined ? (
+            <Row
+              testID={GOAL_PORTFOLIO_TEST_ID}
+              onPress={() => onLinkPortfolio(!linkPortfolio)}
+              lastInGroup
+              accessibilityLabel={`${COPY.goals.portfolioLink}. ${COPY.goals.portfolioLinkHint}`}
+              accessibilityState={{ selected: linkPortfolio }}
+              trailing={
+                <Switch
+                  value={linkPortfolio}
+                  onValueChange={onLinkPortfolio}
+                  accessibilityElementsHidden
+                  importantForAccessibility="no-hide-descendants"
+                />
+              }
+            >
+              <RowTitle>{COPY.goals.portfolioLink}</RowTitle>
+              <RowSubtitle lines={3}>{COPY.goals.portfolioLinkHint}</RowSubtitle>
+            </Row>
+          ) : null}
 
           <Button
             testID={GOAL_SUBMIT_TEST_ID}

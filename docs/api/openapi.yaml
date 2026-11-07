@@ -93,6 +93,10 @@ tags:
       Vietnamese stock data for the Investing tab: quotes, a screening score and a position-size
       calculator. Fetched from the market service and cached briefly; nothing is stored.
       Not investment advice, and every answer says when its prices are simulated.
+  - name: assistant
+    description: |
+      Questions about the person's own money, answered by a language model from a digest the device
+      sends with each question. Nothing is stored on the server. Not investment advice.
   - name: sync
     description: |
       The offline-first sync protocol: pull changes by revision watermark, push a batch of
@@ -3311,6 +3315,59 @@ paths:
         '503':
           $ref: '#/components/responses/MarketUnavailable'
 
+  /v1/assistant/ask:
+    post:
+      operationId: askAssistant
+      tags: [assistant]
+      summary: Ask about your own money
+      description: |
+        Answers one question from `context`, a digest of the person's figures that the device builds
+        (this month's spending by category, holdings, goals). The server forwards both to a language
+        model and keeps neither. Unavailable (503 `market_unavailable`) when no model is configured.
+        Not cached.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AssistantAskRequest' }
+            example:
+              question: Tháng này tôi tiêu nhiều nhất vào đâu?
+              context: 'Chi tháng 11: Ăn uống 3.200.000; Đi lại 800.000'
+      x-errorCodes:
+        - validation_error
+        - malformed_request
+        - unsupported_media_type
+        - unauthorized
+        - token_expired
+        - token_invalid
+        - rate_limited
+        - market_unavailable
+        - internal_error
+      responses:
+        '200':
+          description: The answer.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AssistantAnswerResponse' }
+              example:
+                data:
+                  answer: '- Ăn uống chiếm nhiều nhất: 3.200.000 đ.'
+                  disclaimer: 'Công cụ hỗ trợ ra quyết định, không phải lời khuyên đầu tư.'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/MarketUnavailable'
+
   /v1/sync:
     get:
       operationId: pullSync
@@ -5839,6 +5896,27 @@ components:
       required: [data]
       properties:
         data: { $ref: '#/components/schemas/MarketBrief' }
+
+    AssistantAskRequest:
+      type: object
+      additionalProperties: false
+      required: [question, context]
+      properties:
+        question: { type: string, minLength: 1, maxLength: 500 }
+        context: { type: string, minLength: 1, maxLength: 6000 }
+
+    AssistantAnswerResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required: [answer, disclaimer]
+          properties:
+            answer: { type: string, minLength: 1 }
+            disclaimer: { type: string }
 
     PositionSizeRequest:
       type: object

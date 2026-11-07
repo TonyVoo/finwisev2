@@ -1168,3 +1168,22 @@ them as proposals the Designer can reword; changing a row here means changing
 | `homeWidget.showTitle`                  | `Widget shows`                                                                                                                                                                               | Settings, widget row                                                         |
 | `homeWidget.showSpending`               | `Today’s spending`                                                                                                                                                                           | Settings, widget row                                                         |
 | `homeWidget.showPortfolio`              | `Portfolio value`                                                                                                                                                                            | Settings, widget row                                                         |
+| `assistant.title` | `Ask your money` | Ask your money screen |
+| `assistant.entry` | `Ask about your money` | Ask your money screen |
+| `assistant.intro` | `Ask about your spending, your savings goals and your stocks.` | Ask your money screen |
+| `assistant.consent` | `Your question and a summary of this month’s figures (no notes) are sent to an AI service to write the answer. It is not investment advice.` | Ask your money screen |
+| `assistant.placeholder` | `Ask a question` | Ask your money screen |
+| `assistant.send` | `Ask` | Ask your money screen |
+| `assistant.thinking` | `Thinking…` | Ask your money screen |
+| `assistant.failed` | `Couldn't answer right now.` | Ask your money screen |
+| `assistant.unavailable` | `The assistant isn’t available on this server.` | Ask your money screen |
+| `assistant.offline` | `Connect to the internet to ask.` | Ask your money screen |
+| `assistant.clear` | `Clear the answers` | Ask your money screen |
+| `assistant.youAsked` | `You asked` | Ask your money screen |
+| `assistant.s1` | `Where did most of my money go this month?` | Ask your money screen |
+| `assistant.s2` | `Am I on track with my spending limit?` | Ask your money screen |
+| `assistant.s3` | `How is my portfolio spread out?` | Ask your money screen |
+| `assistant.s4` | `Which savings goal needs money first?` | Ask your money screen |
+| `goals.portfolioLink` | `Count my stock portfolio` | Goal sheet, portfolio switch |
+| `goals.portfolioLinkHint` | `Adds what your stocks are worth now to this goal's progress. Only on this device.` | Goal sheet, portfolio switch |
+| `goals.row.includesPortfolio` | `Includes {amount} from your stocks` | Goals list, row status |

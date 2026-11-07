@@ -1,4 +1,6 @@
 import {
+  AssistantAnswerResponse,
+  AssistantAskRequest,
   MarketBriefResponse,
   MarketNewsResponse,
   MarketQuoteResponse,
@@ -12,8 +14,10 @@ import { Router, type Request, type Response } from 'express';
 import { problems } from '../errors.ts';
 import { toIssues } from '../http/issues.ts';
 import { sendJson } from '../http/respond.ts';
+import { assistantRateLimit } from '../middleware/assistantRateLimit.ts';
 import { validateBody, validateQuery, validatedQuery } from '../middleware/validate.ts';
 import {
+  askAssistant,
   getMarketBrief,
   getMarketNews,
   getMarketQuote,
@@ -78,5 +82,15 @@ marketRouter.post(
   async (req: Request, res: Response) => {
     const data = await getPositionSize(req.body as PositionSizeRequest);
     sendJson(res, 200, PositionSizeResponse, { data });
+  },
+);
+
+marketRouter.post(
+  '/assistant/ask',
+  assistantRateLimit,
+  validateBody(AssistantAskRequest),
+  async (req: Request, res: Response) => {
+    const data = await askAssistant(req.body as AssistantAskRequest);
+    sendJson(res, 200, AssistantAnswerResponse, { data });
   },
 );

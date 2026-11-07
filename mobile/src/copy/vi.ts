@@ -256,6 +256,26 @@ export const VIETNAMESE_COPY: CopyBundle = {
       unwatch: 'Bỏ khỏi theo dõi',
     },
 
+    assistant: {
+      title: 'Hỏi về tiền của bạn',
+      entry: 'Hỏi về tiền của bạn',
+      intro: 'Hỏi về chi tiêu, mục tiêu tiết kiệm và cổ phiếu của bạn.',
+      consent:
+        'Câu hỏi và bản tóm tắt số liệu tháng này (không gồm ghi chú) được gửi tới dịch vụ AI để viết câu trả lời. Đây không phải lời khuyên đầu tư.',
+      placeholder: 'Đặt câu hỏi',
+      send: 'Hỏi',
+      thinking: 'Đang suy nghĩ…',
+      failed: 'Chưa trả lời được lúc này.',
+      unavailable: 'Máy chủ này chưa có trợ lý.',
+      offline: 'Hãy kết nối mạng để hỏi.',
+      clear: 'Xoá các câu trả lời',
+      youAsked: 'Bạn hỏi',
+      s1: 'Tháng này tôi tiêu nhiều nhất vào đâu?',
+      s2: 'Tôi có đang giữ đúng hạn mức chi không?',
+      s3: 'Danh mục cổ phiếu của tôi phân bổ thế nào?',
+      s4: 'Mục tiêu tiết kiệm nào cần tiền trước?',
+    },
+
     portfolio: {
       title: 'Danh mục',
       entryEmpty: 'Ghi lại các lệnh mua và bán',
@@ -742,8 +762,12 @@ export const VIETNAMESE_COPY: CopyBundle = {
         add: 'Thêm',
         editGoal: 'Sửa mục tiêu',
       },
+      portfolioLink: 'Tính cả danh mục cổ phiếu',
+      portfolioLinkHint:
+        'Cộng giá trị cổ phiếu hiện tại vào tiến độ của mục tiêu này. Chỉ trên thiết bị này.',
       row: {
         amounts: '{saved} trên {target}',
+        includesPortfolio: 'Gồm {amount} từ cổ phiếu',
         reached: 'Đã đạt mục tiêu',
         perMonth: 'Tiết kiệm {amount} mỗi tháng để đạt mục tiêu trước {date}',
         pastDeadline: 'Hạn chót là {date}',
