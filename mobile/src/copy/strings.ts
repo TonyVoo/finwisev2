@@ -127,6 +127,9 @@ export const COPY = {
       nearMany: '{count} categories close to budget',
       bodyOver: '{names}: spending is past the monthly budget.',
       bodyNear: '{names}: 80% or more of the monthly budget is used.',
+      paceOne: 'On pace to go over',
+      paceMany: '{count} categories on pace to go over',
+      bodyPace: 'At this rate {names} will be past the monthly budget before the month ends.',
       and: '{names} and {last}',
       andMore: '{names} and {count} more',
       open: 'See summary',
@@ -152,6 +155,19 @@ export const COPY = {
   },
 
   summary: {
+    suggest: {
+      title: 'Suggested budgets',
+      intro: 'Worked out from your last months of spending, with a little room.',
+      row: '{name}: {amount} a month',
+      detailNew: 'No budget now · usually {average}',
+      detailChange: 'Now {current} · usually {average}',
+      limitRow: 'Whole month: {amount}',
+      limitDetail: 'Usually {average} across all categories',
+      use: 'Use',
+      useAll: 'Use all',
+      later: 'Not now',
+      applied: 'Budget set.',
+    },
     title: 'Summary',
     /**
      * The expense count under the total, which has an explicit singular form - deck §0:
@@ -280,6 +296,19 @@ export const COPY = {
    * The portfolio: trades entered by the person and the holdings and profit worked out from them
    * (`invest/portfolioModel.ts`). Private to the person, even in a household.
    */
+  netWorth: {
+    title: 'Net worth',
+    hint: 'Your savings and your stocks over time.',
+    now: 'Worth now',
+    savings: 'Savings in goals',
+    stocks: 'Stocks',
+    savingsFrom:
+      'Savings are counted from {date}, when they began to be recorded. Earlier days show the stocks alone.',
+    chartEmpty: 'The chart builds up as the days pass and prices come in.',
+    offline: 'Connect to the internet to see how your stocks were worth day by day.',
+    vndOnly: 'Net worth is shown for accounts in Vietnamese dong.',
+  },
+
   notifications: {
     title: 'Notifications',
     open: 'Notifications',

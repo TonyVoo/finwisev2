@@ -12,6 +12,8 @@ import { generateDueRecurring } from '../recurring/generate';
 import { syncBillReminders } from '../notifications/billReminders';
 import { reconcileDataScope } from '../household/dataScope';
 import { createActiveSpaceSource } from '../household/spaces';
+import { todayCalendarDate } from '../lib/calendar';
+import { recordSavingsNow } from '../invest/netWorth';
 import { readAlerts } from '../invest/alerts';
 import { checkPriceAlerts } from '../invest/checkAlerts';
 import { syncInvesting } from '../invest/investingSync';
@@ -166,6 +168,8 @@ export async function createAppContainer(options: AppContainerOptions = {}): Pro
       if (created > 0) void queryClient.invalidateQueries({ queryKey: queryKeys.local() });
       void syncBillReminders(database, clock()).catch(() => undefined);
       void syncGoalReminders(database, clock()).catch(() => undefined);
+      // One reading of the savings a day, so the net worth chart has a history to draw.
+      void recordSavingsNow(database, todayCalendarDate(clock())).catch(() => undefined);
       void syncDcaReminders(database, clock()).catch(() => undefined);
       // After every pass, so when the app opens, comes forward or wakes to sync: throttled inside.
       // The lists are level with the server's first, so a second phone's alerts are looked at too, and the server

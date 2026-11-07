@@ -121,6 +121,9 @@ export const VIETNAMESE_COPY: CopyBundle = {
         nearMany: '{count} danh mục gần hết ngân sách',
         bodyOver: '{names}: chi tiêu đã vượt ngân sách tháng.',
         bodyNear: '{names}: đã dùng từ 80% ngân sách tháng trở lên.',
+        paceOne: 'Có thể vượt ngân sách',
+        paceMany: '{count} danh mục có thể vượt ngân sách',
+        bodyPace: 'Với tốc độ này, {names} sẽ vượt ngân sách tháng trước khi hết tháng.',
         and: '{names} và {last}',
         andMore: '{names} và {count} danh mục khác',
         open: 'Xem tổng quan',
@@ -144,6 +147,19 @@ export const VIETNAMESE_COPY: CopyBundle = {
     },
 
     summary: {
+      suggest: {
+        title: 'Gợi ý ngân sách',
+        intro: 'Tính từ chi tiêu những tháng gần đây, có chừa một chút.',
+        row: '{name}: {amount} mỗi tháng',
+        detailNew: 'Chưa có ngân sách · thường chi {average}',
+        detailChange: 'Hiện {current} · thường chi {average}',
+        limitRow: 'Cả tháng: {amount}',
+        limitDetail: 'Thường chi {average} cho mọi danh mục',
+        use: 'Dùng',
+        useAll: 'Dùng tất cả',
+        later: 'Để sau',
+        applied: 'Đã đặt ngân sách.',
+      },
       title: 'Tổng quan',
       count: { many: '{count} khoản chi', one: '1 khoản chi' },
       trend: { title: '6 tháng gần nhất', spent: 'Đã chi', income: 'Thu nhập' },
@@ -254,6 +270,19 @@ export const VIETNAMESE_COPY: CopyBundle = {
       watchlistTitle: 'Theo dõi',
       watch: 'Thêm vào theo dõi',
       unwatch: 'Bỏ khỏi theo dõi',
+    },
+
+    netWorth: {
+      title: 'Tài sản ròng',
+      hint: 'Tiền tiết kiệm và cổ phiếu của bạn theo thời gian.',
+      now: 'Hiện có',
+      savings: 'Tiết kiệm trong mục tiêu',
+      stocks: 'Cổ phiếu',
+      savingsFrom:
+        'Tiền tiết kiệm được tính từ {date}, lúc bắt đầu được ghi lại. Các ngày trước chỉ có cổ phiếu.',
+      chartEmpty: 'Biểu đồ sẽ dày dần theo ngày và khi có giá.',
+      offline: 'Hãy kết nối mạng để xem giá trị cổ phiếu từng ngày.',
+      vndOnly: 'Tài sản ròng chỉ hiển thị cho tài khoản dùng đồng Việt Nam.',
     },
 
     notifications: {

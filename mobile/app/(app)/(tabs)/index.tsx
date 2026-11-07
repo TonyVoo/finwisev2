@@ -31,6 +31,7 @@ import {
 } from '@/db/hooks';
 import { BudgetAlertBanner } from '@/expenses/BudgetAlertBanner';
 import { CategoryReviewBanner } from '@/expenses/CategoryReviewBanner';
+import { monthProgress } from '@/summary/insightsModel';
 import { budgetAlert } from '@/summary/budgetAlerts';
 import { notifyBudgetAlert } from '@/notifications/budgetNotifier';
 import { summariseMonth } from '@/summary/summaryModel';
@@ -102,7 +103,9 @@ export default function ExpenseListScreen() {
   // second category going over brings the banner back.
   const monthSpend = useMonthCategorySpend(month);
   const [dismissedAlert, setDismissedAlert] = useState<string | null>(null);
-  const alert = isCurrent ? budgetAlert(summariseMonth(monthSpend.data ?? []).entries) : null;
+  const alert = isCurrent
+    ? budgetAlert(summariseMonth(monthSpend.data ?? []).entries, monthProgress(today))
+    : null;
   const alertKey = alert?.key ?? null;
   useEffect(() => {
     if (alert === null) return;

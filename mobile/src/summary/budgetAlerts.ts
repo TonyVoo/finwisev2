@@ -11,7 +11,10 @@ import type { SpendEntry } from './summaryModel';
  * float division to round the wrong way at exactly 80.
  */
 
-export type BudgetAlertLevel = 'over' | 'near';
+export type BudgetAlertLevel = 'over' | 'near' | 'pace';
+
+/** Too early in a month to say anything of its pace: a big first-week purchase is not a trend. */
+export const PACE_FROM_DAY = 7;
 
 export interface BudgetAlert {
   readonly level: BudgetAlertLevel;
@@ -21,9 +24,14 @@ export interface BudgetAlert {
   readonly key: string;
 }
 
-export function budgetAlert(entries: readonly SpendEntry[]): BudgetAlert | null {
+export function budgetAlert(
+  entries: readonly SpendEntry[],
+  /** The day the month has reached, for the month still going on; null for any other month. */
+  progress: { readonly day: number; readonly daysInMonth: number } | null = null,
+): BudgetAlert | null {
   const over: string[] = [];
   const near: string[] = [];
+  const pace: string[] = [];
 
   for (const entry of entries) {
     const budget = entry.budget;
@@ -31,6 +39,13 @@ export function budgetAlert(entries: readonly SpendEntry[]): BudgetAlert | null 
     if (budget.over) over.push(entry.name);
     else if (budget.spentMinor * 5 >= budget.budgetMinor * 4 && budget.spentMinor > 0) {
       near.push(entry.name);
+    } else if (
+      progress !== null &&
+      progress.day >= PACE_FROM_DAY &&
+      // At this rate the month ends past the budget: spent / day * daysInMonth > budget, in integers.
+      budget.spentMinor * progress.daysInMonth > budget.budgetMinor * progress.day
+    ) {
+      pace.push(entry.name);
     }
   }
 
@@ -38,6 +53,7 @@ export function budgetAlert(entries: readonly SpendEntry[]): BudgetAlert | null 
   // someone else being close as well.
   if (over.length > 0) return { level: 'over', names: over, key: `over:${over.join('|')}` };
   if (near.length > 0) return { level: 'near', names: near, key: `near:${near.join('|')}` };
+  if (pace.length > 0) return { level: 'pace', names: pace, key: `pace:${pace.join('|')}` };
   return null;
 }
 
@@ -64,13 +80,15 @@ export function alertTitle(alert: BudgetAlert): string {
   if (alert.level === 'over') {
     return many ? copy.overMany.replace('{count}', String(alert.names.length)) : copy.overOne;
   }
+  if (alert.level === 'pace') {
+    return many ? copy.paceMany.replace('{count}', String(alert.names.length)) : copy.paceOne;
+  }
   return many ? copy.nearMany.replace('{count}', String(alert.names.length)) : copy.nearOne;
 }
 
 export function alertBody(alert: BudgetAlert): string {
   const copy = COPY.home.budgetAlert;
-  return (alert.level === 'over' ? copy.bodyOver : copy.bodyNear).replace(
-    '{names}',
-    alertNames(alert.names),
-  );
+  const body =
+    alert.level === 'over' ? copy.bodyOver : alert.level === 'pace' ? copy.bodyPace : copy.bodyNear;
+  return body.replace('{names}', alertNames(alert.names));
 }

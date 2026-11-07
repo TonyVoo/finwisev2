@@ -1,5 +1,5 @@
 import { useTabBarClearance } from '@/navigation/tabBar';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AppBar } from '@/components/Chrome';
@@ -8,12 +8,21 @@ import { IconBadge } from '@/components/IconBadge';
 import { Row, RowSubtitle, RowTitle } from '@/components/Row';
 import { COPY } from '@/copy/strings';
 import {
+  useLiveCategories,
+  useMonthlyLimit,
   useIncomeTrend,
   useMonthCategorySpend,
   useMonthIncome,
   useSpendTrend,
   useUserCurrency,
 } from '@/db/hooks';
+import { useDatabase } from '@/db/DatabaseProvider';
+import { META_KEYS, readMeta, writeMeta } from '@/db/meta';
+import { useLocalWrite } from '@/db/localWrite';
+import { updateCategory } from '@/db/mutations';
+import { useSnackbar } from '@/components/Snackbar';
+import { BudgetSuggestionsCard } from '@/summary/BudgetSuggestionsCard';
+import { type BudgetSuggestion, suggestBudgets, suggestLimit } from '@/summary/budgetSuggest';
 import { MonthTotal } from '@/expenses/MonthTotal';
 import { useFirstPaintSkeleton } from '@/expenses/useFirstPaint';
 import { useAwaitingFirstSync } from '@/sync/useAwaitingFirstSync';
@@ -143,6 +152,79 @@ export default function SummaryScreen() {
     insightText(insight, COPY.summary.insights, monthName(previousMonth), currencyCode ?? ''),
   );
 
+  // Budget suggestions: from the three months before this one, offered in the month still going on.
+  const database = useDatabase();
+  const localWrite = useLocalWrite();
+  const showSnackbar = useSnackbar();
+  const categories = useLiveCategories();
+  const monthlyLimit = useMonthlyLimit();
+  const [dismissedIn, setDismissedIn] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void readMeta(database, META_KEYS.budgetSuggestDismissed).then((value) => {
+      if (!cancelled) setDismissedIn(value);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [database]);
+  const histories = useMemo(
+    () =>
+      previousSpend.data === undefined ||
+      olderSpend.data === undefined ||
+      oldestSpend.data === undefined
+        ? null
+        : [previousSpend.data, olderSpend.data, oldestSpend.data],
+    [previousSpend.data, olderSpend.data, oldestSpend.data],
+  );
+  const suggestions = useMemo(() => {
+    if (histories === null || categories.data === undefined) return [];
+    return suggestBudgets(
+      categories.data.map((category) => ({
+        categoryId: category.id,
+        name: category.name,
+        months: histories.map(
+          (rows) => rows.find((row) => row.categoryId === category.id)?.totalMinor ?? 0,
+        ),
+        currentMinor: category.monthlyBudgetMinor,
+      })),
+    );
+  }, [histories, categories.data]);
+  const limitSuggestion = useMemo(() => {
+    if (histories === null) return null;
+    const totals = histories.map((rows) => rows.reduce((sum, row) => sum + row.totalMinor, 0));
+    const suggestedMinor = suggestLimit(totals, monthlyLimit.limitMinor);
+    if (suggestedMinor === null) return null;
+    const spent = totals.filter((t) => t > 0);
+    return {
+      suggestedMinor,
+      averageMinor: Math.round(spent.reduce((a, b) => a + b, 0) / spent.length),
+    };
+  }, [histories, monthlyLimit.limitMinor]);
+  const showSuggestions = isCurrent && !pending && currencyCode !== null && dismissedIn !== month;
+
+  async function useSuggestion(suggestion: BudgetSuggestion): Promise<void> {
+    await localWrite((db) =>
+      updateCategory(db, suggestion.categoryId, { monthlyBudgetMinor: suggestion.suggestedMinor }),
+    );
+    showSnackbar({ message: COPY.summary.suggest.applied });
+  }
+  async function useAll(): Promise<void> {
+    await localWrite(async (db) => {
+      for (const suggestion of suggestions) {
+        await updateCategory(db, suggestion.categoryId, {
+          monthlyBudgetMinor: suggestion.suggestedMinor,
+        });
+      }
+    });
+    if (limitSuggestion !== null) await monthlyLimit.setLimit(limitSuggestion.suggestedMinor);
+    showSnackbar({ message: COPY.summary.suggest.applied });
+  }
+  async function later(): Promise<void> {
+    setDismissedIn(month);
+    await writeMeta(database, META_KEYS.budgetSuggestDismissed, month);
+  }
+
   return (
     <View style={styles.screen}>
       {/* The pill, in the same trailing slot as on Home (§3): the one place this screen
@@ -206,6 +288,18 @@ export default function SummaryScreen() {
           </InsightsCard>
         ) : null}
 
+        {showSuggestions && currencyCode !== null ? (
+          <BudgetSuggestionsCard
+            suggestions={suggestions}
+            limit={limitSuggestion}
+            currency={currencyCode}
+            onUse={(s) => void useSuggestion(s)}
+            onUseLimit={(minor) => void monthlyLimit.setLimit(minor)}
+            onUseAll={() => void useAll()}
+            onLater={() => void later()}
+          />
+        ) : null}
+
         {/* Below the month's own figures, and shown even for an empty month: "nothing this month"
             is context the trend gives. Held back until there are two months to compare. */}
         {!pending && currencyCode !== null && trend.isWorthShowing ? (
@@ -215,6 +309,18 @@ export default function SummaryScreen() {
         {/* The whole year, one tap away from the month. */}
         <View style={styles.yearGap} />
         <Card>
+          {currencyCode === 'VND' ? (
+            <Row
+              testID="summary-networth"
+              leading={<IconBadge name="trending-up" />}
+              onPress={() => router.push('/(app)/networth')}
+              chevron
+              accessibilityLabel={`${COPY.netWorth.title}. ${COPY.netWorth.hint}`}
+            >
+              <RowTitle>{COPY.netWorth.title}</RowTitle>
+              <RowSubtitle lines={2}>{COPY.netWorth.hint}</RowSubtitle>
+            </Row>
+          ) : null}
           <Row
             testID="summary-year"
             leading={<IconBadge name="calendar" />}

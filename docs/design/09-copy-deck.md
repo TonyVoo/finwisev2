@@ -681,6 +681,9 @@ them as proposals the Designer can reword; changing a row here means changing
 | `home.budgetAlert.nearMany`             | `{count} categories close to budget`                                                                                                                                                         | Home, budget banner title                                                    |
 | `home.budgetAlert.bodyOver`             | `{names}: spending is past the monthly budget.`                                                                                                                                              | Home, budget banner body                                                     |
 | `home.budgetAlert.bodyNear`             | `{names}: 80% or more of the monthly budget is used.`                                                                                                                                        | Home, budget banner body                                                     |
+| `home.budgetAlert.paceOne` | `On pace to go over` | Home, budget banner title |
+| `home.budgetAlert.paceMany` | `{count} categories on pace to go over` | Home, budget banner title |
+| `home.budgetAlert.bodyPace` | `At this rate {names} will be past the monthly budget before the month ends.` | Home, budget banner body |
 | `home.budgetAlert.and`                  | `{names} and {last}`                                                                                                                                                                         | Home, budget banner, two or three names                                      |
 | `home.budgetAlert.andMore`              | `{names} and {count} more`                                                                                                                                                                   | Home, budget banner, more than three names                                   |
 | `home.budgetAlert.open`                 | `See summary`                                                                                                                                                                                | Home, budget banner button                                                   |
@@ -1207,3 +1210,23 @@ them as proposals the Designer can reword; changing a row here means changing
 | `notifications.offBody` | `Allow notifications to be told when a price alert fires or a plan is due.` | Notifications screen and its bell |
 | `notifications.allow` | `Allow notifications` | Notifications screen and its bell |
 | `notifications.openSettings` | `Open settings` | Notifications screen and its bell |
+| `summary.suggest.title` | `Suggested budgets` | Summary, suggested budgets card |
+| `summary.suggest.intro` | `Worked out from your last months of spending, with a little room.` | Summary, suggested budgets card |
+| `summary.suggest.row` | `{name}: {amount} a month` | Summary, suggested budgets card |
+| `summary.suggest.detailNew` | `No budget now · usually {average}` | Summary, suggested budgets card |
+| `summary.suggest.detailChange` | `Now {current} · usually {average}` | Summary, suggested budgets card |
+| `summary.suggest.limitRow` | `Whole month: {amount}` | Summary, suggested budgets card |
+| `summary.suggest.limitDetail` | `Usually {average} across all categories` | Summary, suggested budgets card |
+| `summary.suggest.use` | `Use` | Summary, suggested budgets card |
+| `summary.suggest.useAll` | `Use all` | Summary, suggested budgets card |
+| `summary.suggest.later` | `Not now` | Summary, suggested budgets card |
+| `summary.suggest.applied` | `Budget set.` | Summary, suggested budgets card |
+| `netWorth.title` | `Net worth` | Net worth screen and its Summary row |
+| `netWorth.hint` | `Your savings and your stocks over time.` | Net worth screen and its Summary row |
+| `netWorth.now` | `Worth now` | Net worth screen and its Summary row |
+| `netWorth.savings` | `Savings in goals` | Net worth screen and its Summary row |
+| `netWorth.stocks` | `Stocks` | Net worth screen and its Summary row |
+| `netWorth.savingsFrom` | `Savings are counted from {date}, when they began to be recorded. Earlier days show the stocks alone.` | Net worth screen and its Summary row |
+| `netWorth.chartEmpty` | `The chart builds up as the days pass and prices come in.` | Net worth screen and its Summary row |
+| `netWorth.offline` | `Connect to the internet to see how your stocks were worth day by day.` | Net worth screen and its Summary row |
+| `netWorth.vndOnly` | `Net worth is shown for accounts in Vietnamese dong.` | Net worth screen and its Summary row |

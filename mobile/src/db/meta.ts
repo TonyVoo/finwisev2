@@ -116,6 +116,10 @@ export const META_KEYS = {
   pushToken: 'pushToken',
   /** When the person last opened the notifications screen, ISO: what fired after it is new. A device setting. */
   notificationsSeenAt: 'notificationsSeenAt',
+  /** The month (`YYYY-MM`) the person said "not now" to the budget suggestions in: they come back next month. */
+  budgetSuggestDismissed: 'budgetSuggestDismissed',
+  /** The savings in goals as last seen each day (`[{ date, savingsMinor }]`), from which the net worth chart builds its history. A device setting. */
+  netWorthSnapshots: 'netWorthSnapshots',
   /**
    * The id of the savings goal that counts the stock portfolio towards its progress, or empty for none.
    * Wiped with the store: goal ids belong to one account.
