@@ -1,13 +1,18 @@
 import { useTabBarClearance } from '@/navigation/tabBar';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { AppBar } from '@/components/Chrome';
+import { useApiClient } from '@/bootstrap/AppProviders';
+import { AppBar, IconButton } from '@/components/Chrome';
 import { Card } from '@/components/Card';
 import { IconBadge } from '@/components/IconBadge';
 import { Row, RowSubtitle, RowTitle } from '@/components/Row';
 import { COPY } from '@/copy/strings';
 import {
+  useGoalsList,
+  useTrades,
   useLiveCategories,
   useMonthlyLimit,
   useIncomeTrend,
@@ -21,6 +26,9 @@ import { META_KEYS, readMeta, writeMeta } from '@/db/meta';
 import { useLocalWrite } from '@/db/localWrite';
 import { updateCategory } from '@/db/mutations';
 import { useSnackbar } from '@/components/Snackbar';
+import { buildStocksBlock } from '@/summary/monthReport';
+import { monthReportHtml } from '@/summary/monthReportHtml';
+import { useOptionalSyncStatus } from '@/sync/SyncProvider';
 import { BudgetSuggestionsCard } from '@/summary/BudgetSuggestionsCard';
 import { type BudgetSuggestion, suggestBudgets, suggestLimit } from '@/summary/budgetSuggest';
 import { MonthTotal } from '@/expenses/MonthTotal';
@@ -48,6 +56,7 @@ import { usePullToRefresh } from '@/sync/usePullToRefresh';
 import { createStyles } from '@/theme/ThemeProvider';
 
 export const SUMMARY_SCROLL_TEST_ID = 'summary-scroll';
+export const SUMMARY_SHARE_TEST_ID = 'summary-share';
 
 /**
  * The monthly summary: `docs/design/08-monthly-summary.md`.
@@ -201,6 +210,45 @@ export default function SummaryScreen() {
       averageMinor: Math.round(spent.reduce((a, b) => a + b, 0) / spent.length),
     };
   }, [histories, monthlyLimit.limitMinor]);
+  // The month as a PDF, made on the phone and handed to the share sheet (as the year report is).
+  const api = useApiClient();
+  const syncStatus = useOptionalSyncStatus();
+  const goals = useGoalsList();
+  const trades = useTrades();
+  const [sharing, setSharing] = useState(false);
+  async function shareReport(): Promise<void> {
+    if (currencyCode === null || sharing) return;
+    setSharing(true);
+    try {
+      if (!(await Sharing.isAvailableAsync())) {
+        showSnackbar({ message: COPY.summary.report.unavailable });
+        return;
+      }
+      const online = syncStatus === null || syncStatus.reachable;
+      const stocks =
+        currencyCode === 'VND' && online && (trades.data ?? []).length > 0
+          ? await buildStocksBlock(api, trades.data ?? [])
+          : null;
+      const html = monthReportHtml({
+        month,
+        currency: currencyCode,
+        spentMinor: summary.totalMinor,
+        incomeMinor: income.data ?? 0,
+        entries: summary.entries,
+        goals: goals.data ?? [],
+        stocks,
+        insights: insightSentences,
+        madeOn: today,
+      });
+      const file = await Print.printToFileAsync({ html });
+      await Sharing.shareAsync(file.uri, { mimeType: 'application/pdf', UTI: 'com.adobe.pdf' });
+    } catch {
+      showSnackbar({ message: COPY.summary.report.failed });
+    } finally {
+      setSharing(false);
+    }
+  }
+
   const showSuggestions = isCurrent && !pending && currencyCode !== null && dismissedIn !== month;
 
   async function useSuggestion(suggestion: BudgetSuggestion): Promise<void> {
@@ -229,7 +277,22 @@ export default function SummaryScreen() {
     <View style={styles.screen}>
       {/* The pill, in the same trailing slot as on Home (§3): the one place this screen
           mentions connectivity, and the only thing it knows about sync. */}
-      <AppBar large title={COPY.summary.title} elevated={scrolled} trailing={<SyncIndicator />} />
+      <AppBar
+        large
+        title={COPY.summary.title}
+        elevated={scrolled}
+        trailing={
+          <>
+            <SyncIndicator />
+            <IconButton
+              icon="share"
+              label={COPY.summary.report.share}
+              onPress={() => void shareReport()}
+              testID={SUMMARY_SHARE_TEST_ID}
+            />
+          </>
+        }
+      />
 
       {/* Pinned, exactly as on Home, and reading the same shared selection. */}
       <MonthSwitcher onOpenPicker={() => router.push('/(app)/month-picker')} />
