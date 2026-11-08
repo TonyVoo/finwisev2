@@ -50,6 +50,8 @@ export default function RecurringScreen() {
   const showSnackbar = useSnackbar();
   const localWrite = useLocalWrite();
   const { today } = useSelectedMonth();
+  // Due is judged against the day this screen shows, not a second reading of the system clock.
+  const dayClock = useCallback(() => new Date(`${today}T12:00:00`), [today]);
 
   const rules = useRecurringList();
   const categories = useCategoriesWithCounts();
@@ -78,7 +80,7 @@ export default function RecurringScreen() {
         } else {
           await updateRecurring(db, editing.id, { ...value, currency });
         }
-        await generateDueRecurring(db);
+        await generateDueRecurring(db, { clock: dayClock });
       });
       // Ask here, where the person has just set something up that a reminder is for, then
       // schedule: the sync pass never prompts.
@@ -88,7 +90,7 @@ export default function RecurringScreen() {
       setSheetOpen(false);
       showSnackbar({ message: SNACK_COPY.recurring.saved });
     },
-    [editing, currency, localWrite, showSnackbar, database],
+    [editing, currency, localWrite, showSnackbar, database, dayClock],
   );
 
   const addSuggested = useCallback(
@@ -104,12 +106,12 @@ export default function RecurringScreen() {
           startDate: suggestion.nextDate,
           endDate: null,
         });
-        await generateDueRecurring(db);
+        await generateDueRecurring(db, { clock: dayClock });
       });
       await queryClient.invalidateQueries({ queryKey: ['local', 'recurring'] });
       showSnackbar({ message: COPY.recurringSuggestions.added });
     },
-    [localWrite, queryClient, showSnackbar],
+    [localWrite, queryClient, showSnackbar, dayClock],
   );
 
   const confirmDelete = useCallback(async () => {

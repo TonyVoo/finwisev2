@@ -14,7 +14,6 @@ import NotificationsScreen, {
   NOTIFICATIONS_ALLOW_TEST_ID,
   NOTIFICATIONS_EMPTY_TEST_ID,
   NOTIFICATIONS_OFF_TEST_ID,
-  NOTIFICATIONS_PLAN_PREFIX,
 } from '../../app/(app)/notifications';
 import { mountScreen, pressOn, type MountedScreen } from '../support/mount';
 import { resetRouter, routerRecord } from '../support/router';
