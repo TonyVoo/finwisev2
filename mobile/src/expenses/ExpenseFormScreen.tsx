@@ -1,7 +1,7 @@
 import type { ReceiptScan } from '@expense-tracker/shared';
 import { Toggle } from '@/components/Toggle';
 import { ApiRequestError } from '../api/errors';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AccessibilityInfo, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Feather from '@expo/vector-icons/Feather';
@@ -85,13 +85,6 @@ import { PaidBySheet } from './PaidBySheet';
 import { ReceiptCard } from '../receipts/ReceiptCard';
 import { ReceiptSheet } from '../receipts/ReceiptSheet';
 import { ReceiptSuggestionCard } from '../receipts/ReceiptSuggestionCard';
-import { QUICK_ADD_SUGGESTION_TEST_ID, QuickAddLine } from '../quickAdd/QuickAddLine';
-import { parseQuickAdd, type QuickAddReading } from '../quickAdd/parseQuickAdd';
-import { isEmptyReading, planQuickAdd, quickAddSummary } from '../quickAdd/planQuickAdd';
-import { shouldAskModel } from '../quickAdd/askModel';
-import { mergeQuickAdd } from '../quickAdd/mergeQuickAdd';
-import { isQuickAddUnavailable, markQuickAddUnavailable } from '../quickAdd/quickAddAvailability';
-import { useOptionalSyncStatus } from '../sync/SyncProvider';
 import { clearCapture, peekCapture } from '../capture/pendingCapture';
 import { markAdded } from '../capture/store';
 import { guessCategory } from '../capture/categoryGuess';
@@ -233,16 +226,6 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
   const [scan, setScan] = useState<ReceiptScan | null>(null);
   const [scanning, setScanning] = useState(false);
   const [scanOff, setScanOff] = useState(isScanUnavailable);
-  // Quick add: the sentence being typed, and what Fill made of it while the person decides.
-  const [describeText, setDescribeText] = useState('');
-  const [quickReading, setQuickReading] = useState<QuickAddReading | null>(null);
-  // The server is being asked about the sentence, and whether it has said it cannot read sentences.
-  const [quickAsking, setQuickAsking] = useState(false);
-  const [quickOff, setQuickOff] = useState(isQuickAddUnavailable);
-  // Bumped whenever the sentence changes or a new Fill starts, so an answer that arrives late is dropped.
-  const quickTicket = useRef(0);
-  const syncStatus = useOptionalSyncStatus();
-  const offline = syncStatus !== null && !syncStatus.reachable;
 
   const currencyCode = currency.data ?? null;
   const storedRow = isEdit ? (stored.data ?? null) : null;
@@ -648,89 +631,6 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
     setScan(null);
   }, [scan, draft, currencyCode, entryCode, liveCategories, today]);
 
-  /**
-   * Read the sentence on the phone and offer the result; it touches no field until Use.
-   *
-   * The phone reads it first. Only when its rules are unsure, and the device is online, and the server has
-   * not said it cannot, is the server asked, and its answer is merged beside what the phone read. However that
-   * goes - offline, a failure, a refusal - the person still gets a card made of at least what the phone read.
-   */
-  const onFillQuickAdd = useCallback(async () => {
-    const text = describeText.trim();
-    if (text === '') {
-      showSnackbar({ message: COPY.form.quickAdd.empty });
-      return;
-    }
-    if (currencyCode === null || quickAsking) return;
-    const own = liveCategories.map((row) => ({ id: row.id, name: row.name }));
-    const rules = parseQuickAdd(text, { currency: currencyCode, today, categories: own });
-    quickTicket.current += 1;
-    const ticket = quickTicket.current;
-    setQuickReading(null);
-
-    let reading = rules;
-    if (shouldAskModel({ reading: rules, unavailable: quickOff, offline })) {
-      setQuickAsking(true);
-      try {
-        const { data } = await api.quickAdd({ text, today });
-        reading = mergeQuickAdd(rules, data, own);
-      } catch (error) {
-        if (error instanceof ApiRequestError && error.code === 'quick_add_unavailable') {
-          markQuickAddUnavailable();
-          setQuickOff(true);
-        }
-        // Any other failure is quiet: the phone keeps what it read itself.
-      } finally {
-        setQuickAsking(false);
-      }
-      // The sentence changed, or Fill was pressed again, while the server was thinking.
-      if (ticket !== quickTicket.current) return;
-    }
-
-    if (isEmptyReading(reading)) {
-      showSnackbar({ message: COPY.form.quickAdd.nothingFound });
-      return;
-    }
-    setQuickReading(reading);
-  }, [
-    describeText,
-    currencyCode,
-    quickAsking,
-    liveCategories,
-    today,
-    quickOff,
-    offline,
-    api,
-    showSnackbar,
-  ]);
-
-  /** Put the reading's safe values in the fields, as if typed; saving stays the person's own act. */
-  const onUseQuickAdd = useCallback(() => {
-    if (quickReading === null || draft === null) return;
-    const patch = planQuickAdd(quickReading, {
-      currentNote: draft.note,
-      decimalsMatch:
-        currencyCode !== null && currencyDecimals(entryCode) === currencyDecimals(currencyCode),
-      today,
-      // Income instead of expense is only offered while nothing has been typed yet.
-      canSetType: amount.amountMinor === 0,
-    });
-    if (patch.amountMinor !== undefined) setAmount(amountInputFrom(patch.amountMinor));
-    setDraft((current) =>
-      current === null
-        ? current
-        : {
-            ...current,
-            ...(patch.type === undefined ? {} : { kind: patch.type }),
-            ...(patch.date === undefined ? {} : { date: patch.date }),
-            ...(patch.note === undefined ? {} : { note: normaliseNote(patch.note) }),
-            ...(patch.categoryId === undefined ? {} : { categoryId: patch.categoryId }),
-          },
-    );
-    setQuickReading(null);
-    setDescribeText('');
-  }, [quickReading, draft, currencyCode, entryCode, today, amount.amountMinor]);
-
   const onDeleteExpense = useCallback(async () => {
     if (expenseId === undefined) return;
 
@@ -821,21 +721,6 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
         <FormSkeleton />
       ) : (
         <>
-          {isEdit ? null : (
-            <QuickAddLine
-              value={describeText}
-              onChangeText={(next) => {
-                setDescribeText(next);
-                // The card describes the sentence it was made from; a changed sentence is a new question,
-                // and an answer still on its way to the old one is no longer wanted.
-                quickTicket.current += 1;
-                setQuickReading(null);
-              }}
-              onFill={() => void onFillQuickAdd()}
-              busy={quickAsking}
-              hint={quickOff ? COPY.form.quickAdd.hintLocal : COPY.form.quickAdd.hint}
-            />
-          )}
           <KindToggle
             value={live.kind}
             onChange={(kind) =>
@@ -858,23 +743,6 @@ export function ExpenseFormScreen({ expenseId }: ExpenseFormScreenProps) {
               Delete is always reachable - the keypad never covers content
               (§Accessibility rule 4). */}
           <ScrollView contentContainerStyle={styles.rows}>
-            {quickReading === null ? null : (
-              <ReceiptSuggestionCard
-                title={COPY.form.quickAdd.suggestionTitle}
-                testIDPrefix={QUICK_ADD_SUGGESTION_TEST_ID}
-                summary={[
-                  quickReading.type === 'income' ? COPY.form.kind.income : null,
-                  quickReading.amountMinor === null ? COPY.form.quickAdd.noAmount : null,
-                  quickAddSummary(quickReading, currencyCode ?? '', (date) =>
-                    dayLabel(date, today),
-                  ) || null,
-                ]
-                  .filter((part): part is string => part !== null)
-                  .join(' · ')}
-                onUse={onUseQuickAdd}
-                onDismiss={() => setQuickReading(null)}
-              />
-            )}
             {scan === null ? null : (
               <ReceiptSuggestionCard
                 summary={suggestionSummary(scan, (date) => dayLabel(date, today))}

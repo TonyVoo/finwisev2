@@ -144,6 +144,8 @@ export function useColors(): ColorTokens {
 /** What a style factory is given besides the palette. */
 export interface StyleTheme {
   readonly isDark: boolean;
+  /** True in the cultivation appearance. */
+  readonly tutien: boolean;
   /** The serif face for a heading in the cultivation appearance, nothing in the others. */
   readonly display: (weight?: 'semibold' | 'bold') => { readonly fontFamily?: string };
 }
@@ -157,6 +159,7 @@ export function createStyles<T>(factory: (color: ColorTokens, theme: StyleTheme)
     if (styles === undefined) {
       styles = factory(color, {
         isDark,
+        tutien: scheme === 'tutien',
         display: (weight = 'bold') =>
           scheme === 'tutien'
             ? { fontFamily: weight === 'bold' ? SERIF_BOLD : SERIF_SEMIBOLD }

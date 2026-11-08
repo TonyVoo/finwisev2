@@ -5,7 +5,8 @@ import { Button } from '../components/Button';
 import { COPY } from '../copy/strings';
 import { useReduceMotion } from '../lib/useReduceMotion';
 import { HIT_SLOP_44, radius, space, type } from '../theme/tokens';
-import { createStyles, useColors } from '../theme/ThemeProvider';
+import { createStyles, useColors, useTheme } from '../theme/ThemeProvider';
+import { PanelCorners } from '../components/PanelCorners';
 
 export const RECEIPT_ROW_TEST_ID = 'expense-receipt-row';
 export const RECEIPT_SCAN_TEST_ID = 'receipt-scan';
@@ -47,6 +48,7 @@ export function ReceiptCard(props: ReceiptCardProps) {
   const { present, dataBase64, canScan, scanning } = props;
   const styles = useStyles();
   const color = useColors();
+  const tutien = useTheme().scheme === 'tutien';
   const status = present ? COPY.form.field.receiptAttached : COPY.form.field.receiptAdd;
 
   return (
@@ -126,6 +128,7 @@ export function ReceiptCard(props: ReceiptCardProps) {
           />
         </View>
       )}
+      {tutien ? <PanelCorners /> : null}
     </View>
   );
 }
@@ -203,7 +206,7 @@ const overlayStyles = StyleSheet.create({
   overlay: { ...StyleSheet.absoluteFill, overflow: 'hidden', borderRadius: radius.sm },
 });
 
-const useStyles = createStyles((color) =>
+const useStyles = createStyles((color, { tutien, display }) =>
   StyleSheet.create({
     card: {
       marginHorizontal: space[4],
@@ -214,7 +217,7 @@ const useStyles = createStyles((color) =>
       borderRadius: radius.lg,
       backgroundColor: color.bg.surface,
       borderWidth: 1,
-      borderColor: color.border.hairline,
+      borderColor: tutien ? color.border.strong : color.border.hairline,
     },
     header: { flexDirection: 'row', alignItems: 'center', gap: space[3] },
     iconTile: {
@@ -233,7 +236,7 @@ const useStyles = createStyles((color) =>
       backgroundColor: color.bg.sunken,
     },
     headerText: { flex: 1, gap: 2 },
-    title: { ...type.bodyStrong, color: color.text.primary },
+    title: { ...type.bodyStrong, ...display('semibold'), color: color.text.primary },
     subtitle: { ...type.footnote, color: color.text.secondary },
     tiles: { flexDirection: 'row', gap: space[3] },
     tile: {

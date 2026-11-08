@@ -98,7 +98,7 @@ export function Dialog({
   );
 }
 
-const useStyles = createStyles((color, { display }) =>
+const useStyles = createStyles((color, { display, tutien }) =>
   StyleSheet.create({
     scrim: {
       flex: 1,
@@ -115,6 +115,9 @@ const useStyles = createStyles((color, { display }) =>
       borderRadius: radius.lg,
       padding: space[5],
       gap: space[3],
+      ...(tutien
+        ? { borderWidth: StyleSheet.hairlineWidth, borderColor: color.border.strong }
+        : null),
     },
     title: {
       ...type.title2,

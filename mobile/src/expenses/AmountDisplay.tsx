@@ -31,6 +31,9 @@ export const AMOUNT_MESSAGE_TEST_ID = 'amount-message';
 /** Above this font scale the hero drops to `type.display` to keep the keypad on screen. */
 const HERO_MAX_FONT_SCALE = 1.4;
 
+/** A tabular figure is about this wide, as a fraction of the font size. */
+const DIGIT_WIDTH = 0.62;
+
 export interface AmountDisplayProps {
   readonly amountMinor: number;
   readonly currency: string;
@@ -56,7 +59,7 @@ export function AmountDisplay({
   focused = false,
 }: AmountDisplayProps) {
   const styles = useStyles();
-  const { fontScale } = useWindowDimensions();
+  const { fontScale, width } = useWindowDimensions();
   const formatted = formatMoney(amountMinor, currency);
   const message = error ?? hint;
 
@@ -72,12 +75,25 @@ export function AmountDisplay({
     Animated.spring(pop, { toValue: 1, useNativeDriver: true, speed: 40, bounciness: 10 }).start();
   }, [amountMinor, reduceMotion, pop]);
 
+  // A long amount (a million dong) must not clip, so the size follows its length. Not `adjustsFontSizeToFit`: on
+  // iOS it measured the width wrongly and drew the figure a few points tall.
+  const base = fontScale > HERO_MAX_FONT_SCALE ? type.display.fontSize : type.amountHero.fontSize;
+  const room = width - space[4] * 4;
+  const fitted =
+    formatted.length * base * DIGIT_WIDTH > room
+      ? {
+          fontSize: Math.max(16, Math.floor(room / (formatted.length * DIGIT_WIDTH))),
+          lineHeight: undefined,
+        }
+      : null;
+
   const amountText = (
     <Animated.Text
       testID={AMOUNT_DISPLAY_TEST_ID}
       style={[
         { transform: [{ scale: pop }] },
         fontScale > HERO_MAX_FONT_SCALE ? styles.amountLarge : styles.amountHero,
+        fitted,
         muted ? styles.amountMuted : null,
       ]}
       accessibilityRole="header"
@@ -89,7 +105,6 @@ export function AmountDisplay({
       accessibilityLiveRegion="polite"
       // Never truncated: a clipped amount is worse than a taller line.
       numberOfLines={1}
-      adjustsFontSizeToFit
     >
       {formatted}
     </Animated.Text>
@@ -127,12 +142,12 @@ export function AmountDisplay({
   );
 }
 
-const useStyles = createStyles((color) =>
+const useStyles = createStyles((color, { tutien }) =>
   StyleSheet.create({
     block: {
       alignItems: 'center',
       paddingVertical: space[6],
-      backgroundColor: color.bg.surface,
+      backgroundColor: tutien ? 'rgba(11,18,16,0.5)' : color.bg.surface,
     },
     tap: {
       alignItems: 'center',

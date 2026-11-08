@@ -166,7 +166,7 @@ export function Sheet({ visible, title, onClose, children, testID }: SheetProps)
   );
 }
 
-const useStyles = createStyles((color, { display }) =>
+const useStyles = createStyles((color, { display, tutien }) =>
   StyleSheet.create({
     root: {
       flex: 1,
@@ -189,6 +189,10 @@ const useStyles = createStyles((color, { display }) =>
       paddingHorizontal: space[4],
       maxHeight: '85%',
       ...elevation[2],
+      // The cultivation appearance edges the sheet in gold like every other panel.
+      ...(tutien
+        ? { borderTopWidth: StyleSheet.hairlineWidth, borderColor: color.border.strong }
+        : null),
     },
     grabberArea: {
       // A 36x4 bar is far too small to grab, so the pan area is padded out around it while

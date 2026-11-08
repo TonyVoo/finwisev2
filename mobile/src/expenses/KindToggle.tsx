@@ -47,7 +47,7 @@ export function KindToggle({
   );
 }
 
-const useStyles = createStyles((color) =>
+const useStyles = createStyles((color, { tutien }) =>
   StyleSheet.create({
     track: {
       flexDirection: 'row',
@@ -55,7 +55,11 @@ const useStyles = createStyles((color) =>
       marginTop: space[3],
       padding: 2,
       borderRadius: radius.lg,
-      backgroundColor: color.bg.surface,
+      // The cultivation appearance lets the scenery show through, under an ink veil and a gold hairline.
+      backgroundColor: tutien ? 'rgba(11,18,16,0.5)' : color.bg.surface,
+      ...(tutien
+        ? { borderWidth: StyleSheet.hairlineWidth, borderColor: color.border.strong }
+        : null),
     },
     option: {
       flex: 1,
